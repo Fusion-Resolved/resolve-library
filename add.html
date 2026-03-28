@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Effect — Resolve Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0b;
+    --surface: #111113;
+    --surface2: #18181c;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8e6e0;
+    --muted: #6b6966;
+    --accent: #c8f060;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-weight: 300; min-height: 100vh; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px; position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  .logo { font-family: var(--font-head); font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+  .logo span { color: var(--accent); }
+  .btn { font-family: var(--font-body); font-size: 13px; padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; text-decoration: none; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { color: var(--text); }
+
+  .container { max-width: 760px; margin: 0 auto; padding: 3rem 2rem 6rem; }
+  .page-title { font-family: var(--font-head); font-size: 1.8rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 0.4rem; }
+  .page-sub { color: var(--muted); font-size: 13px; margin-bottom: 2.5rem; }
+
+  .section-heading {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .form-section { margin-bottom: 2.5rem; }
+
+  .field-group { margin-bottom: 1.1rem; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1.1rem; }
+  .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 1.1rem; }
+
+  label { display: block; font-size: 11px; font-family: var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  label .opt { opacity: 0.5; font-weight: 400; }
+
+  input[type="text"], input[type="date"], input[type="url"], select, textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 300;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--border2); }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  select { cursor: pointer; }
+  select option { background: #1a1a1e; }
+
+  textarea { resize: vertical; line-height: 1.6; }
+  textarea.short { min-height: 70px; }
+  textarea.medium { min-height: 110px; }
+  textarea.tall { min-height: 160px; }
+  textarea.mono { font-family: var(--font-mono); font-size: 11px; color: #a8cc40; background: #0d0d10; min-height: 140px; }
+
+  .hint { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+
+  .save-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,10,11,0.95);
+    border-top: 1px solid var(--border2);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    backdrop-filter: blur(8px);
+    z-index: 20;
+  }
+  .btn-accent {
+    background: var(--accent); color: #0a0a0b;
+    border-color: transparent; font-weight: 500;
+    font-size: 14px; padding: 10px 28px;
+  }
+  .btn-accent:hover { background: #d4f570; }
+  .toast {
+    position: fixed; top: 80px; right: 2rem;
+    background: var(--accent); color: #0a0a0b;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    opacity: 0; transform: translateY(-8px);
+    transition: all 0.25s; pointer-events: none; z-index: 99;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .required-star { color: #f06060; margin-left: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="index.html">Resolve<span>.</span>Library</a>
+  <a class="btn" href="index.html">← Back to library</a>
+</header>
+
+<div class="container">
+  <div class="page-title">Log a new effect</div>
+  <div class="page-sub">Fill in what you know — nothing is mandatory except the name. You can always come back and edit.</div>
+
+  <!-- Core info -->
+  <div class="form-section">
+    <div class="section-heading">01 — Core info</div>
+    <div class="field-row">
+      <div>
+        <label>Effect name <span class="required-star">*</span></label>
+        <input type="text" id="f-name" placeholder="e.g. Neon glow text" />
+      </div>
+      <div>
+        <label>Category</label>
+        <select id="f-cat">
+          <option value="fusion-effect">Fusion effect</option>
+          <option value="colour-grade">Colour grade</option>
+          <option value="3d-object">3D object</option>
+          <option value="transition">Transition</option>
+          <option value="title-text">Title / text</option>
+          <option value="motion-graphic">Motion graphic</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row-3">
+      <div>
+        <label>DaVinci Resolve version</label>
+        <input type="text" id="f-version" placeholder="e.g. 19.1" />
+      </div>
+      <div>
+        <label>Difficulty</label>
+        <select id="f-difficulty">
+          <option value="">— select —</option>
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+      <div>
+        <label>Date created</label>
+        <input type="date" id="f-date" />
+      </div>
+    </div>
+    <div class="field-group">
+      <label>Short description <span class="opt">(shown on card)</span></label>
+      <textarea class="short" id="f-desc" placeholder="One or two sentences. What does this effect do in plain English?"></textarea>
+    </div>
+  </div>
+
+  <!-- Showcase video -->
+  <div class="form-section">
+    <div class="section-heading">02 — Showcase video</div>
+    <div class="field-group">
+      <label>YouTube or Vimeo URL <span class="opt">(optional)</span></label>
+      <input type="url" id="f-video" placeholder="https://www.youtube.com/watch?v=..." />
+      <div class="hint">Upload a short clip (5–30 sec) to YouTube or Vimeo — unlisted is fine. Paste the link here and it'll embed on the effect page.</div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="form-section">
+    <div class="section-heading">03 — How it works</div>
+    <div class="field-group">
+      <label>Full explanation <span class="opt">(the lesson body — write for someone learning this)</span></label>
+      <textarea class="tall" id="f-explanation" placeholder="Explain how and why this effect works. What's the mechanism? What makes it look the way it does? This is the main learning content."></textarea>
+    </div>
+    <div class="field-group">
+      <label>Step-by-step process <span class="opt">(one step per line)</span></label>
+      <textarea class="medium" id="f-steps" placeholder="1. Open Fusion page&#10;2. Add a Shape3D node&#10;3. Connect to Renderer3D&#10;..."></textarea>
+      <div class="hint">Each line becomes a numbered step in the app. Start each line with the action.</div>
+    </div>
+  </div>
+
+  <!-- Node setup -->
+  <div class="form-section">
+    <div class="section-heading">04 — Node setup</div>
+    <div class="field-group">
+      <label>Node tree text code <span class="opt">(right-click node tree in Resolve → Copy)</span></label>
+      <textarea class="mono" id="f-nodeCode" placeholder="Paste your node tree code here…"></textarea>
+      <div class="hint">This is the most valuable thing you can store. Paste it back into Resolve to recreate the effect instantly.</div>
+    </div>
+    <div class="field-group">
+      <label>Nodes / Fusion tools used <span class="opt">(comma separated)</span></label>
+      <input type="text" id="f-nodes" placeholder="e.g. Shape3D, Renderer3D, BrightnessContrast, Merge3D" />
+    </div>
+    <div class="field-row">
+      <div>
+        <label>Render weight</label>
+        <select id="f-render">
+          <option value="">— select —</option>
+          <option value="Light">Light</option>
+          <option value="Medium">Medium</option>
+          <option value="Heavy">Heavy</option>
+        </select>
+      </div>
+      <div>
+        <label>Self-contained?</label>
+        <select id="f-self">
+          <option value="">— select —</option>
+          <option value="true">Yes — no media input needed</option>
+          <option value="false">No — needs media input</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-group">
+      <label>External dependencies <span class="opt">(LUTs, plugins, images — where to get them)</span></label>
+      <input type="text" id="f-deps" placeholder="e.g. Film Convert Nitrate plugin, Leeming LUT Pro" />
+    </div>
+  </div>
+
+  <!-- 3D / Fusion specifics -->
+  <div class="form-section">
+    <div class="section-heading">05 — 3D / Fusion specifics <span style="font-weight:300;opacity:0.5">(leave blank if not applicable)</span></div>
+    <div class="field-row">
+      <div>
+        <label>Lighting setup</label>
+        <input type="text" id="f-lighting" placeholder="e.g. Ambient + Directional, intensity 0.8" />
+      </div>
+      <div>
+        <label>Material / surface settings</label>
+        <input type="text" id="f-material" placeholder="e.g. Metallic, roughness 0.2" />
+      </div>
+    </div>
+    <div class="field-group">
+      <label>Camera setup <span class="opt">(if relevant)</span></label>
+      <input type="text" id="f-camera" placeholder="e.g. Camera3D, FOV 45°, animated Z position" />
+    </div>
+    <div class="field-group">
+      <label>Expressions or scripts used</label>
+      <textarea class="short" id="f-expressions" placeholder="Note any expressions, modifiers, or Lua scripts applied…"></textarea>
+    </div>
+  </div>
+
+  <!-- Colour grade specifics -->
+  <div class="form-section">
+    <div class="section-heading">06 — Colour grade specifics <span style="font-weight:300;opacity:0.5">(leave blank if not applicable)</span></div>
+    <div class="field-row">
+      <div>
+        <label>Adjustments made</label>
+        <input type="text" id="f-adjustments" placeholder="e.g. Lift/Gamma/Gain, S-curve" />
+      </div>
+      <div>
+        <label>LUT used</label>
+        <input type="text" id="f-lut" placeholder="e.g. Kodak 2383, custom LUT name" />
+      </div>
+    </div>
+    <div class="field-group">
+      <label>Qualifier / mask used</label>
+      <input type="text" id="f-qualifier" placeholder="e.g. HSL qualifier on skin tones, Power Window on sky" />
+    </div>
+  </div>
+
+  <!-- Learning & reuse -->
+  <div class="form-section">
+    <div class="section-heading">07 — Learning & reuse</div>
+    <div class="field-group">
+      <label>Common mistakes to avoid</label>
+      <textarea class="short" id="f-mistakes" placeholder="What trips people up when recreating this? What did you get wrong first time?"></textarea>
+    </div>
+    <div class="field-group">
+      <label>Variations & extensions</label>
+      <textarea class="short" id="f-variations" placeholder="How can this be adapted? What are interesting ways to extend it?"></textarea>
+    </div>
+    <div class="field-group">
+      <label>Reuse notes / export tips</label>
+      <textarea class="short" id="f-notes" placeholder="Export settings, gotchas, things to remember when reusing…"></textarea>
+    </div>
+    <div class="field-group">
+      <label>Related effects <span class="opt">(comma separated names)</span></label>
+      <input type="text" id="f-related" placeholder="e.g. Chromatic aberration, Film grain overlay" />
+    </div>
+  </div>
+
+  <!-- Tags -->
+  <div class="form-section">
+    <div class="section-heading">08 — Tags & metadata</div>
+    <div class="field-group">
+      <label>Tags <span class="opt">(comma separated — used for search & filtering)</span></label>
+      <input type="text" id="f-tags" placeholder="e.g. glow, neon, text, loop, fusion, beginner-friendly" />
+      <div class="hint">Be consistent. Use lowercase, hyphens for spaces. These power the app's search and filter.</div>
+    </div>
+    <div class="field-group">
+      <label>Software / tool</label>
+      <input type="text" id="f-tool" placeholder="DaVinci Resolve 19 — Fusion" />
+    </div>
+  </div>
+</div>
+
+<div class="save-bar">
+  <a class="btn" href="index.html">Cancel</a>
+  <button class="btn btn-accent" onclick="saveEffect()">Save to library</button>
+</div>
+
+<div class="toast" id="toast">Saved!</div>
+
+<script>
+document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+
+function saveEffect() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) {
+    document.getElementById('f-name').focus();
+    document.getElementById('f-name').style.borderColor = '#f06060';
+    setTimeout(()=>document.getElementById('f-name').style.borderColor='',2000);
+    return;
+  }
+
+  const effect = {
+    id: Date.now().toString(),
+    name,
+    cat:          document.getElementById('f-cat').value,
+    version:      document.getElementById('f-version').value.trim(),
+    difficulty:   document.getElementById('f-difficulty').value,
+    date:         document.getElementById('f-date').value,
+    desc:         document.getElementById('f-desc').value.trim(),
+    videoUrl:     document.getElementById('f-video').value.trim(),
+    explanation:  document.getElementById('f-explanation').value.trim(),
+    steps:        document.getElementById('f-steps').value.trim(),
+    nodeCode:     document.getElementById('f-nodeCode').value.trim(),
+    nodes:        document.getElementById('f-nodes').value.split(',').map(s=>s.trim()).filter(Boolean),
+    renderWeight: document.getElementById('f-render').value,
+    selfContained:document.getElementById('f-self').value === 'true' ? true : document.getElementById('f-self').value === 'false' ? false : undefined,
+    dependencies: document.getElementById('f-deps').value.trim(),
+    lightingSetup:document.getElementById('f-lighting').value.trim(),
+    materialSettings:document.getElementById('f-material').value.trim(),
+    camera:       document.getElementById('f-camera').value.trim(),
+    expressions:  document.getElementById('f-expressions').value.trim(),
+    adjustments:  document.getElementById('f-adjustments').value.trim(),
+    lut:          document.getElementById('f-lut').value.trim(),
+    qualifier:    document.getElementById('f-qualifier').value.trim(),
+    mistakes:     document.getElementById('f-mistakes').value.trim(),
+    variations:   document.getElementById('f-variations').value.trim(),
+    notes:        document.getElementById('f-notes').value.trim(),
+    related:      document.getElementById('f-related').value.trim(),
+    tags:         document.getElementById('f-tags').value.split(',').map(s=>s.trim()).filter(Boolean),
+    tool:         document.getElementById('f-tool').value.trim() || 'DaVinci Resolve',
+  };
+
+  const existing = JSON.parse(localStorage.getItem('resolve-effects') || '[]');
+  existing.unshift(effect);
+  localStorage.setItem('resolve-effects', JSON.stringify(existing));
+
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => { toast.classList.remove('show'); window.location.href = 'index.html'; }, 1200);
+}
+</script>
+</body>
+</html>
