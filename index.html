@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resolve Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0b;
+    --surface: #111113;
+    --surface2: #18181c;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8e6e0;
+    --muted: #6b6966;
+    --accent: #c8f060;
+    --accent2: #60b8f0;
+    --tag-bg: rgba(200,240,96,0.08);
+    --tag-color: #a8cc40;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-weight: 300;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+    backdrop-filter: blur(8px);
+  }
+  .logo {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .logo span { color: var(--accent); }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+  .btn-accent {
+    background: var(--accent);
+    color: #0a0a0b;
+    border-color: transparent;
+    font-weight: 500;
+  }
+  .btn-accent:hover { background: #d4f570; color: #0a0a0b; }
+
+  /* Layout */
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+  /* Hero */
+  .hero { padding: 4rem 0 2.5rem; }
+  .hero h1 {
+    font-family: var(--font-head);
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 0.75rem;
+  }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero p { color: var(--muted); font-size: 0.95rem; max-width: 420px; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 2rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  .stat-item { display: flex; flex-direction: column; gap: 2px; }
+  .stat-num {
+    font-family: var(--font-mono);
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .search-wrap {
+    flex: 1;
+    min-width: 220px;
+    position: relative;
+  }
+  .search-wrap svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.3;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px 9px 36px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--border2); }
+  .search-input::placeholder { color: var(--muted); }
+
+  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+  }
+  .chip:hover { border-color: var(--border2); color: var(--text); }
+  .chip.active { background: var(--accent); color: #0a0a0b; border-color: transparent; font-weight: 500; }
+
+  /* Sort */
+  .sort-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 4rem;
+  }
+  .card {
+    background: var(--surface);
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .card:hover { background: var(--surface2); }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .card-title {
+    font-family: var(--font-head);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .cat-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+  .cat-3d-space   { background: rgba(96,184,240,0.12); color: #60b8f0; }
+  .cat-3d-model   { background: rgba(200,240,96,0.12); color: #a8cc40; }
+  .cat-text       { background: rgba(240,160,96,0.12); color: #f0a060; }
+  .cat-background { background: rgba(200,96,240,0.12); color: #c060f0; }
+  .cat-shape      { background: rgba(240,96,160,0.12); color: #f060a0; }
+  .cat-light      { background: rgba(255,220,80,0.12); color: #e0b840; }
+  .cat-ui         { background: rgba(96,240,200,0.12); color: #60f0c8; }
+  .cat-camera     { background: rgba(160,120,240,0.12); color: #a078f0; }
+
+  .diff-badge {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+  }
+  .diff-beginner     { color: #60f0c8; }
+  .diff-intermediate { color: #f0a060; }
+  .diff-advanced     { color: #f06060; }
+
+  .card-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  .card-meta-dot { opacity: 0.3; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+  .tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--tag-bg);
+    color: var(--tag-color);
+    font-family: var(--font-mono);
+  }
+  .card-thumb {
+    width: 100%;
+    aspect-ratio: 16/7;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .card-thumb iframe {
+    width: 100%; height: 100%;
+    border: none; pointer-events: none;
+  }
+  .card-thumb .thumb-placeholder {
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: var(--font-mono);
+  }
+
+  .empty-state {
+    grid-column: 1/-1;
+    padding: 5rem 2rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .empty-state strong { display: block; font-size: 1.1rem; color: var(--text); margin-bottom: 0.5rem; font-family: var(--font-head); }
+
+  /* Modal / detail panel */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 50;
+    backdrop-filter: blur(4px);
+    overflow-y: auto;
+    padding: 2rem 1rem;
+  }
+  .overlay.open { display: flex; justify-content: center; align-items: flex-start; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 720px;
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.5rem 1.75rem 0;
+    gap: 1rem;
+  }
+  .panel-title {
+    font-family: var(--font-head);
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .panel-badges { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .close-btn {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 20px; line-height: 1; padding: 0; flex-shrink: 0; margin-top: 2px;
+    transition: color 0.15s;
+  }
+  .close-btn:hover { color: var(--text); }
+  .panel-video {
+    margin: 1.25rem 1.75rem 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    aspect-ratio: 16/9;
+  }
+  .panel-video iframe { width: 100%; height: 100%; border: none; }
+  .panel-video .no-video {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 12px; font-family: var(--font-mono);
+    min-height: 160px;
+  }
+  .panel-body { padding: 1.25rem 1.75rem 1.75rem; display: flex; flex-direction: column; gap: 1.25rem; }
+  .panel-section {}
+  .section-label {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .section-text { font-size: 13px; color: var(--text); line-height: 1.7; }
+  .steps-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .steps-list li {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 13px; color: var(--text); line-height: 1.6;
+  }
+  .step-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 20px;
+    margin-top: 2px;
+  }
+  .code-block {
+    background: #0d0d10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #a8cc40;
+    overflow-x: auto;
+    white-space: pre;
+    position: relative;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 8px; right: 8px;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { color: var(--text); }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .info-item { background: var(--surface2); border-radius: 8px; padding: 10px 12px; }
+  .info-item .section-label { margin-bottom: 3px; }
+  .info-item .section-text { font-size: 12px; }
+  .nodes-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .node-pill {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    background: rgba(96,184,240,0.08);
+    color: #60b8f0;
+    font-family: var(--font-mono);
+    border: 1px solid rgba(96,184,240,0.15);
+  }
+  .panel-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .panel-divider { height: 1px; background: var(--border); }
+  .related-effects { display: flex; flex-wrap: wrap; gap: 6px; }
+  .related-chip {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--font-body);
+    background: transparent;
+    transition: all 0.15s;
+  }
+  .related-chip:hover { color: var(--text); border-color: var(--border2); }
+  .panel-actions {
+    display: flex; gap: 10px;
+    padding: 1rem 1.75rem 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .btn-edit {
+    font-size: 13px; padding: 8px 20px; border-radius: 6px;
+    border: 1px solid var(--border2); background: transparent;
+    color: var(--text); cursor: pointer; font-family: var(--font-body); transition: all 0.15s;
+  }
+  .btn-edit:hover { background: var(--surface2); }
+  .btn-delete {
+    font-size: 13px; padding: 8px 20px; border-radius: 6px;
+    border: 1px solid rgba(240,96,96,0.3); background: transparent;
+    color: #f06060; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; margin-left: auto;
+  }
+  .btn-delete:hover { background: rgba(240,96,96,0.08); }
+  .edit-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    z-index: 60; backdrop-filter: blur(4px); overflow-y: auto; padding: 2rem 1rem;
+  }
+  .edit-overlay.open { display: flex; justify-content: center; align-items: flex-start; }
+  .edit-panel {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 14px; width: 100%; max-width: 720px; padding: 1.75rem;
+  }
+  .edit-panel h3 {
+    font-family: var(--font-head); font-size: 1.2rem; font-weight: 700;
+    letter-spacing: -0.02em; margin-bottom: 1.5rem; color: var(--text);
+  }
+  .edit-field { margin-bottom: 1rem; }
+  .edit-field label {
+    display: block; font-size: 10px; font-family: var(--font-mono);
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;
+  }
+  .edit-field input, .edit-field select, .edit-field textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; color: var(--text);
+    font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color 0.15s;
+  }
+  .edit-field input:focus, .edit-field select:focus, .edit-field textarea:focus { border-color: var(--border2); }
+  .edit-field textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+  .edit-field textarea.mono { font-family: var(--font-mono); font-size: 11px; color: #a8cc40; background: #0d0d10; min-height: 120px; }
+  .edit-field select option { background: #1a1a1e; }
+  .edit-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .edit-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+  /* Node picker in edit overlay */
+  .node-picker { position: relative; }
+  .node-picker-inner { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 6px; display: flex; flex-wrap: wrap; gap: 4px; min-height: 38px; cursor: text; transition: border-color .15s; }
+  .node-picker-inner:focus-within { border-color: var(--border2); }
+  .node-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(200,240,96,0.1); border: 1px solid rgba(200,240,96,0.25); border-radius: 4px; padding: 2px 6px 2px 8px; font-size: 11px; font-family: var(--font-mono); color: var(--accent); white-space: nowrap; }
+  .node-tag-custom { background: rgba(96,184,240,0.1); border-color: rgba(96,184,240,0.25); color: #60b8f0; }
+  .node-tag button { background: none; border: none; cursor: pointer; color: currentColor; opacity: .5; font-size: 11px; padding: 0; line-height: 1; }
+  .node-tag button:hover { opacity: 1; }
+  .node-search { background: transparent; border: none; outline: none; font-family: var(--font-body); font-size: 13px; color: var(--text); min-width: 120px; flex: 1; padding: 2px 4px; }
+  .node-search::placeholder { color: var(--muted); }
+  .node-dropdown { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; z-index: 200; max-height: 220px; overflow-y: auto; display: none; box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+  .node-dropdown.open { display: block; }
+  .node-dropdown-item { padding: 7px 12px; font-size: 12px; font-family: var(--font-mono); color: var(--muted); cursor: pointer; border-bottom: 1px solid var(--border); transition: background .1s, color .1s; display: flex; align-items: center; justify-content: space-between; }
+  .node-dropdown-item:last-child { border-bottom: none; }
+  .node-dropdown-item:hover, .node-dropdown-item.focused { background: var(--surface2); color: var(--text); }
+  .node-dropdown-item .node-cat { font-size: 9px; opacity: .45; letter-spacing: .04em; text-transform: uppercase; }
+  .node-dropdown-add { color: #60b8f0; }
+  .node-dropdown-add:hover { background: rgba(96,184,240,.07); color: #60b8f0; }
+  /* Backup / restore modal */
+  .backup-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    z-index: 90; backdrop-filter: blur(4px); align-items: center; justify-content: center;
+  }
+  .backup-overlay.open { display: flex; }
+  .backup-box {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 14px; width: calc(100vw - 3rem); max-width: 480px; overflow: hidden;
+  }
+  .backup-header {
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .backup-header h3 { font-family: var(--font-head); font-size: 1rem; font-weight: 700; }
+  .backup-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 12px; }
+  .backup-section-title {
+    font-size: 10px; font-family: var(--font-mono); text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--accent); margin-bottom: 4px;
+  }
+  .backup-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+  .backup-btn {
+    width: 100%; padding: 11px 16px; border-radius: 8px; font-size: 13px;
+    font-family: var(--font-body); font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border2); background: var(--surface2);
+    color: var(--text); transition: all 0.15s; text-align: left;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .backup-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .backup-btn.import-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .backup-btn svg { flex-shrink: 0; }
+  .backup-divider { height: 1px; background: var(--border); margin: 4px 0; }
+  .backup-stats {
+    font-size: 11px; font-family: var(--font-mono); color: var(--muted);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; line-height: 1.8;
+  }
+  .backup-stats span { color: var(--accent); }
+  .restore-drop {
+    border: 1px dashed var(--border2); border-radius: 8px; padding: 20px;
+    text-align: center; font-size: 12px; color: var(--muted);
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .restore-drop:hover, .restore-drop.drag-over { border-color: var(--accent2); color: var(--accent2); }
+  .restore-warning {
+    font-size: 11px; color: #f0a060; background: rgba(240,160,96,0.08);
+    border: 1px solid rgba(240,160,96,0.2); border-radius: 6px;
+    padding: 8px 12px; line-height: 1.6; display: none;
+  }
+  .restore-warning.show { display: block; }
+  .backup-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+
+  /* Linked videos */
+  .linked-videos { display: flex; flex-direction: column; gap: 8px; }
+  .linked-video-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; cursor: pointer;
+    text-decoration: none; transition: border-color 0.15s;
+  }
+  .linked-video-card:hover { border-color: var(--border2); }
+  .linked-video-thumb {
+    width: 72px; height: 40px; border-radius: 4px;
+    background: #000; flex-shrink: 0; overflow: hidden;
+  }
+  .linked-video-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .linked-video-thumb .no-thumb {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  }
+  .linked-video-thumb .no-thumb svg { opacity: 0.2; }
+  .linked-video-info { flex: 1; min-width: 0; }
+  .linked-video-title { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+  .linked-video-channel { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+  .linked-video-arrow { color: var(--muted); flex-shrink: 0; font-size: 14px; }
+
+  /* Link picker modal */
+  .link-picker-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    z-index: 80; backdrop-filter: blur(4px); overflow-y: auto; padding: 2rem 1rem;
+  }
+  .link-picker-overlay.open { display: flex; justify-content: center; align-items: flex-start; }
+  .link-picker-panel {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 14px; width: 100%; max-width: 560px; overflow: hidden;
+  }
+  .link-picker-header {
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .link-picker-header h3 { font-family: var(--font-head); font-size: 1rem; font-weight: 700; }
+  .link-picker-search { padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .link-picker-search input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; color: var(--text);
+    font-family: var(--font-body); font-size: 13px; outline: none;
+  }
+  .link-picker-search input:focus { border-color: var(--border2); }
+  .link-picker-list { max-height: 380px; overflow-y: auto; }
+  .link-picker-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 1.5rem; cursor: pointer; transition: background 0.1s;
+    border-bottom: 1px solid var(--border);
+  }
+  .link-picker-item:last-child { border-bottom: none; }
+  .link-picker-item:hover { background: var(--surface2); }
+  .link-picker-item.selected { background: rgba(200,240,96,0.06); }
+  .link-picker-check {
+    width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border2);
+    background: transparent; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .link-picker-item.selected .link-picker-check { background: var(--accent); border-color: var(--accent); }
+  .link-picker-item.selected .link-picker-check::after { content: '✓'; font-size: 11px; color: #0a0a0b; font-weight: 700; }
+  .link-picker-info { flex: 1; min-width: 0; }
+  .link-picker-title { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .link-picker-sub { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 1px; }
+  .link-picker-empty { padding: 2rem; text-align: center; color: var(--muted); font-size: 13px; }
+  .link-picker-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+
+  .confirm-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    z-index: 70; backdrop-filter: blur(4px); align-items: center; justify-content: center;
+  }
+  .confirm-overlay.open { display: flex; }
+  .confirm-box {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 2rem; max-width: 360px; width: 100%; margin: 1rem; text-align: center;
+  }
+  .confirm-box h4 { font-family: var(--font-head); font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text); }
+  .confirm-box p { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.5; }
+  .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+  /* Mini node graph preview */
+  .node-graph-preview {
+    background: #0d0d10;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    display: block;
+    text-decoration: none;
+  }
+  .node-graph-preview:hover { border-color: rgba(96,184,240,0.5); }
+  .node-graph-preview svg { display: block; width: 100%; }
+  .node-graph-preview .ng-open-hint {
+    position: absolute;
+    bottom: 8px; right: 10px;
+    font-size: 10px; font-family: var(--font-mono);
+    color: var(--accent2);
+    background: rgba(10,10,11,0.8);
+    padding: 3px 8px; border-radius: 4px;
+    border: 1px solid rgba(96,184,240,0.2);
+    opacity: 0; transition: opacity 0.15s;
+    pointer-events: none;
+  }
+  .node-graph-preview:hover .ng-open-hint { opacity: 1; }
+  .node-graph-preview .ng-open-label {
+    position: absolute;
+    top: 8px; left: 10px;
+    font-size: 9px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+    color: rgba(96,184,240,0.5);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="index.html">Resolve<span>.</span>Library</a>
+  <div class="header-actions">
+    <a class="btn" href="videos.html">Video library</a>
+    <a class="btn" href="spline.html">Spline editor</a>
+    <a class="btn" href="nodegraph.html">Node graph</a>
+    <button class="btn" onclick="openBackup()">⬇ Backup</button>
+    <a class="btn" href="add.html">+ Add effect</a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="hero">
+    <h1>DaVinci Resolve<br><em>Effect Library</em></h1>
+    <p>A personal reference of effects, grades, and Fusion setups — built to be shared.</p>
+  </div>
+
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-item"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Effects</div></div>
+    <div class="stat-item"><div class="stat-num" id="stat-cats">0</div><div class="stat-label">Categories</div></div>
+    <div class="stat-item"><div class="stat-num" id="stat-tools">0</div><div class="stat-label">Node setups</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input class="search-input" type="text" id="search" placeholder="Search effects, tools, tags…" oninput="render()">
+    </div>
+    <div class="filter-chips" id="filter-chips"></div>
+    <select class="sort-select" id="sort" onchange="render()">
+      <option value="newest">Newest first</option>
+      <option value="oldest">Oldest first</option>
+      <option value="name">A–Z</option>
+      <option value="difficulty">Difficulty</option>
+    </select>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- Detail overlay -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="panel" id="panel"></div>
+</div>
+
+<!-- Edit overlay -->
+<div class="edit-overlay" id="edit-overlay" onclick="handleEditOverlayClick(event)">
+  <div class="edit-panel" id="edit-panel"></div>
+</div>
+
+<!-- Backup / restore modal -->
+<div class="backup-overlay" id="backup-overlay">
+  <div class="backup-box">
+    <div class="backup-header">
+      <h3>Backup &amp; Restore</h3>
+      <button class="close-btn" onclick="closeBackup()">&#x2715;</button>
+    </div>
+    <div class="backup-body">
+      <div class="backup-stats" id="backup-stats"></div>
+
+      <div class="backup-divider"></div>
+
+      <div>
+        <div class="backup-section-title">Export — save a backup file</div>
+        <div class="backup-desc">Downloads a single <code>.json</code> file containing all your effects, videos, and links. Save it to iCloud, Dropbox, or anywhere safe. Do this regularly.</div>
+        <button class="backup-btn" onclick="exportAll()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download backup (.json)
+        </button>
+      </div>
+
+      <div class="backup-divider"></div>
+
+      <div>
+        <div class="backup-section-title">Import — restore from a backup file</div>
+        <div class="backup-desc">Select a previously exported <code>.json</code> backup file. Choose whether to merge with existing data or replace it entirely.</div>
+        <div class="restore-drop" id="restore-drop" onclick="document.getElementById('restore-file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleRestoreDrop(event)">
+          Click to choose file, or drag &amp; drop a backup .json here
+        </div>
+        <input type="file" id="restore-file-input" accept=".json" style="display:none" onchange="handleRestoreFile(event)">
+        <div class="restore-warning" id="restore-warning"></div>
+        <div id="restore-actions" style="display:none;margin-top:10px;display:none">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px" id="restore-summary"></div>
+          <div style="display:flex;gap:8px">
+            <button class="backup-btn import-btn" style="flex:1" onclick="doRestore('merge')">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 6H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-3"/><polyline points="15 3 12 6 9 3"/></svg>
+              Merge (keep existing + add from backup)
+            </button>
+            <button class="backup-btn" style="flex:1;border-color:rgba(240,96,96,0.3);color:#f06060" onclick="doRestore('replace')">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.37"/></svg>
+              Replace all data
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="backup-footer">
+      <button class="btn-edit" onclick="closeBackup()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Link picker -->
+<div class="link-picker-overlay" id="link-picker-overlay">
+  <div class="link-picker-panel">
+    <div class="link-picker-header">
+      <h3>Link tutorial videos</h3>
+      <button class="close-btn" onclick="closeLinkPicker()">&#x2715;</button>
+    </div>
+    <div class="link-picker-search">
+      <input type="text" id="link-picker-search" placeholder="Search videos…" oninput="renderLinkPicker()">
+    </div>
+    <div class="link-picker-list" id="link-picker-list"></div>
+    <div class="link-picker-footer">
+      <button class="btn-edit" onclick="closeLinkPicker()">Cancel</button>
+      <button class="btn-edit" style="background:var(--accent);color:#0a0a0b;border-color:transparent;font-weight:500" onclick="saveLinkPicker()">Save links</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h4>Delete this effect?</h4>
+    <p>This can't be undone. The effect and all its data will be permanently removed.</p>
+    <div class="confirm-actions">
+      <button class="btn-edit" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-delete" id="confirm-delete-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATS = {
+  '3d-space':    { label: '3D space',    cls: 'cat-3d-space' },
+  '3d-model':    { label: '3D model',    cls: 'cat-3d-model' },
+  'text':        { label: 'Text',        cls: 'cat-text' },
+  'background':  { label: 'Background',  cls: 'cat-background' },
+  'shape':       { label: 'Shape',       cls: 'cat-shape' },
+  'light':       { label: 'Light',       cls: 'cat-light' },
+  'ui':          { label: 'UI',          cls: 'cat-ui' },
+  'camera':      { label: 'Camera',      cls: 'cat-camera' },
+};
+const DIFF = {
+  'beginner':     { label: 'Beginner',     cls: 'diff-beginner' },
+  'intermediate': { label: 'Intermediate', cls: 'diff-intermediate' },
+  'advanced':     { label: 'Advanced',     cls: 'diff-advanced' }
+};
+
+let effects = JSON.parse(localStorage.getItem('resolve-effects') || '[]');
+let activeFilter = 'all';
+let activeDetail = null;
+
+// ---- Link system ----
+// Links stored as { effectId: [videoId, videoId, ...] } in 'resolve-links'
+function getLinks() { return JSON.parse(localStorage.getItem('resolve-links') || '{}'); }
+function saveLinks(links) { localStorage.setItem('resolve-links', JSON.stringify(links)); }
+function getLinkedVideoIds(effectId) { return getLinks()[effectId] || []; }
+
+function getVideos() { return JSON.parse(localStorage.getItem('resolve-videos') || '[]'); }
+
+// ---- Node Graph Preview ----
+function findLinkedGraph(effectId) {
+  try {
+    const graphs = JSON.parse(localStorage.getItem('ng-graphs') || '[]');
+    // First try: find a graph that has this effect in its linkedEffects
+    let g = graphs.find(g => (g.linkedEffects||[]).some(le => le.id === effectId));
+    if (g) return g;
+    // Second try: check if the effect itself stores a _linkedGraphId
+    const effects = JSON.parse(localStorage.getItem('resolve-effects') || '[]');
+    const eff = effects.find(e => e.id === effectId);
+    if (eff && eff._linkedGraphId) {
+      g = graphs.find(x => x.id === eff._linkedGraphId);
+      if (g) return g;
+    }
+    return null;
+  } catch { return null; }
+}
+
+function renderNodeGraphPreview(effectId) {
+  const graph = findLinkedGraph(effectId);
+  if (!graph || !graph.nodes || !graph.nodes.length) return '';
+
+  const W = 620, H = 200;
+  const PAD = 30;
+  const nW = 110, nH = 36;
+
+  // Layout: auto-position nodes in a left-to-right flow if positions exist, else grid
+  const ns = graph.nodes;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  ns.forEach(n => {
+    minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + nW); maxY = Math.max(maxY, n.y + nH);
+  });
+  const rW = maxX - minX || 1, rH = maxY - minY || 1;
+  const scaleX = (W - PAD*2 - nW) / rW;
+  const scaleY = (H - PAD*2 - nH) / rH;
+  const sc = Math.min(scaleX, scaleY, 1.2);
+
+  function nx(x) { return PAD + (x - minX) * sc; }
+  function ny(y) { return PAD + (y - minY) * sc; }
+
+  // Draw connections
+  let connsSVG = '';
+  (graph.conns || []).forEach(c => {
+    const fromN = ns.find(n => n.id === c.from);
+    const toN = ns.find(n => n.id === c.to);
+    if (!fromN || !toN) return;
+    const x1 = nx(fromN.x) + nW;
+    const y1 = ny(fromN.y) + nH/2;
+    const x2 = nx(toN.x);
+    const y2 = ny(toN.y) + nH/2;
+    const cx1 = x1 + Math.abs(x2-x1)*0.45;
+    const cx2 = x2 - Math.abs(x2-x1)*0.45;
+    const col = c.color || '#60b8f0';
+    connsSVG += `<path d="M${x1},${y1} C${cx1},${y1} ${cx2},${y2} ${x2},${y2}" stroke="${escHtml(col)}" stroke-width="1.5" fill="none" stroke-opacity="0.6"/>`;
+  });
+
+  // Draw nodes
+  let nodesSVG = '';
+  ns.forEach(n => {
+    const x = nx(n.x), y = ny(n.y);
+    const col = n.color || 'rgba(255,255,255,0.12)';
+    const colBorder = n.color || 'rgba(255,255,255,0.18)';
+    const label = n.name.length > 13 ? n.name.slice(0,12)+'…' : n.name;
+    nodesSVG += `
+      <rect x="${x}" y="${y}" width="${nW}" height="${nH}" rx="5"
+        fill="${escHtml(col)}22" stroke="${escHtml(colBorder)}" stroke-width="1.2"/>
+      <text x="${x + nW/2}" y="${y + nH/2 + 4}" text-anchor="middle"
+        font-family="DM Mono, monospace" font-size="9.5" fill="#e8e6e0" opacity="0.9">${escHtml(label)}</text>`;
+  });
+
+  const url = `nodegraph.html?effect=${effectId}`;
+  return `
+    <a class="node-graph-preview" href="${url}" onclick="closeDetail()">
+      <span class="ng-open-label">Node graph</span>
+      <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        <rect width="${W}" height="${H}" fill="#0d0d10"/>
+        ${connsSVG}
+        ${nodesSVG}
+      </svg>
+      <span class="ng-open-hint">Open &amp; edit in Node Graph →</span>
+    </a>`;
+}
+
+function getYouTubeThumb(url) {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+  return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
+}
+
+function renderLinkedVideos(effectId) {
+  const videoIds = getLinkedVideoIds(effectId);
+  const videos = getVideos();
+  const linked = videoIds.map(vid => videos.find(v => v.id === vid)).filter(Boolean);
+  if (!linked.length) {
+    return `<div style="font-size:12px;color:var(--muted);padding:8px 0">No videos linked yet. Use <em>+ Link videos</em> to connect tutorials that helped you build this effect.</div>`;
+  }
+  return `<div class="linked-videos">${linked.map(v => {
+    const thumb = getYouTubeThumb(v.videoUrl);
+    return `<div class="linked-video-card" onclick="event.stopPropagation();window.location.href='videos.html#v=${v.id}'">
+      <div class="linked-video-thumb">
+        ${thumb ? `<img src="${thumb}" alt="">` : `<div class="no-thumb"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m10 8 6 4-6 4V8z"/></svg></div>`}
+      </div>
+      <div class="linked-video-info">
+        <div class="linked-video-title">${escHtml(v.title || 'Untitled')}</div>
+        ${v.channel ? `<div class="linked-video-channel">${escHtml(v.channel)}</div>` : ''}
+      </div>
+      <div class="linked-video-arrow">→</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ---- Link picker ----
+let linkPickerEffectId = null;
+let linkPickerSelected = [];
+
+function openLinkPicker(effectId) {
+  linkPickerEffectId = effectId;
+  linkPickerSelected = [...getLinkedVideoIds(effectId)];
+  document.getElementById('link-picker-search').value = '';
+  renderLinkPicker();
+  document.getElementById('link-picker-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLinkPicker() {
+  document.getElementById('link-picker-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderLinkPicker() {
+  const q = document.getElementById('link-picker-search').value.toLowerCase();
+  const videos = getVideos().filter(v => {
+    if (!q) return true;
+    return [v.title, v.channel, ...(v.tags||[])].join(' ').toLowerCase().includes(q);
+  });
+  const list = document.getElementById('link-picker-list');
+  if (!videos.length) {
+    list.innerHTML = `<div class="link-picker-empty">${getVideos().length ? 'No videos match.' : 'No videos saved yet — add some in the Video Library first.'}</div>`;
+    return;
+  }
+  list.innerHTML = videos.map(v => {
+    const sel = linkPickerSelected.includes(v.id);
+    const thumb = getYouTubeThumb(v.videoUrl);
+    return `<div class="link-picker-item ${sel ? 'selected' : ''}" onclick="toggleLinkPickerItem('${v.id}')">
+      <div class="link-picker-check"></div>
+      <div class="linked-video-thumb" style="width:56px;height:32px;flex-shrink:0">
+        ${thumb ? `<img src="${thumb}" alt="">` : `<div class="no-thumb"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m10 8 6 4-6 4V8z"/></svg></div>`}
+      </div>
+      <div class="link-picker-info">
+        <div class="link-picker-title">${escHtml(v.title || 'Untitled')}</div>
+        ${v.channel ? `<div class="link-picker-sub">${escHtml(v.channel)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleLinkPickerItem(videoId) {
+  const idx = linkPickerSelected.indexOf(videoId);
+  if (idx === -1) linkPickerSelected.push(videoId);
+  else linkPickerSelected.splice(idx, 1);
+  renderLinkPicker();
+}
+
+function saveLinkPicker() {
+  const links = getLinks();
+  links[linkPickerEffectId] = linkPickerSelected;
+  saveLinks(links);
+  closeLinkPicker();
+  // Refresh the linked-videos section in the open panel without closing it
+  const section = document.getElementById(`linked-videos-section-${linkPickerEffectId}`);
+  if (section) {
+    const content = section.querySelector('.linked-videos, div[style*="No videos"]');
+    if (content) content.remove();
+    section.insertAdjacentHTML('beforeend', renderLinkedVideos(linkPickerEffectId));
+  }
+}
+
+function youtubeEmbed(url) {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|v=|shorts\/)([A-Za-z0-9_-]{11})/);
+  return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=0` : null;
+}
+function vimeoEmbed(url) {
+  if (!url) return null;
+  const m = url.match(/vimeo\.com\/(\d+)/);
+  return m ? `https://player.vimeo.com/video/${m[1]}` : null;
+}
+function getEmbed(url) {
+  if (!url) return null;
+  return youtubeEmbed(url) || vimeoEmbed(url) || null;
+}
+
+function diffOrder(d) { return { beginner:0, intermediate:1, advanced:2 }[d] ?? 1; }
+
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const sort = document.getElementById('sort').value;
+  let list = effects.filter(e => {
+    const matchF = activeFilter === 'all' || e.cat === activeFilter;
+    const searchFields = [e.name, e.desc, e.how, e.explanation, e.tool, e.version, ...(e.tags||[]), ...(e.nodes||[])];
+    const matchQ = !q || searchFields.some(f => f && f.toLowerCase().includes(q));
+    return matchF && matchQ;
+  });
+  list = [...list].sort((a,b) => {
+    if (sort === 'newest') return new Date(b.date||0) - new Date(a.date||0);
+    if (sort === 'oldest') return new Date(a.date||0) - new Date(b.date||0);
+    if (sort === 'name') return a.name.localeCompare(b.name);
+    if (sort === 'difficulty') return diffOrder(a.difficulty) - diffOrder(b.difficulty);
+    return 0;
+  });
+
+  // Stats
+  const cats = [...new Set(effects.map(e => e.cat))].length;
+  const withNodes = effects.filter(e => e.nodeCode && e.nodeCode.trim()).length;
+  document.getElementById('stat-total').textContent = effects.length;
+  document.getElementById('stat-cats').textContent = cats;
+  document.getElementById('stat-tools').textContent = withNodes;
+
+  // Filter chips
+  const counts = {};
+  effects.forEach(e => counts[e.cat] = (counts[e.cat]||0)+1);
+  const chips = [['all','All'],...Object.keys(CATS).filter(k=>counts[k]).map(k=>[k,CATS[k].label])];
+  document.getElementById('filter-chips').innerHTML = chips.map(([k,l]) =>
+    `<button class="chip ${activeFilter===k?'active':''}" onclick="setFilter('${k}')">${l}${k!=='all'&&counts[k]?' ('+counts[k]+')':''}</button>`
+  ).join('');
+
+  const grid = document.getElementById('grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state"><strong>${effects.length ? 'No results found' : 'No effects yet'}</strong>${effects.length ? 'Try adjusting your search or filter.' : 'Click "+ Add effect" to log your first one.'}</div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(e => {
+    const cat = CATS[e.cat] || CATS['fusion-effect'];
+    const diff = DIFF[e.difficulty];
+    const embed = getEmbed(e.videoUrl);
+    const dateStr = e.date ? new Date(e.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
+    const tags = (e.tags||[]).slice(0,4).map(t=>`<span class="tag">${t}</span>`).join('');
+    const extra = (e.tags||[]).length > 4 ? `<span class="tag">+${e.tags.length-4}</span>` : '';
+    return `<div class="card" onclick="openDetail('${e.id}')">
+      ${embed ? `<div class="card-thumb"><iframe src="${embed}" loading="lazy" allow="autoplay"></iframe></div>` : ''}
+      <div class="card-top">
+        <div class="card-title">${e.name}</div>
+        <span class="cat-badge ${cat.cls}">${cat.label}</span>
+      </div>
+      ${diff ? `<div class="diff-badge ${diff.cls}">● ${diff.label}</div>` : ''}
+      ${e.desc ? `<div class="card-desc">${e.desc}</div>` : ''}
+      <div class="card-meta">
+        ${e.version ? `<span>DR ${e.version}</span><span class="card-meta-dot">·</span>` : ''}
+        ${dateStr ? `<span>${dateStr}</span>` : ''}
+        ${e.renderWeight ? `<span class="card-meta-dot">·</span><span>${e.renderWeight}</span>` : ''}
+      </div>
+      ${tags || extra ? `<div class="card-tags">${tags}${extra}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function setFilter(k) { activeFilter = k; render(); }
+
+function openDetail(id) {
+  const e = effects.find(x => x.id === id);
+  if (!e) return;
+  activeDetail = id;
+  const cat = CATS[e.cat] || CATS['fusion-effect'];
+  const diff = DIFF[e.difficulty];
+  const embed = getEmbed(e.videoUrl);
+  const dateStr = e.date ? new Date(e.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
+  const steps = (e.steps||'').split('\n').filter(s=>s.trim());
+
+  document.getElementById('panel').innerHTML = `
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">${e.name}</div>
+        <div class="panel-badges">
+          <span class="cat-badge ${cat.cls}">${cat.label}</span>
+          ${diff ? `<span class="diff-badge ${diff.cls}">● ${diff.label}</span>` : ''}
+          ${e.version ? `<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">DR ${e.version}</span>` : ''}
+          ${dateStr ? `<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">${dateStr}</span>` : ''}
+        </div>
+      </div>
+      <button class="close-btn" onclick="closeDetail()">&#x2715;</button>
+    </div>
+
+    ${embed ? `<div class="panel-video"><iframe src="${embed}" allow="autoplay; fullscreen"></iframe></div>` : `<div class="panel-video"><div class="no-video">no showcase video</div></div>`}
+
+    <div class="panel-body">
+      ${e.desc ? `<div class="panel-section"><div class="section-label">What it is</div><div class="section-text">${e.desc}</div></div>` : ''}
+      ${e.explanation ? `<div class="panel-section"><div class="section-label">How & why it works</div><div class="section-text">${e.explanation}</div></div>` : ''}
+
+      ${steps.length ? `<div class="panel-section">
+        <div class="section-label">Step-by-step</div>
+        <ol class="steps-list">${steps.map((s,i)=>`<li><span class="step-num">${String(i+1).padStart(2,'0')}</span><span>${s.replace(/^\d+[\.\)]\s*/,'')}</span></li>`).join('')}</ol>
+      </div>` : ''}
+
+      ${e.nodeCode ? `<div class="panel-section">
+        <div class="section-label">Node tree code</div>
+        <div class="code-block" id="nc-${e.id}">${escHtml(e.nodeCode)}<button class="copy-btn" onclick="copyCode('${e.id}')">copy</button></div>
+      </div>` : ''}
+
+      ${(e.nodes||[]).length ? `<div class="panel-section">
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Nodes / tools used</span>
+          ${findLinkedGraph(e.id) ? `<a href="nodegraph.html?effect=${e.id}" onclick="closeDetail()" style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-decoration:none;letter-spacing:.04em;text-transform:uppercase">Edit in Node Graph →</a>` : ''}
+        </div>
+        ${renderNodeGraphPreview(e.id)}
+        <div class="nodes-list" style="margin-top:8px">${e.nodes.map(n=>`<span class="node-pill">${n}</span>`).join('')}</div>
+      </div>` : (findLinkedGraph(e.id) ? `<div class="panel-section">
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Node graph</span>
+          <a href="nodegraph.html?effect=${e.id}" onclick="closeDetail()" style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-decoration:none;letter-spacing:.04em;text-transform:uppercase">Edit in Node Graph →</a>
+        </div>
+        ${renderNodeGraphPreview(e.id)}
+      </div>` : '')}
+
+      <div class="info-grid">
+        ${e.settingFile ? `<div class="info-item" style="grid-column:1/-1"><div class="section-label">.setting file name</div><div class="section-text" style="font-family:var(--font-mono);font-size:12px;color:#a8cc40">${e.settingFile}</div></div>` : ''}
+        ${e.tool ? `<div class="info-item"><div class="section-label">Software</div><div class="section-text">${e.tool}</div></div>` : ''}
+        ${e.renderWeight ? `<div class="info-item"><div class="section-label">Render weight</div><div class="section-text">${e.renderWeight}</div></div>` : ''}
+        ${e.selfContained !== undefined ? `<div class="info-item"><div class="section-label">Self-contained?</div><div class="section-text">${e.selfContained ? 'Yes — no media needed' : 'Needs media input'}</div></div>` : ''}
+        ${e.dependencies ? `<div class="info-item"><div class="section-label">Dependencies</div><div class="section-text">${e.dependencies}</div></div>` : ''}
+        ${e.lightingSetup ? `<div class="info-item"><div class="section-label">Lighting setup</div><div class="section-text">${e.lightingSetup}</div></div>` : ''}
+        ${e.materialSettings ? `<div class="info-item"><div class="section-label">Material settings</div><div class="section-text">${e.materialSettings}</div></div>` : ''}
+        ${e.expressions ? `<div class="info-item" style="grid-column:1/-1"><div class="section-label">Expressions / scripts</div><div class="section-text">${e.expressions}</div></div>` : ''}
+      </div>
+
+      ${e.mistakes ? `<div class="panel-section"><div class="section-label">Common mistakes to avoid</div><div class="section-text">${e.mistakes}</div></div>` : ''}
+      ${e.variations ? `<div class="panel-section"><div class="section-label">Variations & extensions</div><div class="section-text">${e.variations}</div></div>` : ''}
+      ${e.notes ? `<div class="panel-section"><div class="section-label">Reuse notes</div><div class="section-text">${e.notes}</div></div>` : ''}
+
+      ${(e.tags||[]).length ? `<div class="panel-section"><div class="section-label">Tags</div><div class="panel-tags">${e.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>` : ''}
+
+      ${e.related ? `<div class="panel-section">
+        <div class="section-label">Related effects</div>
+        <div class="related-effects">${e.related.split(',').map(r=>r.trim()).filter(Boolean).map(r=>`<button class="related-chip" onclick="searchFor('${r}')">${r}</button>`).join('')}</div>
+      </div>` : ''}
+
+      <div class="panel-section" id="linked-videos-section-${e.id}">
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Tutorial videos</span>
+          <button onclick="openLinkPicker('${e.id}')" style="font-size:10px;font-family:var(--font-mono);color:var(--accent);background:none;border:none;cursor:pointer;letter-spacing:.04em;text-transform:uppercase">+ Link videos</button>
+        </div>
+        ${renderLinkedVideos(e.id)}
+      </div>
+    </div>
+    <div class="panel-actions">
+      <button class="btn-edit" onclick="openEdit('${e.id}')">Edit effect</button>
+      <button class="btn-delete" onclick="promptDelete('${e.id}')">Delete</button>
+    </div>
+  `;
+  document.getElementById('overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDetail() {
+  document.getElementById('overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  activeDetail = null;
+}
+function handleOverlayClick(e) { if (e.target === document.getElementById('overlay')) closeDetail(); }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function copyCode(id) {
+  const e = effects.find(x=>x.id===id);
+  if (!e) return;
+  navigator.clipboard.writeText(e.nodeCode).then(()=>{
+    const btn = document.querySelector(`#nc-${id} .copy-btn`);
+    if(btn){btn.textContent='copied!';setTimeout(()=>btn.textContent='copy',1500);}
+  });
+}
+function searchFor(term) {
+  closeDetail();
+  document.getElementById('search').value = term;
+  render();
+}
+
+// ---- Edit ----
+function openEdit(id) {
+  const e = effects.find(x => x.id === id);
+  if (!e) return;
+  closeDetail();
+  document.getElementById('edit-panel').innerHTML = `
+    <h3>Edit effect</h3>
+    <div class="edit-row">
+      <div class="edit-field"><label>Effect name</label><input id="e-name" type="text" value="${escAttr(e.name)}"/></div>
+      <div class="edit-field"><label>Category</label>
+        <select id="e-cat">
+          ${Object.entries(CATS).map(([k,v])=>`<option value="${k}" ${e.cat===k?'selected':''}>${v.label}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="edit-row">
+      <div class="edit-field"><label>DaVinci Resolve version</label><input id="e-version" type="text" value="${escAttr(e.version||'')}"/></div>
+      <div class="edit-field"><label>Difficulty</label>
+        <select id="e-difficulty">
+          <option value="">— select —</option>
+          ${Object.entries(DIFF).map(([k,v])=>`<option value="${k}" ${e.difficulty===k?'selected':''}>${v.label}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="edit-field"><label>Short description</label><textarea id="e-desc">${escHtml(e.desc||'')}</textarea></div>
+    <div class="edit-field"><label>YouTube / Vimeo URL</label><input id="e-video" type="text" value="${escAttr(e.videoUrl||'')}"/></div>
+    <div class="edit-field"><label>Full explanation</label><textarea id="e-explanation">${escHtml(e.explanation||'')}</textarea></div>
+    <div class="edit-field"><label>Step-by-step (one per line)</label><textarea id="e-steps">${escHtml(e.steps||'')}</textarea></div>
+    <div class="edit-field"><label>.setting file name</label><input id="e-settingFile" type="text" value="${escAttr(e.settingFile||'')}"/></div>
+    <div class="edit-field"><label>Node tree code</label><textarea class="mono" id="e-nodeCode">${escHtml(e.nodeCode||'')}</textarea></div>
+    <div class="edit-field"><label>Nodes / Fusion tools used</label>
+      <div class="node-picker" id="e-node-picker">
+        <div class="node-picker-inner" id="e-node-picker-inner" onclick="document.getElementById('e-node-search').focus()">
+          <input class="node-search" id="e-node-search" type="text" placeholder="Search or add a node…" autocomplete="off"
+            oninput="editNodeSearchInput()" onkeydown="editNodeSearchKey(event)" onfocus="openEditNodeDropdown()" onblur="closeEditNodeDropdownDelayed()">
+        </div>
+        <div class="node-dropdown" id="e-node-dropdown"></div>
+      </div>
+    </div>
+    <div class="edit-row">
+      <div class="edit-field"><label>Render weight</label>
+        <select id="e-render">
+          <option value="">— select —</option>
+          ${['Light','Medium','Heavy'].map(w=>`<option value="${w}" ${e.renderWeight===w?'selected':''}>${w}</option>`).join('')}
+        </select>
+      </div>
+      <div class="edit-field"><label>Self-contained?</label>
+        <select id="e-self">
+          <option value="">— select —</option>
+          <option value="true" ${e.selfContained===true?'selected':''}>Yes — no media needed</option>
+          <option value="false" ${e.selfContained===false?'selected':''}>No — needs media input</option>
+        </select>
+      </div>
+    </div>
+    <div class="edit-field"><label>Dependencies</label><input id="e-deps" type="text" value="${escAttr(e.dependencies||'')}"/></div>
+    <div class="edit-field"><label>Lighting setup</label><input id="e-lighting" type="text" value="${escAttr(e.lightingSetup||'')}"/></div>
+    <div class="edit-field"><label>Material settings</label><input id="e-material" type="text" value="${escAttr(e.materialSettings||'')}"/></div>
+    <div class="edit-field"><label>Expressions / scripts</label><textarea id="e-expressions">${escHtml(e.expressions||'')}</textarea></div>
+    <div class="edit-field"><label>Common mistakes</label><textarea id="e-mistakes">${escHtml(e.mistakes||'')}</textarea></div>
+    <div class="edit-field"><label>Variations & extensions</label><textarea id="e-variations">${escHtml(e.variations||'')}</textarea></div>
+    <div class="edit-field"><label>Reuse notes</label><textarea id="e-notes">${escHtml(e.notes||'')}</textarea></div>
+    <div class="edit-field"><label>Related effects (comma separated)</label><input id="e-related" type="text" value="${escAttr(e.related||'')}"/></div>
+    <div class="edit-field"><label>Tags (comma separated)</label><input id="e-tags" type="text" value="${escAttr((e.tags||[]).join(', '))}"/></div>
+    <div class="edit-field"><label>Software / tool</label><input id="e-tool" type="text" value="${escAttr(e.tool||'')}"/></div>
+    <div class="edit-actions">
+      <button class="btn-edit" onclick="closeEdit()">Cancel</button>
+      <button class="btn-edit" style="background:var(--accent);color:#0a0a0b;border-color:transparent;font-weight:500" onclick="saveEdit('${e.id}')">Save changes</button>
+    </div>
+  `;
+  document.getElementById('edit-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Init node picker
+  editSelectedNodes = (e.nodes||[]).map(n => ({ name: n, custom: !FUSION_NODES_FLAT.includes(n) }));
+  renderEditNodeTags();
+}
+
+function closeEdit() {
+  document.getElementById('edit-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function handleEditOverlayClick(e) { if (e.target === document.getElementById('edit-overlay')) closeEdit(); }
+
+function escAttr(s) { return (s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ---- Edit Node Picker ----
+const FUSION_NODES = [
+  {n:'AlembicMesh3D',c:'3D'},{n:'Camera3D',c:'3D'},{n:'CubeMap',c:'3D'},{n:'Displace3D',c:'3D'},
+  {n:'Duplicate3D',c:'3D'},{n:'FBXMesh3D',c:'3D'},{n:'ImagePlane3D',c:'3D'},{n:'Locator3D',c:'3D'},
+  {n:'Merge3D',c:'3D'},{n:'OpenVDBMesh',c:'3D'},{n:'Particles3D',c:'3D'},{n:'PointCloud3D',c:'3D'},
+  {n:'Projector3D',c:'3D'},{n:'Renderer3D',c:'3D'},{n:'Replace3D',c:'3D'},{n:'Shape3D',c:'3D'},
+  {n:'SoftClip3D',c:'3D'},{n:'Text3D',c:'3D'},{n:'Transform3D',c:'3D'},{n:'Volume3D',c:'3D'},
+  {n:'WarpTransform3D',c:'3D'},{n:'BilateralBlur',c:'Blur'},{n:'Blur',c:'Blur'},{n:'DefocusBlur',c:'Blur'},
+  {n:'Defocus',c:'Blur'},{n:'DepthBlur',c:'Blur'},{n:'GaussianBlur',c:'Blur'},{n:'GlowBlur',c:'Blur'},
+  {n:'Glow',c:'Blur'},{n:'MotionBlur',c:'Blur'},{n:'RackDefocus',c:'Blur'},{n:'Sharpen',c:'Blur'},
+  {n:'SoftGlow',c:'Blur'},{n:'UnsharpMask',c:'Blur'},{n:'VariableBlur',c:'Blur'},{n:'VectorMotionBlur',c:'Blur'},
+  {n:'AutoGain',c:'Color'},{n:'BrightnessContrast',c:'Color'},{n:'ChannelBooleans',c:'Color'},
+  {n:'ClipToColorRange',c:'Color'},{n:'ColorCorrector',c:'Color'},{n:'ColorCurves',c:'Color'},
+  {n:'ColorGain',c:'Color'},{n:'ColorGradient',c:'Color'},{n:'ColorMatrix',c:'Color'},
+  {n:'ColorSpace',c:'Color'},{n:'ColorSpaceTransform',c:'Color'},{n:'Dither',c:'Color'},
+  {n:'ExposureCorrection',c:'Color'},{n:'GammaCorrection',c:'Color'},{n:'HueCorrector',c:'Color'},
+  {n:'HueSaturation',c:'Color'},{n:'OCIOColorSpace',c:'Color'},{n:'Posterize',c:'Color'},
+  {n:'RGBMixer',c:'Color'},{n:'Tint',c:'Color'},{n:'WideGamutCorrector',c:'Color'},
+  {n:'Background',c:'Creator'},{n:'FastNoise',c:'Creator'},{n:'Gradient',c:'Creator'},
+  {n:'MandelbrotExplorer',c:'Creator'},{n:'Plasma',c:'Creator'},{n:'Text+',c:'Creator'},
+  {n:'TextPlus',c:'Creator'},{n:'Tiles',c:'Creator'},{n:'pSphere',c:'Creator'},
+  {n:'pTorus',c:'Creator'},{n:'GridWarp',c:'Distort'},{n:'Lens Distortion',c:'Distort'},
+  {n:'Perspective',c:'Distort'},{n:'PerspectivePositioner',c:'Distort'},{n:'Ripple',c:'Distort'},
+  {n:'SplineWarp',c:'Distort'},{n:'Vortex',c:'Distort'},{n:'WarpTransform',c:'Distort'},
+  {n:'WaveDistort',c:'Distort'},{n:'AlphaMultiply',c:'Filter'},{n:'Bevel',c:'Filter'},
+  {n:'Emboss',c:'Filter'},{n:'Erode Dilate',c:'Filter'},{n:'FilmGrain',c:'Filter'},
+  {n:'Highlight',c:'Filter'},{n:'HotSpot',c:'Filter'},{n:'Median',c:'Filter'},
+  {n:'Noise',c:'Filter'},{n:'ShadowBlur',c:'Filter'},{n:'Texture',c:'Filter'},
+  {n:'Threshold',c:'Filter'},{n:'Trails',c:'Filter'},{n:'Unmult',c:'Filter'},
+  {n:'ChangeDepth',c:'I/O'},{n:'Loader',c:'I/O'},{n:'Saver',c:'I/O'},{n:'uLoader',c:'I/O'},
+  {n:'ChannelBoolean',c:'Mask'},{n:'EllipseMask',c:'Mask'},{n:'PolylineMask',c:'Mask'},
+  {n:'RectangleMask',c:'Mask'},{n:'SplineMask',c:'Mask'},{n:'TriangleMask',c:'Mask'},
+  {n:'WandMask',c:'Mask'},{n:'Merge',c:'Merge'},{n:'MatteControl',c:'Merge'},
+  {n:'MultiMerge',c:'Merge'},{n:'Dissolve',c:'Merge'},{n:'DepthMerge',c:'Merge'},
+  {n:'ColorComposite',c:'Merge'},{n:'pMerge',c:'Merge'},{n:'pRender',c:'Particle'},
+  {n:'pSpawn',c:'Particle'},{n:'pEmitter',c:'Particle'},{n:'pDirectionalForce',c:'Particle'},
+  {n:'pDragForce',c:'Particle'},{n:'pGravity',c:'Particle'},{n:'pTurbulence',c:'Particle'},
+  {n:'pVortex',c:'Particle'},{n:'pBounce',c:'Particle'},{n:'pKill',c:'Particle'},
+  {n:'pFlock',c:'Particle'},{n:'pCustom',c:'Particle'},{n:'pChangeStyle',c:'Particle'},
+  {n:'pChangeColor',c:'Particle'},{n:'pArray',c:'Particle'},{n:'Crop',c:'Transform'},
+  {n:'Flip',c:'Transform'},{n:'Letterbox',c:'Transform'},{n:'Resize',c:'Transform'},
+  {n:'Scale',c:'Transform'},{n:'Transform',c:'Transform'},{n:'DVEDistort',c:'Transform'},
+  {n:'PipeRouter',c:'Flow'},{n:'Note',c:'Flow'},{n:'Underlay',c:'Flow'},
+  {n:'Custom',c:'Custom'},{n:'CustomVertex',c:'Custom'},{n:'SHADERFX',c:'Custom'},
+];
+const FUSION_NODES_FLAT = new Set(FUSION_NODES.map(n => n.n));
+// Deduplicate
+const _UNIQUE_NODES = [];
+const _seenN = new Set();
+for (const node of FUSION_NODES) { if (!_seenN.has(node.n)) { _seenN.add(node.n); _UNIQUE_NODES.push(node); } }
+
+let editSelectedNodes = [];
+let editDropdownFocusIdx = -1;
+let editNodeBlurTimer = null;
+
+function renderEditNodeTags() {
+  const inner = document.getElementById('e-node-picker-inner');
+  if (!inner) return;
+  inner.querySelectorAll('.node-tag').forEach(t => t.remove());
+  const input = document.getElementById('e-node-search');
+  editSelectedNodes.forEach((node, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'node-tag' + (node.custom ? ' node-tag-custom' : '');
+    tag.innerHTML = `${node.name}<button type="button" onclick="removeEditNode(${i})" title="Remove">✕</button>`;
+    inner.insertBefore(tag, input);
+  });
+}
+function removeEditNode(i) { editSelectedNodes.splice(i,1); renderEditNodeTags(); }
+function addEditNode(name, isCustom) {
+  if (!name) return;
+  if (editSelectedNodes.some(n => n.name.toLowerCase()===name.toLowerCase())) return;
+  editSelectedNodes.push({ name, custom: !!isCustom });
+  renderEditNodeTags();
+  const inp = document.getElementById('e-node-search');
+  if (inp) { inp.value=''; buildEditNodeDropdown(''); }
+}
+function openEditNodeDropdown() {
+  const inp = document.getElementById('e-node-search');
+  if (inp) buildEditNodeDropdown(inp.value);
+  const dd = document.getElementById('e-node-dropdown');
+  if (dd) dd.classList.add('open');
+}
+function closeEditNodeDropdownDelayed() {
+  editNodeBlurTimer = setTimeout(() => {
+    const dd = document.getElementById('e-node-dropdown');
+    if (dd) dd.classList.remove('open');
+    editDropdownFocusIdx = -1;
+  }, 180);
+}
+function editNodeSearchInput() {
+  const q = document.getElementById('e-node-search')?.value || '';
+  buildEditNodeDropdown(q);
+  document.getElementById('e-node-dropdown')?.classList.add('open');
+  editDropdownFocusIdx = -1;
+}
+function buildEditNodeDropdown(q) {
+  const dd = document.getElementById('e-node-dropdown');
+  if (!dd) return;
+  dd.innerHTML = '';
+  const ql = q.toLowerCase().trim();
+  let matches = ql ? _UNIQUE_NODES.filter(n=>n.n.toLowerCase().includes(ql)) : _UNIQUE_NODES;
+  matches = matches.slice(0,40);
+  if (!matches.length && !ql) { dd.classList.remove('open'); return; }
+  matches.forEach((node,i) => {
+    const item = document.createElement('div');
+    item.className = 'node-dropdown-item';
+    item.dataset.idx = i;
+    item.innerHTML = `<span>${node.n}</span><span class="node-cat">${node.c}</span>`;
+    item.addEventListener('mousedown', () => {
+      if (editNodeBlurTimer) clearTimeout(editNodeBlurTimer);
+      addEditNode(node.n, false);
+    });
+    dd.appendChild(item);
+  });
+  if (ql && !_UNIQUE_NODES.some(n=>n.n.toLowerCase()===ql)) {
+    const item = document.createElement('div');
+    item.className = 'node-dropdown-item node-dropdown-add';
+    item.innerHTML = `<span>+ Add "<strong>${q}</strong>" as custom node</span><span class="node-cat">Custom</span>`;
+    item.addEventListener('mousedown', () => {
+      if (editNodeBlurTimer) clearTimeout(editNodeBlurTimer);
+      addEditNode(q, true);
+    });
+    dd.appendChild(item);
+  }
+  updateEditDropdownFocus();
+}
+function updateEditDropdownFocus() {
+  document.querySelectorAll('#e-node-dropdown .node-dropdown-item').forEach((el,i) => {
+    el.classList.toggle('focused', i===editDropdownFocusIdx);
+  });
+}
+function editNodeSearchKey(e) {
+  const items = document.querySelectorAll('#e-node-dropdown .node-dropdown-item');
+  if (e.key==='ArrowDown') { e.preventDefault(); editDropdownFocusIdx=Math.min(editDropdownFocusIdx+1,items.length-1); updateEditDropdownFocus(); items[editDropdownFocusIdx]?.scrollIntoView({block:'nearest'}); }
+  else if (e.key==='ArrowUp') { e.preventDefault(); editDropdownFocusIdx=Math.max(editDropdownFocusIdx-1,0); updateEditDropdownFocus(); items[editDropdownFocusIdx]?.scrollIntoView({block:'nearest'}); }
+  else if (e.key==='Enter') { e.preventDefault(); if (editDropdownFocusIdx>=0&&items[editDropdownFocusIdx]) { items[editDropdownFocusIdx].dispatchEvent(new Event('mousedown')); } else { const q=document.getElementById('e-node-search')?.value.trim(); if(q) addEditNode(q, !_UNIQUE_NODES.some(n=>n.n.toLowerCase()===q.toLowerCase())); } }
+  else if (e.key==='Backspace'&&document.getElementById('e-node-search')?.value===''&&editSelectedNodes.length) { removeEditNode(editSelectedNodes.length-1); }
+  else if (e.key==='Escape') { document.getElementById('e-node-dropdown')?.classList.remove('open'); }
+}
+
+function saveEdit(id) {
+  const idx = effects.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const selfVal = document.getElementById('e-self').value;
+  effects[idx] = {
+    ...effects[idx],
+    name:            document.getElementById('e-name').value.trim(),
+    cat:             document.getElementById('e-cat').value,
+    version:         document.getElementById('e-version').value.trim(),
+    difficulty:      document.getElementById('e-difficulty').value,
+    desc:            document.getElementById('e-desc').value.trim(),
+    videoUrl:        document.getElementById('e-video').value.trim(),
+    explanation:     document.getElementById('e-explanation').value.trim(),
+    steps:           document.getElementById('e-steps').value.trim(),
+    settingFile:     document.getElementById('e-settingFile').value.trim(),
+    nodeCode:        document.getElementById('e-nodeCode').value.trim(),
+    nodes:           editSelectedNodes.map(n => n.name),
+    renderWeight:    document.getElementById('e-render').value,
+    selfContained:   selfVal === 'true' ? true : selfVal === 'false' ? false : undefined,
+    dependencies:    document.getElementById('e-deps').value.trim(),
+    lightingSetup:   document.getElementById('e-lighting').value.trim(),
+    materialSettings:document.getElementById('e-material').value.trim(),
+    expressions:     document.getElementById('e-expressions').value.trim(),
+    mistakes:        document.getElementById('e-mistakes').value.trim(),
+    variations:      document.getElementById('e-variations').value.trim(),
+    notes:           document.getElementById('e-notes').value.trim(),
+    related:         document.getElementById('e-related').value.trim(),
+    tags:            document.getElementById('e-tags').value.split(',').map(s=>s.trim()).filter(Boolean),
+    tool:            document.getElementById('e-tool').value.trim(),
+  };
+  localStorage.setItem('resolve-effects', JSON.stringify(effects));
+  closeEdit();
+  render();
+}
+
+// ---- Delete ----
+function promptDelete(id) {
+  document.getElementById('confirm-overlay').classList.add('open');
+  document.getElementById('confirm-delete-btn').onclick = () => confirmDelete(id);
+}
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
+function confirmDelete(id) {
+  effects = effects.filter(x => x.id !== id);
+  localStorage.setItem('resolve-effects', JSON.stringify(effects));
+  closeConfirm();
+  closeDetail();
+  render();
+}
+
+// ---- Backup & Restore ----
+let pendingRestoreData = null;
+
+function openBackup() {
+  pendingRestoreData = null;
+  document.getElementById('restore-actions').style.display = 'none';
+  document.getElementById('restore-warning').classList.remove('show');
+  document.getElementById('restore-file-input').value = '';
+  document.getElementById('restore-drop').textContent = 'Click to choose file, or drag & drop a backup .json here';
+  updateBackupStats();
+  document.getElementById('backup-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeBackup() {
+  document.getElementById('backup-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function updateBackupStats() {
+  const effects = JSON.parse(localStorage.getItem('resolve-effects') || '[]');
+  const videos = JSON.parse(localStorage.getItem('resolve-videos') || '[]');
+  const links = JSON.parse(localStorage.getItem('resolve-links') || '{}');
+  const linkCount = Object.values(links).reduce((n, arr) => n + arr.length, 0);
+  document.getElementById('backup-stats').innerHTML =
+    `Currently stored: <span>${effects.length}</span> effects · <span>${videos.length}</span> videos · <span>${linkCount}</span> links`;
+}
+
+function exportAll() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    version: 1,
+    effects:  JSON.parse(localStorage.getItem('resolve-effects') || '[]'),
+    videos:   JSON.parse(localStorage.getItem('resolve-videos')  || '[]'),
+    links:    JSON.parse(localStorage.getItem('resolve-links')   || '{}'),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), {
+    href: url,
+    download: `resolve-library-backup-${new Date().toISOString().split('T')[0]}.json`
+  });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function handleRestoreDrop(e) {
+  e.preventDefault();
+  document.getElementById('restore-drop').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) readRestoreFile(file);
+}
+function handleRestoreFile(e) {
+  const file = e.target.files[0];
+  if (file) readRestoreFile(file);
+}
+function readRestoreFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.version || !Array.isArray(data.effects)) throw new Error('Not a valid backup file');
+      pendingRestoreData = data;
+      const linkCount = Object.values(data.links||{}).reduce((n,a)=>n+a.length,0);
+      document.getElementById('restore-summary').textContent =
+        `Backup contains: ${data.effects.length} effects, ${(data.videos||[]).length} videos, ${linkCount} links — exported ${data.exportedAt ? new Date(data.exportedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'unknown date'}`;
+      document.getElementById('restore-actions').style.display = 'block';
+      document.getElementById('restore-drop').textContent = `✓ ${file.name}`;
+      document.getElementById('restore-warning').classList.remove('show');
+    } catch {
+      document.getElementById('restore-warning').textContent = 'That file doesn\'t look like a Resolve Library backup. Make sure you\'re using a file exported from this app.';
+      document.getElementById('restore-warning').classList.add('show');
+      document.getElementById('restore-actions').style.display = 'none';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function doRestore(mode) {
+  if (!pendingRestoreData) return;
+  const d = pendingRestoreData;
+
+  if (mode === 'replace') {
+    localStorage.setItem('resolve-effects', JSON.stringify(d.effects || []));
+    localStorage.setItem('resolve-videos',  JSON.stringify(d.videos  || []));
+    localStorage.setItem('resolve-links',   JSON.stringify(d.links   || {}));
+  } else {
+    // Merge — add items from backup that don't already exist (by id)
+    const existingEffects = JSON.parse(localStorage.getItem('resolve-effects') || '[]');
+    const existingVideos  = JSON.parse(localStorage.getItem('resolve-videos')  || '[]');
+    const existingLinks   = JSON.parse(localStorage.getItem('resolve-links')   || '{}');
+    const existingEffectIds = new Set(existingEffects.map(x => x.id));
+    const existingVideoIds  = new Set(existingVideos.map(x => x.id));
+
+    const mergedEffects = [...existingEffects, ...(d.effects||[]).filter(x => !existingEffectIds.has(x.id))];
+    const mergedVideos  = [...existingVideos,  ...(d.videos ||[]).filter(x => !existingVideoIds.has(x.id))];
+    // Merge links: union of video ids per effect
+    const mergedLinks = { ...existingLinks };
+    for (const [eid, vids] of Object.entries(d.links || {})) {
+      mergedLinks[eid] = [...new Set([...(mergedLinks[eid]||[]), ...vids])];
+    }
+    localStorage.setItem('resolve-effects', JSON.stringify(mergedEffects));
+    localStorage.setItem('resolve-videos',  JSON.stringify(mergedVideos));
+    localStorage.setItem('resolve-links',   JSON.stringify(mergedLinks));
+  }
+
+  effects = JSON.parse(localStorage.getItem('resolve-effects'));
+  closeBackup();
+  render();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeDetail(); closeEdit(); closeConfirm(); closeBackup(); closeLinkPicker(); }
+});
+render();
+
+// Deep-link: index.html#e=ID opens that effect's panel on load
+(function() {
+  const hash = window.location.hash;
+  const m = hash.match(/^#e=(.+)$/);
+  if (m) { setTimeout(() => openDetail(m[1]), 80); }
+})();
+</script>
+</body>
+</html>
