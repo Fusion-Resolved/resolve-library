@@ -1,0 +1,16 @@
+{
+  "name": "Resolve Library",
+  "short_name": "Resolve.Library",
+  "description": "A personal DaVinci Resolve Fusion effect library",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#080809",
+  "theme_color": "#080809",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='24' fill='%23101013'/><text x='96' y='130' font-size='96' text-anchor='middle' fill='%23c8f060' font-family='serif' font-weight='bold'>R</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

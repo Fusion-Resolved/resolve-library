@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Save Video — Resolve Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script>
+(function(){try{var t=JSON.parse(localStorage.getItem('rl-theme')||'{}'),s=document.documentElement.style,h=function(x){var r=parseInt(x.slice(1,3),16),g=parseInt(x.slice(3,5),16),b=parseInt(x.slice(5,7),16);return[r,g,b]};if(t.accent){s.setProperty('--accent',t.accent);var a=h(t.accent);s.setProperty('--accent-dim','rgba('+a+',0.08)');s.setProperty('--tag-bg','rgba('+a+',0.08)');s.setProperty('--tag-color',t.accent);}if(t.accent2){s.setProperty('--accent2',t.accent2);var c=h(t.accent2);s.setProperty('--accent2-dim','rgba('+c+',0.08)');}if(t.bg)s.setProperty('--bg',t.bg);if(t.surface)s.setProperty('--surface',t.surface);if(t.surface2)s.setProperty('--surface2',t.surface2);if(t.surface3)s.setProperty('--surface3',t.surface3);if(t.text)s.setProperty('--text',t.text);}catch(e){}})();
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #080809; --surface: #101013; --surface2: #18181d; --surface3: #202027;
+    --border: rgba(255,255,255,0.055); --border2: rgba(255,255,255,0.10); --border3: rgba(255,255,255,0.16);
+    --text: #f0ede6; --text2: #a09d97; --muted: #58544f;
+    --accent: #c8f060; --accent2: #60b8f0;
+    --accent-dim: rgba(200,240,96,0.08); --accent2-dim: rgba(96,184,240,0.08);
+    --danger: #f06060; --danger-dim: rgba(240,96,96,0.08);
+    --radius-xs: 5px; --radius-sm: 7px; --radius: 10px; --radius-lg: 13px; --radius-xl: 18px; --radius-pill: 999px;
+    --font-head: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif; --font-mono: 'DM Mono', monospace;
+    --shadow: 0 4px 16px rgba(0,0,0,0.5); --shadow-lg: 0 8px 32px rgba(0,0,0,0.65);
+    --transition: all 0.18s ease;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-weight: 300; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+  header { border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; background: rgba(8,8,9,0.82); z-index: 50; backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); }
+  .logo { font-family: var(--font-head); font-weight: 700; font-size: 0.95rem; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+  .logo span { color: var(--accent); }
+  .header-actions { display: flex; gap: 2px; align-items: center; }
+  .btn { font-family: var(--font-body); font-size: 13px; font-weight: 400; padding: 6px 13px; border-radius: var(--radius-sm); border: none; background: transparent; color: var(--text2); cursor: pointer; text-decoration: none; transition: var(--transition); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; line-height: 1; }
+  .btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  .btn.active { color: var(--text); background: rgba(255,255,255,0.08); font-weight: 500; }
+
+  .container { max-width: 680px; margin: 0 auto; padding: 3rem 2rem 7rem; }
+  .page-title { font-family: var(--font-head); font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 0.4rem; }
+  .page-sub { color: var(--text2); font-size: 13px; margin-bottom: 2.5rem; line-height: 1.6; }
+  .form-section { margin-bottom: 2.5rem; }
+  .section-heading { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .field-group { margin-bottom: 1rem; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1rem; }
+
+  label { display: block; font-size: 11px; font-family: var(--font-mono); color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
+  label .opt { opacity: 0.4; }
+  input[type="text"], input[type="url"], select, textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px 13px; color: var(--text); font-family: var(--font-body); font-size: 13px; font-weight: 300; outline: none; transition: border-color 0.18s, box-shadow 0.18s; -webkit-appearance: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(96,184,240,0.10); }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  select { cursor: pointer; }
+  select option { background: #18181d; }
+  textarea { resize: vertical; line-height: 1.6; }
+  textarea.medium { min-height: 100px; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+  .required-star { color: var(--danger); margin-left: 2px; }
+
+  /* Preview */
+  .preview-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.5rem; display: none; }
+  .preview-box.show { display: block; }
+  .preview-embed { aspect-ratio: 16/9; background: #080809; }
+  .preview-embed iframe { width: 100%; height: 100%; border: none; display: block; }
+  .preview-meta { padding: 13px 15px; }
+  .preview-title { font-family: var(--font-head); font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+  .preview-channel { font-size: 12px; color: var(--text2); }
+
+  .save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(8,8,9,0.92); border-top: 1px solid var(--border2); padding: 0.9rem 2rem; display: flex; align-items: center; justify-content: flex-end; gap: 10px; backdrop-filter: blur(20px); z-index: 20; }
+  .btn-accent { background: var(--accent); color: #080809; border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 13px; padding: 9px 22px; cursor: pointer; transition: var(--transition); font-family: var(--font-body); }
+  .btn-accent:hover { background: #d4f570; }
+  .btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 13px; padding: 7px 16px; cursor: pointer; transition: var(--transition); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--border3); }
+
+  .toast { position: fixed; top: 68px; right: 2rem; background: var(--surface3); border: 1px solid var(--border2); color: var(--text); padding: 10px 18px; border-radius: var(--radius-lg); font-size: 13px; opacity: 0; transform: translateY(-6px); transition: all 0.22s ease; pointer-events: none; z-index: 999; box-shadow: var(--shadow); display: flex; align-items: center; gap: 8px; }
+  .toast::before { content: '✓'; color: var(--accent); font-weight: 700; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+<link rel="manifest" href="manifest.json">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="index.html">Resolve<span>.</span>Library</a>
+  <div class="header-actions">
+    <a class="btn" href="index.html">Effects</a>
+    <a class="btn" href="videos.html">Videos</a>
+    <a class="btn" href="spline.html">Spline</a>
+    <a class="btn" href="nodegraph.html">Node Graph</a>
+    <a class="btn" href="settings.html" title="Settings">⚙</a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="page-title">Save a video</div>
+  <div class="page-sub">Log a YouTube or Vimeo tutorial for future reference. Only the title is required — fill in the rest as you watch.</div>
+
+  <!-- Video URL first — auto-preview -->
+  <div class="form-section">
+    <div class="section-heading">01 — Video URL</div>
+    <div class="field-group">
+      <label>YouTube or Vimeo URL <span class="required-star">*</span></label>
+      <input type="url" id="f-url" placeholder="https://www.youtube.com/watch?v=…" oninput="onUrlChange()" />
+      <div class="hint">Paste the link and the video will preview below.</div>
+    </div>
+
+    <div class="preview-banner" id="preview-banner">
+      <div class="preview-embed" id="preview-embed"></div>
+      <div class="preview-meta" id="preview-meta">Video preview</div>
+    </div>
+  </div>
+
+  <!-- Core info -->
+  <div class="form-section">
+    <div class="section-heading">02 — Core info</div>
+    <div class="field-group">
+      <label>Video title <span class="required-star">*</span></label>
+      <input type="text" id="f-title" placeholder="e.g. How to build a glowing neon text effect in Fusion" />
+    </div>
+    <div class="field-row">
+      <div>
+        <label>Channel name</label>
+        <input type="text" id="f-channel" placeholder="e.g. Casey Faris" />
+      </div>
+      <div>
+        <label>Channel URL <span class="opt">(optional)</span></label>
+        <input type="url" id="f-channelUrl" placeholder="https://www.youtube.com/@…" />
+      </div>
+    </div>
+    <div class="field-group">
+      <label>Short description <span class="opt">(shown on card)</span></label>
+      <textarea class="short" id="f-desc" placeholder="What is this video about? One or two sentences."></textarea>
+    </div>
+  </div>
+
+  <!-- Classification -->
+  <div class="form-section">
+    <div class="section-heading">03 — Classification</div>
+    <div class="field-row">
+      <div>
+        <label>Category</label>
+        <select id="f-cat">
+          <optgroup label="Fusion / Colour — what it creates">
+            <option value="element">Element — particle, light, smoke, energy</option>
+            <option value="background">Background — plate, sky, environment</option>
+            <option value="transition">Transition</option>
+            <option value="title-text">Title / Text — animated type, lower-thirds</option>
+            <option value="colour-grade">Colour grade — look, LUT, tone</option>
+            <option value="3d">3D — geometry, environment, camera</option>
+            <option value="vfx">VFX — compositing, keying, tracking, roto</option>
+            <option value="motion-graphic">Motion graphic — HUD, infographic, UI</option>
+          </optgroup>
+          <optgroup label="Knowledge / Process">
+            <option value="workflow">Workflow / Tips — speed, organisation</option>
+            <option value="tutorial">General tutorial — concept or overview</option>
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <label>Source / cost</label>
+        <select id="f-source" onchange="onSourceChange()">
+          <option value="free">Free — uses only built-in Fusion tools</option>
+          <option value="saas">SaaS — requires a paid subscription tool</option>
+          <option value="plugin">Plugin — requires a third-party plugin</option>
+          <option value="lut">LUT pack — requires a purchased LUT</option>
+          <option value="asset">Asset / footage — requires bought media</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Conditional: SaaS / Plugin tool name -->
+    <div class="field-row tool-name-row" id="tool-name-row">
+      <div>
+        <label>Tool / SaaS / plugin name</label>
+        <input type="text" id="f-toolName" placeholder="e.g. Topaz Video AI, FilmConvert, Beauty Box" />
+        <div class="hint">Name the specific product so you can filter for it later.</div>
+      </div>
+      <div>
+        <label>Approx. cost</label>
+        <input type="text" id="f-cost" placeholder="e.g. $99/yr, one-time $49, free trial" />
+      </div>
+    </div>
+
+    <div class="field-row-3">
+      <div>
+        <label>Difficulty</label>
+        <select id="f-difficulty">
+          <option value="">— select —</option>
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+      <div>
+        <label>Duration</label>
+        <input type="text" id="f-duration" placeholder="e.g. 12 min" />
+      </div>
+      <div>
+        <label>Resolve version</label>
+        <input type="text" id="f-resolveVersion" placeholder="e.g. 19.1" />
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div>
+        <label>Date saved</label>
+        <input type="date" id="f-date" />
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:2px">
+        <label style="margin-bottom:10px">Already watched?</label>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="f-watched">
+            <span class="toggle-slider"></span>
+          </label>
+          <span style="font-size:13px;color:var(--muted)">Mark as watched</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content notes -->
+  <div class="form-section">
+    <div class="section-heading">04 — Content & notes</div>
+    <div class="field-group">
+      <label>Key takeaways <span class="opt">(what you want to learn / remember)</span></label>
+      <textarea class="medium" id="f-takeaways" placeholder="What's the main thing this teaches? What technique or node is the core of it? Write as if briefing yourself before you watch."></textarea>
+    </div>
+    <div class="field-group">
+      <label>Key timestamps <span class="opt">(one per line)</span></label>
+      <textarea class="short" id="f-timestamp" placeholder="0:00 — Intro&#10;2:15 — Setting up the Merge3D node&#10;8:40 — Adding the glow with Glow node"></textarea>
+      <div class="hint">Fill this in as you watch. Makes it easy to jump back to the exact moment.</div>
+    </div>
+    <div class="field-group">
+      <label>Nodes / Fusion tools covered <span class="opt">(comma separated)</span></label>
+      <input type="text" id="f-nodes" placeholder="e.g. FastNoise, Merge3D, Shape3D, pEmitter, ColorCurves" />
+    </div>
+    <div class="field-group">
+      <label>My notes <span class="opt">(observations, questions, things to try)</span></label>
+      <textarea class="medium" id="f-notes" placeholder="Anything you want to remember: settings, gotchas, ideas this sparked, how it relates to other effects you've built…"></textarea>
+    </div>
+  </div>
+
+  <!-- Discovery & tags -->
+  <div class="form-section">
+    <div class="section-heading">05 — Discovery & tags</div>
+    <div class="field-group">
+      <label>Related effects or videos <span class="opt">(comma separated names)</span></label>
+      <input type="text" id="f-related" placeholder="e.g. Neon glow text, VHS glitch, Particle burst" />
+    </div>
+    <div class="field-group">
+      <label>Tags <span class="opt">(comma separated — used for search & filtering)</span></label>
+      <input type="text" id="f-tags" placeholder="e.g. particles, glow, 3d, beginner-friendly, saas, loop" />
+      <div class="hint">Lowercase, hyphens for spaces. Be consistent with your effects library tags.</div>
+    </div>
+  </div>
+</div>
+
+<div class="save-bar">
+  <a class="btn" href="videos.html">Cancel</a>
+  <button class="btn btn-accent" onclick="saveVideo()">Save to library</button>
+</div>
+
+<div class="toast" id="toast">Saved!</div>
+
+<script>
+document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+
+// ---- URL preview ----
+let previewTimeout;
+function onUrlChange() {
+  clearTimeout(previewTimeout);
+  previewTimeout = setTimeout(updatePreview, 600);
+}
+
+function getYouTubeId(url) {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function updatePreview() {
+  const url = document.getElementById('f-url').value.trim();
+  const banner = document.getElementById('preview-banner');
+  const embed = document.getElementById('preview-embed');
+  const meta = document.getElementById('preview-meta');
+
+  if (!url) { banner.classList.remove('show'); return; }
+
+  const ytId = getYouTubeId(url);
+  if (ytId) {
+    embed.innerHTML = `<iframe src="https://www.youtube.com/embed/${ytId}?rel=0" allowfullscreen></iframe>`;
+    meta.textContent = `youtube.com/watch?v=${ytId}`;
+    banner.classList.add('show');
+    return;
+  }
+
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) {
+    embed.innerHTML = `<iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}" allowfullscreen></iframe>`;
+    meta.textContent = `vimeo.com/${vimeoMatch[1]}`;
+    banner.classList.add('show');
+    return;
+  }
+
+  banner.classList.remove('show');
+}
+
+// ---- Source conditional ----
+function onSourceChange() {
+  const val = document.getElementById('f-source').value;
+  const row = document.getElementById('tool-name-row');
+  if (val === 'saas' || val === 'plugin' || val === 'lut' || val === 'asset') {
+    row.classList.add('show');
+  } else {
+    row.classList.remove('show');
+  }
+}
+
+// ---- Save ----
+function saveVideo() {
+  const title = document.getElementById('f-title').value.trim();
+  const url = document.getElementById('f-url').value.trim();
+
+  if (!title && !url) {
+    document.getElementById('f-title').focus();
+    document.getElementById('f-title').style.borderColor = '#f06060';
+    setTimeout(()=>document.getElementById('f-title').style.borderColor='',2000);
+    return;
+  }
+
+  const video = {
+    id:            Date.now().toString(),
+    title:         title || url,
+    videoUrl:      url,
+    channel:       document.getElementById('f-channel').value.trim(),
+    channelUrl:    document.getElementById('f-channelUrl').value.trim(),
+    cat:           document.getElementById('f-cat').value,
+    source:        document.getElementById('f-source').value,
+    toolName:      document.getElementById('f-toolName').value.trim(),
+    cost:          document.getElementById('f-cost').value.trim(),
+    difficulty:    document.getElementById('f-difficulty').value,
+    duration:      document.getElementById('f-duration').value.trim(),
+    resolveVersion:document.getElementById('f-resolveVersion').value.trim(),
+    date:          document.getElementById('f-date').value,
+    watched:       document.getElementById('f-watched').checked,
+    desc:          document.getElementById('f-desc').value.trim(),
+    takeaways:     document.getElementById('f-takeaways').value.trim(),
+    timestamp:     document.getElementById('f-timestamp').value.trim(),
+    nodes:         document.getElementById('f-nodes').value.trim(),
+    notes:         document.getElementById('f-notes').value.trim(),
+    related:       document.getElementById('f-related').value.trim(),
+    tags:          document.getElementById('f-tags').value.split(',').map(s=>s.trim()).filter(Boolean),
+  };
+
+  const existing = JSON.parse(localStorage.getItem('resolve-videos') || '[]');
+  existing.unshift(video);
+  localStorage.setItem('resolve-videos', JSON.stringify(existing));
+
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => { toast.classList.remove('show'); window.location.href = 'videos.html'; }, 1200);
+}
+</script>
+</body>
+</html>
