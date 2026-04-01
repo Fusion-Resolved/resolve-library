@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resolve Library</title>
+<meta name="description" content="A personal reference library for DaVinci Resolve and Fusion — effects, videos, nodes, plugins and inspiration.">
+<meta name="theme-color" content="#080809">
+<link rel="manifest" href="manifest.json">
+<script>if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){navigator.serviceWorker.register("./sw.js").catch(function(){});}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script>
+(function(){try{var t=JSON.parse(localStorage.getItem('rl-theme')||'{}'),s=document.documentElement.style,h=function(x){var r=parseInt(x.slice(1,3),16),g=parseInt(x.slice(3,5),16),b=parseInt(x.slice(5,7),16);return[r,g,b]};if(t.accent){s.setProperty('--accent',t.accent);var a=h(t.accent);s.setProperty('--accent-dim','rgba('+a+',0.08)');s.setProperty('--tag-bg','rgba('+a+',0.08)');s.setProperty('--tag-color',t.accent);}if(t.accent2){s.setProperty('--accent2',t.accent2);var c=h(t.accent2);s.setProperty('--accent2-dim','rgba('+c+',0.08)');}if(t.bg)s.setProperty('--bg',t.bg);if(t.surface)s.setProperty('--surface',t.surface);if(t.surface2)s.setProperty('--surface2',t.surface2);if(t.surface3)s.setProperty('--surface3',t.surface3);if(t.text)s.setProperty('--text',t.text);}catch(e){}
+try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
+  if(ui.buttonRadius)s.setProperty('--radius-sm',ui.buttonRadius);
+  if(ui.cardRadius){s.setProperty('--radius-lg',ui.cardRadius);s.setProperty('--radius-xl',(parseInt(ui.cardRadius)+5)+'px');}
+  if(ui.fontBody)s.setProperty('--font-body',ui.fontBody);
+  if(ui.fontHead)s.setProperty('--font-head',ui.fontHead);
+  if(ui.baseFontSize)document.documentElement.style.fontSize=ui.baseFontSize+'px';
+  if(ui.borderOpacity)s.setProperty('--border',ui.borderOpacity);
+}catch(e){}})();
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080809;--surface:#101013;--surface2:#18181d;--surface3:#202027;
+  --border:rgba(255,255,255,0.055);--border2:rgba(255,255,255,0.10);--border3:rgba(255,255,255,0.16);
+  --text:#f0ede6;--text2:#a09d97;--muted:#58544f;
+  --accent:#c8f060;--accent2:#60b8f0;
+  --accent-dim:rgba(200,240,96,0.08);--accent2-dim:rgba(96,184,240,0.08);
+  --danger:#f06060;
+  --radius-xs:5px;--radius-sm:7px;--radius:10px;--radius-lg:13px;--radius-xl:18px;--radius-pill:999px;
+  --font-head:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+  --shadow:0 4px 16px rgba(0,0,0,0.5);--shadow-lg:0 8px 32px rgba(0,0,0,0.65);
+  --transition:all 0.18s ease;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased;}
+
+/* ── Header ── */
+header{border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;background:rgba(8,8,9,0.82);z-index:50;backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);}
+.logo{font-family:var(--font-head);font-weight:700;font-size:0.95rem;letter-spacing:-0.02em;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:6px;}
+.logo span{color:var(--accent);}
+.logo-mark{width:22px;height:22px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo-mark svg{display:block;}
+.header-actions{display:flex;gap:2px;align-items:center;}
+.btn{font-family:var(--font-body);font-size:13px;font-weight:400;padding:6px 13px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--text2);cursor:pointer;text-decoration:none;transition:var(--transition);display:inline-flex;align-items:center;gap:5px;white-space:nowrap;line-height:1;}
+.btn:hover{color:var(--text);background:rgba(255,255,255,0.06);}
+.btn.active{color:var(--text);background:rgba(255,255,255,0.08);font-weight:500;}
+
+/* ── Add split button ── */
+.add-split-wrap{position:relative;display:inline-flex;}
+.add-split-main{background:var(--accent);color:#080809;border:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);font-weight:600;font-size:13px;padding:7px 14px;cursor:pointer;transition:var(--transition);text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-family:var(--font-body);}
+.add-split-main:hover{filter:brightness(1.1);}
+.add-split-arrow{background:var(--accent);color:#080809;border:none;border-left:1px solid rgba(0,0,0,0.18);border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:11px;padding:7px 9px;cursor:pointer;transition:var(--transition);opacity:0.88;}
+.add-split-arrow:hover{opacity:1;filter:brightness(1.1);}
+.add-split-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:200;min-width:170px;overflow:hidden;}
+.add-split-dropdown.open{display:block;}
+.add-split-item{display:flex;align-items:center;gap:9px;padding:11px 16px;font-size:13px;font-family:var(--font-body);color:var(--text);text-decoration:none;cursor:pointer;transition:background .12s;border:none;background:none;width:100%;text-align:left;}
+.add-split-item:hover{background:var(--surface3);}
+.add-split-item+.add-split-item{border-top:1px solid var(--border);}
+
+/* ── Container ── */
+.container{max-width:1100px;margin:0 auto;padding:0 2rem;}
+
+/* ── Hero ── */
+.hero{padding:5rem 0 3.5rem;display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;}
+@media(max-width:680px){.hero{grid-template-columns:1fr;gap:2rem;padding:3rem 0 2rem;}}
+.hero-text{}
+.hero-eyebrow{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:1rem;}
+.hero-title{font-family:var(--font-head);font-size:clamp(2.2rem,4vw,3.2rem);font-weight:700;letter-spacing:-0.035em;line-height:1.08;margin-bottom:1rem;}
+.hero-title em{color:var(--accent);font-style:normal;}
+.hero-sub{color:var(--text2);font-size:14px;line-height:1.7;max-width:400px;margin-bottom:2rem;}
+.hero-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.btn-hero{background:var(--accent);color:#080809;border:none;border-radius:var(--radius-sm);font-weight:700;font-size:14px;padding:10px 22px;cursor:pointer;transition:var(--transition);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);}
+.btn-hero:hover{filter:brightness(1.1);}
+.btn-hero-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:14px;padding:9px 20px;cursor:pointer;transition:var(--transition);text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+.btn-hero-ghost:hover{color:var(--text);border-color:var(--border3);}
+.hero-stats{display:flex;gap:2rem;margin-top:2rem;flex-wrap:wrap;}
+.hero-stat{display:flex;flex-direction:column;}
+.hero-stat-num{font-family:var(--font-mono);font-size:1.4rem;font-weight:500;color:var(--accent);letter-spacing:-0.02em;line-height:1;}
+.hero-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:3px;}
+
+/* ── Hero visual ── */
+.hero-visual{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.hero-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;display:flex;flex-direction:column;gap:6px;transition:border-color .15s;}
+.hero-card:hover{border-color:var(--border2);}
+.hero-card-icon{font-size:18px;margin-bottom:2px;}
+.hero-card-title{font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--text);}
+.hero-card-sub{font-size:10px;color:var(--muted);line-height:1.5;}
+.hero-card.accent-card{background:linear-gradient(135deg,rgba(200,240,96,0.08),rgba(200,240,96,0.03));border-color:rgba(200,240,96,0.18);}
+
+/* ── Section ── */
+.section{padding:3rem 0;}
+.section+.section{border-top:1px solid var(--border);}
+.section-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.5rem;gap:1rem;}
+.section-title{font-family:var(--font-head);font-size:1.1rem;font-weight:700;letter-spacing:-0.02em;}
+.section-link{font-size:12px;font-family:var(--font-mono);color:var(--accent2);text-decoration:none;letter-spacing:.03em;display:inline-flex;align-items:center;gap:4px;}
+.section-link:hover{text-decoration:underline;}
+
+/* ── Nav tiles ── */
+.nav-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;}
+.nav-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.2rem 1.3rem;text-decoration:none;color:var(--text);display:flex;flex-direction:column;gap:8px;transition:border-color .15s,box-shadow .15s;position:relative;overflow:hidden;}
+.nav-tile:hover{border-color:var(--border3);box-shadow:var(--shadow);}
+.nav-tile-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;margin-bottom:2px;}
+.nav-tile-name{font-family:var(--font-head);font-size:14px;font-weight:700;}
+.nav-tile-desc{font-size:11px;color:var(--text2);line-height:1.55;}
+.nav-tile-action{font-size:10px;font-family:var(--font-mono);color:var(--accent);margin-top:auto;padding-top:6px;}
+.nav-tile-bar{position:absolute;top:0;left:0;right:0;height:2px;}
+
+/* ── Recent activity ── */
+.activity-list{display:flex;flex-direction:column;gap:6px;}
+.activity-item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);text-decoration:none;color:var(--text);transition:border-color .12s;}
+.activity-item:hover{border-color:var(--border2);}
+.activity-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.activity-name{font-size:13px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.activity-meta{font-size:10px;font-family:var(--font-mono);color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.activity-cat{font-size:9px;font-family:var(--font-mono);padding:1px 6px;border-radius:3px;background:var(--surface2);border:1px solid var(--border2);color:var(--muted);flex-shrink:0;}
+.activity-empty{font-size:13px;color:var(--muted);text-align:center;padding:2rem;border:1px dashed var(--border2);border-radius:var(--radius-lg);}
+
+/* ── Quick links / footer ── */
+.quick-links{display:flex;gap:12px;flex-wrap:wrap;padding:2rem 0;border-top:1px solid var(--border);}
+.quick-link{font-size:11px;font-family:var(--font-mono);color:var(--muted);text-decoration:none;transition:color .12s;}
+.quick-link:hover{color:var(--text2);}
+
+@keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="home.html">
+    <div class="logo-mark">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.2" fill="#080809"/><rect x="8" y="1" width="5" height="5" rx="1.2" fill="#080809" opacity=".6"/><rect x="1" y="8" width="5" height="5" rx="1.2" fill="#080809" opacity=".6"/><rect x="8" y="8" width="5" height="5" rx="1.2" fill="#080809" opacity=".4"/></svg>
+    </div>
+    Resolve<span>.</span>Library
+  </a>
+  <div class="header-actions">
+    <a class="btn active" href="home.html">Home</a>
+    <a class="btn" href="index.html">Effects</a>
+    <a class="btn" href="videos.html">Videos</a>
+    <a class="btn" href="nodes-reference.html">Library</a>
+    <a class="btn" href="settings.html" title="Settings" style="font-size:18px;padding:4px 10px">⚙</a>
+    <div class="add-split-wrap">
+      <a class="add-split-main" href="add.html">+ Add effect</a>
+      <button class="add-split-arrow" onclick="toggleAddDropdown(event)" title="More">▾</button>
+      <div class="add-split-dropdown" id="add-split-dropdown">
+        <a class="add-split-item" href="add.html">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
+          Add effect
+        </a>
+        <a class="add-split-item" href="add-video.html">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.95C5.12 20 12 20 12 20s6.88 0 8.59-.47a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="currentColor" stroke="none"/></svg>
+          Add video
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-text">
+      <div class="hero-eyebrow">Personal reference system</div>
+      <h1 class="hero-title">DaVinci Resolve<br><em>Library</em></h1>
+      <p class="hero-sub">Save effects, tutorials, Fusion nodes, plugins and inspiration — all in one place, always at hand.</p>
+      <div class="hero-actions">
+        <a class="btn-hero" href="add.html">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Add effect
+        </a>
+        <a class="btn-hero-ghost" href="index.html">Browse library</a>
+      </div>
+      <div class="hero-stats" id="hero-stats">
+        <div class="hero-stat"><div class="hero-stat-num" id="hs-effects">0</div><div class="hero-stat-label">Effects</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="hs-videos">0</div><div class="hero-stat-label">Videos</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="hs-inspiration">0</div><div class="hero-stat-label">Inspiration</div></div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-card accent-card">
+        <div class="hero-card-icon">⬡</div>
+        <div class="hero-card-title">Node Reference</div>
+        <div class="hero-card-sub">All 220+ Fusion nodes with params, ports and examples</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-icon">🎬</div>
+        <div class="hero-card-title">Effect Library</div>
+        <div class="hero-card-sub">Your graded effects, Fusion setups and templates</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-icon">📺</div>
+        <div class="hero-card-title">Video Tutorials</div>
+        <div class="hero-card-sub">Saved YouTube & Vimeo tutorials with notes</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-icon">💡</div>
+        <div class="hero-card-title">Inspiration</div>
+        <div class="hero-card-sub">Mood boards, Discord links, Reddit posts and references</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section: Navigate -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Everything in one place</div>
+    </div>
+    <div class="nav-grid">
+      <a class="nav-tile" href="index.html">
+        <div class="nav-tile-bar" style="background:linear-gradient(90deg,var(--accent),transparent)"></div>
+        <div class="nav-tile-icon" style="background:var(--accent-dim);color:var(--accent)">🎬</div>
+        <div class="nav-tile-name">Effects</div>
+        <div class="nav-tile-desc">Fusion setups, grades and templates with node graphs and parameters.</div>
+        <div class="nav-tile-action">Browse effects →</div>
+      </a>
+      <a class="nav-tile" href="videos.html">
+        <div class="nav-tile-bar" style="background:linear-gradient(90deg,#f06060,transparent)"></div>
+        <div class="nav-tile-icon" style="background:rgba(240,96,96,0.1);color:#f06060">📺</div>
+        <div class="nav-tile-name">Videos</div>
+        <div class="nav-tile-desc">Saved YouTube and Vimeo tutorials with chapters, ratings and notes.</div>
+        <div class="nav-tile-action">Browse videos →</div>
+      </a>
+      <a class="nav-tile" href="nodes-reference.html">
+        <div class="nav-tile-bar" style="background:linear-gradient(90deg,var(--accent2),transparent)"></div>
+        <div class="nav-tile-icon" style="background:var(--accent2-dim);color:var(--accent2)">⬡</div>
+        <div class="nav-tile-name">Library</div>
+        <div class="nav-tile-desc">Node reference, reference materials, plugins, inspiration and expressions.</div>
+        <div class="nav-tile-action">Open library →</div>
+      </a>
+      <a class="nav-tile" href="nodegraph.html">
+        <div class="nav-tile-bar" style="background:linear-gradient(90deg,#60f0c8,transparent)"></div>
+        <div class="nav-tile-icon" style="background:rgba(96,240,200,0.1);color:#60f0c8">⬡</div>
+        <div class="nav-tile-name">Node Graph</div>
+        <div class="nav-tile-desc">Visual node graph builder linked to your effect cards.</div>
+        <div class="nav-tile-action">Open graph →</div>
+      </a>
+      <a class="nav-tile" href="spline.html">
+        <div class="nav-tile-bar" style="background:linear-gradient(90deg,#c060f0,transparent)"></div>
+        <div class="nav-tile-icon" style="background:rgba(192,96,240,0.1);color:#c060f0">〜</div>
+        <div class="nav-tile-name">Spline</div>
+        <div class="nav-tile-desc">Spline curve editor and animation reference tool.</div>
+        <div class="nav-tile-action">Open spline →</div>
+      </a>
+      <a class="nav-tile" href="settings.html">
+        <div class="nav-tile-bar" style="background:linear-gradient(90deg,rgba(255,255,255,0.1),transparent)"></div>
+        <div class="nav-tile-icon" style="background:rgba(255,255,255,0.05);color:var(--text2)">⚙</div>
+        <div class="nav-tile-name">Settings</div>
+        <div class="nav-tile-desc">Theme, accent colour, font, and backup/restore your library.</div>
+        <div class="nav-tile-action">Open settings →</div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Section: Recent effects -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Recent effects</div>
+      <a class="section-link" href="index.html">View all →</a>
+    </div>
+    <div class="activity-list" id="recent-effects">
+      <div class="activity-empty">No effects saved yet. <a href="add.html" style="color:var(--accent2)">Add your first one →</a></div>
+    </div>
+  </div>
+
+  <!-- Section: Recent videos -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Recent videos</div>
+      <a class="section-link" href="videos.html">View all →</a>
+    </div>
+    <div class="activity-list" id="recent-videos">
+      <div class="activity-empty">No videos saved yet. <a href="add-video.html" style="color:var(--accent2)">Add your first one →</a></div>
+    </div>
+  </div>
+
+  <!-- Quick links -->
+  <div class="quick-links">
+    <a class="quick-link" href="index.html">Effects</a>
+    <span class="quick-link">·</span>
+    <a class="quick-link" href="videos.html">Videos</a>
+    <span class="quick-link">·</span>
+    <a class="quick-link" href="nodes-reference.html">Library</a>
+    <span class="quick-link">·</span>
+    <a class="quick-link" href="nodegraph.html">Node Graph</a>
+    <span class="quick-link">·</span>
+    <a class="quick-link" href="spline.html">Spline</a>
+    <span class="quick-link">·</span>
+    <a class="quick-link" href="settings.html">Settings</a>
+  </div>
+</div>
+
+<script>
+function toggleAddDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('add-split-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', () => {
+  const dd = document.getElementById('add-split-dropdown');
+  if (dd) dd.classList.remove('open');
+});
+
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+const CAT_COLORS = {
+  'fusion-effect':'#b0f060','grade':'#f0a060','fusion-3d':'#60b8f0','template':'#c060f0',
+  'node-graph':'#60f0c8','text':'#f060a0','background':'#60d8f0','shape':'#60f0c8',
+  'light':'#f0e060','ui':'#c060f0','camera':'#60b8f0'
+};
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const d = Math.floor(diff / 86400000);
+  if (d === 0) return 'Today';
+  if (d === 1) return 'Yesterday';
+  if (d < 7) return d + 'd ago';
+  if (d < 30) return Math.floor(d/7) + 'w ago';
+  if (d < 365) return Math.floor(d/30) + 'mo ago';
+  return Math.floor(d/365) + 'y ago';
+}
+
+function loadStats() {
+  const effects = JSON.parse(localStorage.getItem('resolve-effects') || '[]')
+    .filter(e => e.cat !== 'node-graph');
+  const videos = JSON.parse(localStorage.getItem('resolve-videos') || '[]');
+  const inspiration = JSON.parse(localStorage.getItem('rl-inspiration') || '[]');
+  document.getElementById('hs-effects').textContent = effects.length;
+  document.getElementById('hs-videos').textContent = videos.length;
+  document.getElementById('hs-inspiration').textContent = inspiration.length;
+
+  // Recent effects
+  const recentEffects = [...effects].sort((a,b) => new Date(b.date||0)-new Date(a.date||0)).slice(0,5);
+  const efEl = document.getElementById('recent-effects');
+  if (recentEffects.length) {
+    const CATS_LABEL = {
+      'fusion-effect':'Fusion Effect','grade':'Grade','fusion-3d':'Fusion 3D','template':'Template',
+      'text':'Text','background':'Background','shape':'Shape','light':'Light','ui':'UI','camera':'Camera'
+    };
+    efEl.innerHTML = recentEffects.map(e => {
+      const col = CAT_COLORS[e.cat] || '#909090';
+      const label = CATS_LABEL[e.cat] || e.cat || 'Effect';
+      return '<a class="activity-item" href="index.html#e=' + e.id + '">'
+        + '<div class="activity-dot" style="background:' + col + '"></div>'
+        + '<span class="activity-name">' + escH(e.name) + '</span>'
+        + '<span class="activity-cat">' + escH(label) + '</span>'
+        + '<span class="activity-meta">' + timeAgo(e.date) + '</span>'
+        + '</a>';
+    }).join('');
+  }
+
+  // Recent videos
+  const recentVideos = [...videos].sort((a,b) => new Date(b.savedAt||0)-new Date(a.savedAt||0)).slice(0,5);
+  const vdEl = document.getElementById('recent-videos');
+  if (recentVideos.length) {
+    vdEl.innerHTML = recentVideos.map(v => {
+      return '<a class="activity-item" href="videos.html#v=' + v.id + '">'
+        + '<div class="activity-dot" style="background:#f06060"></div>'
+        + '<span class="activity-name">' + escH(v.title || 'Untitled') + '</span>'
+        + (v.channel ? '<span class="activity-cat">' + escH(v.channel) + '</span>' : '')
+        + '<span class="activity-meta">' + timeAgo(v.savedAt) + '</span>'
+        + '</a>';
+    }).join('');
+  }
+}
+
+loadStats();
+</script>
+</body>
+</html>
