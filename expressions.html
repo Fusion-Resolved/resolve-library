@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expressions — Resolve Library</title>
+<link rel="manifest" href="manifest.json">
+<script>if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){navigator.serviceWorker.register("./sw.js").catch(function(){});}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script>
+(function(){try{var t=JSON.parse(localStorage.getItem('rl-theme')||'{}'),s=document.documentElement.style,h=function(x){var r=parseInt(x.slice(1,3),16),g=parseInt(x.slice(3,5),16),b=parseInt(x.slice(5,7),16);return[r,g,b]};if(t.accent){s.setProperty('--accent',t.accent);var a=h(t.accent);s.setProperty('--accent-dim','rgba('+a+',0.08)');s.setProperty('--tag-bg','rgba('+a+',0.08)');s.setProperty('--tag-color',t.accent);}if(t.accent2){s.setProperty('--accent2',t.accent2);var c=h(t.accent2);s.setProperty('--accent2-dim','rgba('+c+',0.08)');}if(t.bg)s.setProperty('--bg',t.bg);if(t.surface)s.setProperty('--surface',t.surface);if(t.surface2)s.setProperty('--surface2',t.surface2);if(t.surface3)s.setProperty('--surface3',t.surface3);if(t.text)s.setProperty('--text',t.text);}catch(e){}
+try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
+  if(ui.buttonRadius)s.setProperty('--radius-sm',ui.buttonRadius);
+  if(ui.cardRadius){s.setProperty('--radius-lg',ui.cardRadius);s.setProperty('--radius-xl',(parseInt(ui.cardRadius)+5)+'px');}
+  if(ui.fontBody)s.setProperty('--font-body',ui.fontBody);
+  if(ui.fontHead)s.setProperty('--font-head',ui.fontHead);
+  if(ui.baseFontSize)document.documentElement.style.fontSize=ui.baseFontSize+'px';
+  if(ui.borderOpacity)s.setProperty('--border',ui.borderOpacity);
+}catch(e){}})();
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080809;--surface:#101013;--surface2:#18181d;--surface3:#202027;
+  --border:rgba(255,255,255,0.055);--border2:rgba(255,255,255,0.10);--border3:rgba(255,255,255,0.16);
+  --text:#f0ede6;--text2:#a09d97;--muted:#58544f;
+  --accent:#c8f060;--accent2:#60b8f0;
+  --accent-dim:rgba(200,240,96,0.08);--accent2-dim:rgba(96,184,240,0.08);
+  --danger:#f06060;
+  --radius-xs:5px;--radius-sm:7px;--radius:10px;--radius-lg:13px;--radius-xl:18px;--radius-pill:999px;
+  --font-head:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+  --shadow:0 4px 16px rgba(0,0,0,0.5);--shadow-lg:0 8px 32px rgba(0,0,0,0.65);
+  --transition:all 0.18s ease;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased;}
+header{border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;background:rgba(8,8,9,0.82);z-index:50;backdrop-filter:blur(20px) saturate(180%);}
+.logo{font-family:var(--font-head);font-weight:700;font-size:0.95rem;letter-spacing:-0.02em;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:6px;}
+.logo span{color:var(--accent);}
+.logo-mark{width:22px;height:22px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.header-actions{display:flex;gap:2px;align-items:center;}
+.btn{font-family:var(--font-body);font-size:13px;padding:6px 13px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--text2);cursor:pointer;text-decoration:none;transition:var(--transition);display:inline-flex;align-items:center;gap:5px;white-space:nowrap;line-height:1;}
+.btn:hover{color:var(--text);background:rgba(255,255,255,0.06);}
+.btn.active{color:var(--text);background:rgba(255,255,255,0.08);font-weight:500;}
+
+.container{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:3rem 2rem 6rem;}
+.page-header{margin-bottom:2rem;}
+.page-header h1{font-family:var(--font-head);font-size:2rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:.4rem;}
+.page-header p{color:var(--text2);font-size:13px;line-height:1.65;}
+
+/* ── Tabs ── */
+.lib-tabs{display:flex;gap:3px;margin-bottom:2rem;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:4px;width:fit-content;}
+.lib-tab{font-family:var(--font-body);font-size:13px;font-weight:500;padding:8px 20px;border-radius:var(--radius);border:none;background:transparent;color:var(--text2);cursor:pointer;transition:var(--transition);white-space:nowrap;text-decoration:none;}
+.lib-tab:hover{color:var(--text);}
+.lib-tab.active{background:var(--surface2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.3);}
+.lib-section{display:none;}
+.lib-section.active{display:block;}
+
+/* ── Search & controls ── */
+.controls-bar{display:flex;gap:10px;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;}
+.search-wrap{flex:1;min-width:200px;position:relative;}
+.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.25;pointer-events:none;}
+.search-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-pill);padding:9px 14px 9px 37px;color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color .18s;}
+.search-input:focus{border-color:var(--border3);}
+.search-input::placeholder{color:var(--muted);}
+.cat-filter-btns{display:flex;gap:5px;flex-wrap:wrap;}
+.cat-btn{font-size:11px;padding:4px 12px;border-radius:var(--radius-pill);border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:var(--transition);font-family:var(--font-body);white-space:nowrap;}
+.cat-btn:hover{border-color:var(--border3);color:var(--text);}
+.cat-btn.active{background:var(--accent);color:#080809;border-color:transparent;font-weight:600;}
+
+/* ── Add button ── */
+.tab-add-btn{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-family:var(--font-body);padding:8px 18px;border-radius:var(--radius-sm);border:1px solid rgba(200,240,96,.3);background:var(--accent-dim);color:var(--accent);cursor:pointer;transition:var(--transition);font-weight:500;margin-bottom:1.5rem;}
+.tab-add-btn:hover{background:rgba(200,240,96,.14);border-color:rgba(200,240,96,.5);}
+
+/* ── Expr grid ── */
+.expr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;}
+.expr-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;transition:border-color .15s,box-shadow .15s;}
+.expr-card:hover{border-color:var(--border2);box-shadow:var(--shadow);}
+.expr-card-strip{height:2px;width:100%;}
+.expr-card-inner{padding:.9rem 1rem .85rem;}
+.expr-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;}
+.expr-type-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;}
+.expr-title{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.expr-short{font-size:11.5px;color:var(--text2);line-height:1.5;}
+.expr-code{background:#0a0a0b;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-family:var(--font-mono);font-size:11px;color:rgba(200,240,96,0.75);white-space:pre-wrap;word-break:break-all;margin:8px 0;line-height:1.6;position:relative;}
+.expr-copy-btn{position:absolute;top:5px;right:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-xs);padding:2px 8px;font-size:10px;font-family:var(--font-mono);color:var(--text2);cursor:pointer;transition:var(--transition);}
+.expr-copy-btn:hover{color:var(--text);border-color:var(--border3);}
+.expr-copy-btn.copied{color:var(--accent);border-color:rgba(200,240,96,.3);}
+.expr-footer{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.expr-cat-badge{font-size:9px;font-family:var(--font-mono);padding:2px 7px;border-radius:3px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);}
+.expr-custom-badge{font-size:9px;font-family:var(--font-mono);padding:2px 7px;border-radius:3px;border:1px solid rgba(200,240,96,.2);background:var(--accent-dim);color:var(--accent);}
+.expr-del-btn{margin-left:auto;font-size:9px;font-family:var(--font-mono);padding:2px 7px;border-radius:3px;border:1px solid rgba(240,96,96,.18);background:transparent;color:rgba(240,96,96,.55);cursor:pointer;transition:var(--transition);}
+.expr-del-btn:hover{color:var(--danger);border-color:rgba(240,96,96,.4);}
+.expr-empty{padding:3rem;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono);border:1px dashed var(--border2);border-radius:var(--radius-lg);line-height:1.8;}
+
+/* ── Built-in section heading ── */
+.builtin-section{margin-bottom:2.5rem;}
+.builtin-heading{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.builtin-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.builtin-name{font-family:var(--font-head);font-size:.95rem;font-weight:700;}
+.builtin-count{font-size:10px;font-family:var(--font-mono);color:var(--muted);}
+
+/* ── Modal ── */
+.add-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem;opacity:0;pointer-events:none;transition:opacity .2s ease;backdrop-filter:blur(6px);}
+.add-modal-overlay.open{opacity:1;pointer-events:all;}
+.add-modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-xl);width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);transform:translateY(12px) scale(.98);transition:transform .22s ease,opacity .22s ease;opacity:0;}
+.add-modal-overlay.open .add-modal{transform:translateY(0) scale(1);opacity:1;}
+.add-modal-header{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 1.5rem 1rem;border-bottom:1px solid var(--border);}
+.add-modal-title{font-family:var(--font-head);font-size:1.1rem;font-weight:700;letter-spacing:-0.02em;}
+.add-modal-close{background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:18px;line-height:1;padding:4px 6px;border-radius:var(--radius-sm);transition:var(--transition);}
+.add-modal-close:hover{color:var(--text);background:rgba(255,255,255,.07);}
+.add-modal-body{padding:1.4rem 1.5rem 1.6rem;display:flex;flex-direction:column;gap:1rem;}
+.add-modal-footer{padding:.9rem 1.5rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+.modal-field{display:flex;flex-direction:column;gap:6px;}
+.modal-field label{font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.07em;color:var(--text2);}
+.modal-field label .opt{opacity:.45;font-size:9px;}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--font-body);font-size:13px;font-weight:300;outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none;}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(96,184,240,.1);}
+.modal-field input::placeholder,.modal-field textarea::placeholder{color:var(--muted);}
+.modal-field select{cursor:pointer;}
+.modal-field select option{background:#18181d;}
+.modal-field textarea{resize:vertical;line-height:1.6;min-height:70px;font-family:var(--font-mono);font-size:12px;color:rgba(200,240,96,0.8);}
+.modal-field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.btn-modal-submit{background:var(--accent);color:#080809;border:none;border-radius:var(--radius-sm);font-weight:600;font-size:13px;padding:9px 22px;cursor:pointer;transition:var(--transition);font-family:var(--font-body);}
+.btn-modal-submit:hover{background:#d4f570;}
+.btn-modal-cancel{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:13px;padding:7px 16px;cursor:pointer;transition:var(--transition);}
+.btn-modal-cancel:hover{color:var(--text);border-color:var(--border3);}
+
+/* ── Toast ── */
+.toast{position:fixed;top:68px;right:2rem;background:var(--surface3);border:1px solid var(--border2);color:var(--text);padding:10px 18px;border-radius:var(--radius-lg);font-size:13px;opacity:0;transform:translateY(-6px);transition:all .22s ease;pointer-events:none;z-index:999;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px;}
+.toast::before{content:'✓';color:var(--accent);font-weight:700;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+@keyframes modalIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── SHARED NAV (home.html design system) ── */
+header{padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;background:rgba(7,7,8,0.82);backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);border-bottom:1px solid var(--border);z-index:50;}
+.logo{font-family:var(--font-head);font-weight:800;font-size:0.9rem;letter-spacing:0.01em;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:9px;flex-shrink:0;}
+.logo-mark{width:26px;height:26px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo em{color:var(--accent);font-style:normal;}
+.nav-pill{display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-pill,999px);padding:4px;}
+.nlink{font-size:12.5px;font-family:var(--font-body);padding:6px 16px;border-radius:var(--radius-pill,999px);border:none;background:transparent;color:var(--text2);cursor:pointer;text-decoration:none;transition:color .15s,background .15s;white-space:nowrap;}
+.nlink:hover{color:var(--text);}
+.nlink.active{color:var(--text);background:var(--surface2);box-shadow:0 1px 4px rgba(0,0,0,0.4);}
+/* header right actions */
+.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+/* Add split button (reused across pages) */
+.add-wrap{position:relative;display:inline-flex;}
+.add-main{background:var(--accent);color:#070708;border:none;border-radius:var(--radius-pill,999px) 0 0 var(--radius-pill,999px);font-weight:600;font-size:12.5px;padding:8px 16px;cursor:pointer;transition:filter .15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-family:var(--font-body);}
+.add-main:hover{filter:brightness(1.08);}
+.add-chev{background:var(--accent);color:#070708;border:none;border-left:1px solid rgba(0,0,0,0.15);border-radius:0 var(--radius-pill,999px) var(--radius-pill,999px) 0;padding:8px 10px;cursor:pointer;font-size:9px;transition:filter .15s;}
+.add-chev:hover{filter:brightness(1.08);}
+.add-dd{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.7);z-index:200;min-width:165px;overflow:hidden;}
+.add-dd.open{display:block;}
+.dd-item{display:flex;align-items:center;gap:10px;padding:13px 18px;font-size:13px;font-family:var(--font-body);color:var(--text);text-decoration:none;transition:background .1s;border:none;background:none;width:100%;text-align:left;cursor:pointer;}
+.dd-item:hover{background:var(--surface3);}
+.dd-item+.dd-item{border-top:1px solid var(--border);}
+/* small icon btn */
+.icon-btn{background:transparent;border:none;color:var(--text2);cursor:pointer;padding:6px 10px;border-radius:var(--radius-sm,7px);font-size:17px;transition:color .15s,background .15s;text-decoration:none;display:inline-flex;align-items:center;}
+.icon-btn:hover{color:var(--text);background:rgba(255,255,255,0.06);}
+@media(max-width:780px){
+  header{padding:0 1.25rem;}
+  .nav-pill .nlink:not(.active){display:none;}
+}
+
+
+/* ── AMBIENT BLOBS ── */
+.ambient{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.amb-blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:.3;}
+.amb-1{width:600px;height:400px;top:-100px;left:-100px;background:radial-gradient(ellipse,rgba(200,240,96,0.15),transparent 70%);}
+.amb-2{width:500px;height:400px;top:200px;right:-80px;background:radial-gradient(ellipse,rgba(96,184,240,0.12),transparent 70%);}
+.amb-3{width:400px;height:300px;bottom:10%;left:20%;background:radial-gradient(ellipse,rgba(192,96,240,0.08),transparent 70%);}
+
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<header>
+  <a class="logo" href="home.html">
+    <div class="logo-mark"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.2" fill="#070708"/><rect x="8" y="1" width="5" height="5" rx="1.2" fill="#070708" opacity=".6"/><rect x="1" y="8" width="5" height="5" rx="1.2" fill="#070708" opacity=".6"/><rect x="8" y="8" width="5" height="5" rx="1.2" fill="#070708" opacity=".35"/></svg></div>
+    Resolve<em>.</em>Library
+  </a>
+  <div class="nav-pill">
+    <a class="nlink" href="home.html">Home</a>
+    <a class="nlink" href="index.html">Effects</a>
+    <a class="nlink" href="videos.html">Videos</a>
+    <a class="nlink" href="spline.html">Spline</a>
+    <a class="nlink" href="nodegraph.html">Node Graph</a>
+    <a class="nlink active" href="nodes-reference.html">Library</a>
+  </div>
+  <div class="header-right">
+    <a class="icon-btn" href="settings.html" title="Settings">⚙</a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="page-header">
+    <h1>Expressions & Modifiers</h1>
+    <p>Built-in Fusion expression functions and modifiers — plus your custom saved expressions, ready to copy into Fusion.</p>
+  </div>
+
+  <!-- Tabs (back-link to Library) -->
+  <div class="lib-tabs">
+    <a class="lib-tab" href="nodes-reference.html">Node Reference</a>
+    <a class="lib-tab" href="nodes-reference.html#refmat">Reference Material</a>
+    <a class="lib-tab" href="nodes-reference.html#plugins">Plugins</a>
+    <a class="lib-tab" href="nodes-reference.html#inspiration">Inspiration</a>
+    <a class="lib-tab active" href="expressions.html">Expressions</a>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-bar">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input class="search-input" type="text" id="expr-search" placeholder="Search expressions…" oninput="filterExprs()">
+    </div>
+    <div class="cat-filter-btns" id="expr-cat-btns"></div>
+  </div>
+
+  <button class="tab-add-btn" onclick="openExprModal()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    Save custom expression
+  </button>
+
+  <!-- Built-in reference -->
+  <div id="builtin-body"></div>
+
+  <!-- Custom saved expressions -->
+  <div id="custom-section" style="margin-top:2rem;display:none;">
+    <div class="builtin-heading">
+      <div class="builtin-dot" style="background:var(--accent)"></div>
+      <div class="builtin-name">Your saved expressions</div>
+      <div class="builtin-count" id="custom-count">0</div>
+    </div>
+    <div class="expr-grid" id="custom-grid"></div>
+  </div>
+  <div id="expr-empty" class="expr-empty" style="display:none;">No expressions match.</div>
+</div>
+
+<!-- Add Expression Modal -->
+<div id="expr-modal-overlay" class="add-modal-overlay" onclick="handleExprOverlayClick(event)">
+  <div class="add-modal">
+    <div class="add-modal-header">
+      <div class="add-modal-title">Save custom expression</div>
+      <button class="add-modal-close" onclick="closeExprModal()">✕</button>
+    </div>
+    <div class="add-modal-body">
+      <div class="modal-field">
+        <label>Title <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="ex-title" placeholder="e.g. Sine wave oscillator">
+      </div>
+      <div class="modal-field-row">
+        <div class="modal-field">
+          <label>Category</label>
+          <select id="ex-cat">
+            <option value="Math">Math</option>
+            <option value="Time">Time</option>
+            <option value="Color">Color</option>
+            <option value="Position">Position</option>
+            <option value="Oscillator">Oscillator</option>
+            <option value="Randomness">Randomness</option>
+            <option value="Modifier">Modifier</option>
+            <option value="Custom">Custom</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>Type</label>
+          <select id="ex-type">
+            <option value="expression">Expression</option>
+            <option value="modifier">Modifier</option>
+            <option value="lua">Lua snippet</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Expression / code <span style="color:var(--danger)">*</span></label>
+        <textarea id="ex-code" rows="4" placeholder="e.g. sin(time * 2 * pi) * 0.5 + 0.5"></textarea>
+      </div>
+      <div class="modal-field">
+        <label>Description <span class="opt">(optional)</span></label>
+        <input type="text" id="ex-desc" placeholder="What this expression does…">
+      </div>
+      <div class="modal-field">
+        <label>Tags <span class="opt">(comma-separated)</span></label>
+        <input type="text" id="ex-tags" placeholder="e.g. animation, sine, oscillate">
+      </div>
+    </div>
+    <div class="add-modal-footer">
+      <button class="btn-modal-cancel" onclick="closeExprModal()">Cancel</button>
+      <button class="btn-modal-submit" onclick="saveExpr()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.className='toast';void t.offsetWidth;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+// ── Built-in expression database ──────────────────────────────────────────
+const BUILTIN_EXPRS = [
+  // Time & Animation
+  { id:'bi-1', cat:'Time', title:'Current time in seconds', code:'time', desc:'The current frame divided by the composition frame rate.', builtin:true },
+  { id:'bi-2', cat:'Time', title:'Loop animation', code:'time % duration', desc:'Loops a value over a given duration in frames.', builtin:true },
+  { id:'bi-3', cat:'Time', title:'Frame number', code:'Frame', desc:'Current frame as an integer.', builtin:true },
+  // Oscillators
+  { id:'bi-4', cat:'Oscillator', title:'Sine oscillator (0 to 1)', code:'sin(time * speed * pi * 2) * 0.5 + 0.5', desc:'Smooth 0–1 oscillation. Adjust speed multiplier.', builtin:true },
+  { id:'bi-5', cat:'Oscillator', title:'Sine oscillator (–1 to 1)', code:'sin(time * speed * pi * 2)', desc:'Centred oscillation between –1 and 1.', builtin:true },
+  { id:'bi-6', cat:'Oscillator', title:'Cosine oscillator', code:'cos(time * speed * pi * 2) * 0.5 + 0.5', desc:'Like sine but offset 90°. Useful for XY pairs.', builtin:true },
+  { id:'bi-7', cat:'Oscillator', title:'Triangle wave', code:'abs(((time * speed) % 1) * 2 - 1)', desc:'Sharp triangle oscillation, no easing.', builtin:true },
+  // Math
+  { id:'bi-8', cat:'Math', title:'Remap range', code:'(value - inMin) / (inMax - inMin) * (outMax - outMin) + outMin', desc:'Remap a value from one range to another. Replace tokens with actual values.', builtin:true },
+  { id:'bi-9', cat:'Math', title:'Clamp', code:'max(0, min(1, value))', desc:'Clamps a value between 0 and 1.', builtin:true },
+  { id:'bi-10', cat:'Math', title:'Linear interpolation (lerp)', code:'a + (b - a) * t', desc:'Linearly interpolates between a and b by t (0–1).', builtin:true },
+  { id:'bi-11', cat:'Math', title:'Absolute value', code:'abs(value)', desc:'Always returns a positive number.', builtin:true },
+  { id:'bi-12', cat:'Math', title:'Power / exponent', code:'value ^ exponent', desc:'Raises value to the power of exponent.', builtin:true },
+  { id:'bi-13', cat:'Math', title:'Square root', code:'sqrt(value)', desc:'Square root of value.', builtin:true },
+  { id:'bi-14', cat:'Math', title:'Modulo (remainder)', code:'value % divisor', desc:'Returns the remainder of value divided by divisor.', builtin:true },
+  // Randomness
+  { id:'bi-15', cat:'Randomness', title:'Random per-frame', code:'math.random()', desc:'Lua: returns a random float 0–1. Different every frame.', builtin:true },
+  { id:'bi-16', cat:'Randomness', title:'Seeded random', code:'(sin(seed * 127.1) * 43758.5453) % 1', desc:'Deterministic "random" from a seed. Same seed = same result.', builtin:true },
+  // Color
+  { id:'bi-17', cat:'Color', title:'Luminance from RGB', code:'r * 0.2126 + g * 0.7152 + b * 0.0722', desc:'Rec.709 luminance coefficient formula.', builtin:true },
+  { id:'bi-18', cat:'Color', title:'Invert channel', code:'1 - value', desc:'Inverts any 0–1 channel value.', builtin:true },
+  // Position
+  { id:'bi-19', cat:'Position', title:'Screen centre X', code:'0.5', desc:'Horizontal centre of the composition (0=left, 1=right).', builtin:true },
+  { id:'bi-20', cat:'Position', title:'Circular path X', code:'0.5 + sin(time * speed * pi * 2) * radius', desc:'X component of a circular orbit. Pair with cos Y.', builtin:true },
+  { id:'bi-21', cat:'Position', title:'Circular path Y', code:'0.5 + cos(time * speed * pi * 2) * radius', desc:'Y component of a circular orbit. Pair with sin X.', builtin:true },
+  // Modifiers
+  { id:'bi-22', cat:'Modifier', title:'Follow with delay', code:'value * strength + prevValue * (1 - strength)', desc:'Lag/follow expression. Set strength 0–1 (lower = more lag).', builtin:true },
+  { id:'bi-23', cat:'Modifier', title:'Ping-pong / bounce', code:'1 - abs(((time * speed) % 2) - 1)', desc:'Bounce back and forth between 0 and 1.', builtin:true },
+  { id:'bi-24', cat:'Modifier', title:'Step function', code:'floor(time * steps) / steps', desc:'Snaps animation to discrete steps. Good for frame-by-frame look.', builtin:true },
+];
+
+let searchQ = '';
+let activeCat = 'all';
+
+function filterExprs() {
+  searchQ = document.getElementById('expr-search').value.toLowerCase();
+  renderAll();
+}
+
+function setCat(cat) {
+  activeCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  renderAll();
+}
+
+function buildCatButtons() {
+  const cats = ['all', ...new Set([...BUILTIN_EXPRS, ..._loadCustom()].map(e => e.cat))];
+  document.getElementById('expr-cat-btns').innerHTML = cats.map(c =>
+    '<button class="cat-btn' + (activeCat===c?' active':'') + '" data-cat="' + escH(c) + '" onclick="setCat(\'' + escH(c) + '\')">'
+    + (c==='all' ? 'All' : escH(c)) + '</button>'
+  ).join('');
+}
+
+function _loadCustom() { try { return JSON.parse(localStorage.getItem('rl-expressions') || '[]'); } catch(e) { return []; } }
+function _saveCustom(d) { localStorage.setItem('rl-expressions', JSON.stringify(d)); }
+
+function renderAll() {
+  const custom = _loadCustom();
+  const allExprs = [...BUILTIN_EXPRS, ...custom];
+  buildCatButtons();
+
+  const filtered = allExprs.filter(e => {
+    const matchCat = activeCat === 'all' || e.cat === activeCat;
+    if (!searchQ) return matchCat;
+    const hay = [e.title, e.desc||'', e.code, e.cat].join(' ').toLowerCase();
+    return matchCat && hay.includes(searchQ);
+  });
+
+  // Split filtered into builtin and custom
+  const filtBuiltin = filtered.filter(e => e.builtin);
+  const filtCustom  = filtered.filter(e => !e.builtin);
+
+  // Group builtins by category
+  const byCat = {};
+  filtBuiltin.forEach(e => { if (!byCat[e.cat]) byCat[e.cat]=[]; byCat[e.cat].push(e); });
+
+  const CAT_COLORS = {
+    'Time':'#60b8f0','Oscillator':'#c8f060','Math':'#f0a060','Randomness':'#c060f0',
+    'Color':'#f060a0','Position':'#60f0c8','Modifier':'#f0c060','Custom':'#909090'
+  };
+
+  const builtinEl = document.getElementById('builtin-body');
+  if (filtBuiltin.length) {
+    builtinEl.innerHTML = Object.entries(byCat).map(([cat, exprs]) => {
+      const col = CAT_COLORS[cat] || '#909090';
+      return '<div class="builtin-section">'
+        + '<div class="builtin-heading">'
+          + '<div class="builtin-dot" style="background:' + col + '"></div>'
+          + '<div class="builtin-name">' + escH(cat) + '</div>'
+          + '<div class="builtin-count">' + exprs.length + '</div>'
+        + '</div>'
+        + '<div class="expr-grid">' + exprs.map(e => renderExprCard(e, col)).join('') + '</div>'
+      + '</div>';
+    }).join('');
+  } else {
+    builtinEl.innerHTML = '';
+  }
+
+  const customSection = document.getElementById('custom-section');
+  const customGrid    = document.getElementById('custom-grid');
+  if (filtCustom.length) {
+    customSection.style.display = '';
+    document.getElementById('custom-count').textContent = filtCustom.length;
+    customGrid.innerHTML = filtCustom.map(e => renderExprCard(e, 'var(--accent)')).join('');
+  } else {
+    customSection.style.display = 'none';
+  }
+
+  document.getElementById('expr-empty').style.display = (!filtBuiltin.length && !filtCustom.length) ? '' : 'none';
+}
+
+function renderExprCard(e, col) {
+  const colStr = col || '#909090';
+  const typeLabel = { expression:'Expression', modifier:'Modifier', lua:'Lua' }[e.type] || 'Expression';
+  return '<div class="expr-card" id="ec-' + escH(e.id) + '">'
+    + '<div class="expr-card-strip" style="background:' + colStr + '"></div>'
+    + '<div class="expr-card-inner">'
+      + '<div class="expr-top">'
+        + '<div class="expr-type-icon" style="background:' + colStr + '18;color:' + colStr + '">'
+          + (e.type==='modifier' ? '⬡' : e.type==='lua' ? 'Ł' : 'ƒ')
+        + '</div>'
+        + '<div><div class="expr-title">' + escH(e.title) + '</div>'
+        + (e.desc ? '<div class="expr-short">' + escH(e.desc) + '</div>' : '')
+        + '</div>'
+      + '</div>'
+      + '<div class="expr-code" id="code-' + e.id + '">'
+        + escH(e.code)
+        + '<button class="expr-copy-btn" id="copybtn-' + e.id + '" onclick="copyExpr(\'' + e.id + '\')">Copy</button>'
+      + '</div>'
+      + '<div class="expr-footer">'
+        + '<span class="expr-cat-badge">' + escH(e.cat) + '</span>'
+        + (e.builtin ? '' : '<span class="expr-custom-badge">Custom</span>')
+        + (e.tags && e.tags.length ? e.tags.map(t => '<span class="expr-cat-badge">' + escH(t) + '</span>').join('') : '')
+        + (e.builtin ? '' : '<button class="expr-del-btn" onclick="delExpr(\'' + e.id + '\')">Delete</button>')
+      + '</div>'
+    + '</div>'
+  + '</div>';
+}
+
+function copyExpr(id) {
+  const allExprs = [...BUILTIN_EXPRS, ..._loadCustom()];
+  const e = allExprs.find(x => x.id === id);
+  if (!e) return;
+  navigator.clipboard.writeText(e.code).then(() => {
+    const btn = document.getElementById('copybtn-' + id);
+    if (btn) { btn.textContent = 'Copied!'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000); }
+    showToast('Copied to clipboard');
+  }).catch(() => showToast('Copy failed'));
+}
+
+function delExpr(id) {
+  const data = _loadCustom().filter(e => e.id !== id);
+  _saveCustom(data);
+  renderAll();
+  showToast('Deleted');
+}
+
+// ── Add modal ─────────────────────────────────────────────────────────────
+function openExprModal() {
+  ['ex-title','ex-code','ex-desc','ex-tags'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ex-cat').value = 'Custom';
+  document.getElementById('ex-type').value = 'expression';
+  document.getElementById('expr-modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('ex-title').focus(), 100);
+}
+function closeExprModal() {
+  document.getElementById('expr-modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function handleExprOverlayClick(e) {
+  if (e.target.id === 'expr-modal-overlay') closeExprModal();
+}
+function saveExpr() {
+  const title = document.getElementById('ex-title').value.trim();
+  const code  = document.getElementById('ex-code').value.trim();
+  if (!title || !code) { showToast('Title and code are required'); return; }
+  const cat   = document.getElementById('ex-cat').value;
+  const type  = document.getElementById('ex-type').value;
+  const desc  = document.getElementById('ex-desc').value.trim();
+  const tags  = document.getElementById('ex-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const data  = _loadCustom();
+  data.unshift({ id: Date.now().toString(), title, code, cat, type, desc, tags, builtin:false });
+  _saveCustom(data);
+  closeExprModal();
+  renderAll();
+  showToast('Expression saved');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeExprModal();
+  if (e.key === '/' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+    e.preventDefault(); document.getElementById('expr-search').focus();
+  }
+});
+
+renderAll();
+</script>
+</body>
+</html>
