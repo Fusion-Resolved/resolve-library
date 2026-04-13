@@ -1,104 +1,120 @@
 /* ============================================================
-   auth.js — SECURITY PATCH (apply to your existing auth.js)
-   ============================================================
-   
-   This file shows exactly where and how to add the two security
-   changes identified in the audit. Apply them to your actual
-   auth.js — this is a diff/patch guide, not a replacement file.
+   auth.js — Noding Authentication System
    ============================================================ */
 
+// Supabase configuration — REAL API KEYS
+const SUPABASE_URL = 'https://nestqkrkxwrptoejlvno.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_hAmhQaWOO0w4f-O8EEPxlg_0cw_i1m4';
 
-/* ── CHANGE 1: Object.freeze on _supabase ───────────────────────────────────
-   
-   LOCATION: Immediately after you assign window._supabase.
-   
-   Your current code probably looks like:
-   
-     window._supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-   
-   Replace it with:
-*/
-
-// 1. Create the client normally.
+// Initialize Supabase client
 window._supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// 2. Freeze the reference.
-//    Object.freeze() prevents any external script from:
-//      - Replacing window._supabase with a spoof object
-//      - Adding properties to intercept auth calls
-//      - Deleting properties to break auth flows
-//    It does NOT freeze the internal Supabase session state (which needs to
-//    mutate on sign-in/sign-out) — only the top-level client reference.
-//    Supabase's own methods are unaffected because they operate on internal
-//    closures, not on direct property writes to the client object.
 Object.freeze(window._supabase);
 
+/* ============================================================
+   AUTH STATE MANAGEMENT — SOURCE OF TRUTH
+   ============================================================ */
 
-/* ── CHANGE 2: onAuthStateChange + authStateChanged event ──────────────────
-   
-   LOCATION: Inside your existing onAuthStateChange callback.
-   
-   If your current auth.js fires a custom 'authStateChanged' event
-   (which settings.html listens for), make sure it also handles the
-   PASSWORD_RECOVERY event cleanly so settings.html's listener fires
-   before the inline script's own onAuthStateChange watcher does.
-   
-   Your current dispatch call should look something like this — no
-   changes needed here, just confirming the expected shape:
-*/
+let currentUser = null;
 
+// Listen for auth state changes — THIS IS THE SOURCE OF TRUTH
 window._supabase.auth.onAuthStateChange(function (event, session) {
-  // Dispatch to all pages that listen for auth resolution
+  const user = session ? session.user : null;
+  currentUser = user;
+
+  // Dispatch custom event for all pages
   window.dispatchEvent(new CustomEvent('authStateChanged', {
-    detail: { event: event, session: session }
+    detail: { event: event, session: session, user: user }
   }));
 
-  // Handle sign-out globally (e.g. redirect away from protected pages)
+  // Update ALL sidebar auth portals on EVERY state change
+  updateAllSidebarPortals(user);
+
+  // Handle specific events
   if (event === 'SIGNED_OUT') {
-    // Add any global sign-out teardown here if needed.
-    // settings.html's wireSignOutBtn() handles its own redirect.
+    currentUser = null;
   }
 });
 
+// Initial session check
+async function initAuth() {
+  const { data: { session } } = await window._supabase.auth.getSession();
+  currentUser = session ? session.user : null;
+  updateAllSidebarPortals(currentUser);
+}
 
-/* ── IMPORTANT NOTE ON admin.deleteUser() ───────────────────────────────────
+/* ============================================================
+   SIDEBAR PORTAL INJECTION — SINGLE SOURCE OF TRUTH
+   ============================================================ */
 
-   The doDelete() function in settings.html calls a Supabase Edge Function
-   at /functions/v1/delete-account rather than calling admin.deleteUser()
-   directly. This is intentional and correct.
+function updateAllSidebarPortals(user) {
+  // Find ALL portal containers across the entire page
+  const portals = document.querySelectorAll('#sidebar-auth-portal, #sb-auth-group');
 
-   DO NOT add admin.deleteUser() to auth.js or any browser-side file.
-   The admin client requires the SERVICE ROLE KEY which must never be
-   exposed to the browser. The Edge Function approach is the safe pattern:
+  portals.forEach(portal => {
+    if (!portal) return;
 
-     Browser (anon key JWT)  →  Edge Function (service role key, server-side)
-                                  └─ admin.deleteUser(user.id)
+    if (user) {
+      // LOGGED IN: Show user info + Sign Out
+      const email = user.email || 'User';
+      const avatar = email.charAt(0).toUpperCase();
 
-   A minimal Edge Function for account deletion looks like:
+      portal.innerHTML = `
+        <div class="sh-nav-item" style="cursor:default;opacity:1;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6c7bff 0%,#4451d4 100%);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:#fff;flex-shrink:0;">${avatar}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:500;color:var(--tp,#f4f4fb);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(email)}</div>
+            <div style="font-size:10px;color:var(--ts,#8f8fa8);">Pro Member</div>
+          </div>
+        </div>
+        <a href="settings.html" class="sh-nav-link" style="display:flex;align-items:center;gap:10px;padding:10px 14px;color:var(--tp,#f4f4fb);text-decoration:none;transition:all 0.15s;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings
+        </a>
+        <button class="sh-nav-link" onclick="handleSignOut()" style="display:flex;align-items:center;gap:10px;padding:10px 14px;width:100%;background:none;border:none;color:var(--tp,#f4f4fb);cursor:pointer;text-align:left;font-family:inherit;font-size:inherit;transition:all 0.15s;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </button>
+      `;
+    } else {
+      // LOGGED OUT: Show Login / Sign Up link ONLY
+      portal.innerHTML = `
+        <a href="login.html" class="sh-nav-link" style="display:flex;align-items:center;gap:10px;padding:10px 14px;color:var(--tp,#f4f4fb);text-decoration:none;transition:all 0.15s;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Login / Sign Up
+        </a>
+      `;
+    }
+  });
+}
 
-     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// Helper: Escape HTML to prevent XSS
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
 
-     Deno.serve(async (req) => {
-       const authHeader = req.headers.get('Authorization')
-       const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-         global: { headers: { Authorization: authHeader } }
-       })
+/* ============================================================
+   AUTH ACTIONS
+   ============================================================ */
 
-       // Verify the caller is a real signed-in user
-       const { data: { user }, error } = await userClient.auth.getUser()
-       if (error || !user) {
-         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
-       }
+// Global sign out handler
+window.handleSignOut = async function() {
+  try {
+    await window._supabase.auth.signOut();
+    // Redirect to home after sign out
+    window.location.href = 'index.html';
+  } catch (err) {
+    console.error('Sign out error:', err);
+    alert('Failed to sign out. Please try again.');
+  }
+};
 
-       // Now delete using the admin client (service role key is safe here)
-       const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-       const { error: delError } = await adminClient.auth.admin.deleteUser(user.id)
-       if (delError) {
-         return new Response(JSON.stringify({ error: delError.message }), { status: 500 })
-       }
+// Open auth modal (used by settings page when signed out)
+window.openAuthModal = function() {
+  window.location.href = 'login.html';
+};
 
-       return new Response(JSON.stringify({ success: true }), { status: 200 })
-     })
-
-   Deploy this to supabase/functions/delete-account/index.ts in your repo.
-   ─────────────────────────────────────────────────────────────────────────── */
+// Initialize auth on page load
+document.addEventListener('DOMContentLoaded', initAuth);

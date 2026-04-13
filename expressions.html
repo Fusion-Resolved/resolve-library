@@ -14,6 +14,7 @@
 
 <!-- Noding Shared Resources -->
 <link rel="stylesheet" href="noding-shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 <script src="noding-shared.js"></script>
 
@@ -495,7 +496,7 @@ header{display:flex!important;align-items:center;height:64px;padding:0 20px;posi
   </div>
   <div class="sh-sb-sec">
     <div class="sh-sb-lbl">Account</div>
-    <div id="sb-auth-group"></div>
+    <div id="sidebar-auth-portal"></div>
   </div>
 </div>
 <!-- WISHLIST MODAL -->
@@ -900,7 +901,7 @@ function shCloseSidebar(){
 
 // Auth
 function shRenderAuth(){
-  var el=document.getElementById('sb-auth-group');if(!el)return;
+  var el=document.getElementById('sidebar-auth-portal');if(!el)return;
   var u=null;try{u=JSON.parse(localStorage.getItem('rl-auth-user')||'null');}catch(e){}
   if(u){
     el.innerHTML='<div style="display:flex;align-items:center;gap:9px"><div class="sh-auth-avatar">'+(_shE((u.name||u.email||'U')[0]).toUpperCase())+'</div><div><div style="font-size:13px;font-weight:500;color:var(--text)">'+_shE(u.name||u.email)+'</div></div></div><button class="sh-auth-out" onclick="shSignOut()">Sign out</button>';

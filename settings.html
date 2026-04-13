@@ -327,7 +327,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* auth.js sidebar nav compat */
-#sb-auth-group{display:none;}
+#sidebar-auth-portal{display:none;}
 
 /* Status Bar Footer */
 .sh-status-bar{position:fixed;bottom:0;left:0;right:0;z-index:98;height:calc(32px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:var(--bg2);border-top:1px solid var(--bs);display:flex;align-items:center;justify-content:center;gap:24px;}
@@ -344,7 +344,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 <div class="ambient"><div class="ab a1"></div><div class="ab a2"></div></div>
 
 <!-- auth.js sidebar hook (hidden — no sidebar in this layout) -->
-<div id="sb-auth-group"></div>
+<div id="sidebar-auth-portal"></div>
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -390,7 +390,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   </div>
   <div class="sh-sb-sec">
     <div class="sh-sb-lbl">Account</div>
-    <div id="sb-auth-group"></div>
+    <div id="sidebar-auth-portal"></div>
   </div>
 </div>
 
@@ -437,7 +437,26 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span class="nav-lbl">Data & Export</span>
     </div>
-    <div class="nav-section-lbl" style="margin-top:auto;padding-top:16px;"></div>
+  <!-- Account Section in Left Nav -->
+  <div class="nav-section-lbl" style="margin-top:auto;padding-top:16px;">Account</div>
+
+  <!-- Auth State Display -->
+  <div id="leftnav-auth-state" style="padding:8px 10px;margin:0 6px 8px;border-radius:8px;background:var(--bg3);border:1px solid var(--bs);display:none;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div id="leftnav-avatar" style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--violet) 0%,var(--violet-dark) 100%);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:12px;font-weight:600;color:#fff;">?</div>
+      <div style="flex:1;min-width:0;">
+        <div id="leftnav-email" style="font-size:11px;font-weight:500;color:var(--tp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Not signed in</div>
+        <div style="font-size:9px;color:var(--ts);">Click to manage</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Prompt for Account Nav -->
+  <div id="leftnav-login-prompt" style="padding:12px;margin:0 6px 12px;border-radius:8px;background:var(--bg3);border:1px solid var(--bs);display:none;">
+    <div style="font-size:11px;color:var(--ts);margin-bottom:8px;text-align:center;">Sign in to manage account</div>
+    <a href="login.html" class="btn-sm violet" style="display:block;text-align:center;text-decoration:none;">Sign In</a>
+  </div>
+
     <div class="nav-item danger-nav" data-panel="danger" onclick="goPanel('danger',this)">
       <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       <span class="nav-lbl">Danger Zone</span>
@@ -1155,7 +1174,30 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       var user = session ? session.user : null;
       renderAccountPanel(user);
       wirePasswordResetBtn(user);
+      updateLeftnavAuthState(user);
     });
+  }
+
+  /* ── Update Left Nav Auth Display ── */
+  function updateLeftnavAuthState(user) {
+    const authStateBox = document.getElementById('leftnav-auth-state');
+    const loginPrompt = document.getElementById('leftnav-login-prompt');
+    const avatar = document.getElementById('leftnav-avatar');
+    const email = document.getElementById('leftnav-email');
+
+    if (!authStateBox || !loginPrompt) return;
+
+    if (user) {
+      // Show logged in state
+      authStateBox.style.display = 'block';
+      loginPrompt.style.display = 'none';
+      if (avatar) avatar.textContent = (user.email || 'U').charAt(0).toUpperCase();
+      if (email) email.textContent = user.email || 'Signed in';
+    } else {
+      // Show logged out state
+      authStateBox.style.display = 'none';
+      loginPrompt.style.display = 'block';
+    }
   }
 
 }());
