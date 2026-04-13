@@ -180,7 +180,28 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
   * { -webkit-tap-highlight-color: transparent; }
   input:focus, select:focus, textarea:focus { font-size: max(16px, 1em); }
   body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-  header { position: -webkit-sticky; position: sticky; }
+
+  /* ── Full-screen canvas layout (behind transparent header) ── */
+  .app {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    overflow: hidden;
+  }
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--ink);
+    margin: 0;
+    padding: 0;
+  }
 
   /* ── Ambient Blobs (handoff §3) ── */
   .ambient { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
@@ -371,7 +392,7 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
   .sh-btn-sec:hover { color: var(--text-primary); }
 
   /* ── App layout ── */
-  .app { display: flex; flex: 1; overflow: hidden; position: relative; z-index: 1; }
+  .app, .full-h { height: -webkit-fill-available; }
 
   /* ── Left toolbar — Noding glass ── */
   .toolbar-wrap { display: flex; flex-direction: row; flex-shrink: 0; position: relative; }
@@ -446,7 +467,6 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
 
   /* ── Canvas area ── */
   /* background: --ink per handoff §6 (graph canvas bg always #09090e) */
-  .canvas-wrap { flex: 1; position: relative; overflow: hidden; background: var(--ink); }
   #ng-canvas  { position: absolute; inset: 0; display: block; }
   #svg-layer  { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
   #svg-layer .conn { pointer-events: stroke; cursor: pointer; }
@@ -869,7 +889,6 @@ input:focus,select:focus,textarea:focus{font-size:max(16px,1em);}
 .sh-modal-bd,.modal-body-scroll,
 .sh-sidebar,[class*="overlay"],[class*="panel"]{-webkit-overflow-scrolling:touch;}
 body{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
-header{position:-webkit-sticky;position:sticky;}
 /* Full-height fix: avoids 100vh Safari toolbar issue */
 .app,.full-h{height:-webkit-fill-available;}
 /* Momentum scroll on all overflow containers */
