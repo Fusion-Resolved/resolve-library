@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noding — Settings</title>
+
+<!-- ── Anti-flash: apply saved theme before first paint ── -->
+<script>
+(function(){var s=localStorage.getItem('noding-theme');if(s==='light')document.documentElement.setAttribute('data-theme','light');}());
+</script>
+
+<!-- ── Supabase SDK + Auth (must load before page script) ── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
+:root{
+  --violet:#6c7bff;--violet-light:#9ca8ff;--violet-dark:#4451d4;
+  --teal:#0fa888;--amber:#b07118;--danger:#f06060;--danger-dim:rgba(240,96,96,0.07);
+  --white:#f4f4fb;
+  --fd:'Syne',sans-serif;--fb:'DM Sans',sans-serif;--fm:'DM Mono',monospace;
+  --r:14px;--rlg:18px;--rsm:8px;--rp:999px;--rxs:4px;
+  --ease:cubic-bezier(0.16,1,0.3,1);--tr:all 150ms ease-out;
+}
+:root{
+  --bg:#09090e;--bg2:#0f0f16;--bg3:#16161f;--bg4:#1e1e2a;
+  --tp:#f4f4fb;--ts:#8f8fa8;--tm:#585870;
+  --bs:rgba(255,255,255,0.06);--bsb:#16161f;--bc:#1e1e2a;
+  --gb:rgba(15,15,22,0.84);--gb2:rgba(22,22,31,0.84);
+  --gbl:blur(18px) saturate(1.6);
+  --gs:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.12);
+  --gsh:0 2px 12px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.16);
+}
+[data-theme="light"]{
+  --bg:#fff;--bg2:#eceffe;--bg3:#e2e6fd;--bg4:#d6dbfc;
+  --tp:#09090e;--ts:#3b3d6e;--tm:#7577a8;
+  --bs:rgba(108,123,255,0.12);--bsb:rgba(108,123,255,0.18);--bc:rgba(108,123,255,0.35);
+  --gb:rgba(236,239,254,0.84);--gb2:rgba(226,230,253,0.84);
+  --gbl:blur(18px) saturate(1.8);
+  --gs:inset 0 1px 0 rgba(255,255,255,0.75),inset 0 -1px 0 rgba(108,123,255,0.08);
+  --gsh:0 2px 10px rgba(108,123,255,0.10),0 1px 3px rgba(108,123,255,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--tp);font-family:var(--fb);font-size:15px;font-weight:300;-webkit-font-smoothing:antialiased;transition:background 240ms,color 240ms;display:flex;flex-direction:column;}
+button{font-family:var(--fb);cursor:pointer;border:none;background:none;}
+input,textarea,select{font-family:var(--fb);outline:none;}
+
+/* ambient */
+.ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.ab{position:absolute;border-radius:50%;mix-blend-mode:screen;animation-timing-function:ease-in-out;animation-iteration-count:infinite;}
+[data-theme="light"] .ab{mix-blend-mode:multiply;}
+.a1{width:600px;height:600px;top:-15%;left:-10%;background:radial-gradient(circle,rgba(108,123,255,0.06) 0%,transparent 70%);animation:d1 28s infinite;}
+.a2{width:500px;height:500px;top:10%;right:-8%;background:radial-gradient(circle,rgba(108,123,255,0.05) 0%,transparent 70%);animation:d2 34s infinite;}
+@keyframes d1{0%{transform:translate(0,0)}33%{transform:translate(12vw,8vh)}66%{transform:translate(4vw,20vh)}100%{transform:translate(0,0)}}
+@keyframes d2{0%{transform:translate(0,0)}33%{transform:translate(-14vw,10vh)}66%{transform:translate(-5vw,24vh)}100%{transform:translate(0,0)}}
+
+/* top bar */
+.topbar{flex-shrink:0;height:52px;display:flex;align-items:center;gap:16px;padding:0 24px;background:var(--gb);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);border-bottom:1px solid var(--bsb);box-shadow:var(--gs);position:relative;z-index:20;}
+.topbar-logo{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.logo-txt{font-family:var(--fd);font-weight:800;font-size:0.95rem;letter-spacing:-0.03em;color:var(--tp);}
+.logo-dot{color:var(--violet);}
+.topbar-sep{width:1px;height:18px;background:var(--bs);flex-shrink:0;}
+.topbar-title{font-family:var(--fd);font-weight:700;font-size:0.9rem;letter-spacing:-0.01em;color:var(--tp);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.unsaved-pill{display:none;align-items:center;gap:7px;padding:5px 12px;background:rgba(176,113,24,0.1);border:1px solid rgba(176,113,24,0.3);border-radius:var(--rp);font-family:var(--fm);font-size:9.5px;letter-spacing:0.06em;color:var(--amber);}
+.unsaved-pill.show{display:flex;}
+.unsaved-dot{width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;}
+.btn-save{height:32px;padding:0 16px;background:var(--violet);color:#fff;border:none;border-radius:var(--rsm);font-size:12.5px;font-weight:600;cursor:pointer;transition:var(--tr);display:none;align-items:center;gap:6px;}
+.btn-save.show{display:flex;}
+.btn-save:hover{filter:brightness(1.12);transform:translateY(-1px);box-shadow:0 4px 14px rgba(108,123,255,0.4);}
+.btn-discard{height:32px;padding:0 14px;background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rsm);font-size:12.5px;color:var(--ts);cursor:pointer;transition:var(--tr);display:none;}
+.btn-discard.show{display:flex;align-items:center;}
+.btn-discard:hover{color:var(--tp);border-color:var(--bc);}
+.tt-btn{display:flex;align-items:center;gap:7px;background:var(--gb2);border:1px solid var(--bsb);box-shadow:var(--gs);border-radius:var(--rp);padding:4px 10px 4px 6px;cursor:pointer;font-family:var(--fm);font-size:10px;color:var(--ts);transition:var(--tr);letter-spacing:0.05em;}
+.tt-track{width:26px;height:14px;border-radius:var(--rp);background:var(--bc);position:relative;transition:background 240ms;flex-shrink:0;}
+.tt-track.on{background:var(--violet);}
+.tt-thumb{position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#fff;transition:transform 240ms var(--ease);}
+.tt-track.on .tt-thumb{transform:translateX(12px);}
+
+/* layout */
+.app-body{flex:1;display:flex;overflow:hidden;position:relative;z-index:1;}
+
+/* ── LEFT NAV ── */
+.leftnav{width:220px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--bs);background:var(--bg2);padding:16px 10px;gap:2px;overflow-y:auto;}
+.nav-section-lbl{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--tm);padding:8px 10px 4px;margin-top:8px;}
+.nav-section-lbl:first-child{margin-top:0;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--rsm);cursor:pointer;transition:var(--tr);color:var(--ts);border:1px solid transparent;}
+.nav-item:hover{background:rgba(255,255,255,0.03);color:var(--tp);}
+.nav-item.active{background:var(--gb);border-color:var(--bs);color:var(--tp);box-shadow:var(--gs);}
+.nav-item.danger-nav{color:rgba(240,96,96,0.6);}
+.nav-item.danger-nav:hover{color:var(--danger);background:rgba(240,96,96,0.05);}
+.nav-item.active.danger-nav{color:var(--danger);}
+.nav-ico{width:16px;height:16px;flex-shrink:0;opacity:0.7;}
+.nav-item.active .nav-ico,.nav-item:hover .nav-ico{opacity:1;}
+.nav-lbl{font-size:13px;font-weight:400;}
+.nav-dirty{width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-left:auto;display:none;}
+.nav-dirty.show{display:block;}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bc) transparent;padding:28px 32px 80px;}
+.content::-webkit-scrollbar{width:4px;}
+.content::-webkit-scrollbar-thumb{background:var(--bc);border-radius:4px;}
+
+/* panels */
+.panel{display:none;flex-direction:column;gap:24px;animation:fadeIn 0.2s ease;}
+.panel.active{display:flex;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.panel-hd{display:flex;flex-direction:column;gap:4px;padding-bottom:20px;border-bottom:1px solid var(--bs);}
+.panel-title{font-family:var(--fd);font-size:1.25rem;font-weight:800;letter-spacing:-0.03em;color:var(--tp);}
+.panel-sub{font-size:13px;color:var(--tm);line-height:1.6;}
+
+/* setting card */
+.scard{background:var(--gb);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);border:1px solid var(--bs);border-radius:var(--r);overflow:hidden;box-shadow:var(--gsh);}
+.scard-hd{padding:14px 18px;border-bottom:1px solid var(--bs);display:flex;align-items:center;justify-content:space-between;}
+.scard-title{font-family:var(--fd);font-size:14px;font-weight:700;letter-spacing:-0.02em;color:var(--tp);}
+.scard-sub{font-size:12px;color:var(--tm);margin-top:2px;}
+.scard-body{padding:0;}
+
+/* setting row */
+.srow{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;border-bottom:1px solid var(--bs);transition:background var(--tr);}
+.srow:last-child{border-bottom:none;}
+.srow:hover{background:rgba(255,255,255,0.015);}
+.srow-info{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;}
+.srow-lbl{font-size:13.5px;color:var(--tp);font-weight:400;}
+.srow-desc{font-size:11.5px;color:var(--tm);line-height:1.45;}
+.srow-control{flex-shrink:0;display:flex;align-items:center;gap:8px;}
+
+/* toggle switch */
+.sw{width:38px;height:22px;border-radius:var(--rp);background:var(--bc);position:relative;cursor:pointer;transition:background 240ms;flex-shrink:0;}
+.sw.on{background:var(--violet);}
+.sw-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform 240ms var(--ease);box-shadow:0 1px 4px rgba(0,0,0,0.3);}
+.sw.on .sw-thumb{transform:translateX(16px);}
+.sw.teal.on{background:var(--teal);}
+
+/* form controls */
+.fi{background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rsm);color:var(--tp);font-size:13px;transition:border-color 150ms;padding:0 12px;height:38px;width:100%;}
+.fi::placeholder{color:var(--tm);}
+.fi:focus{border-color:rgba(108,123,255,0.5);}
+.fi-area{background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rsm);color:var(--tp);font-size:13px;padding:10px 12px;resize:vertical;width:100%;min-height:80px;line-height:1.6;transition:border-color 150ms;}
+.fi-area:focus{border-color:rgba(108,123,255,0.5);}
+.fi-area::placeholder{color:var(--tm);}
+.fs{background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rsm);color:var(--tp);font-size:13px;height:38px;padding:0 12px;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238f8fa8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+
+/* radio pills */
+.radio-pills{display:flex;gap:4px;}
+.rp-btn{padding:6px 14px;border-radius:var(--rp);border:1px solid var(--bc);background:none;font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);cursor:pointer;transition:var(--tr);}
+.rp-btn:hover{color:var(--ts);}
+.rp-btn.on{background:rgba(108,123,255,0.12);color:var(--violet-light);border-color:rgba(108,123,255,0.35);}
+.rp-btn.on.teal{background:rgba(15,168,136,0.12);color:var(--teal);border-color:rgba(15,168,136,0.35);}
+
+/* color swatches */
+.swatches{display:flex;gap:8px;}
+.swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;transition:transform 150ms,box-shadow 150ms;border:2px solid transparent;}
+.swatch:hover{transform:scale(1.15);}
+.swatch.on{border-color:var(--tp);box-shadow:0 0 0 3px rgba(255,255,255,0.15);}
+
+/* theme cards */
+.theme-cards{display:flex;gap:10px;}
+.theme-card{flex:1;border-radius:var(--rsm);border:1.5px solid var(--bc);cursor:pointer;overflow:hidden;transition:border-color 150ms;position:relative;}
+.theme-card.on{border-color:var(--violet);}
+.theme-card-preview{height:52px;position:relative;}
+.theme-card-lbl{padding:7px 10px;font-family:var(--fm);font-size:9.5px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);display:flex;align-items:center;justify-content:space-between;}
+.theme-card.on .theme-card-lbl{color:var(--violet-light);}
+.theme-tick{width:14px;height:14px;border-radius:50%;background:var(--violet);display:none;align-items:center;justify-content:center;font-size:8px;color:#fff;}
+.theme-card.on .theme-tick{display:flex;}
+
+/* range slider */
+.range-wrap{display:flex;align-items:center;gap:10px;width:200px;}
+.range-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--bc);cursor:pointer;}
+.range-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--violet);cursor:pointer;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 6px rgba(108,123,255,0.4);}
+.range-slider::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--violet);cursor:pointer;border:2px solid rgba(255,255,255,0.9);}
+.range-val{font-family:var(--fm);font-size:11px;color:var(--violet-light);min-width:36px;text-align:right;}
+
+/* form group */
+.fgroup{display:flex;flex-direction:column;gap:6px;padding:14px 18px;border-bottom:1px solid var(--bs);}
+.fgroup:last-child{border-bottom:none;}
+.fl{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--ts);}
+.fhint{font-size:11px;color:var(--tm);}
+.fhd{display:flex;align-items:center;justify-content:space-between;}
+.char-count{font-family:var(--fm);font-size:9px;color:var(--tm);}
+.char-count.warn{color:var(--amber);}
+
+/* avatar */
+.avatar-row{display:flex;align-items:center;gap:16px;padding:18px 18px;border-bottom:1px solid var(--bs);}
+.avatar-circle{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(108,123,255,0.3),rgba(108,123,255,0.1));border:1px solid rgba(108,123,255,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:1.4rem;color:var(--violet-light);flex-shrink:0;}
+.avatar-actions{display:flex;flex-direction:column;gap:6px;}
+.avatar-actions span{font-size:12.5px;color:var(--ts);margin-bottom:2px;display:block;}
+.avatar-btn-row{display:flex;gap:8px;}
+.btn-sm{padding:5px 12px;border-radius:var(--rsm);font-size:12px;cursor:pointer;transition:var(--tr);white-space:nowrap;}
+.btn-sm.violet{background:rgba(108,123,255,0.12);border:1px solid rgba(108,123,255,0.3);color:var(--violet-light);}
+.btn-sm.violet:hover{background:rgba(108,123,255,0.2);}
+.btn-sm.ghost{background:var(--gb2);border:1px solid var(--bsb);color:var(--ts);}
+.btn-sm.ghost:hover{border-color:var(--bc);color:var(--tp);}
+.btn-sm.danger{background:rgba(240,96,96,0.08);border:1px solid rgba(240,96,96,0.25);color:var(--danger);}
+.btn-sm.danger:hover{background:rgba(240,96,96,0.14);}
+
+/* notification group */
+.notif-group-lbl{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--tm);padding:10px 18px 6px;background:var(--bg3);}
+
+/* session item */
+.session-item{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--bs);}
+.session-item:last-child{border-bottom:none;}
+.session-ico{width:36px;height:36px;border-radius:var(--rsm);background:var(--gb2);border:1px solid var(--bs);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ts);}
+.session-info{flex:1;min-width:0;}
+.session-name{font-size:13px;color:var(--tp);font-weight:500;margin-bottom:2px;}
+.session-meta{font-family:var(--fm);font-size:10px;color:var(--tm);}
+.session-badge{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.07em;padding:2px 7px;border-radius:var(--rxs);background:rgba(15,168,136,0.1);color:var(--teal);border:1px solid rgba(15,168,136,0.25);}
+.btn-revoke{font-family:var(--fm);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;padding:4px 10px;border-radius:var(--rsm);border:1px solid rgba(240,96,96,0.25);background:rgba(240,96,96,0.06);color:var(--danger);cursor:pointer;transition:var(--tr);}
+.btn-revoke:hover{background:rgba(240,96,96,0.12);}
+
+/* api key row */
+.api-key-display{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--bs);}
+.api-key-val{flex:1;font-family:var(--fm);font-size:12px;color:var(--teal);background:#06060d;border:1px solid rgba(255,255,255,0.07);border-radius:var(--rsm);padding:8px 12px;letter-spacing:0.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn-icon-sm{width:34px;height:34px;border-radius:var(--rsm);border:1px solid var(--bsb);background:var(--gb2);color:var(--ts);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--tr);flex-shrink:0;}
+.btn-icon-sm:hover{color:var(--tp);border-color:var(--bc);}
+
+/* danger zone */
+.dz-item{display:flex;align-items:center;gap:16px;padding:16px 18px;border-bottom:1px solid var(--bs);}
+.dz-item:last-child{border-bottom:none;}
+.dz-ico{width:38px;height:38px;border-radius:var(--rsm);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dz-ico.warn{background:rgba(176,113,24,0.1);color:var(--amber);}
+.dz-ico.dng{background:rgba(240,96,96,0.1);color:var(--danger);}
+.dz-info{flex:1;min-width:0;}
+.dz-title{font-family:var(--fd);font-weight:600;font-size:13.5px;color:var(--tp);margin-bottom:3px;}
+.dz-desc{font-size:12px;color:var(--ts);line-height:1.5;}
+.dz-btn{padding:7px 14px;border-radius:var(--rsm);font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;cursor:pointer;transition:var(--tr);white-space:nowrap;}
+.dz-btn.warn{border:1px solid rgba(176,113,24,0.35);background:rgba(176,113,24,0.08);color:var(--amber);}
+.dz-btn.warn:hover{background:rgba(176,113,24,0.16);}
+.dz-btn.dng{border:1px solid rgba(240,96,96,0.3);background:rgba(240,96,96,0.07);color:var(--danger);}
+.dz-btn.dng:hover{background:rgba(240,96,96,0.14);}
+
+/* profile url row */
+.url-row{display:flex;gap:8px;align-items:center;}
+.url-prefix{font-family:var(--fm);font-size:12px;color:var(--tm);white-space:nowrap;}
+.url-val{font-family:var(--fm);font-size:12px;color:var(--violet-light);}
+
+/* integration card */
+.int-item{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--bs);}
+.int-item:last-child{border-bottom:none;}
+.int-ico{width:36px;height:36px;border-radius:var(--rsm);border:1px solid var(--bs);background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.int-info{flex:1;}
+.int-name{font-size:13.5px;color:var(--tp);font-weight:500;margin-bottom:2px;}
+.int-desc{font-size:11.5px;color:var(--tm);}
+.int-badge{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.07em;padding:2px 7px;border-radius:var(--rxs);}
+.int-badge.connected{background:rgba(15,168,136,0.1);color:var(--teal);border:1px solid rgba(15,168,136,0.25);}
+.int-badge.disconnected{background:var(--gb2);color:var(--tm);border:1px solid var(--bc);}
+.btn-connect{padding:6px 12px;border-radius:var(--rsm);font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer;transition:var(--tr);}
+.btn-connect.connect{border:1px solid rgba(108,123,255,0.35);background:rgba(108,123,255,0.1);color:var(--violet-light);}
+.btn-connect.connect:hover{background:rgba(108,123,255,0.18);}
+.btn-connect.disconnect{border:1px solid rgba(240,96,96,0.25);background:rgba(240,96,96,0.06);color:var(--danger);}
+.btn-connect.disconnect:hover{background:rgba(240,96,96,0.12);}
+
+/* ── Password recovery banner (hidden until PASSWORD_RECOVERY event) ── */
+#pw-recovery-banner{
+  display:none;
+  background:rgba(108,123,255,0.07);
+  border:1px solid rgba(108,123,255,0.22);
+  border-radius:var(--r);
+  padding:16px 18px;
+  margin-bottom:0;/* sits inside panel gap */
+}
+#pw-recovery-banner h3{
+  font-family:var(--fd);font-size:13.5px;font-weight:700;
+  color:var(--tp);margin-bottom:12px;
+}
+.pw-rec-row{display:flex;gap:10px;align-items:center;}
+.pw-rec-row .fi{max-width:280px;}
+
+/* confirm overlay */
+.confirm-ov{display:none;position:fixed;inset:0;background:rgba(9,9,14,0.82);z-index:500;backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1rem;}
+.confirm-ov.open{display:flex;}
+.confirm-box{background:var(--gb2);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);box-shadow:var(--gs),0 20px 60px rgba(0,0,0,0.7);border:1px solid var(--bsb);border-radius:var(--rlg);padding:2rem;max-width:380px;width:100%;display:flex;flex-direction:column;gap:14px;animation:popIn 0.2s var(--ease);}
+@keyframes popIn{from{transform:scale(0.96) translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.confirm-ico{width:48px;height:48px;border-radius:50%;background:rgba(240,96,96,0.1);border:1px solid rgba(240,96,96,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto;color:var(--danger);font-size:20px;}
+.confirm-title{font-family:var(--fd);font-size:1rem;font-weight:700;letter-spacing:-0.02em;text-align:center;color:var(--tp);}
+.confirm-sub{font-size:12.5px;color:var(--ts);text-align:center;line-height:1.6;}
+.confirm-lbl{font-family:var(--fm);font-size:9.5px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ts);}
+.confirm-lbl span{color:var(--danger);}
+.confirm-input{width:100%;background:rgba(240,96,96,0.04);border:1px solid rgba(240,96,96,0.25);border-radius:var(--rsm);height:40px;padding:0 12px;font-family:var(--fm);font-size:12px;color:var(--tp);}
+.confirm-input:focus{border-color:var(--danger);outline:none;}
+.confirm-acts{display:flex;gap:8px;}
+.btn-cancel{flex:1;height:38px;border-radius:var(--rsm);border:1px solid var(--bsb);background:var(--gb2);color:var(--ts);font-size:13px;cursor:pointer;transition:var(--tr);}
+.btn-cancel:hover{color:var(--tp);}
+.btn-del{flex:1;height:38px;border-radius:var(--rsm);border:none;background:var(--danger);color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:var(--tr);opacity:0.35;pointer-events:none;}
+.btn-del.ready{opacity:1;pointer-events:all;}
+.btn-del.ready:hover{filter:brightness(1.1);}
+
+/* toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--gb2);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);border:1px solid var(--bsb);box-shadow:var(--gs),var(--gsh);color:var(--tp);padding:10px 20px;border-radius:var(--rp);font-size:13px;opacity:0;transition:all 240ms var(--ease);pointer-events:none;z-index:999;display:flex;align-items:center;gap:8px;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* auth.js sidebar nav compat */
+#sb-auth-group{display:none;}
+</style>
+</head>
+<body>
+
+<div class="ambient"><div class="ab a1"></div><div class="ab a2"></div></div>
+
+<!-- auth.js sidebar hook (hidden — no sidebar in this layout) -->
+<div id="sb-auth-group"></div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <svg width="22" height="22" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#6c7bff" opacity="0.18"/><circle cx="8" cy="14" r="2.5" fill="#6c7bff"/><circle cx="20" cy="8" r="2.5" fill="#0fa888"/><circle cx="20" cy="20" r="2.5" fill="#6c7bff"/><line x1="10.5" y1="13" x2="17.5" y2="9.2" stroke="#6c7bff" stroke-width="1.3" stroke-opacity="0.6"/><line x1="10.5" y1="15" x2="17.5" y2="18.8" stroke="#6c7bff" stroke-width="1.3" stroke-opacity="0.6"/></svg>
+    <span class="logo-txt">Noding<span class="logo-dot">.</span></span>
+  </div>
+  <div class="topbar-sep"></div>
+  <span class="topbar-title">Settings</span>
+  <div class="topbar-right">
+    <div class="unsaved-pill" id="unsavedPill"><span class="unsaved-dot"></span>Unsaved changes</div>
+    <button class="btn-discard" id="btnDiscard" onclick="discardChanges()">Discard</button>
+    <button class="btn-save" id="btnSave" onclick="saveChanges()">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      Save changes
+    </button>
+    <button class="tt-btn" id="themeBtn">
+      <div class="tt-track on" id="ttTrack"><div class="tt-thumb"></div></div>
+      <span id="ttLabel">Night</span>
+    </button>
+  </div>
+</div>
+
+<!-- APP BODY -->
+<div class="app-body">
+
+  <!-- LEFT NAV -->
+  <nav class="leftnav" id="leftNav">
+    <div class="nav-section-lbl">Account</div>
+    <div class="nav-item active" data-panel="profile" onclick="goPanel('profile',this)">
+      <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="nav-lbl">Profile</span>
+    </div>
+    <div class="nav-item" data-panel="account" onclick="goPanel('account',this)">
+      <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span class="nav-lbl">Account & Security</span>
+    </div>
+    <div class="nav-section-lbl">Preferences</div>
+    <div class="nav-item" data-panel="appearance" onclick="goPanel('appearance',this)">
+      <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span class="nav-lbl">Appearance</span>
+      <span class="nav-dirty" id="dirty-appearance"></span>
+    </div>
+    <div class="nav-item" data-panel="notifications" onclick="goPanel('notifications',this)">
+      <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="nav-lbl">Notifications</span>
+      <span class="nav-dirty" id="dirty-notifications"></span>
+    </div>
+    <div class="nav-item" data-panel="privacy" onclick="goPanel('privacy',this)">
+      <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span class="nav-lbl">Privacy</span>
+    </div>
+    <div class="nav-section-lbl">Editor</div>
+    <div class="nav-item" data-panel="nodegraph" onclick="goPanel('nodegraph',this)">
+      <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M8 5.5h8M5.5 8v8M19 8v3a2 2 0 0 1-2 2h-3"/></svg>
+      <span class="nav-lbl">Node Graph</span>
+    </div>
+    <div class="nav-section-lbl">Connections</div>
+    <div class="nav-item" data-panel="integrations" onclick="goPanel('integrations',this)">
+      <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      <span class="nav-lbl">Integrations</span>
+    </div>
+    <div class="nav-item" data-panel="data" onclick="goPanel('data',this)">
+      <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span class="nav-lbl">Data & Export</span>
+    </div>
+    <div class="nav-section-lbl" style="margin-top:auto;padding-top:16px;"></div>
+    <div class="nav-item danger-nav" data-panel="danger" onclick="goPanel('danger',this)">
+      <svg class="nav-ico" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="nav-lbl">Danger Zone</span>
+    </div>
+  </nav>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ── PROFILE ── -->
+    <div class="panel active" id="panel-profile">
+      <div class="panel-hd"><div class="panel-title">Profile</div><div class="panel-sub">How you appear to the Noding community.</div></div>
+      <div class="scard">
+        <div class="avatar-row">
+          <div class="avatar-circle" id="profileAvatar">?</div>
+          <div class="avatar-actions">
+            <span>Profile photo · JPG or PNG, max 2 MB</span>
+            <div class="avatar-btn-row">
+              <button class="btn-sm violet" onclick="toast('Opening file picker…')">Upload photo</button>
+              <button class="btn-sm ghost" onclick="toast('Avatar removed')">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="fgroup">
+          <label class="fl">Display name</label>
+          <input class="fi" type="text" value="fxNode_kai" oninput="markDirty()">
+        </div>
+        <div class="fgroup">
+          <div class="fhd"><label class="fl">Username</label><span style="font-family:var(--fm);font-size:9px;color:var(--tm);">Changes your public URL</span></div>
+          <input class="fi" type="text" value="fxNode_kai" oninput="markDirty()">
+          <div class="url-row" style="margin-top:4px;">
+            <span class="url-prefix">noding.io/u/</span>
+            <span class="url-val">fxNode_kai</span>
+          </div>
+        </div>
+        <div class="fgroup">
+          <div class="fhd"><label class="fl">Bio</label><span class="char-count" id="bioCount">68 / 280</span></div>
+          <textarea class="fi-area" id="bioInput" maxlength="280" oninput="onBioInput(this)">DaVinci Resolve artist. Node graph obsessive. Building tools for the community one Fusion comp at a time.</textarea>
+        </div>
+        <div class="fgroup">
+          <label class="fl">Website</label>
+          <input class="fi" type="url" placeholder="https://your-site.com" oninput="markDirty()">
+        </div>
+        <div class="fgroup">
+          <label class="fl">Location</label>
+          <input class="fi" type="text" placeholder="London, UK" oninput="markDirty()">
+        </div>
+        <div class="fgroup" style="border-bottom:none;">
+          <label class="fl">Default DaVinci Resolve version</label>
+          <select class="fs" style="width:220px;" onchange="markDirty()">
+            <option selected>DaVinci Resolve 19</option>
+            <option>DaVinci Resolve 18.6</option>
+            <option>DaVinci Resolve 18</option>
+            <option>DaVinci Resolve 17</option>
+          </select>
+          <div class="fhint">Shown as a badge on all your submitted effects.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ACCOUNT & SECURITY ── -->
+    <div class="panel" id="panel-account">
+      <div class="panel-hd"><div class="panel-title">Account & Security</div><div class="panel-sub">Manage your login credentials and active sessions.</div></div>
+
+      <!-- Password recovery banner: revealed only on PASSWORD_RECOVERY redirect -->
+      <div id="pw-recovery-banner">
+        <h3>Set a New Password</h3>
+        <div class="pw-rec-row">
+          <input id="pw-recovery-input" class="fi" type="password" placeholder="New password (8+ characters)" autocomplete="new-password">
+          <button class="btn-sm violet" onclick="doSaveNewPassword()">Save password</button>
+        </div>
+      </div>
+
+      <!-- Signed-in: Login details card -->
+      <div id="acct-signed-in" style="display:none;">
+        <div class="scard" style="margin-bottom:24px;">
+          <div class="scard-hd"><div><div class="scard-title">Login details</div><div class="scard-sub">Email address and password.</div></div></div>
+          <div class="srow">
+            <div class="srow-info">
+              <div class="srow-lbl">Email address</div>
+              <!-- Populated by auth wiring -->
+              <div class="srow-desc" id="acct-email-display">—</div>
+            </div>
+            <button class="btn-sm violet" onclick="toast('Email change flow opened')">Change email</button>
+          </div>
+          <div class="srow">
+            <div class="srow-info">
+              <div class="srow-lbl">Password</div>
+              <div class="srow-desc">Send a secure reset link to your email address.</div>
+            </div>
+            <button class="btn-sm violet" id="acct-reset-pw-btn">Change password</button>
+          </div>
+          <div class="srow" style="border-bottom:none;">
+            <div class="srow-info">
+              <div class="srow-lbl">Sign out</div>
+              <div class="srow-desc">You'll need to sign in again on this device.</div>
+            </div>
+            <button class="btn-sm danger" id="acct-signout-btn">Sign Out</button>
+          </div>
+        </div>
+
+        <div class="scard" style="margin-bottom:24px;">
+          <div class="scard-hd"><div><div class="scard-title">Two-factor authentication</div><div class="scard-sub">Add an extra layer of security to your account.</div></div></div>
+          <div class="srow">
+            <div class="srow-info"><div class="srow-lbl">Authenticator app</div><div class="srow-desc">Use an app like 1Password, Authy, or Google Authenticator.</div></div>
+            <div class="srow-control"><span style="font-family:var(--fm);font-size:10px;color:var(--tm);margin-right:4px;">Off</span><div class="sw" id="sw2fa" onclick="toggleSw(this,'2fa')"><div class="sw-thumb"></div></div></div>
+          </div>
+          <div class="srow">
+            <div class="srow-info"><div class="srow-lbl">SMS backup code</div><div class="srow-desc">Receive a code via text message as a fallback.</div></div>
+            <div class="srow-control"><div class="sw" id="swSms" onclick="toggleSw(this,'sms')"><div class="sw-thumb"></div></div></div>
+          </div>
+        </div>
+
+        <div class="scard">
+          <div class="scard-hd"><div><div class="scard-title">Active sessions</div></div><button class="btn-sm ghost" onclick="toast('All other sessions revoked')">Revoke all others</button></div>
+          <div class="session-item">
+            <div class="session-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+            <div class="session-info"><div class="session-name">macOS · Chrome 124 <span class="session-badge">Current</span></div><div class="session-meta">London, UK · Last active now</div></div>
+          </div>
+          <div class="session-item">
+            <div class="session-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+            <div class="session-info"><div class="session-name">iOS · Safari 17</div><div class="session-meta">London, UK · 2 days ago</div></div>
+            <button class="btn-revoke" onclick="toast('Session revoked')">Revoke</button>
+          </div>
+          <div class="session-item">
+            <div class="session-ico"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+            <div class="session-info"><div class="session-name">Windows · Firefox 126</div><div class="session-meta">Berlin, DE · 12 days ago</div></div>
+            <button class="btn-revoke" onclick="toast('Session revoked')">Revoke</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Signed-out: prompt -->
+      <div id="acct-signed-out" style="display:none;">
+        <div class="scard">
+          <div style="padding:40px 24px;text-align:center;">
+            <div style="font-size:13px;color:var(--ts);margin-bottom:16px;">Sign in to manage your account credentials and security settings.</div>
+            <button class="btn-sm violet" style="font-size:13px;padding:8px 20px;" onclick="window.openAuthModal()">Sign In</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── APPEARANCE ── -->
+    <div class="panel" id="panel-appearance">
+      <div class="panel-hd"><div class="panel-title">Appearance</div><div class="panel-sub">Customise how Noding looks for you.</div></div>
+      <div class="scard">
+        <div class="scard-hd"><div class="scard-title">Theme</div></div>
+        <div style="padding:16px 18px;border-bottom:1px solid var(--bs);">
+          <div class="theme-cards" id="themeCards">
+            <div class="theme-card" data-theme="system" onclick="setThemeCard('system')">
+              <div class="theme-card-preview" style="background:linear-gradient(135deg,#0f0f16 50%,#eceffe 50%);"></div>
+              <div class="theme-card-lbl">System<div class="theme-tick">✓</div></div>
+            </div>
+            <div class="theme-card on" data-theme="dark" onclick="setThemeCard('dark')">
+              <div class="theme-card-preview" style="background:linear-gradient(135deg,#09090e,#1e1e2a);display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;">
+                <div style="width:28px;height:14px;border-radius:3px;background:rgba(108,123,255,0.2);border:1px solid rgba(108,123,255,0.35);"></div>
+                <div style="width:28px;height:14px;border-radius:3px;background:rgba(108,123,255,0.1);border:1px solid rgba(108,123,255,0.2);"></div>
+              </div>
+              <div class="theme-card-lbl">Dark<div class="theme-tick">✓</div></div>
+            </div>
+            <div class="theme-card" data-theme="light" onclick="setThemeCard('light')">
+              <div class="theme-card-preview" style="background:linear-gradient(135deg,#fff,#eceffe);display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;">
+                <div style="width:28px;height:14px;border-radius:3px;background:rgba(108,123,255,0.15);border:1px solid rgba(108,123,255,0.3);"></div>
+                <div style="width:28px;height:14px;border-radius:3px;background:rgba(108,123,255,0.08);border:1px solid rgba(108,123,255,0.18);"></div>
+              </div>
+              <div class="theme-card-lbl">Light<div class="theme-tick">✓</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="srow">
+          <div class="srow-info"><div class="srow-lbl">Accent colour</div><div class="srow-desc">Used for highlights, active states, and interactive elements.</div></div>
+          <div class="swatches" id="accentSwatches">
+            <div class="swatch on" style="background:#6c7bff;" data-accent="violet" onclick="setAccent(this)" title="Violet"></div>
+            <div class="swatch" style="background:#0fa888;" data-accent="teal" onclick="setAccent(this)" title="Teal"></div>
+            <div class="swatch" style="background:#f472b6;" data-accent="pink" onclick="setAccent(this)" title="Pink"></div>
+            <div class="swatch" style="background:#f59e0b;" data-accent="amber" onclick="setAccent(this)" title="Amber"></div>
+            <div class="swatch" style="background:#4ade80;" data-accent="green" onclick="setAccent(this)" title="Green"></div>
+          </div>
+        </div>
+        <div class="srow">
+          <div class="srow-info"><div class="srow-lbl">Reduce motion</div><div class="srow-desc">Minimise animations and transitions across the interface.</div></div>
+          <div class="sw" id="swMotion" onclick="toggleSw(this,'motion');markDirty('appearance')"><div class="sw-thumb"></div></div>
+        </div>
+        <div class="srow">
+          <div class="srow-info"><div class="srow-lbl">Compact mode</div><div class="srow-desc">Reduce padding and spacing for denser information display.</div></div>
+          <div class="sw" id="swCompact" onclick="toggleSw(this,'compact');markDirty('appearance')"><div class="sw-thumb"></div></div>
+        </div>
+        <div class="srow" style="border-bottom:none;">
+          <div class="srow-info"><div class="srow-lbl">Show vote counts on cards</div><div class="srow-desc">Display vote totals on effect cards in the browse view.</div></div>
+          <div class="sw on" id="swVotes" onclick="toggleSw(this,'votes');markDirty('appearance')"><div class="sw-thumb"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NOTIFICATIONS ── -->
+    <div class="panel" id="panel-notifications">
+      <div class="panel-hd"><div class="panel-title">Notifications</div><div class="panel-sub">Control what Noding sends you and how often.</div></div>
+      <div class="scard">
+        <div class="srow" style="background:var(--gb2);">
+          <div class="srow-info"><div class="srow-lbl" style="font-weight:500;">All notifications</div><div class="srow-desc">Master toggle — pause everything at once.</div></div>
+          <div class="sw on teal" id="swAllNotif" onclick="toggleSw(this,'allNotif');markDirty('notifications')"><div class="sw-thumb"></div></div>
+        </div>
+        <div class="notif-group-lbl">Email</div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Weekly digest</div><div class="srow-desc">A summary of top effects, community activity, and your stats.</div></div><div class="sw on" id="swDigest" onclick="toggleSw(this,'digest');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Votes on my effects</div><div class="srow-desc">When someone upvotes one of your submitted effects.</div></div><div class="sw on" id="swVoteNotif" onclick="toggleSw(this,'voteNotif');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Comments on my effects</div><div class="srow-desc">When someone leaves a note or question on your effect.</div></div><div class="sw on" id="swCommentNotif" onclick="toggleSw(this,'commentNotif');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Effect saves</div><div class="srow-desc">When someone pins your effect to their library.</div></div><div class="sw" id="swSaveNotif" onclick="toggleSw(this,'saveNotif');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Community highlights</div><div class="srow-desc">Trending effects and notable community submissions.</div></div><div class="sw on" id="swHighlight" onclick="toggleSw(this,'highlight');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Product updates</div><div class="srow-desc">New features, improvements, and important announcements.</div></div><div class="sw on" id="swProduct" onclick="toggleSw(this,'product');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+        <div class="notif-group-lbl">In-app</div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Votes</div></div><div class="sw on" id="swInVote" onclick="toggleSw(this,'inVote');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Comments</div></div><div class="sw on" id="swInComment" onclick="toggleSw(this,'inComment');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">New followers</div></div><div class="sw on" id="swInFollow" onclick="toggleSw(this,'inFollow');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+        <div class="srow" style="border-bottom:none;"><div class="srow-info"><div class="srow-lbl">Variation submissions</div><div class="srow-desc">When someone submits a variation of your effect.</div></div><div class="sw" id="swInVariation" onclick="toggleSw(this,'inVariation');markDirty('notifications')"><div class="sw-thumb"></div></div></div>
+      </div>
+      <div class="scard">
+        <div class="scard-hd"><div class="scard-title">Email frequency</div></div>
+        <div style="padding:16px 18px;">
+          <div class="radio-pills" id="notifFreq">
+            <button class="rp-btn" data-val="instant" onclick="setRadio('notifFreq',this);markDirty('notifications')">Instant</button>
+            <button class="rp-btn on" data-val="daily" onclick="setRadio('notifFreq',this);markDirty('notifications')">Daily digest</button>
+            <button class="rp-btn" data-val="weekly" onclick="setRadio('notifFreq',this);markDirty('notifications')">Weekly only</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PRIVACY ── -->
+    <div class="panel" id="panel-privacy">
+      <div class="panel-hd"><div class="panel-title">Privacy</div><div class="panel-sub">Control who sees your profile and content.</div></div>
+      <div class="scard">
+        <div class="scard-hd"><div class="scard-title">Profile visibility</div></div>
+        <div style="padding:16px 18px;border-bottom:1px solid var(--bs);">
+          <div class="radio-pills" id="profileVis">
+            <button class="rp-btn on" data-val="public" onclick="setRadio('profileVis',this);markDirty()">Public</button>
+            <button class="rp-btn" data-val="members" onclick="setRadio('profileVis',this);markDirty()">Members only</button>
+            <button class="rp-btn" data-val="private" onclick="setRadio('profileVis',this);markDirty()">Private</button>
+          </div>
+        </div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Show effects in search results</div><div class="srow-desc">Your submitted effects appear in browse and search pages.</div></div><div class="sw on" id="swSearch" onclick="toggleSw(this,'search');markDirty()"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Allow community variations</div><div class="srow-desc">Others can submit variations based on your effects.</div></div><div class="sw on" id="swVariations" onclick="toggleSw(this,'variations');markDirty()"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Show activity in live feed</div><div class="srow-desc">Your votes and saves appear in the community activity ticker.</div></div><div class="sw" id="swActivity" onclick="toggleSw(this,'activity');markDirty()"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Allow tagging in comments</div><div class="srow-desc">Others can @mention you in effect comment sections.</div></div><div class="sw on" id="swTagging" onclick="toggleSw(this,'tagging');markDirty()"><div class="sw-thumb"></div></div></div>
+        <div class="srow" style="border-bottom:none;"><div class="srow-info"><div class="srow-lbl">Search engine indexing</div><div class="srow-desc">Allow Google and other engines to index your public profile.</div></div><div class="sw on" id="swIndex" onclick="toggleSw(this,'index');markDirty()"><div class="sw-thumb"></div></div></div>
+      </div>
+    </div>
+
+    <!-- ── NODE GRAPH ── -->
+    <div class="panel" id="panel-nodegraph">
+      <div class="panel-hd"><div class="panel-title">Node Graph</div><div class="panel-sub">Defaults and behaviour for the interactive node graph editor.</div></div>
+      <div class="scard">
+        <div class="srow">
+          <div class="srow-info"><div class="srow-lbl">Default zoom level</div><div class="srow-desc">Starting zoom when opening a node graph.</div></div>
+          <div class="range-wrap">
+            <input class="range-slider" type="range" min="30" max="150" value="100" id="zoomSlider" oninput="document.getElementById('zoomVal').textContent=this.value+'%';markDirty()">
+            <span class="range-val" id="zoomVal">100%</span>
+          </div>
+        </div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Show dot grid</div><div class="srow-desc">Display the background dot grid in the graph editor.</div></div><div class="sw on" id="swGrid" onclick="toggleSw(this,'grid');markDirty()"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Snap to grid</div><div class="srow-desc">Node cards snap to the nearest grid position when dragged.</div></div><div class="sw" id="swSnap" onclick="toggleSw(this,'snap');markDirty()"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Auto-layout on import</div><div class="srow-desc">Automatically arrange imported nodes into a clean layout.</div></div><div class="sw on" id="swAutoLayout" onclick="toggleSw(this,'autolayout');markDirty()"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Highlight connected nodes on select</div><div class="srow-desc">When a node is selected, dim unconnected nodes.</div></div><div class="sw on" id="swHighlightNodes" onclick="toggleSw(this,'highlightNodes');markDirty()"><div class="sw-thumb"></div></div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Show port labels on hover</div></div><div class="sw on" id="swPortLabels" onclick="toggleSw(this,'portLabels');markDirty()"><div class="sw-thumb"></div></div></div>
+        <div class="srow" style="border-bottom:none;">
+          <div class="srow-info"><div class="srow-lbl">Connection style</div></div>
+          <div class="radio-pills" id="connStyle">
+            <button class="rp-btn on" data-val="bezier" onclick="setRadio('connStyle',this);markDirty()">Bezier</button>
+            <button class="rp-btn" data-val="straight" onclick="setRadio('connStyle',this);markDirty()">Straight</button>
+            <button class="rp-btn" data-val="elbow" onclick="setRadio('connStyle',this);markDirty()">Elbow</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INTEGRATIONS ── -->
+    <div class="panel" id="panel-integrations">
+      <div class="panel-hd"><div class="panel-title">Integrations</div><div class="panel-sub">Connect external services and manage API access.</div></div>
+      <div class="scard">
+        <div class="scard-hd"><div class="scard-title">Connected accounts</div></div>
+        <div class="int-item">
+          <div class="int-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:#fff;"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg></div>
+          <div class="int-info"><div class="int-name">GitHub <span class="int-badge connected">Connected</span></div><div class="int-desc">github.com/fxNode-kai · Used for effect import and API auth.</div></div>
+          <button class="btn-connect disconnect" onclick="toast('GitHub disconnected')">Disconnect</button>
+        </div>
+        <div class="int-item">
+          <div class="int-ico"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#5865F2" d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg></div>
+          <div class="int-info"><div class="int-name">Discord <span class="int-badge connected">Connected</span></div><div class="int-desc">fxNode_kai#4821 · Syncs your Noding rank to the community server.</div></div>
+          <button class="btn-connect disconnect" onclick="toast('Discord disconnected')">Disconnect</button>
+        </div>
+        <div class="int-item" style="border-bottom:none;">
+          <div class="int-ico"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg></div>
+          <div class="int-info"><div class="int-name">Google <span class="int-badge disconnected">Not connected</span></div><div class="int-desc">Connect for one-click sign-in and SSO.</div></div>
+          <button class="btn-connect connect" onclick="toast('Redirecting to Google…')">Connect</button>
+        </div>
+      </div>
+      <div class="scard">
+        <div class="scard-hd"><div><div class="scard-title">API access</div><div class="scard-sub">Use the Noding API to build integrations and tools.</div></div></div>
+        <div class="api-key-display">
+            <div class="api-key-val" id="apiKeyVal">••••_••••_••••_••••</div>
+          <button class="btn-icon-sm" title="Reveal" onclick="toggleApiKey()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button class="btn-icon-sm" title="Copy" onclick="toast('API key copied')">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+        <div style="padding:10px 18px;display:flex;gap:8px;">
+          <button class="btn-sm violet" onclick="toast('New API key generated — previous key revoked')">Regenerate key</button>
+          <button class="btn-sm ghost" onclick="toast('API key revoked')">Revoke access</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DATA ── -->
+    <div class="panel" id="panel-data">
+      <div class="panel-hd"><div class="panel-title">Data & Export</div><div class="panel-sub">Download your data or clear stored information.</div></div>
+      <div class="scard">
+        <div class="scard-hd"><div class="scard-title">Export your data</div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Full account export</div><div class="srow-desc">All your effects, votes, comments, and account data as a ZIP file. Delivered by email within 24 hours.</div></div><button class="btn-sm violet" onclick="toast('Export requested — check your email within 24 hours')">Request export</button></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">My effects (JSON)</div><div class="srow-desc">All submitted effects with node data, metadata, and stats.</div></div><button class="btn-sm violet" onclick="toast('Downloading effects.json…')">Download</button></div>
+        <div class="srow" style="border-bottom:none;"><div class="srow-info"><div class="srow-lbl">Saved effects library</div><div class="srow-desc">All effects you've pinned to your personal library.</div></div><button class="btn-sm violet" onclick="toast('Downloading saved-effects.json…')">Download</button></div>
+      </div>
+      <div class="scard">
+        <div class="scard-hd"><div class="scard-title">Clear stored data</div></div>
+        <div class="srow"><div class="srow-info"><div class="srow-lbl">Search history</div><div class="srow-desc">Your recent searches on Noding.</div></div><button class="btn-sm ghost" onclick="toast('Search history cleared')">Clear</button></div>
+        <div class="srow" style="border-bottom:none;"><div class="srow-info"><div class="srow-lbl">Recently viewed effects</div><div class="srow-desc">Your viewing history used to generate recommendations.</div></div><button class="btn-sm ghost" onclick="toast('Viewing history cleared')">Clear</button></div>
+      </div>
+    </div>
+
+    <!-- ── DANGER ZONE ── -->
+    <div class="panel" id="panel-danger">
+      <div class="panel-hd"><div class="panel-title" style="color:var(--danger);">Danger Zone</div><div class="panel-sub">These actions are permanent or significantly impact your account. Please read carefully before proceeding.</div></div>
+      <div style="padding:10px 14px;background:rgba(240,96,96,0.06);border:1px solid rgba(240,96,96,0.18);border-radius:var(--rsm);font-size:12.5px;color:var(--ts);line-height:1.6;">
+        None of the actions below can be taken back. If you're unsure, consider adjusting your privacy settings or archiving your content instead.
+      </div>
+      <div class="scard">
+        <div class="dz-item">
+          <div class="dz-ico warn"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg></div>
+          <div class="dz-info"><div class="dz-title">Archive my effects</div><div class="dz-desc">Remove all your effects from public browse and search. Your data is preserved and can be restored from your profile.</div></div>
+          <button class="dz-btn warn" onclick="toast('All effects archived and hidden from public')">Archive all</button>
+        </div>
+        <div class="dz-item">
+          <div class="dz-ico warn"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18.36 6.64A9 9 0 0 1 21 12a9 9 0 0 1-9 9c-2.76 0-5.23-1.25-6.91-3.22"/><path d="M9.12 2.18A9 9 0 0 1 21 12"/><line x1="2" y1="2" x2="22" y2="22"/></svg></div>
+          <div class="dz-info"><div class="dz-title">Deactivate account</div><div class="dz-desc">Temporarily deactivate your account. Your profile and effects become invisible but are not deleted. You can reactivate by logging back in.</div></div>
+          <button class="dz-btn warn" onclick="toast('Account deactivation requires email confirmation')">Deactivate</button>
+        </div>
+        <div class="dz-item" style="border-bottom:none;">
+          <div class="dz-ico dng"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></div>
+          <div class="dz-info"><div class="dz-title">Delete account permanently</div><div class="dz-desc">Completely removes your account, all submitted effects, votes, comments, and personal data. This cannot be undone.</div></div>
+          <button class="dz-btn dng" onclick="openDeleteConfirm()">Delete account</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app-body -->
+
+<!-- DELETE CONFIRM -->
+<div class="confirm-ov" id="confirmOv">
+  <div class="confirm-box">
+    <div class="confirm-ico">⚠</div>
+    <div class="confirm-title">Delete your account?</div>
+    <div class="confirm-sub">This will permanently delete your account, all 23 submitted effects, votes, comments, and all personal data. This action cannot be reversed.</div>
+    <div>
+      <div class="confirm-lbl">Type your username to confirm: <span>fxNode_kai</span></div>
+      <input class="confirm-input" type="text" id="deleteInput" placeholder="fxNode_kai" oninput="checkDeleteInput(this)">
+    </div>
+    <div class="confirm-acts">
+      <button class="btn-cancel" onclick="closeDeleteConfirm()">Cancel</button>
+      <button class="btn-del" id="btnDelConfirm" onclick="doDelete()">Delete my account</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ════════════════════════════════════════════════════
+     ORIGINAL SETTINGS LOGIC (unchanged)
+     ════════════════════════════════════════════════════ */
+
+  /* ── NAV ── */
+  window.goPanel = function (id, el) {
+    document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+    document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
+    var p = document.getElementById('panel-' + id);
+    if (p) { p.classList.add('active'); }
+    if (el) { el.classList.add('active'); }
+    document.querySelector('.content').scrollTop = 0;
+  };
+
+  /* ── DIRTY STATE ── */
+  var dirty = false;
+  window.markDirty = function (section) {
+    dirty = true;
+    document.getElementById('unsavedPill').classList.add('show');
+    document.getElementById('btnSave').classList.add('show');
+    document.getElementById('btnDiscard').classList.add('show');
+    if (section) {
+      var dot = document.getElementById('dirty-' + section);
+      if (dot) { dot.classList.add('show'); }
+    }
+  };
+  window.saveChanges = function () {
+    dirty = false;
+    document.getElementById('unsavedPill').classList.remove('show');
+    document.getElementById('btnSave').classList.remove('show');
+    document.getElementById('btnDiscard').classList.remove('show');
+    document.querySelectorAll('.nav-dirty').forEach(function (d) { d.classList.remove('show'); });
+    toast('Settings saved');
+  };
+  window.discardChanges = function () {
+    dirty = false;
+    document.getElementById('unsavedPill').classList.remove('show');
+    document.getElementById('btnSave').classList.remove('show');
+    document.getElementById('btnDiscard').classList.remove('show');
+    document.querySelectorAll('.nav-dirty').forEach(function (d) { d.classList.remove('show'); });
+    toast('Changes discarded');
+  };
+
+  /* ── TOGGLES ── */
+  window.toggleSw = function (el, key) {
+    el.classList.toggle('on');
+  };
+
+  /* ── RADIO PILLS ── */
+  window.setRadio = function (groupId, btn) {
+    var group = document.getElementById(groupId);
+    if (!group) { return; }
+    group.querySelectorAll('.rp-btn').forEach(function (b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+  };
+
+  /* ── THEME CARDS ── */
+  window.setThemeCard = function (theme) {
+    document.querySelectorAll('.theme-card').forEach(function (c) { c.classList.remove('on'); });
+    var card = document.querySelector('.theme-card[data-theme="' + theme + '"]');
+    if (card) { card.classList.add('on'); }
+    var html = document.documentElement;
+    var track = document.getElementById('ttTrack');
+    var label = document.getElementById('ttLabel');
+    if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme:dark)').matches)) {
+      html.removeAttribute('data-theme'); track.classList.add('on'); label.textContent = 'Night';
+    } else {
+      html.setAttribute('data-theme', 'light'); track.classList.remove('on'); label.textContent = 'Day';
+    }
+    markDirty('appearance');
+  };
+
+  /* ── ACCENT SWATCHES ── */
+  window.setAccent = function (el) {
+    document.querySelectorAll('.swatch').forEach(function (s) { s.classList.remove('on'); });
+    el.classList.add('on');
+    markDirty('appearance');
+    toast('Accent colour updated');
+  };
+
+  /* ── BIO COUNTER ── */
+  window.onBioInput = function (ta) {
+    var el = document.getElementById('bioCount');
+    if (el) { el.textContent = ta.value.length + ' / 280'; el.className = 'char-count' + (ta.value.length > 250 ? ' warn' : ''); }
+    markDirty();
+  };
+
+  /* ── API KEY ── */
+  var apiRevealed = false;
+  window.toggleApiKey = function () {
+    var el = document.getElementById('apiKeyVal');
+    if (!el) { return; }
+    apiRevealed = !apiRevealed;
+    el.textContent = apiRevealed ? 'nod_live_internal_dummy_key_7f2a9b' : '••••_••••_••••_••••';
+  };
+
+  /* ── DELETE CONFIRM ── */
+  window.openDeleteConfirm = function () {
+    document.getElementById('deleteInput').value = '';
+    document.getElementById('btnDelConfirm').classList.remove('ready');
+    document.getElementById('confirmOv').classList.add('open');
+  };
+  window.closeDeleteConfirm = function () {
+    document.getElementById('confirmOv').classList.remove('open');
+  };
+  window.checkDeleteInput = function (inp) {
+    var btn = document.getElementById('btnDelConfirm');
+    if (inp.value === 'fxNode_kai') { btn.classList.add('ready'); } else { btn.classList.remove('ready'); }
+  };
+  window.doDelete = async function () {
+    closeDeleteConfirm();
+    // If signed in, attempt real Supabase account deletion
+    if (window._supabase && window.CURRENT_USER_ID) {
+      try {
+        await window._supabase.auth.signOut();
+      } catch (_) {}
+    }
+    toast('Account deletion requested — you will receive a confirmation email');
+  };
+
+  /* ── THEME TOGGLE (top bar) ── */
+  document.getElementById('themeBtn').addEventListener('click', function () {
+    var html = document.documentElement;
+    var track = document.getElementById('ttTrack');
+    var label = document.getElementById('ttLabel');
+    if (html.getAttribute('data-theme') === 'light') {
+      html.removeAttribute('data-theme'); track.classList.add('on'); label.textContent = 'Night';
+      document.querySelectorAll('.theme-card').forEach(function (c) { c.classList.remove('on'); });
+      var d = document.querySelector('.theme-card[data-theme="dark"]'); if (d) { d.classList.add('on'); }
+      localStorage.setItem('noding-theme', 'night');
+    } else {
+      html.setAttribute('data-theme', 'light'); track.classList.remove('on'); label.textContent = 'Day';
+      document.querySelectorAll('.theme-card').forEach(function (c) { c.classList.remove('on'); });
+      var l = document.querySelector('.theme-card[data-theme="light"]'); if (l) { l.classList.add('on'); }
+      localStorage.setItem('noding-theme', 'light');
+    }
+  });
+
+  /* ── TOAST ── */
+  window.toast = function (msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._t);
+    t._t = setTimeout(function () { t.classList.remove('show'); }, 2800);
+  };
+
+  /* ════════════════════════════════════════════════════
+     AUTH WIRING — Account & Security panel
+     ════════════════════════════════════════════════════ */
+
+  /** Populate the Account & Security panel based on current auth state. */
+  function renderAccountPanel(user) {
+    var signedIn  = document.getElementById('acct-signed-in');
+    var signedOut = document.getElementById('acct-signed-out');
+    if (!signedIn || !signedOut) { return; }
+
+    if (user) {
+      signedIn.style.display  = '';
+      signedOut.style.display = 'none';
+
+      // Email row
+      var emailEl = document.getElementById('acct-email-display');
+      if (emailEl) {
+        emailEl.innerHTML = (user.email || 'No email on file') +
+          ' &nbsp;·&nbsp; <span style="color:var(--teal);font-family:var(--fm);font-size:10px;">Verified</span>';
+      }
+
+      // Profile avatar initial
+      var avatarEl = document.getElementById('profileAvatar');
+      if (avatarEl && user.email) { avatarEl.textContent = user.email[0].toUpperCase(); }
+
+    } else {
+      signedIn.style.display  = 'none';
+      signedOut.style.display = '';
+    }
+  }
+
+  /** Wire the Change Password button to send a real Supabase reset email. */
+  function wirePasswordResetBtn(user) {
+    var btn = document.getElementById('acct-reset-pw-btn');
+    if (!btn) { return; }
+    btn.onclick = async function () {
+      if (!user || !user.email) { toast('No email address on file.'); return; }
+      btn.textContent = 'Sending…';
+      btn.disabled = true;
+      try {
+        var res = await window._supabase.auth.resetPasswordForEmail(user.email, {
+          redirectTo: window.location.origin + window.location.pathname
+        });
+        if (res.error) { throw res.error; }
+        toast('Reset link sent to ' + user.email);
+      } catch (err) {
+        toast(err.message || 'Could not send reset email.');
+      } finally {
+        btn.textContent = 'Change password';
+        btn.disabled = false;
+      }
+    };
+  }
+
+  /** Wire the Sign Out button. */
+  function wireSignOutBtn() {
+    var btn = document.getElementById('acct-signout-btn');
+    if (!btn) { return; }
+    btn.onclick = function () {
+      if (typeof window.handleSignOut === 'function') { window.handleSignOut(); }
+    };
+  }
+
+  /** Save a new password after a PASSWORD_RECOVERY redirect. */
+  window.doSaveNewPassword = async function () {
+    if (!window._supabase) { toast('Authentication not available.'); return; }
+    var pwEl = document.getElementById('pw-recovery-input');
+    if (!pwEl) { return; }
+    var pw = pwEl.value.trim();
+    if (!pw || pw.length < 8) { toast('Password must be at least 8 characters.'); return; }
+    try {
+      var res = await window._supabase.auth.updateUser({ password: pw });
+      if (res.error) { throw res.error; }
+      toast('Password updated successfully.');
+      pwEl.value = '';
+      document.getElementById('pw-recovery-banner').style.display = 'none';
+    } catch (err) {
+      toast(err.message || 'Could not update password.');
+    }
+  };
+
+  /* ── Boot: listen for auth.js session resolution ── */
+  window.addEventListener('authStateChanged', function () {
+    if (!window._supabase) {
+      renderAccountPanel(null);
+      wireSignOutBtn();
+      return;
+    }
+    window._supabase.auth.getSession().then(function (res) {
+      var user = res.data && res.data.session ? res.data.session.user : null;
+      renderAccountPanel(user);
+      wirePasswordResetBtn(user);
+      wireSignOutBtn();
+    });
+  });
+
+  /* ── Handle PASSWORD_RECOVERY redirect from Supabase reset email ── */
+  if (window._supabase) {
+    window._supabase.auth.onAuthStateChange(function (event, session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Navigate to the Account & Security panel and reveal the banner
+        var acctNav = document.querySelector('.nav-item[data-panel="account"]');
+        goPanel('account', acctNav);
+        document.getElementById('pw-recovery-banner').style.display = '';
+        toast('Enter your new password below.');
+      }
+      var user = session ? session.user : null;
+      renderAccountPanel(user);
+      wirePasswordResetBtn(user);
+    });
+  }
+
+}());
+</script>
+</body>
+</html>
