@@ -148,8 +148,9 @@ window.discardChanges = function() {
   // location.reload();
 };
 
-/** ── 5. AUTO-PATH NORMALIZER ── **/
-// Handles both legacy .html links and new clean directory URLs
+/** ── 5. FLAT FILE LINK SUPPORT ── **/
+// Allows .html links to work normally on GitHub Pages
+// Directory-style URLs removed to prevent 404 errors
 
 document.addEventListener('click', e => {
   const link = e.target.closest('a');
@@ -157,28 +158,15 @@ document.addEventListener('click', e => {
   
   const href = link.getAttribute('href');
   
-  // Handle legacy root-style paths (e.g. /effects) — convert to clean URL
-  if (href.startsWith('/') && !href.includes('.') && href.length > 1) {
-    e.preventDefault();
-    const folderName = href.substring(1);
-    window.location.href = folderName + '/';
-    return;
-  }
-  
-  // Fix legacy "home.html" to root
+  // Fix legacy "home.html" to index.html
   if (href === 'home.html') {
     e.preventDefault();
-    window.location.href = './';
+    window.location.href = 'index.html';
     return;
   }
   
-  // Fix legacy ".html" links to clean URLs
-  const htmlMatch = href.match(/^(.+)\.html$/);
-  if (htmlMatch && !href.includes('/') && !href.startsWith('http')) {
-    e.preventDefault();
-    window.location.href = htmlMatch[1] + '/';
-    return;
-  }
+  // Allow .html links to navigate normally - no redirects needed
+  // All internal navigation now uses flat .html file structure
 });
 
 /** ── 6. PAGE-SPECIFIC GHOSTS ── **/
