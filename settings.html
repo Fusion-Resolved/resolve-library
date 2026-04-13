@@ -1128,7 +1128,10 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         }, { onConflict: 'id' });
 
       console.log('[Settings] Profile clear result:', { updateData, updateError });
-        }, { onConflict: 'id' });
+
+      if (updateError) {
+        console.error('[Settings] Profile clear error:', updateError);
+      }
 
       // Update UI
       var avatar = document.getElementById('profileAvatar');
