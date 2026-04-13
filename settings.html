@@ -491,7 +491,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
           <div class="avatar-actions">
             <span>Profile photo · Max 50KB (Optimized JPG/PNG)</span>
             <div class="avatar-btn-row">
-              <input type="file" id="avatarInput" accept="image/jpeg,image/png" style="display:none;" onchange="validateAndUploadAvatar(this)">
+              <input type="file" id="avatarInput" accept="image/jpeg,image/png" style="display:none;" onchange="openCropModal(this)">
               <button class="btn-sm violet" onclick="document.getElementById('avatarInput').click()">Upload photo</button>
               <button class="btn-sm ghost" onclick="removeAvatar()">Remove</button>
             </div>
@@ -1067,12 +1067,18 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   var pendingCropData = { x: 0, y: 0, zoom: 100 };
   var cropDragState = { dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0 };
 
-  window.validateAndUploadAvatar = async function (input) {
+  window.openCropModal = function (input) {
+    console.log("Opening Crop Modal");
+
+    // Get file from input
     var file = input.files && input.files[0];
-    if (!file) return;
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
 
+    // Validate file size (50KB limit)
     var maxSize = 50 * 1024; // 50KB in bytes
-
     if (file.size > maxSize) {
       var sizeKB = (file.size / 1024).toFixed(1);
       alert('File too large (' + sizeKB + 'KB). To keep Noding fast, please limit profile pictures to 50KB.');
@@ -1083,29 +1089,25 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     // Check Supabase availability
     if (!window._supabase) {
       toast('Authentication not ready — please try again');
+      input.value = '';
       return;
     }
 
     // Store file for later upload
     pendingAvatarFile = file;
 
-    // Open crop modal with file preview
-    openCropModal(file);
-
-    // Clear input for re-upload
-    input.value = '';
-  };
-
-  window.openCropModal = function (file) {
     var cropOv = document.getElementById('cropOv');
     var cropPreviewImg = document.getElementById('cropPreviewImg');
     var cropZoom = document.getElementById('cropZoom');
 
-    if (!cropOv || !cropPreviewImg) return;
+    if (!cropOv || !cropPreviewImg) {
+      console.error("Crop modal elements not found");
+      return;
+    }
 
     // Reset crop data
     pendingCropData = { x: 0, y: 0, zoom: 100 };
-    cropZoom.value = 100;
+    if (cropZoom) cropZoom.value = 100;
     cropDragState = { dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0 };
 
     // Load image into preview
@@ -1119,7 +1121,11 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     reader.readAsDataURL(file);
 
     // Show modal
+    console.log("Adding 'open' class to crop modal");
     cropOv.classList.add('open');
+
+    // Clear input for re-upload
+    input.value = '';
   };
 
   window.closeCropModal = function () {
