@@ -425,25 +425,8 @@ body {
 
 
 /* ──────────────────────────────────────────────────────────────────────
-   §6 · HEADER & TOP NAVIGATION — Master Version
-        Layout: 3-column flex  [.logo] [.nav-center] [.sh-hdr-right]
-        Style: floating — transparent shell, glass blur on .nav-pill only
-        Source: noding-head-nav-master.html
+   §6 · HEADER & TOP NAVIGATION — Uses noding-shared.css standard header styles
    ────────────────────────────────────────────────────────────────────── */
-    /* ── HEADER ─────────────────────────────────────────────── */
-    header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; height:64px; padding:0 20px; pointer-events:none; background:transparent; border-bottom:none; }
-    .logo { display:flex; align-items:center; gap:9px; pointer-events:all; flex-shrink:0; text-decoration:none; }
-    .brand-text { font-family:var(--font-display); font-weight:800; font-size:1.1rem; letter-spacing:-0.03em; color:var(--text-primary); }
-    .share-dot { color:var(--violet); font-family:var(--font-display); font-weight:800; font-size:1.1rem; }
-    .nav-center { flex:1; display:flex; justify-content:center; pointer-events:all; }
-    .nav-pill { display:flex; align-items:center; gap:2px; padding:5px 6px; background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); border:1px solid var(--border-surface); border-radius:var(--radius-pill); box-shadow:var(--glass-shadow),var(--glass-shine); }
-    .nav-item { font-family:var(--font-body); font-size:0.8125rem; font-weight:500; color:var(--text-secondary); padding:5px 14px; border-radius:var(--radius-pill); transition:var(--transition); white-space:nowrap; text-decoration:none; }
-    .nav-item:hover { color:var(--text-primary); background:rgba(255,255,255,0.06); }
-    .nav-item.active { color:var(--white); background:var(--glass-bg-active); }
-    .hdr-right { display:flex; align-items:center; gap:6px; flex-shrink:0; pointer-events:all; }
-    .sh-btn-plus { height:36px; padding:0 14px; border-radius:var(--radius-sm); border:1px solid var(--border-surface); background:var(--glass-bg); backdrop-filter:var(--glass-blur); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:var(--transition); }
-    .sh-btn-plus:hover { color:var(--text-primary); background:var(--glass-bg-2); }
-    @media (max-width:767px) { .nav-center{display:none;} }
 
 /* Primary CTA (used elsewhere on page) */
 .btn-accent {

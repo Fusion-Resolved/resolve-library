@@ -231,15 +231,59 @@ header {
   height: 64px;
   padding: 0 20px;
   pointer-events: none;
+  background: transparent;
+  border-bottom: none;
 }
 
-/* Glass backing strip behind header */
-header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, rgba(9,9,14,0.6) 0%, transparent 100%);
-  pointer-events: none;
+/* Skinny & Central Floating Nav Pill */
+.nav-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: all;
+}
+.nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-surface);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--glass-shadow), var(--glass-shine);
+  position: static;
+  transform: none;
+  left: auto;
+  z-index: auto;
+  width: fit-content;
+}
+.nav-pill .nav-item,
+.nav-pill .nlink {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 5px 14px;
+  border-radius: var(--radius-pill);
+  transition: var(--transition);
+  white-space: nowrap;
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.nav-pill .nav-item:hover,
+.nav-pill .nlink:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.06);
+}
+.nav-pill .nav-item.active,
+.nav-pill .nlink.active {
+  color: var(--white);
+  background: var(--glass-bg-active);
 }
 
 /* Logo */
@@ -265,36 +309,6 @@ header::before {
 }
 .brand-dot { color: var(--violet); }
 
-/* Nav pill (centred) */
-.nav-center {
-  flex: 1;
-  display: flex; justify-content: center;
-  pointer-events: all;
-}
-.nav-pill {
-  display: flex; align-items: center; gap: 2px;
-  padding: 5px 6px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--border-surface);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--glass-shadow), var(--glass-shine);
-}
-.nlink {
-  font-family: var(--font-body);
-  font-size: 0.8125rem; font-weight: 500;
-  color: var(--text-secondary);
-  padding: 5px 14px;
-  border-radius: var(--radius-pill);
-  transition: var(--transition);
-  white-space: nowrap;
-  text-decoration: none;
-  border: none; background: transparent; cursor: pointer;
-}
-.nlink:hover  { color: var(--text-primary); background: rgba(255,255,255,0.06); }
-.nlink.active { color: var(--white); background: var(--glass-bg-active); }
-
 /* Library sub-nav pill */
 .lib-subnav {
   display: inline-flex; align-items: center; gap: 2px;
@@ -317,10 +331,32 @@ header::before {
 }
 
 /* Right-side header buttons */
+.hdr-right,
 .sh-hdr-right {
   display: flex; align-items: center; gap: 6px;
   flex-shrink: 0; pointer-events: all;
 }
+
+/* Menu / Plus button (neutral glass) */
+.sh-btn-plus,
+.icon-btn {
+  height: 36px; padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+}
+.sh-btn-plus:hover,
+.icon-btn:hover { color: var(--text-primary); background: var(--glass-bg-2); }
+.sh-btn-plus:active,
+.icon-btn:active { transform: scale(0.94); }
+.sh-btn-plus svg,
+.icon-btn svg { display: block; }
 .sh-icon-btn {
   width: 36px; height: 36px;
   border-radius: var(--radius-sm);
