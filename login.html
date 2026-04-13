@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noding — Sign In</title>
+<!-- Supabase SDK + shared auth instance (must load before page script) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
+:root{
+  --violet:#6c7bff;--violet-light:#9ca8ff;--violet-dark:#4451d4;
+  --teal:#0fa888;--amber:#b07118;--danger:#f06060;
+  --ink:#09090e;--white:#f4f4fb;
+  --fd:'Syne',sans-serif;--fb:'DM Sans',sans-serif;--fm:'DM Mono',monospace;
+  --r:14px;--rlg:20px;--rp:999px;--rsm:8px;
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:#06060d;font-family:var(--fb);-webkit-font-smoothing:antialiased;}
+button{font-family:var(--fb);cursor:pointer;border:none;background:none;}
+input{font-family:var(--fb);outline:none;}
+a{color:inherit;text-decoration:none;}
+
+/* canvas */
+#bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;}
+
+/* gradient overlays */
+.bg-overlay{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 70% at 50% 50%, rgba(6,6,13,0.55) 0%, transparent 100%),
+    linear-gradient(to bottom, rgba(6,6,13,0.5) 0%, transparent 20%, transparent 80%, rgba(6,6,13,0.5) 100%);}
+
+/* page */
+.page{position:relative;z-index:2;height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;}
+
+/* card */
+.card{width:100%;max-width:460px;background:rgba(15,15,22,0.82);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border:1px solid rgba(255,255,255,0.08);border-radius:var(--rlg);box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.15),0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(0,0,0,0.3);overflow:hidden;}
+
+/* card header */
+.card-top{padding:28px 32px 0;display:flex;flex-direction:column;align-items:center;gap:16px;}
+.logo-row{display:flex;align-items:center;gap:10px;}
+.logo-txt{font-family:var(--fd);font-weight:800;font-size:1.25rem;letter-spacing:-0.03em;color:var(--white);}
+.logo-dot{color:var(--violet);}
+.tagline-wrap{height:20px;overflow:hidden;position:relative;width:100%;text-align:center;}
+.tagline{font-family:var(--fm);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(156,168,255,0.7);position:absolute;width:100%;transition:all 0.5s var(--ease);}
+.tagline.active{transform:translateY(0);opacity:1;}
+.tagline.exit-up{transform:translateY(-20px);opacity:0;}
+.tagline.enter-down{transform:translateY(20px);opacity:0;}
+
+/* tab bar */
+.tab-bar{display:flex;gap:0;padding:0 32px;margin-top:6px;border-bottom:1px solid rgba(255,255,255,0.07);}
+.tab{flex:1;padding:12px 0;font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:rgba(143,143,168,0.7);text-align:center;cursor:pointer;transition:all 0.2s;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.tab:hover{color:rgba(244,244,251,0.7);}
+.tab.on{color:var(--white);border-bottom-color:var(--violet);}
+
+/* panels */
+.panels{position:relative;}
+.panel{display:none;padding:24px 32px 28px;flex-direction:column;gap:16px;}
+.panel.active{display:flex;animation:panelIn 0.3s var(--ease);}
+@keyframes panelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* form elements */
+.field{display:flex;flex-direction:column;gap:6px;}
+.fl{font-family:var(--fm);font-size:9.5px;text-transform:uppercase;letter-spacing:0.09em;color:rgba(143,143,168,0.8);}
+.fi-wrap{position:relative;}
+.fi{width:100%;height:44px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:var(--rsm);padding:0 14px;font-size:14px;color:var(--white);transition:border-color 0.15s,background 0.15s;}
+.fi::placeholder{color:rgba(88,88,112,0.8);}
+.fi:focus{border-color:rgba(108,123,255,0.6);background:rgba(108,123,255,0.05);}
+.fi.error{border-color:rgba(240,96,96,0.6);}
+.fi.success{border-color:rgba(15,168,136,0.5);}
+.fi-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:rgba(88,88,112,0.7);cursor:pointer;transition:color 0.15s;background:none;border:none;padding:4px;}
+.fi-icon:hover{color:rgba(244,244,251,0.6);}
+.field-err{font-size:11px;color:var(--danger);display:none;}
+.field-err.show{display:block;}
+.field-hint{font-size:11px;color:rgba(88,88,112,0.8);}
+
+/* password strength */
+.pw-strength{display:flex;flex-direction:column;gap:5px;}
+.pw-bars{display:flex;gap:3px;}
+.pw-bar{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,0.07);transition:background 0.3s;}
+.pw-lbl{font-family:var(--fm);font-size:9px;letter-spacing:0.06em;color:rgba(88,88,112,0.7);transition:color 0.3s;}
+
+/* username check */
+.username-check{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:var(--fm);font-size:10px;letter-spacing:0.04em;transition:all 0.2s;}
+
+/* checkbox row */
+.check-row{display:flex;align-items:flex-start;gap:10px;cursor:pointer;user-select:none;}
+.check-row input[type=checkbox]{display:none;}
+.check-box{width:18px;height:18px;border-radius:4px;border:1.5px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s;margin-top:1px;}
+.check-row input:checked + .check-box{background:var(--violet);border-color:var(--violet);}
+.check-row input:checked + .check-box::after{content:'✓';font-size:11px;color:#fff;font-weight:700;}
+.check-lbl{font-size:12.5px;color:rgba(143,143,168,0.9);line-height:1.5;}
+.check-lbl a{color:var(--violet-light);}
+
+/* remember/forgot row */
+.rf-row{display:flex;align-items:center;justify-content:space-between;}
+.forgot-link{font-family:var(--fm);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(156,168,255,0.7);cursor:pointer;transition:color 0.15s;}
+.forgot-link:hover{color:var(--violet-light);}
+
+/* submit button */
+.btn-submit{width:100%;height:46px;background:var(--violet);color:#fff;border:none;border-radius:var(--rsm);font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;}
+.btn-submit::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 60%);}
+.btn-submit:hover{background:var(--violet-dark);transform:translateY(-1px);box-shadow:0 6px 24px rgba(108,123,255,0.45);}
+.btn-submit:active{transform:translateY(0);}
+.btn-submit.loading{pointer-events:none;opacity:0.7;}
+.btn-submit .btn-spinner{display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn-submit.loading .btn-txt{display:none;}
+.btn-submit.loading .btn-spinner{display:block;margin:auto;}
+
+/* divider */
+.divider{display:flex;align-items:center;gap:12px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07);}
+.divider-txt{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(88,88,112,0.7);}
+
+/* social buttons */
+.social-row{display:flex;gap:8px;}
+.btn-social{flex:1;height:42px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:var(--rsm);display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:rgba(244,244,251,0.75);cursor:pointer;transition:all 0.15s;}
+.btn-social:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.18);color:var(--white);}
+
+/* switch prompt */
+.switch-prompt{text-align:center;font-size:13px;color:rgba(143,143,168,0.7);}
+.switch-prompt span{color:var(--violet-light);cursor:pointer;transition:color 0.15s;}
+.switch-prompt span:hover{color:#fff;}
+
+/* trust badges */
+.trust-row{display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 32px;border-top:1px solid rgba(255,255,255,0.05);}
+.trust-item{display:flex;align-items:center;gap:5px;font-family:var(--fm);font-size:9px;letter-spacing:0.05em;color:rgba(88,88,112,0.8);}
+
+/* ── FORGOT STATE ── */
+.back-link{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(143,143,168,0.7);cursor:pointer;transition:color 0.15s;width:fit-content;}
+.back-link:hover{color:var(--violet-light);}
+.state-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto;flex-shrink:0;}
+.state-icon.sent{background:rgba(15,168,136,0.12);border:1px solid rgba(15,168,136,0.3);}
+.state-icon.verify{background:rgba(108,123,255,0.12);border:1px solid rgba(108,123,255,0.3);}
+.state-icon.success{background:rgba(15,168,136,0.12);border:1px solid rgba(15,168,136,0.3);animation:successPop 0.5s var(--ease);}
+@keyframes successPop{from{transform:scale(0.6);opacity:0}to{transform:scale(1);opacity:1}}
+.state-title{font-family:var(--fd);font-size:1.2rem;font-weight:800;letter-spacing:-0.03em;color:var(--white);text-align:center;line-height:1.2;}
+.state-sub{font-size:13px;color:rgba(143,143,168,0.85);text-align:center;line-height:1.6;}
+.state-sub span{color:var(--violet-light);}
+
+/* 6-digit code input */
+.code-inputs{display:flex;gap:8px;justify-content:center;}
+.code-digit{width:46px;height:54px;background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.1);border-radius:var(--rsm);font-family:var(--fd);font-size:1.5rem;font-weight:700;color:var(--white);text-align:center;transition:border-color 0.15s;}
+.code-digit:focus{border-color:var(--violet);background:rgba(108,123,255,0.08);outline:none;}
+.code-digit.filled{border-color:rgba(108,123,255,0.45);}
+
+/* success stats */
+.success-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:4px 0;}
+.stat-item{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:var(--rsm);padding:12px 8px;text-align:center;}
+.stat-n{font-family:var(--fd);font-size:1.2rem;font-weight:800;letter-spacing:-0.03em;color:var(--white);}
+.stat-n span{color:var(--violet);}
+.stat-l{font-family:var(--fm);font-size:8px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(88,88,112,0.8);margin-top:2px;}
+
+/* resend */
+.resend-row{text-align:center;font-size:12px;color:rgba(88,88,112,0.7);}
+.resend-row span{color:var(--violet-light);cursor:pointer;}
+.resend-row span:hover{color:#fff;}
+
+/* notify bar below card */
+.notify-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(15,15,22,0.9);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08);border-radius:var(--rp);padding:10px 20px;font-family:var(--fm);font-size:10px;letter-spacing:0.06em;color:rgba(143,143,168,0.7);display:flex;align-items:center;gap:10px;opacity:0;transform:translateX(-50%) translateY(12px);transition:all 0.3s var(--ease);}
+.notify-bar.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* toast */
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-12px);z-index:50;background:rgba(15,15,22,0.95);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:var(--rp);padding:10px 20px;font-size:13px;color:var(--white);opacity:0;transition:all 0.3s var(--ease);pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+<div class="bg-overlay"></div>
+
+<div class="page">
+  <div class="card" id="card">
+
+    <!-- header -->
+    <div class="card-top">
+      <div class="logo-row">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="7" fill="#6c7bff" opacity="0.18"/>
+          <circle cx="8" cy="14" r="2.5" fill="#6c7bff"/>
+          <circle cx="20" cy="8"  r="2.5" fill="#0fa888"/>
+          <circle cx="20" cy="20" r="2.5" fill="#6c7bff"/>
+          <line x1="10.5" y1="13" x2="17.5" y2="9.2" stroke="#6c7bff" stroke-width="1.3" stroke-opacity="0.6"/>
+          <line x1="10.5" y1="15" x2="17.5" y2="18.8" stroke="#6c7bff" stroke-width="1.3" stroke-opacity="0.6"/>
+        </svg>
+        <span class="logo-txt">Noding<span class="logo-dot">.</span></span>
+      </div>
+      <div class="tagline-wrap"><div class="tagline active" id="tagline"></div></div>
+    </div>
+
+    <!-- tab bar (signin/signup only) -->
+    <div class="tab-bar" id="tabBar">
+      <div class="tab on" id="tabSignin" onclick="setView('signin')">Sign in</div>
+      <div class="tab" id="tabSignup" onclick="setView('signup')">Create account</div>
+    </div>
+
+    <!-- SIGNIN PANEL -->
+    <div class="panel active" id="panelSignin">
+      <div class="field">
+        <label class="fl">Email address</label>
+        <input class="fi" id="siEmail" type="email" placeholder="you@studio.com" autocomplete="email">
+        <div class="field-err" id="siEmailErr"></div>
+      </div>
+      <div class="field">
+        <label class="fl">Password</label>
+        <div class="fi-wrap">
+          <input class="fi" id="siPassword" type="password" placeholder="Your password" style="padding-right:42px;">
+          <button class="fi-icon" onclick="togglePw('siPassword',this)" tabindex="-1">
+            <svg id="eyeIcon1" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="field-err" id="siPwErr"></div>
+      </div>
+      <div class="rf-row">
+        <label class="check-row">
+          <input type="checkbox" id="rememberMe">
+          <div class="check-box"></div>
+          <span class="check-lbl" style="font-size:12px;">Remember me</span>
+        </label>
+        <span class="forgot-link" onclick="setView('forgot')">Forgot password?</span>
+      </div>
+      <button class="btn-submit" id="btnSignin" onclick="doSignin()">
+        <span class="btn-txt">Sign in</span>
+        <div class="btn-spinner"></div>
+      </button>
+      <div class="divider"><span class="divider-txt">or continue with</span></div>
+      <div class="social-row">
+        <button class="btn-social" onclick="socialLogin('Google')">
+          <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Google
+        </button>
+        <button class="btn-social" onclick="socialLogin('GitHub')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </button>
+      </div>
+      <div class="switch-prompt">New to Noding? <span onclick="setView('signup')">Create an account</span></div>
+    </div>
+
+    <!-- SIGNUP PANEL -->
+    <div class="panel" id="panelSignup">
+      <div class="field">
+        <label class="fl">Username</label>
+        <div class="fi-wrap">
+          <input class="fi" id="suUsername" type="text" placeholder="your_handle" autocomplete="username" oninput="checkUsername(this)">
+          <div class="username-check" id="usernameCheck"></div>
+        </div>
+        <div class="field-err" id="suUsernameErr"></div>
+      </div>
+      <div class="field">
+        <label class="fl">Email address</label>
+        <input class="fi" id="suEmail" type="email" placeholder="you@studio.com" autocomplete="email">
+        <div class="field-err" id="suEmailErr"></div>
+      </div>
+      <div class="field">
+        <label class="fl">Password</label>
+        <div class="fi-wrap">
+          <input class="fi" id="suPassword" type="password" placeholder="8+ characters" style="padding-right:42px;" oninput="checkPwStrength(this.value)">
+          <button class="fi-icon" onclick="togglePw('suPassword',this)" tabindex="-1">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="pw-strength">
+          <div class="pw-bars">
+            <div class="pw-bar" id="pwBar0"></div><div class="pw-bar" id="pwBar1"></div>
+            <div class="pw-bar" id="pwBar2"></div><div class="pw-bar" id="pwBar3"></div>
+          </div>
+          <div class="pw-lbl" id="pwLbl">Enter a password</div>
+        </div>
+      </div>
+      <label class="check-row">
+        <input type="checkbox" id="termsCheck">
+        <div class="check-box"></div>
+        <span class="check-lbl">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></span>
+      </label>
+      <button class="btn-submit" id="btnSignup" onclick="doSignup()">
+        <span class="btn-txt">Create account</span>
+        <div class="btn-spinner"></div>
+      </button>
+      <div class="divider"><span class="divider-txt">or continue with</span></div>
+      <div class="social-row">
+        <button class="btn-social" onclick="socialLogin('Google')">
+          <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Google
+        </button>
+        <button class="btn-social" onclick="socialLogin('GitHub')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </button>
+      </div>
+      <div class="switch-prompt">Already have an account? <span onclick="setView('signin')">Sign in</span></div>
+    </div>
+
+    <!-- FORGOT PANEL -->
+    <div class="panel" id="panelForgot">
+      <div class="back-link" onclick="setView('signin')">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Back to sign in
+      </div>
+      <div class="state-title" style="text-align:left;">Reset your password</div>
+      <div class="state-sub" style="text-align:left;">Enter the email linked to your account and we'll send you a reset link.</div>
+      <div class="field">
+        <label class="fl">Email address</label>
+        <input class="fi" id="forgotEmail" type="email" placeholder="you@studio.com">
+      </div>
+      <button class="btn-submit" onclick="doForgot()">
+        <span class="btn-txt">Send reset link</span>
+        <div class="btn-spinner"></div>
+      </button>
+    </div>
+
+    <!-- FORGOT SENT PANEL -->
+    <div class="panel" id="panelForgotSent" style="align-items:center;">
+      <div class="state-icon sent">📬</div>
+      <div class="state-title">Check your inbox</div>
+      <div class="state-sub">We sent a password reset link to <span id="forgotEmailDisplay"></span>. It expires in 24 hours.</div>
+      <div class="resend-row">Didn't get it? <span onclick="showToast('Reset link resent')">Resend</span> &nbsp;·&nbsp; <span onclick="setView('signin')">Back to sign in</span></div>
+    </div>
+
+    <!-- VERIFY PANEL -->
+    <div class="panel" id="panelVerify" style="align-items:center;">
+      <div class="state-icon verify">🔐</div>
+      <div class="state-title">Verify your email</div>
+      <div class="state-sub">We sent a 6-digit code to <span id="verifyEmailDisplay"></span>.</div>
+      <div class="code-inputs" id="codeInputs">
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+        <input class="code-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <button class="btn-submit" onclick="doVerify()">
+        <span class="btn-txt">Verify &amp; continue</span>
+        <div class="btn-spinner"></div>
+      </button>
+      <div class="resend-row">Didn't receive a code? <span onclick="showToast('New code sent')">Resend</span></div>
+    </div>
+
+    <!-- SUCCESS PANEL -->
+    <div class="panel" id="panelSuccess" style="align-items:center;gap:18px;">
+      <div class="state-icon success">✓</div>
+      <div>
+        <div class="state-title">Welcome to Noding<span style="color:var(--violet);">.</span></div>
+        <div class="state-sub" style="margin-top:6px;">You're now part of the community.</div>
+      </div>
+      <div class="success-stats">
+        <div class="stat-item"><div class="stat-n">50<span>k+</span></div><div class="stat-l">Artists</div></div>
+        <div class="stat-item"><div class="stat-n">4<span>k+</span></div><div class="stat-l">Effects</div></div>
+        <div class="stat-item"><div class="stat-n">280<span>+</span></div><div class="stat-l">Nodes</div></div>
+      </div>
+      <button class="btn-submit" onclick="showToast('Redirecting to dashboard…')">
+        <span class="btn-txt">Start exploring →</span>
+        <div class="btn-spinner"></div>
+      </button>
+    </div>
+
+    <!-- trust bar -->
+    <div class="trust-row">
+      <div class="trust-item">
+        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Secure &amp; encrypted
+      </div>
+      <div style="width:1px;height:10px;background:rgba(255,255,255,0.08);"></div>
+      <div class="trust-item">
+        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        50,000+ members
+      </div>
+      <div style="width:1px;height:10px;background:rgba(255,255,255,0.08);"></div>
+      <div class="trust-item">
+        <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Free forever
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="notify-bar" id="notifyBar">
+  <div style="width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse2 2s ease infinite;flex-shrink:0;"></div>
+  <style>@keyframes pulse2{0%,100%{opacity:0.4}50%{opacity:1}}</style>
+  <span id="notifyTxt"></span>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+
+  /* ═══════════════════════════════
+     CANVAS — Drifting node network
+     ═══════════════════════════════ */
+  var canvas = document.getElementById('bgCanvas');
+  var ctx    = canvas.getContext('2d');
+  var W, H, RAF;
+  var dpr = Math.min(devicePixelRatio || 1, 2);
+  var mx = -999, my = -999;
+
+  var TYPE_COLS = ['#0fa888','#6c7bff','#a855f7','#f59e0b','#eab308','#ef4444','#94a3b8','#fb923c','#22d3ee','#c084fc','#f472b6','#4ade80'];
+  var NODE_NAMES = ['ColorCorrector','Blur','Merge','OpticalFlow','Transform','PolyMask','TimeSpeed','Background','MediaIn','Glow','Tracker','BSplineMask','Sharpen','FastNoise','AlphaMatte','Resize','LensDistort','Text+','MediaOut','DisplaceDistort'];
+
+  var nodes = [];
+  function initNodes () {
+    nodes = [];
+    for (var i = 0; i < 52; i++) {
+      var ti = Math.floor(Math.random() * TYPE_COLS.length);
+      nodes.push({
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.22,
+        vy: (Math.random() - 0.5) * 0.22,
+        r: 2.5 + Math.random() * 3.5,
+        col: TYPE_COLS[ti],
+        label: (i < 20) ? NODE_NAMES[i % NODE_NAMES.length] : null,
+        pulse: Math.random() * Math.PI * 2,
+        ps: 0.6 + Math.random() * 0.9
+      });
+    }
+  }
+
+  function resize () {
+    W = canvas.offsetWidth; H = canvas.offsetHeight;
+    canvas.width  = W * dpr; canvas.height = H * dpr;
+    canvas.style.width  = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr, dpr);
+  }
+
+  canvas.addEventListener('mousemove', function (e) { mx = e.clientX; my = e.clientY; });
+  canvas.addEventListener('mouseleave', function () { mx = -999; my = -999; });
+
+  function draw (ts) {
+    var t = ts / 1000;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#06060d'; ctx.fillRect(0, 0, W, H);
+
+    /* update + wrap nodes */
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      /* mouse repulsion */
+      var dx = n.x - mx, dy = n.y - my;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 110 && d > 0) {
+        var f = (110 - d) / 110 * 0.08;
+        n.vx += (dx / d) * f; n.vy += (dy / d) * f;
+      }
+      /* dampen */
+      n.vx *= 0.996; n.vy *= 0.996;
+      var spd = Math.sqrt(n.vx * n.vx + n.vy * n.vy);
+      if (spd > 0.45) { n.vx *= 0.45 / spd; n.vy *= 0.45 / spd; }
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < -20)     { n.x = W + 20; }
+      if (n.x > W + 20)  { n.x = -20; }
+      if (n.y < -20)     { n.y = H + 20; }
+      if (n.y > H + 20)  { n.y = -20; }
+    }
+
+    /* edges */
+    for (var a = 0; a < nodes.length; a++) {
+      for (var b = a + 1; b < nodes.length; b++) {
+        var na = nodes[a], nb = nodes[b];
+        var ex = na.x - nb.x, ey = na.y - nb.y;
+        var ed = Math.sqrt(ex * ex + ey * ey);
+        if (ed < 155) {
+          var eo = (1 - ed / 155) * 0.22;
+          ctx.beginPath();
+          var cx2 = (na.x + nb.x) / 2 + (Math.random() - 0.5) * 0;
+          var cy2 = (na.y + nb.y) / 2;
+          ctx.moveTo(na.x, na.y);
+          ctx.lineTo(nb.x, nb.y);
+          ctx.strokeStyle = 'rgba(108,123,255,' + eo.toFixed(3) + ')';
+          ctx.lineWidth = 0.8; ctx.stroke();
+        }
+      }
+    }
+
+    /* nodes */
+    for (var ni = 0; ni < nodes.length; ni++) {
+      var n2 = nodes[ni];
+      var pulse = 0.5 + 0.5 * Math.sin(t * n2.ps + n2.pulse);
+      var pr = n2.r * (0.85 + pulse * 0.3);
+      /* proximity to mouse glow */
+      var mdx = n2.x - mx, mdy = n2.y - my;
+      var md = Math.sqrt(mdx * mdx + mdy * mdy);
+      var mGlow = md < 90 ? (1 - md / 90) : 0;
+
+      /* outer glow */
+      var gr = ctx.createRadialGradient(n2.x, n2.y, 0, n2.x, n2.y, pr * 5);
+      gr.addColorStop(0, hexAlpha(n2.col, (0.18 + mGlow * 0.25 + pulse * 0.08)));
+      gr.addColorStop(1, hexAlpha(n2.col, 0));
+      ctx.beginPath(); ctx.arc(n2.x, n2.y, pr * 5, 0, Math.PI * 2);
+      ctx.fillStyle = gr; ctx.fill();
+
+      /* core */
+      ctx.beginPath(); ctx.arc(n2.x, n2.y, pr, 0, Math.PI * 2);
+      ctx.fillStyle = hexAlpha(n2.col, 0.55 + pulse * 0.3 + mGlow * 0.3); ctx.fill();
+
+      /* centre highlight */
+      ctx.beginPath(); ctx.arc(n2.x, n2.y, pr * 0.4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(244,244,251,' + (0.6 + pulse * 0.3) + ')'; ctx.fill();
+
+      /* label */
+      if (n2.label) {
+        var la = 0.18 + pulse * 0.14 + mGlow * 0.28;
+        ctx.font = '9px DM Mono, monospace';
+        ctx.fillStyle = 'rgba(156,168,255,' + la + ')';
+        ctx.fillText(n2.label, n2.x + pr + 5, n2.y + 3);
+      }
+    }
+
+    RAF = requestAnimationFrame(draw);
+  }
+
+  function hexAlpha (hex, a) {
+    var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b2 = parseInt(hex.slice(5,7),16);
+    return 'rgba(' + r + ',' + g + ',' + b2 + ',' + Math.min(1, a).toFixed(3) + ')';
+  }
+
+  resize();
+  initNodes();
+  window.addEventListener('resize', function () { resize(); });
+  RAF = requestAnimationFrame(draw);
+
+  /* ═══════════════════════════════
+     TAGLINE ROTATOR
+     ═══════════════════════════════ */
+  var TAGLINES = [
+    'The definitive node reference',
+    '4,000+ Fusion effects',
+    'Built by node artists, for node artists',
+    '50,000 members and growing',
+    'DaVinci Resolve · Fusion · Community'
+  ];
+  var tIdx = 0;
+  var tEl = document.getElementById('tagline');
+  if (tEl) { tEl.textContent = TAGLINES[0]; }
+  setInterval(function () {
+    if (!tEl) { return; }
+    tEl.classList.remove('active'); tEl.classList.add('exit-up');
+    setTimeout(function () {
+      tIdx = (tIdx + 1) % TAGLINES.length;
+      tEl.textContent = TAGLINES[tIdx];
+      tEl.classList.remove('exit-up'); tEl.classList.add('enter-down');
+      setTimeout(function () { tEl.classList.remove('enter-down'); tEl.classList.add('active'); }, 30);
+    }, 300);
+  }, 3400);
+
+  /* ═══════════════════════════════
+     NOTIFY BAR — live activity
+     ═══════════════════════════════ */
+  var NOTIFS = [
+    '@resolve_alice just joined',
+    '@motioncraft submitted a new effect',
+    '@cinegrade_tom voted on Optical Flow Warp',
+    '@lenscraft_r joined the community',
+    'New effect: Chromatic Aberration v2',
+    '@fxNode_kai shared a node breakdown',
+    '428 votes cast today',
+    '@glitch_core submitted Datamosh Stack',
+  ];
+  var nIdx = 0;
+  var nb = document.getElementById('notifyBar');
+  var ntxt = document.getElementById('notifyTxt');
+  function showNotify () {
+    if (!nb || !ntxt) { return; }
+    ntxt.textContent = NOTIFS[nIdx % NOTIFS.length]; nIdx++;
+    nb.classList.add('show');
+    setTimeout(function () { nb.classList.remove('show'); }, 4000);
+  }
+  setTimeout(showNotify, 2200);
+  setInterval(showNotify, 8000);
+
+  /* ═══════════════════════════════
+     VIEW STATE MACHINE
+     ═══════════════════════════════ */
+  var currentView = 'signin';
+  var PANELS = { signin:'panelSignin', signup:'panelSignup', forgot:'panelForgot', 'forgot-sent':'panelForgotSent', verify:'panelVerify', success:'panelSuccess' };
+  var tabBar = document.getElementById('tabBar');
+
+  window.setView = function (v) {
+    currentView = v;
+    Object.keys(PANELS).forEach(function (k) {
+      var el = document.getElementById(PANELS[k]);
+      if (el) { el.classList.remove('active'); }
+    });
+    var target = document.getElementById(PANELS[v]);
+    if (target) { target.classList.add('active'); }
+    /* tab bar visibility */
+    var showTabs = (v === 'signin' || v === 'signup');
+    tabBar.style.display = showTabs ? '' : 'none';
+    if (v === 'signin') { document.getElementById('tabSignin').classList.add('on'); document.getElementById('tabSignup').classList.remove('on'); }
+    if (v === 'signup') { document.getElementById('tabSignup').classList.add('on'); document.getElementById('tabSignin').classList.remove('on'); }
+  };
+
+  /* ═══════════════════════════════
+     FORM LOGIC
+     ═══════════════════════════════ */
+
+  /* show/hide password */
+  window.togglePw = function (id, btn) {
+    var inp = document.getElementById(id);
+    if (!inp) { return; }
+    var isHidden = inp.type === 'password';
+    inp.type = isHidden ? 'text' : 'password';
+    btn.style.color = isHidden ? 'rgba(156,168,255,0.8)' : 'rgba(88,88,112,0.7)';
+  };
+
+  /* username availability (simulated) */
+  var uTimer;
+  window.checkUsername = function (inp) {
+    var el = document.getElementById('usernameCheck');
+    if (!el) { return; }
+    var v = inp.value.trim();
+    if (!v) { el.textContent = ''; inp.className = 'fi'; return; }
+    el.textContent = '…'; el.style.color = 'rgba(88,88,112,0.6)';
+    clearTimeout(uTimer);
+    uTimer = setTimeout(function () {
+      var taken = ['admin','noding','kai','alice','tom'].indexOf(v.toLowerCase()) !== -1;
+      if (taken) {
+        el.textContent = '✕ Taken';
+        el.style.color = '#f06060';
+        inp.className = 'fi error';
+      } else if (v.length < 3) {
+        el.textContent = 'Too short';
+        el.style.color = '#b07118';
+        inp.className = 'fi';
+      } else {
+        el.textContent = '✓ Available';
+        el.style.color = '#0fa888';
+        inp.className = 'fi success';
+      }
+    }, 500);
+  };
+
+  /* password strength */
+  var PW_LEVELS = [
+    { col: '#f06060', lbl: 'Too weak' },
+    { col: '#f59e0b', lbl: 'Fair' },
+    { col: '#eab308', lbl: 'Good' },
+    { col: '#0fa888', lbl: 'Strong' }
+  ];
+  window.checkPwStrength = function (pw) {
+    var score = 0;
+    if (pw.length >= 8)  { score++; }
+    if (/[A-Z]/.test(pw)) { score++; }
+    if (/[0-9]/.test(pw)) { score++; }
+    if (/[^A-Za-z0-9]/.test(pw)) { score++; }
+    if (!pw) { score = 0; }
+    for (var i = 0; i < 4; i++) {
+      var bar = document.getElementById('pwBar' + i);
+      if (bar) { bar.style.background = i < score ? PW_LEVELS[Math.min(score - 1, 3)].col : 'rgba(255,255,255,0.07)'; }
+    }
+    var lbl = document.getElementById('pwLbl');
+    if (lbl) {
+      if (!pw) { lbl.textContent = 'Enter a password'; lbl.style.color = 'rgba(88,88,112,0.7)'; }
+      else { lbl.textContent = PW_LEVELS[Math.min(score - 1, 3)].lbl || 'Too weak'; lbl.style.color = PW_LEVELS[Math.min(score - 1, 3)].col; }
+    }
+    return score;
+  };
+
+  /* show field error */
+  function showErr (id, msg) {
+    var el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.classList.add('show'); }
+  }
+  function clearErr (id) {
+    var el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.classList.remove('show'); }
+  }
+  function loading (btnId, on) {
+    var btn = document.getElementById(btnId);
+    if (!btn) { return; }
+    if (on) { btn.classList.add('loading'); } else { btn.classList.remove('loading'); }
+  }
+
+  /* SIGN IN — wired to window._supabase */
+  window.doSignin = async function () {
+    clearErr('siEmailErr'); clearErr('siPwErr');
+    var email = document.getElementById('siEmail').value.trim();
+    var pw    = document.getElementById('siPassword').value;
+    var ok = true;
+    if (!email || !/.+@.+\..+/.test(email)) { showErr('siEmailErr', 'Please enter a valid email address.'); ok = false; }
+    if (!pw || pw.length < 6)               { showErr('siPwErr', 'Password must be at least 6 characters.'); ok = false; }
+    if (!ok) return;
+
+    loading('btnSignin', true);
+    try {
+      var res = await window._supabase.auth.signInWithPassword({ email: email, password: pw });
+      if (res.error) throw res.error;
+      // Redirect to the page the user came from, or default to effects.html
+      var returnTo = new URLSearchParams(window.location.search).get('return') || 'effects.html';
+      window.location.href = returnTo;
+    } catch (err) {
+      loading('btnSignin', false);
+      showErr('siPwErr', err.message || 'Sign-in failed. Check your credentials.');
+    }
+  };
+
+  /* SIGN UP — wired to window._supabase */
+  window.doSignup = async function () {
+    clearErr('suUsernameErr'); clearErr('suEmailErr');
+    var un    = document.getElementById('suUsername').value.trim();
+    var email = document.getElementById('suEmail').value.trim();
+    var pw    = document.getElementById('suPassword').value;
+    var terms = document.getElementById('termsCheck').checked;
+    var ok = true;
+    if (!un || un.length < 3)               { showErr('suUsernameErr', 'Username must be at least 3 characters.'); ok = false; }
+    if (!email || !/.+@.+\..+/.test(email)) { showErr('suEmailErr', 'Please enter a valid email address.'); ok = false; }
+    if (checkPwStrength(pw) < 2)            { document.getElementById('pwLbl').textContent = 'Password is too weak'; ok = false; }
+    if (!terms)                             { showToast('Please accept the Terms of Service to continue.'); ok = false; }
+    if (!ok) return;
+
+    loading('btnSignup', true);
+    try {
+      var res = await window._supabase.auth.signUp({
+        email: email,
+        password: pw,
+        options: { data: { username: un } }
+      });
+      if (res.error) throw res.error;
+      document.getElementById('verifyEmailDisplay').textContent = email;
+      loading('btnSignup', false);
+      setView('verify');
+    } catch (err) {
+      loading('btnSignup', false);
+      showErr('suEmailErr', err.message || 'Sign-up failed.');
+    }
+  };
+
+  /* FORGOT PASSWORD — wired to window._supabase */
+  window.doForgot = async function () {
+    var email = document.getElementById('forgotEmail').value.trim();
+    if (!email || !/.+@.+\..+/.test(email)) { showToast('Please enter a valid email address.'); return; }
+
+    try {
+      var res = await window._supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/settings.html'
+      });
+      if (res.error) throw res.error;
+      document.getElementById('forgotEmailDisplay').textContent = email;
+      setView('forgot-sent');
+    } catch (err) {
+      showToast(err.message || 'Could not send reset email. Try again.');
+    }
+  };
+
+  /* VERIFY */
+  var codeInputs = document.querySelectorAll('.code-digit');
+  codeInputs.forEach(function (inp, i) {
+    inp.addEventListener('input', function () {
+      this.classList.toggle('filled', this.value.length > 0);
+      if (this.value && i < codeInputs.length - 1) { codeInputs[i + 1].focus(); }
+    });
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace' && !this.value && i > 0) { codeInputs[i - 1].focus(); }
+    });
+    inp.addEventListener('paste', function (e) {
+      var data = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+      e.preventDefault();
+      for (var j = 0; j < data.length && j + i < codeInputs.length; j++) {
+        codeInputs[i + j].value = data[j];
+        codeInputs[i + j].classList.add('filled');
+      }
+    });
+  });
+
+  window.doVerify = async function () {
+    var code = Array.from(codeInputs).map(function (x) { return x.value; }).join('');
+    if (code.length < 6) { showToast('Please enter the full 6-digit code.'); return; }
+
+    var email = document.getElementById('verifyEmailDisplay').textContent.trim();
+    try {
+      var res = await window._supabase.auth.verifyOtp({ email: email, token: code, type: 'signup' });
+      if (res.error) throw res.error;
+      setView('success');
+    } catch (err) {
+      showToast(err.message || 'Invalid code. Please try again.');
+    }
+  };
+
+  /* SOCIAL OAUTH — wired to window._supabase */
+  window.socialLogin = async function (provider) {
+    showToast('Connecting to ' + provider + '…');
+    try {
+      var res = await window._supabase.auth.signInWithOAuth({
+        provider: provider.toLowerCase(),
+        options: { redirectTo: window.location.origin + '/effects.html' }
+      });
+      if (res.error) throw res.error;
+      // Supabase handles the browser redirect — nothing else needed.
+    } catch (err) {
+      showToast(err.message || provider + ' login failed.');
+    }
+  };
+
+  /* EMAIL OTP / MAGIC LINK — call from any "Send magic link" button */
+  window.doMagicLink = async function (email) {
+    try {
+      var res = await window._supabase.auth.signInWithOtp({
+        email: email,
+        options: { emailRedirectTo: window.location.origin + '/effects.html' }
+      });
+      if (res.error) throw res.error;
+      showToast('Magic link sent! Check your inbox.');
+    } catch (err) {
+      showToast(err.message || 'Could not send magic link.');
+    }
+  };
+
+  /* ═══════════════════════════════
+     TOAST
+     ═══════════════════════════════ */
+  window.showToast = function (msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._t);
+    t._t = setTimeout(function () { t.classList.remove('show'); }, 3000);
+  };
+
+}());
+</script>
+</body>
+</html>
