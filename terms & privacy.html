@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#09090e">
+  <title>Legal — Noding</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #09090e; --ink-soft: #0f0f16; --ink-mute: #16161f; --ink-lift: #1e1e2a;
+  --violet: #6c7bff; --violet-light: #9ca8ff; --violet-dark: #4451d4; --violet-deep: #1a1d4a;
+  --node-teal: #0fa888; --signal-amber: #b07118; --danger: #f06060;
+  --white: #f4f4fb; --gray-400: #8f8fa8; --gray-600: #585870;
+  --font-display: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif; --font-mono: 'DM Mono', monospace;
+  --radius-xs: 4px; --radius-sm: 7px; --radius: 14px; --radius-lg: 18px; --radius-pill: 999px;
+  --duration-fast: 150ms; --duration-base: 240ms; --ease-out-expo: cubic-bezier(0.16,1,0.3,1);
+  --transition: all 150ms ease-out;
+  --bg-page: #09090e; --bg-surface: #0f0f16; --bg-surface-2: #16161f; --bg-surface-3: #1e1e2a;
+  --text-primary: #f4f4fb; --text-secondary: #8f8fa8; --text-muted: #585870;
+  --border-surface: rgba(255,255,255,0.06); --border-subtle: #16161f; --border-color: #1e1e2a;
+  --tag-bg: rgba(108,123,255,0.08); --tag-color: #9ca8ff;
+  --glass-bg: rgba(15,15,22,0.78); --glass-bg-2: rgba(22,22,31,0.78);
+  --glass-bg-active: rgba(108,123,255,0.82);
+  --glass-blur: blur(18px) saturate(1.6);
+  --glass-shine: inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.12);
+  --glass-shadow: 0 2px 12px rgba(0,0,0,0.22), 0 1px 3px rgba(0,0,0,0.16);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-body); background: var(--bg-page); color: var(--text-primary); overflow-x: hidden; }
+a { text-decoration: none; color: inherit; }
+
+/* AMBIENT */
+.ambient { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.amb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.05; mix-blend-mode: screen; }
+.amb-1 { width: 600px; height: 600px; background: var(--violet); top: -100px; left: -150px; animation: drift1 28s ease-in-out infinite; }
+.amb-2 { width: 500px; height: 500px; background: var(--violet); top: 0; right: -100px; animation: drift2 34s ease-in-out infinite; }
+.amb-3 { width: 700px; height: 700px; background: var(--violet); bottom: -200px; left: 50%; transform: translateX(-50%); animation: drift3 40s ease-in-out infinite; }
+.amb-4 { width: 400px; height: 400px; background: var(--node-teal); top: 50%; right: -50px; animation: drift2 37s ease-in-out infinite reverse; }
+@keyframes drift1 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(40px,30px)} 66%{transform:translate(-20px,50px)} }
+@keyframes drift2 { 0%,100%{transform:translate(0,0)} 33%{transform:translate(-30px,40px)} 66%{transform:translate(20px,-30px)} }
+@keyframes drift3 { 0%,100%{transform:translateX(-50%) translate(0,0)} 50%{transform:translateX(-50%) translate(0,-40px)} }
+
+/* HEADER */
+header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; height:64px; padding:0 20px; pointer-events:none; }
+.logo { display:flex; align-items:center; gap:9px; pointer-events:all; flex-shrink:0; cursor:pointer; }
+.brand-text { font-family:var(--font-display); font-weight:800; font-size:1.1rem; letter-spacing:-0.03em; color:var(--text-primary); }
+.share-dot { color:var(--violet); font-family:var(--font-display); font-weight:800; font-size:1.1rem; }
+.nav-center { flex:1; display:flex; justify-content:center; pointer-events:all; }
+.nav-pill { display:flex; align-items:center; gap:2px; padding:5px 6px; background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); border:1px solid var(--border-surface); border-radius:var(--radius-pill); box-shadow:var(--glass-shadow),var(--glass-shine); }
+.nlink { font-family:var(--font-body); font-size:0.8125rem; font-weight:500; color:var(--text-secondary); padding:5px 14px; border-radius:var(--radius-pill); transition:var(--transition); white-space:nowrap; cursor:pointer; }
+.nlink:hover { color:var(--text-primary); background:rgba(255,255,255,0.06); }
+.nlink.active { color:var(--white); background:var(--glass-bg-active); }
+.hdr-right { display:flex; align-items:center; gap:6px; flex-shrink:0; pointer-events:all; }
+.icon-btn { width:36px; height:36px; border-radius:var(--radius-sm); border:1px solid var(--border-surface); background:var(--glass-bg); backdrop-filter:var(--glass-blur); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:var(--transition); }
+.icon-btn:hover { color:var(--text-primary); background:var(--glass-bg-2); }
+@media(max-width:767px){.nav-center{display:none;}}
+
+/* BOTTOM NAV */
+.bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:100; height:calc(60px + var(--safe-b)); padding-bottom:var(--safe-b); background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); border-top:1px solid var(--border-surface); display:flex; align-items:flex-start; justify-content:space-around; padding-top:8px; }
+@media(min-width:768px){.bottom-nav{display:none;}}
+.bn-item { display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--text-muted); padding:0 12px; transition:color var(--duration-fast) ease; cursor:pointer; }
+.bn-item.active { color:var(--violet); }
+.bn-lbl { font-family:var(--font-mono); font-size:9px; letter-spacing:0.06em; text-transform:uppercase; }
+
+/* PAGE LAYOUT */
+.page-wrap { position:relative; z-index:1; padding-top:80px; padding-bottom:calc(80px + var(--safe-b)); min-height:100vh; }
+.legal-container { max-width:1100px; margin:0 auto; padding:0 20px; }
+
+/* HERO STRIP */
+.legal-hero { padding: 40px 0 32px; }
+.legal-eyebrow { font-family:var(--font-mono); font-size:0.6875rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--violet-light); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.legal-eyebrow::before { content:''; display:inline-block; width:20px; height:1px; background:var(--violet-light); }
+.legal-title { font-family:var(--font-display); font-weight:800; font-size:clamp(2rem,5vw,3rem); letter-spacing:-0.03em; color:var(--text-primary); margin-bottom:12px; }
+.legal-subtitle { font-size:0.9375rem; color:var(--text-secondary); max-width:520px; line-height:1.6; }
+
+/* DOC TABS */
+.doc-tab-bar { display:flex; align-items:center; gap:4px; padding:4px; background:var(--bg-surface-2); border:1px solid var(--border-surface); border-radius:var(--radius); width:fit-content; margin-bottom:40px; }
+.doc-tab { font-family:var(--font-body); font-size:0.875rem; font-weight:500; color:var(--text-secondary); padding:8px 20px; border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); user-select:none; }
+.doc-tab:hover { color:var(--text-primary); background:rgba(255,255,255,0.04); }
+.doc-tab.active { color:var(--white); background:var(--glass-bg-active); box-shadow:0 1px 6px rgba(108,123,255,0.3); }
+
+/* TWO-COLUMN LAYOUT */
+.legal-layout { display:grid; grid-template-columns:220px 1fr; gap:40px; align-items:start; }
+@media(max-width:900px){ .legal-layout { grid-template-columns: 1fr; } .legal-sidebar { display:none; } }
+
+/* SIDEBAR TOC */
+.legal-sidebar { position:sticky; top:84px; }
+.toc-label { font-family:var(--font-mono); font-size:0.625rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted); margin-bottom:12px; }
+.toc-list { list-style:none; display:flex; flex-direction:column; gap:2px; }
+.toc-item a { display:block; font-family:var(--font-body); font-size:0.8125rem; color:var(--text-muted); padding:6px 10px; border-radius:var(--radius-sm); transition:var(--transition); border-left:2px solid transparent; }
+.toc-item a:hover { color:var(--text-secondary); background:rgba(255,255,255,0.03); }
+.toc-item a.active-section { color:var(--violet-light); border-left-color:var(--violet); background:rgba(108,123,255,0.06); }
+.toc-updated { margin-top:24px; padding:12px; background:var(--bg-surface-2); border-radius:var(--radius-sm); border:1px solid var(--border-color); }
+.toc-updated-label { font-family:var(--font-mono); font-size:0.625rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); display:block; margin-bottom:4px; }
+.toc-updated-val { font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); }
+
+/* DOCUMENT CONTENT */
+.doc-panel { display:none; }
+.doc-panel.active { display:block; }
+.doc-section { margin-bottom:48px; scroll-margin-top:88px; }
+.sec-number { font-family:var(--font-mono); font-size:0.6875rem; letter-spacing:0.1em; color:var(--violet-light); display:block; margin-bottom:6px; }
+.sec-title { font-family:var(--font-display); font-weight:700; font-size:1.25rem; color:var(--text-primary); margin-bottom:16px; }
+.doc-p { font-size:0.9375rem; color:var(--text-secondary); line-height:1.75; margin-bottom:12px; }
+.doc-p:last-child { margin-bottom:0; }
+.doc-p a { color:var(--violet-light); transition:var(--transition); }
+.doc-p a:hover { color:var(--violet); }
+.doc-ul { list-style:none; display:flex; flex-direction:column; gap:8px; margin-bottom:12px; padding-left:0; }
+.doc-ul li { font-size:0.9375rem; color:var(--text-secondary); line-height:1.7; padding-left:20px; position:relative; }
+.doc-ul li::before { content:''; position:absolute; left:0; top:11px; width:5px; height:5px; border-radius:50%; background:var(--violet); opacity:0.6; }
+.doc-ol { list-style:none; counter-reset:doc-counter; display:flex; flex-direction:column; gap:8px; margin-bottom:12px; padding-left:0; }
+.doc-ol li { font-size:0.9375rem; color:var(--text-secondary); line-height:1.7; padding-left:28px; position:relative; counter-increment:doc-counter; }
+.doc-ol li::before { content:counter(doc-counter)'.'; position:absolute; left:0; font-family:var(--font-mono); font-size:0.75rem; color:var(--violet-light); top:2px; }
+.doc-strong { color:var(--text-primary); font-weight:600; }
+.inline-tag { font-family:var(--font-mono); font-size:0.75rem; background:var(--tag-bg); color:var(--tag-color); padding:2px 7px; border-radius:var(--radius-xs); }
+.section-divider { height:1px; background:var(--border-color); margin:0 0 48px; }
+
+/* CALLOUT BOXES */
+.callout { padding:16px 20px; border-radius:var(--radius); border:1px solid; margin-bottom:20px; }
+.callout-info { background:rgba(108,123,255,0.06); border-color:rgba(108,123,255,0.18); }
+.callout-warn { background:rgba(176,113,24,0.06); border-color:rgba(176,113,24,0.22); }
+.callout-gdpr { background:rgba(15,168,136,0.06); border-color:rgba(15,168,136,0.22); }
+.callout-label { font-family:var(--font-mono); font-size:0.625rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:500; margin-bottom:6px; display:block; }
+.callout-info .callout-label { color:var(--violet-light); }
+.callout-warn .callout-label { color:#d4920a; }
+.callout-gdpr .callout-label { color:var(--node-teal); }
+.callout p { font-size:0.875rem; color:var(--text-secondary); line-height:1.65; }
+
+/* RIGHTS TABLE */
+.rights-table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+.rights-table th { font-family:var(--font-mono); font-size:0.625rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); text-align:left; padding:8px 14px; border-bottom:1px solid var(--border-color); }
+.rights-table td { font-size:0.875rem; color:var(--text-secondary); padding:12px 14px; border-bottom:1px solid var(--border-color); vertical-align:top; line-height:1.6; }
+.rights-table tr:last-child td { border-bottom:none; }
+.rights-table td:first-child { font-family:var(--font-mono); font-size:0.8125rem; color:var(--text-primary); white-space:nowrap; }
+.rights-table tr:hover td { background:rgba(255,255,255,0.02); }
+
+/* CONTACT CARD */
+.contact-card { background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); border:1px solid var(--border-surface); border-radius:var(--radius); box-shadow:var(--glass-shine),var(--glass-shadow); padding:20px 24px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:600px){.contact-card{grid-template-columns:1fr;}}
+.contact-item-label { font-family:var(--font-mono); font-size:0.625rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px; }
+.contact-item-val { font-size:0.875rem; color:var(--text-secondary); line-height:1.5; }
+.contact-item-val a { color:var(--violet-light); }
+
+/* LEGAL FOOTER NOTE */
+.legal-footnote { padding:20px 0 40px; border-top:1px solid var(--border-color); margin-top:40px; }
+.legal-footnote p { font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted); line-height:1.7; }
+
+svg { display:block; }
+</style>
+</head>
+<body>
+
+<div class="ambient">
+  <div class="amb amb-1"></div>
+  <div class="amb amb-2"></div>
+  <div class="amb amb-3"></div>
+  <div class="amb amb-4"></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect width="26" height="26" rx="7" fill="#6c7bff"/><circle cx="9" cy="13" r="3" fill="#09090e"/><circle cx="18" cy="9" r="2.2" fill="#09090e"/><circle cx="18" cy="17" r="2.2" fill="#09090e"/><line x1="12" y1="11.3" x2="16" y2="9.8" stroke="#09090e" stroke-width="1.4"/><line x1="12" y1="14.7" x2="16" y2="16.2" stroke="#09090e" stroke-width="1.4"/></svg>
+    <span class="brand-text">noding<span class="share-dot">.</span></span>
+  </div>
+  <nav class="nav-center">
+    <div class="nav-pill">
+      <a class="nlink" href="#">Explore</a>
+      <a class="nlink" href="#">Community</a>
+      <a class="nlink" href="#">Nodes</a>
+      <a class="nlink" href="#">Spline</a>
+      <a class="nlink" href="#">Videos</a>
+    </div>
+  </nav>
+  <div class="hdr-right">
+    <button class="icon-btn" aria-label="Search">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- PAGE -->
+<div class="page-wrap">
+  <div class="legal-container">
+
+    <!-- HERO -->
+    <div class="legal-hero">
+      <div class="legal-eyebrow">Legal Documents</div>
+      <h1 class="legal-title">Terms &amp; Privacy</h1>
+      <p class="legal-subtitle">These documents govern your use of Noding. Please read them carefully — they explain your rights and how we handle your data.</p>
+    </div>
+
+    <!-- TAB BAR -->
+    <div class="doc-tab-bar">
+      <button class="doc-tab active" data-doc="terms">Terms &amp; Conditions</button>
+      <button class="doc-tab" data-doc="privacy">Privacy Notice</button>
+    </div>
+
+    <!-- TWO COLUMN -->
+    <div class="legal-layout">
+
+      <!-- SIDEBAR -->
+      <aside class="legal-sidebar">
+        <div class="toc-label">On this page</div>
+        <ul class="toc-list" id="toc-list">
+          <!-- populated by JS -->
+        </ul>
+        <div class="toc-updated">
+          <span class="toc-updated-label">Last updated</span>
+          <span class="toc-updated-val">April 2026</span>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main>
+
+        <!-- ══════════════════════════════════════
+             TERMS & CONDITIONS
+        ══════════════════════════════════════ -->
+        <div class="doc-panel active" id="panel-terms">
+
+          <div class="doc-section" id="t-intro">
+            <span class="sec-number">01</span>
+            <h2 class="sec-title">Introduction &amp; Acceptance</h2>
+            <p class="doc-p">Welcome to Noding ("the Service", "we", "us", "our"). Noding is an online platform and database for DaVinci Resolve Fusion node effects, operated by Noding Ltd. By accessing or using the Service in any way — including browsing, creating an account, submitting content, or purchasing a Pro subscription — you agree to be bound by these Terms and Conditions ("Terms").</p>
+            <p class="doc-p">If you do not agree to these Terms, you must not use the Service. These Terms form a legally binding contract between you and Noding Ltd.</p>
+            <p class="doc-p">We may update these Terms from time to time. We will notify registered users of material changes by email and/or by a prominent notice on the platform. Continued use after changes take effect constitutes your acceptance of the updated Terms.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-definitions">
+            <span class="sec-number">02</span>
+            <h2 class="sec-title">Definitions</h2>
+            <ul class="doc-ul">
+              <li><span class="doc-strong">"User"</span> — any person who accesses or uses the Service, with or without a registered account.</li>
+              <li><span class="doc-strong">"Registered User"</span> — a User who has created an account on the Service.</li>
+              <li><span class="doc-strong">"Contributor"</span> — a Registered User who has submitted at least one node effect.</li>
+              <li><span class="doc-strong">"Pro User"</span> — a Registered User with an active paid Pro subscription.</li>
+              <li><span class="doc-strong">"Content"</span> — all node effects, node graphs, descriptions, tags, media (GIFs, images, video links), comments, and any other material submitted to or generated via the Service.</li>
+              <li><span class="doc-strong">"Node Effect"</span> — a DaVinci Resolve Fusion compositing workflow, graph, or technique published on the Service.</li>
+            </ul>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-account">
+            <span class="sec-number">03</span>
+            <h2 class="sec-title">Your Account</h2>
+            <p class="doc-p">To access certain features — including submitting effects, voting, commenting, and maintaining a pin library — you must register an account. You agree to:</p>
+            <ul class="doc-ul">
+              <li>Provide accurate, current, and complete information during registration.</li>
+              <li>Maintain the security of your password and accept responsibility for all activity that occurs under your account.</li>
+              <li>Notify us immediately at <a href="mailto:support@noding.app">support@noding.app</a> if you suspect any unauthorised access to your account.</li>
+              <li>Not create an account if you are under 16 years of age.</li>
+              <li>Not create more than one account per person without prior written consent.</li>
+            </ul>
+            <p class="doc-p">We reserve the right to suspend or terminate your account at our discretion if you violate these Terms, engage in fraudulent activity, or cause harm to other users or the platform.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-service">
+            <span class="sec-number">04</span>
+            <h2 class="sec-title">The Service — Free &amp; Pro Tiers</h2>
+            <p class="doc-p">Noding offers two service tiers:</p>
+            <ul class="doc-ul">
+              <li><span class="doc-strong">Free Tier:</span> Browse, search, and copy node effects; pin up to 10 effects; vote and comment; submit up to 3 community effects per calendar month.</li>
+              <li><span class="doc-strong">Pro Tier:</span> All Free features plus unlimited pins, unlimited monthly submissions, private and unlisted effects, analytics, priority review queue placement, version history, .comp export, and a Pro profile badge. Full feature details are outlined on the <a href="pricing.html">Pricing page</a>.</li>
+            </ul>
+            <p class="doc-p">We reserve the right to modify, suspend, or discontinue any aspect of the Service at any time, including feature availability within each tier. Where we make changes that materially reduce the features available to paying Pro Users, we will provide at least 30 days' notice and offer a pro-rata refund if applicable.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-content">
+            <span class="sec-number">05</span>
+            <h2 class="sec-title">User Content &amp; Submissions</h2>
+            <p class="doc-p">You retain ownership of any Content you submit to the Service. By submitting Content, you grant Noding a non-exclusive, worldwide, royalty-free, sublicensable licence to host, store, display, reproduce, and distribute that Content solely for the purpose of operating, improving, and promoting the Service.</p>
+            <p class="doc-p">You represent and warrant that:</p>
+            <ul class="doc-ul">
+              <li>You own or have the necessary rights to the Content you submit.</li>
+              <li>Your Content does not infringe any third-party intellectual property rights, including those of Blackmagic Design (makers of DaVinci Resolve).</li>
+              <li>Your Content does not contain malicious code, exploits, or any material that could harm other users or their systems.</li>
+              <li>Your Content does not violate any applicable law or regulation.</li>
+            </ul>
+            <p class="doc-p">Community submissions (Content submitted with a visibility setting of "Public") are subject to moderation review before publication. We reserve the right to reject, remove, or reclassify any Content at our discretion, without notice and without liability.</p>
+            <p class="doc-p">When you delete your account, your public Content may remain visible on the platform unless you explicitly request removal prior to account deletion. See our <a href="mailto:support@noding.app">deletion request process</a> for more information.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-acceptable-use">
+            <span class="sec-number">06</span>
+            <h2 class="sec-title">Acceptable Use</h2>
+            <p class="doc-p">You agree not to use the Service to:</p>
+            <ul class="doc-ul">
+              <li>Scrape, bulk-download, or systematically extract Content or database records without our express written permission.</li>
+              <li>Attempt to reverse-engineer, decompile, or disassemble any part of the platform.</li>
+              <li>Submit Content that is fraudulent, misleading, or deliberately misrepresents the capabilities of a node effect.</li>
+              <li>Harass, threaten, or abuse other users in comments or via any other feature.</li>
+              <li>Use automated bots, scripts, or other means to manipulate voting, views, or any engagement metric.</li>
+              <li>Impersonate another person or entity, or misrepresent your affiliation with any person or entity.</li>
+              <li>Resell, sublicence, or commercialise access to the Service without prior written agreement.</li>
+            </ul>
+            <div class="callout callout-warn">
+              <span class="callout-label">⚠ Node Graph Code</span>
+              <p>Noding allows import of Fusion composition code. Do not submit .comp or Lua data that contains malicious payloads. Any submission suspected of containing harmful code will be removed immediately and may result in account termination and referral to relevant authorities.</p>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-ip">
+            <span class="sec-number">07</span>
+            <h2 class="sec-title">Intellectual Property</h2>
+            <p class="doc-p">The Noding platform, brand, logo, design system, and all software (excluding User Content) are the exclusive property of Noding Ltd and are protected by copyright, trade mark, and other applicable laws.</p>
+            <p class="doc-p">DaVinci Resolve and Fusion are registered trademarks of Blackmagic Design Pty Ltd. Noding is an independent community platform and is not affiliated with, endorsed by, or sponsored by Blackmagic Design.</p>
+            <p class="doc-p">Nothing in these Terms transfers any intellectual property rights to you. You may not use our trade marks, logos, or branding without our prior written consent.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-billing">
+            <span class="sec-number">08</span>
+            <h2 class="sec-title">Pro Subscription &amp; Billing</h2>
+            <p class="doc-p">Pro subscriptions are billed either monthly or annually, as selected at the time of purchase. Prices are displayed on the Pricing page and are inclusive of applicable VAT where required by law.</p>
+            <p class="doc-p"><span class="doc-strong">Cancellation:</span> You may cancel your Pro subscription at any time via your account settings. Cancellation takes effect at the end of the current billing period; you will retain Pro access until that date.</p>
+            <p class="doc-p"><span class="doc-strong">Refunds:</span> We offer a full refund within 14 days of initial purchase if you have not made significant use of Pro-exclusive features. Annual subscribers who cancel after the 14-day window are not entitled to a pro-rata refund, except where required by applicable consumer protection law.</p>
+            <p class="doc-p"><span class="doc-strong">Consumer Rights:</span> If you are a consumer in the UK or European Union, you have statutory cancellation rights under the Consumer Contracts Regulations 2013 (UK) or the EU Consumer Rights Directive. Because digital content may be delivered immediately upon purchase, you may lose your right of withdrawal once you begin accessing Pro features. We will inform you of this clearly at the point of purchase.</p>
+            <p class="doc-p">Payment processing is handled by our third-party payment provider, Stripe. By subscribing, you also agree to <a href="https://stripe.com/gb/legal" target="_blank" rel="noopener">Stripe's Terms of Service</a>. We do not store your full card details.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-disclaimers">
+            <span class="sec-number">09</span>
+            <h2 class="sec-title">Disclaimers</h2>
+            <p class="doc-p">The Service is provided "as is" and "as available" without warranty of any kind. We do not warrant that:</p>
+            <ul class="doc-ul">
+              <li>The Service will be uninterrupted, error-free, or free from viruses or other harmful components.</li>
+              <li>Any node effect published on the platform will produce the described result in your specific DaVinci Resolve environment or version.</li>
+              <li>User-submitted Content is accurate, complete, or up to date.</li>
+            </ul>
+            <p class="doc-p">Nothing in these Terms affects your statutory rights as a consumer under applicable UK or EU law.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-liability">
+            <span class="sec-number">10</span>
+            <h2 class="sec-title">Limitation of Liability</h2>
+            <p class="doc-p">To the fullest extent permitted by applicable law, Noding Ltd shall not be liable for:</p>
+            <ul class="doc-ul">
+              <li>Any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</li>
+              <li>Loss of data, projects, or work arising from reliance on node effects or other Content on the platform.</li>
+              <li>Damage to your DaVinci Resolve projects, compositions, or system caused by code submitted to the platform.</li>
+            </ul>
+            <p class="doc-p">Our aggregate liability to you in connection with these Terms or your use of the Service shall not exceed the greater of (a) the total amount you paid us in the 12 months preceding the claim, or (b) £100.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-termination">
+            <span class="sec-number">11</span>
+            <h2 class="sec-title">Termination</h2>
+            <p class="doc-p">You may delete your account at any time via Account Settings → Danger Zone. Upon deletion, your personal data will be handled in accordance with our Privacy Notice.</p>
+            <p class="doc-p">We may terminate or suspend your account with immediate effect if you breach these Terms, engage in fraudulent activity, or if required to do so by law. In such cases, we will inform you of the reason unless doing so is prohibited by law or would compromise an investigation.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-governing-law">
+            <span class="sec-number">12</span>
+            <h2 class="sec-title">Governing Law</h2>
+            <p class="doc-p">These Terms are governed by and construed in accordance with the laws of England and Wales. Any disputes arising from or in connection with these Terms shall be subject to the exclusive jurisdiction of the courts of England and Wales, except where mandatory consumer protection laws in your country of residence provide otherwise.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="t-contact">
+            <span class="sec-number">13</span>
+            <h2 class="sec-title">Contact</h2>
+            <p class="doc-p">For questions about these Terms, please contact us:</p>
+            <div class="contact-card">
+              <div>
+                <div class="contact-item-label">Email</div>
+                <div class="contact-item-val"><a href="mailto:legal@noding.app">legal@noding.app</a></div>
+              </div>
+              <div>
+                <div class="contact-item-label">Registered address</div>
+                <div class="contact-item-val">Noding Ltd<br>London, United Kingdom</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="legal-footnote">
+            <p>These Terms and Conditions were last updated in April 2026 and supersede all previous versions. Noding Ltd is a company registered in England and Wales. These Terms do not affect your statutory rights.</p>
+          </div>
+
+        </div>
+
+        <!-- ══════════════════════════════════════
+             PRIVACY NOTICE
+        ══════════════════════════════════════ -->
+        <div class="doc-panel" id="panel-privacy">
+
+          <div class="callout callout-gdpr">
+            <span class="callout-label">🔒 GDPR &amp; UK GDPR</span>
+            <p>Noding Ltd is a data controller registered under the UK General Data Protection Regulation (UK GDPR) and the Data Protection Act 2018. Where we serve users in the European Union, we comply with EU GDPR (Regulation 2016/679). This notice explains in plain language what we collect, why, and your rights.</p>
+          </div>
+
+          <div class="doc-section" id="p-controller">
+            <span class="sec-number">01</span>
+            <h2 class="sec-title">Data Controller</h2>
+            <p class="doc-p">The data controller responsible for your personal data is:</p>
+            <div class="contact-card">
+              <div>
+                <div class="contact-item-label">Company</div>
+                <div class="contact-item-val">Noding Ltd, registered in England &amp; Wales</div>
+              </div>
+              <div>
+                <div class="contact-item-label">Data &amp; Privacy contact</div>
+                <div class="contact-item-val"><a href="mailto:privacy@noding.app">privacy@noding.app</a></div>
+              </div>
+              <div>
+                <div class="contact-item-label">ICO Registration</div>
+                <div class="contact-item-val">Registered with the Information Commissioner's Office (ICO), United Kingdom</div>
+              </div>
+              <div>
+                <div class="contact-item-label">EU Representative</div>
+                <div class="contact-item-val">For EU-based users: designated EU representative details available on request</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-collect">
+            <span class="sec-number">02</span>
+            <h2 class="sec-title">Data We Collect</h2>
+            <p class="doc-p">We collect only the personal data that is necessary to provide and improve the Service. This includes:</p>
+
+            <p class="doc-p"><span class="doc-strong">Account data</span> — when you register: email address, chosen display name, and (optionally) a profile avatar. If you sign in via a third-party provider (GitHub, Google), we receive only the data that provider shares with us under your authorisation.</p>
+
+            <p class="doc-p"><span class="doc-strong">Payment data</span> — when you subscribe to Pro: billing name, billing address, and payment card details. Card details are processed directly by Stripe and are never stored on Noding servers. We retain a payment reference, subscription status, and billing history.</p>
+
+            <p class="doc-p"><span class="doc-strong">User Content</span> — node effects, node graphs, descriptions, tags, media files, version notes, and comments you submit to the platform.</p>
+
+            <p class="doc-p"><span class="doc-strong">Usage data</span> — pages visited, features used, search queries, effects viewed, pins saved, votes cast, session timestamps, and interaction events. This data is pseudonymised where possible.</p>
+
+            <p class="doc-p"><span class="doc-strong">Technical data</span> — IP address, browser type and version, operating system, device type, screen resolution, time zone, and referring URL. Collected automatically on each request.</p>
+
+            <p class="doc-p"><span class="doc-strong">Communications</span> — the content of any support emails or messages you send us.</p>
+
+            <p class="doc-p">We do not collect special category data (health, ethnicity, political opinions, biometric data, etc.) and do not knowingly collect data from children under 16.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-legal-basis">
+            <span class="sec-number">03</span>
+            <h2 class="sec-title">Legal Bases for Processing</h2>
+            <p class="doc-p">Under UK GDPR / EU GDPR (Article 6), we process your data on the following lawful bases:</p>
+
+            <table class="rights-table">
+              <thead>
+                <tr>
+                  <th>Purpose</th>
+                  <th>Legal Basis</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Providing your account and the core Service</td>
+                  <td>Contract (Art. 6(1)(b)) — processing is necessary to perform our contract with you</td>
+                </tr>
+                <tr>
+                  <td>Processing your Pro subscription payment</td>
+                  <td>Contract (Art. 6(1)(b))</td>
+                </tr>
+                <tr>
+                  <td>Fraud prevention and platform security</td>
+                  <td>Legitimate interests (Art. 6(1)(f)) — protecting users and the integrity of the platform</td>
+                </tr>
+                <tr>
+                  <td>Analytics and service improvement</td>
+                  <td>Legitimate interests (Art. 6(1)(f)) — understanding how the Service is used to improve it</td>
+                </tr>
+                <tr>
+                  <td>Marketing emails (newsletters, feature announcements)</td>
+                  <td>Consent (Art. 6(1)(a)) — only sent if you opt in; you may withdraw at any time</td>
+                </tr>
+                <tr>
+                  <td>Complying with legal obligations</td>
+                  <td>Legal obligation (Art. 6(1)(c))</td>
+                </tr>
+                <tr>
+                  <td>Optional cookies and tracking beyond essential</td>
+                  <td>Consent (Art. 6(1)(a)) — via cookie banner</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-cookies">
+            <span class="sec-number">04</span>
+            <h2 class="sec-title">Cookies &amp; Tracking</h2>
+            <p class="doc-p">We use cookies and similar technologies. You can manage your preferences via the cookie banner on your first visit, or at any time via <span class="inline-tag">Settings → Privacy</span>.</p>
+            <ul class="doc-ul">
+              <li><span class="doc-strong">Essential cookies:</span> session management, authentication tokens, CSRF protection. These are strictly necessary; no consent required.</li>
+              <li><span class="doc-strong">Preference cookies:</span> dark/light theme, UI layout choices. Set with consent.</li>
+              <li><span class="doc-strong">Analytics cookies:</span> we use a privacy-first analytics tool (self-hosted or privacy-focused provider) to understand aggregate usage patterns. IP addresses are anonymised before storage. Set with consent.</li>
+            </ul>
+            <p class="doc-p">We do not use cross-site advertising or behavioural tracking cookies. We do not share cookie data with advertising networks.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-sharing">
+            <span class="sec-number">05</span>
+            <h2 class="sec-title">Sharing Your Data</h2>
+            <p class="doc-p">We do not sell, rent, or trade your personal data. We share data only in the following circumstances:</p>
+            <ul class="doc-ul">
+              <li><span class="doc-strong">Service providers (processors):</span> Stripe (payment processing), our cloud hosting provider, and email delivery provider. All processors are bound by data processing agreements that require GDPR-compliant handling.</li>
+              <li><span class="doc-strong">Legal requirements:</span> if required by law, court order, or to protect the rights, property, or safety of Noding, our users, or the public.</li>
+              <li><span class="doc-strong">Business transfer:</span> in the event of a merger, acquisition, or sale of assets, your data may be transferred to the acquirer, subject to equivalent privacy protections. We will notify you before your data becomes subject to a different privacy notice.</li>
+            </ul>
+            <p class="doc-p">Public profile data (display name, submitted effects, comment history) is visible to other users of the Service as part of its normal operation.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-transfers">
+            <span class="sec-number">06</span>
+            <h2 class="sec-title">International Transfers</h2>
+            <p class="doc-p">Our primary infrastructure is located within the United Kingdom and/or European Economic Area. Where we use service providers whose servers are located outside the UK/EEA — for example, certain cloud or CDN providers — we ensure that appropriate safeguards are in place, including:</p>
+            <ul class="doc-ul">
+              <li>UK adequacy regulations for transfers from the UK, or</li>
+              <li>Standard Contractual Clauses (SCCs) approved by the European Commission for EU transfers, or</li>
+              <li>An applicable adequacy decision.</li>
+            </ul>
+            <p class="doc-p">You may request details of the specific safeguards we have in place for any third-country transfer by contacting <a href="mailto:privacy@noding.app">privacy@noding.app</a>.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-retention">
+            <span class="sec-number">07</span>
+            <h2 class="sec-title">Data Retention</h2>
+            <p class="doc-p">We retain personal data for as long as necessary to fulfil the purposes for which it was collected, including for the purposes of satisfying legal, accounting, or reporting requirements:</p>
+            <table class="rights-table">
+              <thead>
+                <tr><th>Data type</th><th>Retention period</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Account data</td><td>For the lifetime of your account, then deleted within 30 days of account closure (unless retention is required by law)</td></tr>
+                <tr><td>Payment records</td><td>7 years (UK HMRC requirements)</td></tr>
+                <tr><td>Usage &amp; analytics data</td><td>Aggregated/anonymised after 24 months; raw pseudonymised logs deleted within 12 months</td></tr>
+                <tr><td>Support communications</td><td>3 years from the date of the last communication</td></tr>
+                <tr><td>Public Content (effects, comments)</td><td>Retained until you request removal or delete your account; may be retained in anonymised/aggregated form thereafter</td></tr>
+                <tr><td>Server access logs</td><td>90 days (security purposes)</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-rights">
+            <span class="sec-number">08</span>
+            <h2 class="sec-title">Your Rights</h2>
+            <div class="callout callout-gdpr">
+              <span class="callout-label">Your GDPR Rights</span>
+              <p>Under UK GDPR and EU GDPR you have the following rights regarding your personal data. You can exercise most of these directly in your account settings. To submit a formal request, email <a href="mailto:privacy@noding.app">privacy@noding.app</a>. We will respond within one calendar month (extendable by two further months for complex requests, with notice).</p>
+            </div>
+            <table class="rights-table">
+              <thead>
+                <tr><th>Right</th><th>What this means for you</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Access (Art. 15)</td><td>Request a copy of all personal data we hold about you, including the purposes for which we process it.</td></tr>
+                <tr><td>Rectification (Art. 16)</td><td>Request correction of inaccurate or incomplete personal data. Most profile data can be corrected directly in Settings.</td></tr>
+                <tr><td>Erasure (Art. 17)</td><td>Request deletion of your personal data ("right to be forgotten") where there is no compelling reason for us to continue processing it. Note: we may be unable to erase data we are legally required to retain.</td></tr>
+                <tr><td>Restriction (Art. 18)</td><td>Request that we restrict processing of your data in certain circumstances — for example, while you contest its accuracy.</td></tr>
+                <tr><td>Portability (Art. 20)</td><td>Request an export of your personal data in a structured, machine-readable format (JSON). Applies to data you provided under a contract or consent.</td></tr>
+                <tr><td>Objection (Art. 21)</td><td>Object to processing based on legitimate interests, including direct marketing. We will stop unless we have compelling legitimate grounds.</td></tr>
+                <tr><td>Withdraw Consent (Art. 7(3))</td><td>Where processing is based on consent (e.g. marketing emails, non-essential cookies), withdraw at any time without affecting the lawfulness of prior processing.</td></tr>
+                <tr><td>Automated Decision-Making (Art. 22)</td><td>We do not make solely automated decisions that produce significant legal or similarly significant effects on you.</td></tr>
+              </tbody>
+            </table>
+            <p class="doc-p"><span class="doc-strong">Right to complain:</span> If you believe we have mishandled your personal data, you have the right to lodge a complaint with the Information Commissioner's Office (ICO) at <a href="https://ico.org.uk" target="_blank" rel="noopener">ico.org.uk</a> (UK users), or with the supervisory authority in your EU member state of residence.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-children">
+            <span class="sec-number">09</span>
+            <h2 class="sec-title">Children's Privacy</h2>
+            <p class="doc-p">The Service is not directed at children under the age of 16. We do not knowingly collect personal data from anyone under 16. If you are a parent or guardian and believe your child has provided us with personal data, please contact <a href="mailto:privacy@noding.app">privacy@noding.app</a> and we will delete the data promptly.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-security">
+            <span class="sec-number">10</span>
+            <h2 class="sec-title">Security</h2>
+            <p class="doc-p">We implement appropriate technical and organisational measures to protect your personal data against unauthorised access, accidental loss, destruction, or damage. These include TLS encryption in transit, encryption at rest for sensitive fields, access controls, regular security reviews, and third-party processor vetting.</p>
+            <p class="doc-p">In the event of a personal data breach that is likely to result in a high risk to your rights and freedoms, we will notify you without undue delay and, where required by law, will notify the ICO within 72 hours of becoming aware of the breach.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-changes">
+            <span class="sec-number">11</span>
+            <h2 class="sec-title">Changes to This Notice</h2>
+            <p class="doc-p">We may update this Privacy Notice from time to time to reflect changes in our practices, the Service, or applicable law. We will notify you of material changes by email (if you are a registered user) and by updating the "Last updated" date at the top of this page. We encourage you to review this Notice periodically.</p>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="doc-section" id="p-contact">
+            <span class="sec-number">12</span>
+            <h2 class="sec-title">Contact &amp; Complaints</h2>
+            <p class="doc-p">For all privacy-related enquiries, subject access requests, or complaints, contact us at:</p>
+            <div class="contact-card">
+              <div>
+                <div class="contact-item-label">Privacy team</div>
+                <div class="contact-item-val"><a href="mailto:privacy@noding.app">privacy@noding.app</a></div>
+              </div>
+              <div>
+                <div class="contact-item-label">ICO (UK regulator)</div>
+                <div class="contact-item-val"><a href="https://ico.org.uk/concerns" target="_blank" rel="noopener">ico.org.uk/concerns</a><br>0303 123 1113</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="legal-footnote">
+            <p>This Privacy Notice was last updated in April 2026. It is written in plain English to be easily understood. If any section is unclear, please contact privacy@noding.app. Noding Ltd is registered with the ICO as a data controller.</p>
+          </div>
+
+        </div><!-- /panel-privacy -->
+      </main>
+    </div><!-- /legal-layout -->
+  </div><!-- /legal-container -->
+</div><!-- /page-wrap -->
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bn-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9"/><path d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg><span class="bn-lbl">Home</span></div>
+  <div class="bn-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg><span class="bn-lbl">Search</span></div>
+  <div class="bn-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><span class="bn-lbl">Community</span></div>
+  <div class="bn-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span class="bn-lbl">Pins</span></div>
+  <div class="bn-item active"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bn-lbl">Profile</span></div>
+</nav>
+
+<script>
+(function(){
+  var tabs = document.querySelectorAll('.doc-tab');
+  var panels = document.querySelectorAll('.doc-panel');
+
+  var tocData = {
+    terms: [
+      {id:'t-intro', label:'Introduction'},
+      {id:'t-definitions', label:'Definitions'},
+      {id:'t-account', label:'Your Account'},
+      {id:'t-service', label:'Free & Pro Tiers'},
+      {id:'t-content', label:'User Content'},
+      {id:'t-acceptable-use', label:'Acceptable Use'},
+      {id:'t-ip', label:'Intellectual Property'},
+      {id:'t-billing', label:'Billing & Refunds'},
+      {id:'t-disclaimers', label:'Disclaimers'},
+      {id:'t-liability', label:'Liability'},
+      {id:'t-termination', label:'Termination'},
+      {id:'t-governing-law', label:'Governing Law'},
+      {id:'t-contact', label:'Contact'},
+    ],
+    privacy: [
+      {id:'p-controller', label:'Data Controller'},
+      {id:'p-collect', label:'Data We Collect'},
+      {id:'p-legal-basis', label:'Legal Bases'},
+      {id:'p-cookies', label:'Cookies & Tracking'},
+      {id:'p-sharing', label:'Sharing Data'},
+      {id:'p-transfers', label:'International Transfers'},
+      {id:'p-retention', label:'Retention'},
+      {id:'p-rights', label:'Your Rights (GDPR)'},
+      {id:'p-children', label:"Children's Privacy"},
+      {id:'p-security', label:'Security'},
+      {id:'p-changes', label:'Changes'},
+      {id:'p-contact', label:'Contact & Complaints'},
+    ]
+  };
+
+  var currentDoc = 'terms';
+
+  function buildTOC(doc) {
+    var list = document.getElementById('toc-list');
+    list.innerHTML = '';
+    var items = tocData[doc];
+    for (var i = 0; i < items.length; i++) {
+      var li = document.createElement('li');
+      li.className = 'toc-item';
+      var a = document.createElement('a');
+      a.href = '#' + items[i].id;
+      a.textContent = items[i].label;
+      a.dataset.target = items[i].id;
+      li.appendChild(a);
+      list.appendChild(li);
+    }
+  }
+
+  function switchDoc(doc) {
+    currentDoc = doc;
+    tabs.forEach(function(t){ t.classList.toggle('active', t.dataset.doc === doc); });
+    panels.forEach(function(p){ p.classList.toggle('active', p.id === 'panel-' + doc); });
+    buildTOC(doc);
+  }
+
+  tabs.forEach(function(tab){
+    tab.addEventListener('click', function(){ switchDoc(tab.dataset.doc); });
+  });
+
+  // Scroll spy
+  function onScroll() {
+    var links = document.querySelectorAll('.toc-item a');
+    var scrollY = window.scrollY + 100;
+    var active = null;
+    links.forEach(function(a){
+      var el = document.getElementById(a.dataset.target);
+      if (el && el.offsetTop <= scrollY) { active = a; }
+    });
+    links.forEach(function(a){ a.classList.remove('active-section'); });
+    if (active) { active.classList.add('active-section'); }
+  }
+
+  window.addEventListener('scroll', onScroll, {passive:true});
+  buildTOC('terms');
+  onScroll();
+}());
+</script>
+</body>
+</html>

@@ -10,6 +10,11 @@
 <meta charset="UTF-8">
 <title>Plugins &mdash; Resolve Library</title>
 <link rel="manifest" href="manifest.json">
+
+<!-- Noding Shared Resources -->
+<link rel="stylesheet" href="noding-shared.css">
+<script src="auth.js"></script>
+<script src="noding-shared.js"></script>
 <script>if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){navigator.serviceWorker.register("./sw.js").catch(function(){});}
 </script>
 <script>(function(){try{var t=JSON.parse(localStorage.getItem('rl-theme')||'{}'),s=document.documentElement.style;if(t.accent)s.setProperty('--accent',t.accent);if(t.bg)s.setProperty('--bg',t.bg);if(t.surface)s.setProperty('--surface',t.surface);if(t.surface2)s.setProperty('--surface2',t.surface2);}catch(e){}try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');if(ui.fontBody)s.setProperty('--font-body',ui.fontBody);if(ui.fontHead)s.setProperty('--font-head',ui.fontHead);}catch(e){}})();
@@ -67,7 +72,7 @@ header{display:grid!important;grid-template-columns:auto 1fr auto!important;alig
   <div class="nav-pill"><a class="nlink" href="home.html">Home</a><a class="nlink" href="effects.html">Effects</a><a class="nlink" href="videos.html">Videos</a><a class="nlink" href="spline.html">Spline</a><a class="nlink" href="nodegraph.html">Node Graph</a><a class="nlink  active" href="library.html">Library</a></div>
   <div class="sh-hdr-right">
     <button class="sh-icon-btn" onclick="shOpenNote()" title="Quick note"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></button>
-    <button class="sh-add-btn" onclick="openAddModal()"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> + Plugin</button>
+    <button class="sh-add-btn" onclick="shOpenAddModal('modal-add-plugin')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> + Plugin</button>
     <button class="sh-hbg-btn" onclick="shOpenSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
 </header>
@@ -90,6 +95,10 @@ header{display:grid!important;grid-template-columns:auto 1fr auto!important;alig
     <button class="sh-sb-item" onclick="shCloseSidebar();shOpenNote()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> Quick Note</button>
     <a class="sh-sb-item" href="settings.html"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Settings</a>
   </div>
+  <div class="sh-sb-sec">
+    <div class="sh-sb-lbl">Account</div>
+    <div id="sb-auth-group"></div>
+  </div>
 </div>
 <div id="sh-note-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem;">
   <div style="background:var(--surface);border:1px solid var(--border2);border-radius:18px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden;">
@@ -102,10 +111,10 @@ header{display:grid!important;grid-template-columns:auto 1fr auto!important;alig
 <div class="hero"><div class="hero-eyebrow"><span></span>Resolve Library</div><h1>Your <em>Plugins</em></h1><p>Third-party fuses, scripts and tools installed in DaVinci Resolve.</p></div>
 <div class="lib-tabs"><a class="lib-tab" href="library.html">Library</a><a class="lib-tab" href="nodes-reference.html">Node Reference</a><a class="lib-tab" href="reference.html">Reference Material</a><a class="lib-tab  active" href="plugins.html">Plugins</a><a class="lib-tab" href="inspiration.html">Inspiration</a><a class="lib-tab" href="expressions.html">Expressions</a><a class="lib-tab" href="modifiers.html">Modifiers</a></div>
 <div class="controls-bar"><div class="search-wrap"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg><input class="search-input" type="text" id="page-search" placeholder="Search plugins&hellip;" oninput="filterItems()"></div><div class="cat-btns" id="cat-btns"></div></div>
-<button class="page-add-btn" onclick="openAddModal()"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> + Plugin</button>
+<button class="page-add-btn" onclick="shOpenAddModal('modal-add-plugin')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> + Plugin</button>
 <div class="item-grid" id="item-grid"><div class="item-empty">No plugins yet. Click the button above to add your first one.</div></div>
 </div>
-<div class="add-modal-overlay" id="add-modal-overlay" onclick="if(event.target===this)closeAddModal()">
+<div class="add-modal-overlay" id="modal-add-plugin" onclick="if(event.target===this)shCloseModal('modal-add-plugin')">
   <div class="add-modal">
     <div class="add-modal-header"><span class="add-modal-title">Add Plugin</span><button class="add-modal-close" onclick="closeAddModal()">&#x2715;</button></div>
     <div class="add-modal-body" id="add-modal-body"></div>
@@ -143,8 +152,8 @@ function filterItems(){
   g.innerHTML=f.map(renderCard).join("");
 }
 function deleteItem(id){if(!confirm("Delete?"))return;saveItems(loadItems().filter(function(it){return it.id!==id;}));buildCatBtns();filterItems();_shToast("Deleted");}
-function openAddModal(){document.getElementById("add-modal-overlay").classList.add("open");document.body.style.overflow="hidden";buildModalFields();setTimeout(function(){var el=document.querySelector("#add-modal-body input");if(el)el.focus();},80);}
-function closeAddModal(){document.getElementById("add-modal-overlay").classList.remove("open");document.body.style.overflow="";}
+function openAddModal(){shOpenAddModal('modal-add-plugin');buildModalFields();setTimeout(function(){var el=document.querySelector("#add-modal-body input");if(el)el.focus();},80);}
+function closeAddModal(){shCloseModal('modal-add-plugin');}
 function shOpenSidebar(){document.getElementById("sh-sb").classList.add("open");document.getElementById("sh-sb-ov").classList.add("open");document.body.style.overflow="hidden";}
 function shCloseSidebar(){document.getElementById("sh-sb").classList.remove("open");document.getElementById("sh-sb-ov").classList.remove("open");document.body.style.overflow="";}
 function shOpenNote(){var ov=document.getElementById("sh-note-ov");ov.style.display="flex";document.body.style.overflow="hidden";setTimeout(function(){var el=document.getElementById("sh-note-title");if(el)el.focus();},80);}
@@ -165,5 +174,27 @@ document.addEventListener("keydown",function(e){if(e.key==="Escape"){shCloseSide
 function init(){buildCatBtns();filterItems();}
 init();
 </script>
+
+<!-- FOOTER -->
+<footer style="border-top:1px solid var(--border);padding:40px 24px;margin-top:60px;position:relative;z-index:1;background:var(--surface);">
+  <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:24px;height:24px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.2" fill="#070708"/><rect x="8" y="1" width="5" height="5" rx="1.2" fill="#070708" opacity=".6"/><rect x="1" y="8" width="5" height="5" rx="1.2" fill="#070708" opacity=".6"/><rect x="8" y="8" width="5" height="5" rx="1.2" fill="#070708" opacity=".35"/></svg>
+        </div>
+        <span style="font-family:var(--font-head);font-weight:800;font-size:0.9rem;letter-spacing:-0.03em;color:var(--text);">Noding</span><span style="color:var(--accent);font-family:var(--font-head);font-weight:800;font-size:0.9rem;">.</span>
+      </div>
+      <span style="font-family:var(--font-mono);font-size:0.6875rem;color:var(--muted);letter-spacing:0.06em;">© 2025 Noding · All rights reserved</span>
+    </div>
+    <div style="display:flex;gap:24px;">
+      <a href="terms.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Terms</a>
+      <a href="privacy.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Privacy</a>
+      <a href="community.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Community</a>
+      <a href="settings.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Settings</a>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>

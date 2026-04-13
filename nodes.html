@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Node Graph — Noding</title>
+
+<!-- Shared Noding System Resources -->
+<link rel="stylesheet" href="noding-shared.css">
+<script src="auth.js"></script>
+<script src="noding-shared.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
+
+/* ── Noding Brand Tokens ── */
+:root {
+  --ink:#09090e;--violet:#6c7bff;--violet-light:#9ca8ff;--violet-dark:#4451d4;
+  --teal:#0fa888;--amber:#b07118;--danger:#f06060;
+  --white:#f4f4fb;
+  --fd:'Syne',sans-serif;--fb:'DM Sans',sans-serif;--fm:'DM Mono',monospace;
+  --rxs:4px;--rsm:7px;--r:14px;--rlg:18px;--rp:999px;
+  --df:150ms;--db:240ms;--ease:cubic-bezier(0.16,1,0.3,1);--tr:all 150ms ease-out;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+:root {
+  --bg:#09090e;--bg2:#0f0f16;--bg3:#16161f;--bg4:#1e1e2a;
+  --tp:#f4f4fb;--ts:#8f8fa8;--tm:#585870;
+  --bs:rgba(255,255,255,0.06);--bsb:#16161f;--bc:#1e1e2a;
+  --tb:rgba(108,123,255,0.08);--tc:#9ca8ff;
+  --gb:rgba(15,15,22,0.84);--gb2:rgba(22,22,31,0.84);
+  --gbl:blur(18px) saturate(1.6);
+  --gs:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.12);
+  --gsh:0 2px 12px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.16);
+}
+[data-theme="light"] {
+  --bg:#fff;--bg2:#eceffe;--bg3:#e2e6fd;--bg4:#d6dbfc;
+  --tp:#09090e;--ts:#3b3d6e;--tm:#7577a8;
+  --bs:rgba(108,123,255,0.12);--bsb:rgba(108,123,255,0.18);--bc:rgba(108,123,255,0.35);
+  --tb:rgba(108,123,255,0.10);--tc:#4451d4;
+  --gb:rgba(236,239,254,0.84);--gb2:rgba(226,230,253,0.84);
+  --gbl:blur(18px) saturate(1.8);
+  --gs:inset 0 1px 0 rgba(255,255,255,0.75),inset 0 -1px 0 rgba(108,123,255,0.08);
+  --gsh:0 2px 10px rgba(108,123,255,0.10),0 1px 3px rgba(108,123,255,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--tp);font-family:var(--fb);font-size:15px;font-weight:300;-webkit-font-smoothing:antialiased;transition:background var(--db),color var(--db);display:flex;flex-direction:column;}
+button{font-family:var(--fb);cursor:pointer;border:none;background:none;}
+input{font-family:var(--fb);outline:none;}
+
+/* ── NO-SCROLL VIEWPORT CONTAINER ── */
+.app-viewport {
+  height: calc(100vh - 100px);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── NODING NAV PILL HEADER ── */
+.noding-header {
+  display: grid !important;
+  grid-template-columns: auto 1fr auto !important;
+  align-items: center;
+  gap: 0;
+  height: 56px;
+  padding: 0 1.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--gb);
+  backdrop-filter: var(--gbl);
+  -webkit-backdrop-filter: var(--gbl);
+  border-bottom: 1px solid var(--bsb);
+  box-shadow: var(--gs);
+  flex-shrink: 0;
+}
+.noding-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--fd);
+  font-weight: 800;
+  font-size: .88rem;
+  color: var(--tp);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.noding-logo-mark {
+  width: 24px;
+  height: 24px;
+  background: var(--violet);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.noding-logo em { color: var(--violet); font-style: normal; }
+
+.nav-pill {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg2);
+  border: 1px solid var(--bs);
+  border-radius: 999px;
+  padding: 3px;
+  z-index: 1;
+}
+.nlink {
+  font-size: 12.5px;
+  font-family: var(--fb);
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--ts);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color .15s, background .15s;
+  white-space: nowrap;
+}
+.nlink:hover { color: var(--tp); }
+.nlink.active { color: #fff; background: rgba(108,123,255,0.82); box-shadow: inset 0 1px 0 rgba(255,255,255,0.10); }
+
+.hdr-right { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
+.hdr-icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--ts);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  transition: color .15s, background .15s;
+}
+.hdr-icon-btn:hover { color: var(--tp); background: rgba(255,255,255,.06); }
+.hdr-hbg-btn {
+  background: transparent;
+  border: none;
+  color: var(--ts);
+  cursor: pointer;
+  padding: 7px 8px;
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 4.5px;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, background .15s;
+}
+.hdr-hbg-btn:hover { color: var(--tp); background: rgba(255,255,255,.06); }
+.hdr-hbg-btn span { display: block; width: 17px; height: 1.5px; background: currentColor; border-radius: 2px; }
+
+@media(max-width:780px) {
+  .nav-pill { display: none !important; }
+}
+
+/* ── SIDEBAR ── */
+.sh-sidebar-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150;backdrop-filter:blur(4px);}
+.sh-sidebar-ov.open{display:block;}
+.sh-sidebar{position:fixed;top:0;right:0;bottom:0;width:min(290px,85vw);background:var(--bg2);border-left:1px solid var(--bsb);z-index:151;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.sh-sidebar.open{transform:translateX(0);}
+.sh-sb-head{padding:1rem 1.25rem;border-bottom:1px solid var(--bs);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sh-sb-title{font-family:var(--fd);font-size:.9rem;font-weight:700;color:var(--tp);}
+.sh-sb-close{background:none;border:none;color:var(--tm);cursor:pointer;font-size:20px;padding:0 4px;line-height:1;}
+.sh-sb-close:hover{color:var(--tp);}
+.sh-sb-sec{padding:.6rem 0;border-bottom:1px solid var(--bs);}
+.sh-sb-sec:last-child{border-bottom:none;padding-bottom:2rem;}
+.sh-sb-lbl{font-size:9px;font-family:var(--fm);text-transform:uppercase;letter-spacing:.1em;color:var(--tm);padding:0 1.25rem;margin-bottom:3px;}
+.sh-sb-item{display:flex;align-items:center;gap:11px;padding:10px 1.25rem;font-size:13.5px;font-family:var(--fb);color:var(--tp);text-decoration:none;cursor:pointer;transition:background .12s;border:none;background:none;width:100%;text-align:left;}
+.sh-sb-item:hover{background:var(--bg3);}
+.sh-sb-item svg{flex-shrink:0;opacity:.65;}
+
+/* Auth in sidebar */
+#sb-auth-group { padding: 0.75rem 1.25rem; }
+
+/* ── STATUS BAR (thin, non-scrolling) ── */
+.sh-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 28px;
+  background: var(--gb);
+  backdrop-filter: var(--gbl);
+  -webkit-backdrop-filter: var(--gbl);
+  border-top: 1px solid var(--bsb);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  font-family: var(--fm);
+  font-size: 10px;
+  color: var(--tm);
+  flex-shrink: 0;
+}
+.sh-status-bar a {
+  color: var(--tm);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.sh-status-bar a:hover { color: var(--violet-light); }
+@media(max-width:780px) {
+  .sh-status-bar { display: none; }
+  .app-viewport { height: calc(100vh - 60px); }
+}
+
+/* ambient */
+.ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.ab{position:absolute;border-radius:50%;mix-blend-mode:screen;animation-timing-function:ease-in-out;animation-iteration-count:infinite;}
+[data-theme="light"] .ab{mix-blend-mode:multiply;}
+.a1{width:600px;height:600px;top:-15%;left:-10%;background:radial-gradient(circle,rgba(108,123,255,0.06) 0%,transparent 70%);animation:d1 28s infinite;}
+.a2{width:500px;height:500px;top:10%;right:-8%;background:radial-gradient(circle,rgba(108,123,255,0.05) 0%,transparent 70%);animation:d2 34s infinite;}
+.a3{width:700px;height:700px;bottom:-20%;left:20%;background:radial-gradient(circle,rgba(15,168,136,0.04) 0%,transparent 70%);animation:d3 40s infinite;}
+@keyframes d1{0%{transform:translate(0,0)}25%{transform:translate(14vw,10vh)}50%{transform:translate(6vw,24vh)}75%{transform:translate(-4vw,12vh)}100%{transform:translate(0,0)}}
+@keyframes d2{0%{transform:translate(0,0)}25%{transform:translate(-16vw,12vh)}50%{transform:translate(-6vw,28vh)}75%{transform:translate(-12vw,6vh)}100%{transform:translate(0,0)}}
+@keyframes d3{0%{transform:translate(0,0)}25%{transform:translate(12vw,-14vh)}50%{transform:translate(24vw,-7vh)}75%{transform:translate(8vw,-18vh)}100%{transform:translate(0,0)}}
+
+/* ── ORIGINAL TOP BAR (now inside app-viewport) ── */
+.topbar{flex-shrink:0;height:52px;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--gb);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);border-bottom:1px solid var(--bsb);box-shadow:var(--gs);position:relative;z-index:20;}
+.topbar-brand{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.topbar-logo{width:24px;height:24px;}
+.brand-txt{font-family:var(--fd);font-weight:800;font-size:0.95rem;letter-spacing:-0.03em;color:var(--tp);}
+.brand-dot{color:var(--violet);font-family:var(--fd);font-weight:800;}
+.topbar-sep{width:1px;height:18px;background:var(--bs);flex-shrink:0;}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--tm);flex-shrink:0;}
+.breadcrumb span{opacity:0.4;}
+.breadcrumb a{color:var(--violet-light);cursor:pointer;transition:color var(--df);}
+.breadcrumb a:hover{color:var(--tp);}
+.topbar-search-wrap{flex:1;max-width:400px;position:relative;}
+.topbar-search{width:100%;height:34px;background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rsm);padding:0 12px 0 34px;font-size:13px;color:var(--tp);transition:border-color var(--df);}
+.topbar-search::placeholder{color:var(--tm);}
+.topbar-search:focus{border-color:rgba(108,123,255,0.5);}
+.topbar-search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tm);pointer-events:none;}
+.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0;}
+.topbar-count{font-family:var(--fm);font-size:9.5px;letter-spacing:0.06em;color:var(--tm);white-space:nowrap;}
+.tt-btn{display:flex;align-items:center;gap:7px;background:var(--gb2);border:1px solid var(--bsb);box-shadow:var(--gs);border-radius:var(--rp);padding:4px 10px 4px 6px;cursor:pointer;font-family:var(--fm);font-size:10px;color:var(--ts);transition:var(--tr);letter-spacing:0.05em;}
+.tt-track{width:26px;height:14px;border-radius:var(--rp);background:var(--bc);position:relative;transition:background var(--db);flex-shrink:0;}
+.tt-track.on{background:var(--violet);}
+.tt-thumb{position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#fff;transition:transform var(--db) var(--ease);}
+.tt-track.on .tt-thumb{transform:translateX(12px);}
+
+/* ── MAIN LAYOUT ── */
+.app-body{flex:1;display:flex;overflow:hidden;position:relative;z-index:1;}
+
+/* ── LEFT SIDEBAR ── */
+.sidebar{width:280px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--bs);background:var(--bg2);overflow:hidden;}
+.sb-filters{flex-shrink:0;padding:10px 12px 8px;border-bottom:1px solid var(--bs);}
+.cat-filter-scroll{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+.cat-filter-scroll::-webkit-scrollbar{display:none;}
+.cf-btn{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.07em;padding:4px 9px;border-radius:var(--rp);border:1px solid var(--bc);background:none;color:var(--tm);cursor:pointer;transition:var(--tr);white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:5px;}
+.cf-btn:hover{color:var(--ts);}
+.cf-btn.active{color:#fff;background:var(--active-col, var(--violet));border-color:var(--active-col, var(--violet));}
+.cf-dot{width:5px;height:5px;border-radius:50%;background:var(--active-col, currentColor);flex-shrink:0;}
+.sb-sort{display:flex;align-items:center;gap:6px;padding:6px 12px 6px;border-bottom:1px solid var(--bs);}
+.sb-sort-lbl{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--tm);flex-shrink:0;}
+.sb-sort-btn{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.06em;padding:3px 8px;border-radius:var(--rp);border:1px solid var(--bc);background:none;color:var(--tm);cursor:pointer;transition:var(--tr);}
+.sb-sort-btn.on{background:var(--tb);color:var(--tc);border-color:rgba(108,123,255,0.3);}
+.sb-list{flex:1;overflow-y:auto;padding:6px 8px;scrollbar-width:thin;scrollbar-color:var(--bc) transparent;}
+.sb-list::-webkit-scrollbar{width:3px;}
+.sb-list::-webkit-scrollbar-thumb{background:var(--bc);border-radius:4px;}
+.sb-group-lbl{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--tm);padding:8px 6px 4px;position:sticky;top:0;background:var(--bg2);z-index:2;}
+.sb-empty{padding:24px 12px;text-align:center;font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);}
+
+/* sidebar node card */
+.sbn{display:flex;align-items:center;gap:9px;padding:8px 8px;border-radius:var(--rsm);border:1px solid transparent;cursor:pointer;transition:var(--tr);margin-bottom:2px;position:relative;}
+.sbn:hover{background:rgba(255,255,255,0.03);border-color:var(--bs);}
+.sbn.active{border-color:var(--node-col, var(--violet));background:var(--node-bg, rgba(108,123,255,0.10));}
+.sbn-colour{width:3px;border-radius:2px;height:36px;flex-shrink:0;background:var(--node-col, var(--violet));}
+.sbn-labels{flex:1;min-width:0;}
+.sbn-name{font-family:var(--fd);font-weight:700;font-size:12px;color:var(--tp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;margin-bottom:2px;}
+.sbn-type{font-family:var(--fm);font-size:8px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);}
+.sbn-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
+.sbn-effects{font-family:var(--fm);font-size:8px;color:var(--tm);letter-spacing:0.04em;white-space:nowrap;}
+.sbn-ports{display:flex;gap:2px;}
+.sbn-port{width:5px;height:5px;border-radius:50%;border:1px solid;}
+
+/* ── DETAIL PANEL ── */
+.detail{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.detail-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:2rem;}
+.detail-empty-canvas{width:180px;height:100px;border-radius:var(--r);overflow:hidden;border:1px solid var(--bs);}
+.detail-empty-title{font-family:var(--fd);font-size:1.1rem;font-weight:700;letter-spacing:-0.02em;color:var(--tp);}
+.detail-empty-sub{font-size:12.5px;color:var(--tm);text-align:center;max-width:280px;line-height:1.6;}
+.detail-scroll{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bc) transparent;}
+.detail-scroll::-webkit-scrollbar{width:4px;}
+.detail-scroll::-webkit-scrollbar-thumb{background:var(--bc);border-radius:4px;}
+
+/* detail header */
+.det-hd{padding:24px 28px 0;display:flex;flex-direction:column;gap:14px;flex-shrink:0;}
+.det-hd-top{display:flex;align-items:flex-start;gap:18px;}
+.det-node-card{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--rsm);border:1px solid;flex-shrink:0;min-width:160px;background:#06060d;position:relative;}
+.det-node-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.det-node-labels{min-width:0;}
+.det-node-type{font-family:var(--fm);font-size:8px;text-transform:uppercase;letter-spacing:0.08em;opacity:0.55;margin-bottom:3px;}
+.det-node-name{font-family:var(--fd);font-weight:700;font-size:14px;letter-spacing:-0.01em;white-space:nowrap;color:rgba(244,244,251,0.9);}
+.det-node-ports-row{display:flex;align-items:center;gap:4px;margin-top:5px;}
+.det-port-dot{width:7px;height:7px;border-radius:50%;border:1.5px solid;}
+.det-port-lbl{font-family:var(--fm);font-size:7.5px;text-transform:uppercase;letter-spacing:0.06em;}
+.det-port-sep{width:12px;height:1px;background:rgba(255,255,255,0.12);}
+.det-hd-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
+.det-title{font-family:var(--fd);font-size:1.4rem;font-weight:800;letter-spacing:-0.03em;color:var(--tp);line-height:1.1;}
+.det-meta-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.det-badge{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.07em;padding:2px 8px;border-radius:var(--rxs);}
+.det-badge.type{border:1px solid;}
+.det-badge.ver{background:rgba(108,123,255,0.08);color:var(--tc);border:1px solid rgba(108,123,255,0.2);}
+.det-badge.complexity-beg{background:rgba(15,168,136,0.08);color:var(--teal);border:1px solid rgba(15,168,136,0.25);}
+.det-badge.complexity-int{background:rgba(176,113,24,0.08);color:var(--amber);border:1px solid rgba(176,113,24,0.25);}
+.det-badge.complexity-adv{background:rgba(240,96,96,0.08);color:var(--danger);border:1px solid rgba(240,96,96,0.25);}
+.det-used{font-family:var(--fm);font-size:10px;color:var(--tm);letter-spacing:0.04em;}
+.det-used span{color:var(--violet-light);}
+.det-desc{font-size:13.5px;color:var(--ts);line-height:1.75;}
+.det-hd-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.btn-primary{display:inline-flex;align-items:center;gap:7px;background:var(--violet);color:var(--ink,#09090e);border:none;border-radius:var(--rsm);padding:8px 16px;font-size:12.5px;font-weight:600;cursor:pointer;transition:var(--tr);white-space:nowrap;}
+.btn-primary:hover{filter:brightness(1.12);transform:translateY(-1px);box-shadow:0 4px 16px rgba(108,123,255,0.4);}
+.btn-glass{display:inline-flex;align-items:center;gap:7px;background:var(--gb);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);box-shadow:var(--gs),var(--gsh);border:1px solid var(--bsb);border-radius:var(--rsm);padding:8px 14px;font-size:12.5px;color:var(--ts);cursor:pointer;transition:var(--tr);}
+.btn-glass:hover{background:var(--gb2);border-color:var(--bc);color:var(--tp);}
+
+/* detail body sections */
+.det-body{padding:20px 28px 48px;display:flex;flex-direction:column;gap:24px;}
+.sec{display:flex;flex-direction:column;gap:12px;}
+.sec-hd{display:flex;align-items:center;gap:10px;padding-bottom:8px;border-bottom:1px solid var(--bs);}
+.sec-title{font-family:var(--fd);font-size:14px;font-weight:700;letter-spacing:-0.02em;color:var(--tp);}
+.sec-count{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);}
+
+/* params table */
+.params-table{display:flex;flex-direction:column;gap:1px;border-radius:var(--rsm);overflow:hidden;border:1px solid var(--bs);}
+.params-head{display:grid;grid-template-columns:1.6fr 1fr 1fr 2.5fr;gap:0;background:var(--bg3);padding:7px 14px;}
+.params-head span{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.09em;color:var(--tm);}
+.param-row{display:grid;grid-template-columns:1.6fr 1fr 1fr 2.5fr;gap:0;padding:9px 14px;background:var(--gb2);border-top:1px solid var(--bs);transition:background var(--df);align-items:baseline;}
+.param-row:hover{background:var(--gb);}
+.param-name{font-family:var(--fm);font-size:11px;color:var(--violet-light);font-weight:500;}
+.param-type{font-family:var(--fm);font-size:10px;color:var(--tm);}
+.param-default{font-family:var(--fm);font-size:10px;color:var(--teal);padding:1px 5px;border-radius:3px;background:rgba(15,168,136,0.07);border:1px solid rgba(15,168,136,0.18);white-space:nowrap;display:inline-block;}
+.param-desc{font-size:12px;color:var(--ts);line-height:1.5;}
+
+/* IO section */
+.io-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:700px){.io-grid{grid-template-columns:1fr;}}
+.io-group{display:flex;flex-direction:column;gap:6px;}
+.io-group-lbl{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.09em;padding:4px 10px;border-radius:var(--rxs);display:inline-block;margin-bottom:2px;}
+.io-group-lbl.in{background:rgba(15,168,136,0.08);color:var(--teal);border:1px solid rgba(15,168,136,0.25);}
+.io-group-lbl.out{background:rgba(108,123,255,0.08);color:var(--violet-light);border:1px solid rgba(108,123,255,0.2);}
+.io-item{display:flex;flex-direction:column;gap:3px;padding:9px 12px;background:var(--gb2);border:1px solid var(--bs);border-radius:var(--rsm);}
+.io-item-name{font-family:var(--fm);font-size:11px;font-weight:500;}
+.io-item-name.in{color:var(--teal);}
+.io-item-name.out{color:var(--violet-light);}
+.io-item-type{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--tm);}
+.io-item-desc{font-size:12px;color:var(--ts);margin-top:2px;line-height:1.5;}
+
+/* tips */
+.tips-list{display:flex;flex-direction:column;gap:8px;}
+.tip-item{display:flex;gap:10px;padding:10px 12px;background:rgba(108,123,255,0.06);border:1px solid rgba(108,123,255,0.16);border-radius:var(--rsm);}
+.tip-num{font-family:var(--fm);font-size:9.5px;color:var(--violet-light);flex-shrink:0;padding-top:1px;}
+.tip-txt{font-size:12.5px;color:var(--ts);line-height:1.6;}
+
+/* used in effects */
+.effects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;}
+.eff-chip{padding:8px 12px;background:var(--gb2);border:1px solid var(--bs);border-radius:var(--rsm);cursor:pointer;transition:var(--tr);}
+.eff-chip:hover{border-color:rgba(108,123,255,0.35);background:rgba(108,123,255,0.07);}
+.eff-chip-name{font-family:var(--fd);font-weight:600;font-size:12px;color:var(--tp);margin-bottom:2px;}
+.eff-chip-meta{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--tm);}
+
+/* related nodes */
+.related-nodes{display:flex;gap:8px;flex-wrap:wrap;}
+.rel-node{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--rsm);border:1px solid;cursor:pointer;transition:var(--tr);background:#06060d;}
+.rel-node:hover{filter:brightness(1.2);}
+.rel-node-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.rel-node-name{font-family:var(--fd);font-weight:600;font-size:11px;color:rgba(244,244,251,0.85);}
+
+/* toast */
+.toast{position:fixed;bottom:32px;right:24px;background:var(--gb2);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);box-shadow:var(--gs),var(--gsh);border:1px solid var(--bsb);color:var(--tp);padding:10px 18px;border-radius:var(--rlg);font-size:13px;opacity:0;transform:translateY(8px);transition:all var(--db) var(--ease);pointer-events:none;z-index:999;display:flex;align-items:center;gap:8px;}
+.toast.show{opacity:1;transform:translateY(0);}
+@media(max-width:780px){.toast{bottom:80px;right:16px;}}
+
+/* section 08 preview bar - now inside app-viewport */
+.pbar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:var(--gb);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);border-bottom:1px solid var(--bsb);font-family:var(--fm);font-size:9.5px;color:var(--tm);letter-spacing:0.08em;text-transform:uppercase;}
+</style>
+</head>
+<body>
+
+<div class="ambient"><div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div></div>
+
+<!-- NODING NAV PILL HEADER -->
+<header class="noding-header">
+  <a class="noding-logo" href="index.html">
+    <div class="noding-logo-mark">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="7" fill="#6c7bff" opacity="0.15"/>
+        <circle cx="8" cy="14" r="2.5" fill="#6c7bff"/>
+        <circle cx="20" cy="8"  r="2.5" fill="#0fa888"/>
+        <circle cx="20" cy="20" r="2.5" fill="#6c7bff"/>
+        <line x1="10.5" y1="13" x2="17.5" y2="9.2" stroke="#6c7bff" stroke-width="1.2" stroke-opacity="0.55"/>
+        <line x1="10.5" y1="15" x2="17.5" y2="18.8" stroke="#6c7bff" stroke-width="1.2" stroke-opacity="0.55"/>
+      </svg>
+    </div>
+    <span style="font-family:var(--fd);font-weight:700;font-size:17px;letter-spacing:-0.03em;color:var(--tp)">Noding</span><span style="display:inline-block;width:3px;height:3px;background:var(--violet);margin-left:1px;transform:translateY(4px);overflow:hidden;text-indent:-9999px">.</span>
+  </a>
+
+  <div class="nav-pill">
+    <a class="nlink" href="index.html">Home</a>
+    <a class="nlink" href="effects.html">Effects</a>
+    <a class="nlink" href="videos.html">Videos</a>
+    <a class="nlink" href="spline.html">Spline</a>
+    <a class="nlink active" href="nodes.html">Node Graph</a>
+    <a class="nlink" href="library.html">Library</a>
+  </div>
+
+  <div class="hdr-right">
+    <button class="hdr-icon-btn" onclick="shOpenNote()" title="Quick note">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    </button>
+    <button class="hdr-hbg-btn" onclick="shOpenSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<div class="sh-sidebar-ov" id="sh-sb-ov" onclick="shCloseSidebar()"></div>
+<div class="sh-sidebar" id="sh-sb">
+  <div class="sh-sb-head"><span class="sh-sb-title">Noding</span><button class="sh-sb-close" onclick="shCloseSidebar()">&#x2715;</button></div>
+  <div class="sh-sb-sec">
+    <div class="sh-sb-lbl">Navigate</div>
+    <a class="sh-sb-item" href="index.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Home</a>
+    <a class="sh-sb-item" href="effects.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Effects</a>
+    <a class="sh-sb-item" href="library.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 12h4m3-7h-4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg> Library</a>
+    <a class="sh-sb-item" href="spline.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M8 5.5h8M5.5 8v8M19 8v3a2 2 0 0 1-2 2h-3"/></svg> Spline</a>
+    <a class="sh-sb-item" href="nodes.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M8 5.5h8M5.5 8v8M19 8v3a2 2 0 0 1-2 2h-3"/></svg> Node Graph</a>
+  </div>
+  <div class="sh-sb-sec">
+    <div class="sh-sb-lbl">Tools</div>
+    <button class="sh-sb-item" onclick="shCloseSidebar();shOpenNote()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> Quick Note</button>
+  </div>
+  <div class="sh-sb-sec">
+    <div class="sh-sb-lbl">Account</div>
+    <div id="sb-auth-group"></div>
+  </div>
+</div>
+
+<!-- NO-SCROLL APP VIEWPORT -->
+<div class="app-viewport">
+
+  <!-- Original preview bar moved inside viewport -->
+  <div class="pbar">
+    <span>Section 08 / 08 &middot; Node Reference Library &middot; Noding</span>
+    <button class="tt-btn" id="themeBtn">
+      <div class="tt-track on" id="ttTrack"><div class="tt-thumb"></div></div>
+      <span id="ttLabel">Night</span>
+    </button>
+  </div>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <svg class="topbar-logo" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="7" fill="#6c7bff" opacity="0.15"/>
+        <circle cx="8" cy="14" r="2.5" fill="#6c7bff"/>
+        <circle cx="20" cy="8"  r="2.5" fill="#0fa888"/>
+        <circle cx="20" cy="20" r="2.5" fill="#6c7bff"/>
+        <line x1="10.5" y1="13" x2="17.5" y2="9.2" stroke="#6c7bff" stroke-width="1.2" stroke-opacity="0.55"/>
+        <line x1="10.5" y1="15" x2="17.5" y2="18.8" stroke="#6c7bff" stroke-width="1.2" stroke-opacity="0.55"/>
+      </svg>
+      <span class="brand-txt">Noding<span class="brand-dot">.</span></span>
+    </div>
+    <div class="topbar-sep"></div>
+    <div class="breadcrumb">
+      <a>Effects</a><span>/</span>
+      <span style="color:var(--tp);">Node Reference</span>
+    </div>
+    <div class="topbar-search-wrap">
+      <svg class="topbar-search-ico" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="topbar-search" id="globalSearch" type="text" placeholder="Search nodes, parameters, use cases…">
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-count" id="topCount">28 nodes</span>
+    </div>
+  </div>
+
+  <!-- APP BODY -->
+  <div class="app-body">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sb-filters">
+        <div class="cat-filter-scroll" id="catFilters"></div>
+      </div>
+      <div class="sb-sort">
+        <span class="sb-sort-lbl">Sort</span>
+        <button class="sb-sort-btn on" data-sort="alpha" id="sortAlpha">A–Z</button>
+        <button class="sb-sort-btn" data-sort="type" id="sortType">Type</button>
+        <button class="sb-sort-btn" data-sort="usage" id="sortUsage">Most used</button>
+      </div>
+      <div class="sb-list" id="sbList"></div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="detail" id="detail">
+      <div class="detail-empty" id="detailEmpty">
+        <canvas id="emptyCanvas" class="detail-empty-canvas" width="360" height="200"></canvas>
+        <div class="detail-empty-title">Node Reference</div>
+        <div class="detail-empty-sub">Select any node from the library to view its full parameter reference, inputs, outputs, and real-world usage examples.</div>
+      </div>
+      <div class="detail-scroll" id="detailScroll" style="display:none;"></div>
+    </div>
+
+  </div><!-- /app-body -->
+
+</div><!-- /app-viewport -->
+
+<!-- STATUS BAR (thin, non-scrolling) -->
+<div class="sh-status-bar">
+  <span>Node Reference Library v1.0</span>
+  <div>
+    <a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a> · <a href="settings.html">Settings</a>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span style="color:var(--teal);font-family:var(--fm);font-weight:700;">&#x2713;</span>
+  <span id="toastMsg">Copied</span>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+   ALL ORIGINAL SCRIPTS PRESERVED BELOW (SURGICAL SHIELD)
+   ════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+
+  /* ═══════════════════════════════════════════
+     NODE TYPE COLOUR SYSTEM
+     (identical to graph editor across all sections)
+     ═══════════════════════════════════════════ */
+  var TYPES = {
+    'Source':    { col:'#0fa888', bg:'rgba(15,168,136,0.13)'   },
+    'Analysis':  { col:'#6c7bff', bg:'rgba(108,123,255,0.13)'  },
+    'Distort':   { col:'#a855f7', bg:'rgba(168,85,247,0.13)'   },
+    'Time':      { col:'#f59e0b', bg:'rgba(245,158,11,0.13)'   },
+    'Color':     { col:'#eab308', bg:'rgba(234,179,8,0.13)'    },
+    'Filter':    { col:'#ef4444', bg:'rgba(239,68,68,0.13)'    },
+    'Composite': { col:'#94a3b8', bg:'rgba(148,163,184,0.13)'  },
+    'Mask':      { col:'#fb923c', bg:'rgba(251,146,60,0.13)'   },
+    'Transform': { col:'#22d3ee', bg:'rgba(34,211,238,0.13)'   },
+    'Generator': { col:'#c084fc', bg:'rgba(192,132,252,0.13)'  },
+    'Text':      { col:'#f472b6', bg:'rgba(244,114,182,0.13)'  },
+    'Output':    { col:'#4ade80', bg:'rgba(74,222,128,0.13)'   }
+  };
+  function tc(type) { return TYPES[type] || TYPES['Composite']; }
+
+  /* ═══════════════════════════════════════════
+     NODE DATABASE
+     ═══════════════════════════════════════════ */
+  var NODES = [
+    {
+      id:'mediain', name:'MediaIn', type:'Source', version:'DR 17+', complexity:'beg', usedIn:4218,
+      desc:'Loads a media clip from the DaVinci Resolve Media Pool into the Fusion composition. The primary way to bring footage, stills, or audio into a node graph.',
+      longDesc:'MediaIn is the entry point for all external media in a Fusion composition. It connects directly to clips in the timeline and respects all source metadata including frame rate, resolution, colour space, and alpha channel. Multiple MediaIn nodes can coexist in a single comp.',
+      params:[
+        {n:'Clip',t:'Clip ref',v:'–',d:'Media Pool clip reference. Set automatically from the timeline.'},
+        {n:'Depth',t:'Dropdown',v:'Auto',d:'Bit depth override. Auto follows source media depth.'},
+        {n:'Fields',t:'Dropdown',v:'Auto',d:'Field dominance handling for interlaced footage.'},
+        {n:'Loop',t:'Boolean',v:'Off',d:'Loop clip when the composition is longer than the clip.'},
+        {n:'Hold Last Frame',t:'Boolean',v:'Off',d:'Hold the last frame instead of looping or going black.'},
+        {n:'Use Proxy',t:'Boolean',v:'Auto',d:'Use proxy media if available for faster playback.'}
+      ],
+      inputs:[],
+      outputs:[
+        {name:'Output',type:'Image',desc:'Full-resolution image output with alpha channel.'},
+        {name:'Effect Mask',type:'Mask',desc:'Optional mask input that restricts which pixels are output.'}
+      ],
+      tips:[
+        'Use multiple MediaIn nodes in a single comp to composite multiple clips together.',
+        'The Effect Mask output can be connected to the mask input of downstream nodes for region-based effects.',
+        'Right-click a MediaIn in the node graph and choose "Change Clip" to swap the source without rewiring connections.'
+      ],
+      effects:['Optical Flow Warp','Chromatic Aberration','Lens Distortion','Film Grain Stack','Depth of Field'],
+      related:['Background','Loader','MediaOut']
+    },
+    {
+      id:'background', name:'Background', type:'Source', version:'DR 16+', complexity:'beg', usedIn:2841,
+      desc:'Generates a solid colour, gradient, or custom-formula background image at any specified resolution.',
+      longDesc:'Background is the go-to node for generating clean plates, colour fills, and gradient sources. It does not require external media and is resolution-independent. Useful for creating mattes, gradient maps, and test backgrounds.',
+      params:[
+        {n:'Type',t:'Dropdown',v:'Solid',d:'Background type: Solid, Horizontal Gradient, or Vertical Gradient.'},
+        {n:'Top Left',t:'Color',v:'Black',d:'Colour for the top-left corner (or solid fill).'},
+        {n:'Top Right',t:'Color',v:'Black',d:'Colour for the top-right corner.'},
+        {n:'Bottom Left',t:'Color',v:'Black',d:'Colour for the bottom-left corner.'},
+        {n:'Bottom Right',t:'Color',v:'Black',d:'Colour for the bottom-right corner.'},
+        {n:'Width',t:'Integer',v:'1920',d:'Output width in pixels.'},
+        {n:'Height',t:'Integer',v:'1080',d:'Output height in pixels.'}
+      ],
+      inputs:[],
+      outputs:[{name:'Output',type:'Image',desc:'Generated background image.'}],
+      tips:[
+        'Set Type to Solid and use as a coloured matte layer behind composited elements.',
+        'Combine four distinct corner colours for a custom 4-point gradient.',
+        'Use a Background node to test blending modes before connecting real footage.'
+      ],
+      effects:['Neon Text Glow','Particle Dust Field'],
+      related:['FastNoise','Gradient','MediaIn']
+    },
+    {
+      id:'opticalflow', name:'OpticalFlow', type:'Analysis', version:'DR 17+', complexity:'int', usedIn:892,
+      desc:'Analyses frame-to-frame pixel motion to generate a per-pixel velocity vector map. The output drives warp, retiming, and stabilisation nodes.',
+      longDesc:'OpticalFlow is an analysis node — it does not produce a visible image. Instead, it outputs a flow map that encodes the motion vector at each pixel. This map can be consumed by DisplaceDistort for warping, TimeStretcher for motion-interpolated retiming, or exported as a visual for debugging. High quality settings dramatically increase render time.',
+      params:[
+        {n:'Quality',t:'Dropdown',v:'High',d:'Analysis fidelity. Affects vector field accuracy. Best = slowest.'},
+        {n:'Smoothness',t:'Float',v:'0.5',d:'Temporal smoothing of vectors across frames. Higher = more stable.'},
+        {n:'Falloff',t:'Float',v:'1.0',d:'Edge feathering on the vector field boundary.'},
+        {n:'Fast Cutoff',t:'Float',v:'0.0',d:'Threshold below which small motions are ignored.'},
+        {n:'Scale',t:'Float',v:'1.0',d:'Global multiplier on vector magnitude.'},
+        {n:'Proxy Level',t:'Integer',v:'0',d:'Downscale analysis for faster iteration. 0 = full resolution.'}
+      ],
+      inputs:[
+        {name:'Input',type:'Image',desc:'Primary source clip to analyse.'},
+        {name:'Reference',type:'Image',desc:'Optional second clip for cross-clip optical flow.'}
+      ],
+      outputs:[{name:'Flow Out',type:'Flow Map',desc:'Per-pixel velocity vector map. Not a visible image.'}],
+      tips:[
+        'Use Quality: Fast during composition build and switch to Best only for final render.',
+        'The output of OpticalFlow is not a visible image — connect it to DisplaceDistort\'s Disp Map input, not the Image input.',
+        'Add a proxy level of 1 or 2 during early iterations to get near-instant feedback.'
+      ],
+      effects:['Optical Flow Warp','Velocity Motion Blur','Smear Frame Hold'],
+      related:['DisplaceDistort','TimeSpeed','Tracker']
+    },
+    {
+      id:'tracker', name:'Tracker', type:'Analysis', version:'DR 16+', complexity:'int', usedIn:1247,
+      desc:'Tracks one or more feature points across frames. The resulting motion data can drive stabilisation, match-moving, or parametric animation.',
+      longDesc:'Tracker identifies high-contrast feature points and follows them across frames using pattern matching. It supports 1-point (position), 2-point (position + rotation/scale), and 4-point (perspective) tracking. Track data can be used to stabilise a shaky clip, pin an element to a moving object, or generate motion paths for expressions.',
+      params:[
+        {n:'Pattern Width',t:'Integer',v:'25',d:'Width of the pattern region tracked around each point.'},
+        {n:'Search Width',t:'Integer',v:'100',d:'Search area width for finding the pattern on the next frame.'},
+        {n:'Key Frame',t:'Integer',v:'0',d:'Frame to initialise tracking from.'},
+        {n:'Adaptive Mode',t:'Dropdown',v:'None',d:'How the tracker updates its reference pattern over time.'},
+        {n:'Channel',t:'Dropdown',v:'Luminance',d:'Image channel used for pattern comparison.'},
+        {n:'Subpixel',t:'Boolean',v:'On',d:'Enable sub-pixel accuracy for smoother tracks.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Clip to track.'},{name:'Foreground',type:'Image',desc:'Optional layer to stabilise or pin.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Optionally stabilised or pin-moved output.'}],
+      tips:[
+        'Choose high-contrast, non-repetitive features for the most stable tracks.',
+        'Use 4-point tracking for perspective-correct screen replacement.',
+        'Export track data to the Fusion spline editor to fine-tune problematic frames manually.'
+      ],
+      effects:['Screen Replacement','Stabilised Comp','Motion Pin'],
+      related:['Transform','OpticalFlow','SmoothMotion']
+    },
+    {
+      id:'displace', name:'DisplaceDistort', type:'Distort', version:'DR 16+', complexity:'int', usedIn:764,
+      desc:'Warps an image by offsetting each pixel according to a displacement map. The map can be a flow field, noise pattern, or any luminance-encoded source.',
+      longDesc:'DisplaceDistort reads a displacement map and shifts each pixel horizontally and vertically by the encoded amount. It is the core compositing node for liquid warps, heat haze, water refraction, and optical flow distortion. The X and Y Scale parameters determine the magnitude and direction of displacement.',
+      params:[
+        {n:'X Scale',t:'Float',v:'0.5',d:'Horizontal displacement magnitude. Negative values reverse direction.'},
+        {n:'Y Scale',t:'Float',v:'0.5',d:'Vertical displacement magnitude.'},
+        {n:'Channel',t:'Dropdown',v:'Luminance',d:'Which channel of the map drives displacement.'},
+        {n:'Wrap Mode',t:'Dropdown',v:'Smear',d:'Edge pixel handling: Smear, Tile, Mirror, or Black.'},
+        {n:'Filter',t:'Dropdown',v:'Bilinear',d:'Sampling filter quality. Bicubic is higher quality.'}
+      ],
+      inputs:[
+        {name:'Image',type:'Image',desc:'Source image to be displaced.'},
+        {name:'Disp Map',type:'Image/Flow',desc:'Displacement map — can be any image or an OpticalFlow output.'}
+      ],
+      outputs:[{name:'Output',type:'Image',desc:'Warped result.'}],
+      tips:[
+        'X/Y Scale 0.3–0.8 produces subtle warp. Values above 1.5 create heavy tearing artifacts.',
+        'Pre-blur the displacement map slightly (Blur ~1.5) to soften the vector field and reduce harsh edges.',
+        'Connect OpticalFlow into the Disp Map input and MediaIn into Image for the optical flow warp effect.'
+      ],
+      effects:['Optical Flow Warp','Displace Warp','Heat Haze','Water Refraction'],
+      related:['OpticalFlow','LensDistort','WarpTransform']
+    },
+    {
+      id:'lensdistort', name:'LensDistort', type:'Distort', version:'DR 16+', complexity:'int', usedIn:512,
+      desc:'Applies or removes lens distortion from a clip. Supports barrel, pincushion, and fisheye distortion models.',
+      longDesc:'LensDistort is essential for VFX pipelines where lens-matched compositing requires either adding lens distortion to CGI or removing it from plates. It can model Brown-Conrady radial distortion and supports custom lens calibration data from third-party tools.',
+      params:[
+        {n:'Type',t:'Dropdown',v:'Lens Distort',d:'Apply or remove distortion.'},
+        {n:'Kappa',t:'Float',v:'0.0',d:'Primary radial distortion coefficient.'},
+        {n:'Kappa 2',t:'Float',v:'0.0',d:'Secondary radial distortion coefficient.'},
+        {n:'Center X/Y',t:'Float',v:'0.5',d:'Centre of distortion (normalised 0–1).'},
+        {n:'Squeeze',t:'Float',v:'1.0',d:'Anamorphic squeeze correction.'},
+        {n:'Crop Mode',t:'Dropdown',v:'Crop',d:'How edges are handled: Crop, Fit, or Fill.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Source clip.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Distorted or undistorted result.'}],
+      tips:[
+        'Use negative Kappa values for barrel distortion (wide-angle lens look) and positive for pincushion.',
+        'Combine with a Merge node — apply LensDistort to CG elements to match a distorted plate before compositing.',
+        'For precise lens matching, use calibration data from tools like PFTrack or SynthEyes.'
+      ],
+      effects:['Lens Distortion Effect','Anamorphic Look','CG Plate Match'],
+      related:['DisplaceDistort','Transform','Resize']
+    },
+    {
+      id:'timespeed', name:'TimeSpeed', type:'Time', version:'DR 16+', complexity:'beg', usedIn:1834,
+      desc:'Changes the playback rate of an input clip. Values below 1.0 slow motion down; values above 1.0 speed it up. Negative values reverse playback.',
+      longDesc:'TimeSpeed is the simplest retiming node. It applies a constant speed multiplier to the source clip and uses one of several interpolation methods to generate frames between original samples. For variable retiming (slow-in / speed-ramp) use TimeStretcher instead.',
+      params:[
+        {n:'Speed',t:'Float',v:'1.0',d:'Playback rate multiplier. 0.5 = half speed, 2.0 = double speed.'},
+        {n:'Interp Method',t:'Dropdown',v:'Optical Flow',d:'Frame generation method: Nearest, Frame Blend, or Optical Flow.'},
+        {n:'Reverse',t:'Boolean',v:'Off',d:'Reverse the playback direction.'},
+        {n:'Loop',t:'Boolean',v:'Off',d:'Loop the source when the comp is longer than the clip.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Clip to retime.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Retimed clip.'}],
+      tips:[
+        'Speed 0.97–0.99 shifts the source by 1–2 frames — useful for the ghosting smear technique with DisplaceDistort.',
+        'Use Optical Flow interpolation for the cleanest slow-motion results on organic footage.',
+        'Nearest is fastest to render — use it during builds, switch to Optical Flow for final.'
+      ],
+      effects:['Optical Flow Warp','Smear Frame Hold','Slow Motion Stack'],
+      related:['TimeStretcher','OpticalFlow','Duplicate']
+    },
+    {
+      id:'timestretcher', name:'TimeStretcher', type:'Time', version:'DR 17+', complexity:'adv', usedIn:328,
+      desc:'Applies variable-speed retiming using a spline curve. Enables smooth speed ramps, freeze frames, and complex time remapping within a single node.',
+      longDesc:'TimeStretcher exposes a spline editor where each keyframe maps a source frame to a destination frame. The slope of the spline at any point determines the playback speed at that moment. Flat segments = freeze frame; steep segments = fast forward; gradual curves = smooth speed ramp.',
+      params:[
+        {n:'Timing',t:'Spline',v:'Linear',d:'Frame remapping spline. X = comp time, Y = source frame.'},
+        {n:'Interp Method',t:'Dropdown',v:'Optical Flow',d:'Frame generation method for inter-frame sampling.'},
+        {n:'Ease In',t:'Float',v:'0.5',d:'Ease weight on keyframe entry.'},
+        {n:'Ease Out',t:'Float',v:'0.5',d:'Ease weight on keyframe exit.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Clip to retime.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Variable-speed retimed clip.'}],
+      tips:[
+        'A flat spline segment creates a perfect freeze frame — useful for dramatic impact moments.',
+        'Use Optical Flow interpolation and set source quality to Best for production retiming.',
+        'The spline handles in TimeStretcher work identically to the Fusion spline editor — use bezier handles for smooth ramps.'
+      ],
+      effects:['Speed Ramp Effect','Dramatic Freeze Reveal'],
+      related:['TimeSpeed','OpticalFlow','Duplicate']
+    },
+    {
+      id:'colorcorrector', name:'ColorCorrector', type:'Color', version:'DR 16+', complexity:'int', usedIn:3102,
+      desc:'Full primary colour correction with independent control over shadows, midtones, and highlights via lift/gamma/gain and hue/saturation/luminance.',
+      longDesc:'ColorCorrector is the standard primary grading node in Fusion. It provides the same lift/gamma/gain controls as the Colour page primaries but within the compositing pipeline. It supports per-channel adjustments, tonal curves, and a built-in qualifier for secondary correction.',
+      params:[
+        {n:'Saturation',t:'Float',v:'1.0',d:'Global colour saturation multiplier.'},
+        {n:'Contrast',t:'Float',v:'1.0',d:'Global contrast multiplier.'},
+        {n:'Lift',t:'Float',v:'0.0',d:'Shadow level offset. Applied before gamma.'},
+        {n:'Gamma',t:'Float',v:'1.0',d:'Midtone response curve.'},
+        {n:'Gain',t:'Float',v:'1.0',d:'Highlight multiplier.'},
+        {n:'Low',t:'Float',v:'0.0',d:'Lower tonal range boundary for range-restricted corrections.'},
+        {n:'High',t:'Float',v:'1.0',d:'Upper tonal range boundary.'},
+        {n:'Log Mode',t:'Boolean',v:'Off',d:'Apply corrections in log space (for log-encoded footage).'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Source image.'},{name:'Effect Mask',type:'Mask',desc:'Optional mask restricting the correction to a region.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Colour-corrected image.'}],
+      tips:[
+        'Connect a PolyMask to the Effect Mask input for targeted secondary corrections.',
+        'Apply ColorCorrector after warp operations — grading a distorted image is cleaner than grading before distortion.',
+        'Use Log Mode when working with log-encoded footage to maintain linear light behaviour in corrections.'
+      ],
+      effects:['Optical Flow Warp','Bleach Bypass','Film Grain Stack','Teal & Orange Grade'],
+      related:['BrightnessContrast','HueCurves','ColorSpace']
+    },
+    {
+      id:'brightnesscontrast', name:'BrightnessContrast', type:'Color', version:'DR 16+', complexity:'beg', usedIn:2198,
+      desc:'Simple brightness and contrast adjustment. A lightweight alternative to ColorCorrector for quick tonal corrections.',
+      longDesc:'BrightnessContrast provides a minimal set of controls — brightness, contrast, and RGB gain sliders — without the tonal zone splitting of ColorCorrector. Useful when a full primary correction node is overkill or when you need a single-slider trim on a downstream element.',
+      params:[
+        {n:'Brightness',t:'Float',v:'0.0',d:'Additive brightness offset applied uniformly.'},
+        {n:'Contrast',t:'Float',v:'1.0',d:'Contrast multiplier around the pivot point.'},
+        {n:'Pivot',t:'Float',v:'0.5',d:'Midpoint around which contrast is applied.'},
+        {n:'Red',t:'Float',v:'1.0',d:'Per-channel red multiplier.'},
+        {n:'Green',t:'Float',v:'1.0',d:'Per-channel green multiplier.'},
+        {n:'Blue',t:'Float',v:'1.0',d:'Per-channel blue multiplier.'},
+        {n:'Alpha',t:'Float',v:'1.0',d:'Alpha channel multiplier.'},
+        {n:'Invert',t:'Boolean',v:'Off',d:'Invert the image output.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Source image.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Adjusted image.'}],
+      tips:[
+        'Use per-channel RGB sliders to create colour-grade treatments without a full ColorCorrector.',
+        'Setting Brightness below 0 darkens the image — useful for creating vignette builds when combined with a radial mask.',
+        'Chain two BrightnessContrast nodes for a split-toning look: one for highlights, one for shadows, each with a luma mask.'
+      ],
+      effects:['Quick Grade','Vignette Build','Split Tone'],
+      related:['ColorCorrector','HueCurves','Glow']
+    },
+    {
+      id:'huecurves', name:'HueCurves', type:'Color', version:'DR 17+', complexity:'int', usedIn:687,
+      desc:'Provides six curve editors for Hue vs Hue, Hue vs Saturation, Hue vs Luminance, Luminance vs Saturation, Saturation vs Saturation, and Luminance vs Luminance corrections.',
+      longDesc:'HueCurves enables highly targeted secondary colour adjustments without requiring a qualifier matte. Each curve type lets you isolate a specific hue or luminance range and adjust a secondary attribute — for example, desaturating all greens while leaving other colours untouched.',
+      params:[
+        {n:'Hue vs Hue',t:'Curve',v:'Linear',d:'Shifts selected hues to new hue values.'},
+        {n:'Hue vs Sat',t:'Curve',v:'Linear',d:'Adjusts saturation of selected hue ranges.'},
+        {n:'Hue vs Lum',t:'Curve',v:'Linear',d:'Adjusts luminance of selected hue ranges.'},
+        {n:'Lum vs Sat',t:'Curve',v:'Linear',d:'Adjusts saturation by luminance range.'},
+        {n:'Sat vs Sat',t:'Curve',v:'Linear',d:'Adjusts saturation within a saturation range.'},
+        {n:'Lum vs Lum',t:'Curve',v:'Linear',d:'Adjusts luminance by luminance range (contrast curve).'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Source image.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Curve-corrected image.'}],
+      tips:[
+        'Use Hue vs Sat to desaturate just the skintone range without touching the rest of the image.',
+        'Lum vs Lum is a precise contrast curve — more targeted than the Contrast slider in BrightnessContrast.',
+        'Combine multiple HueCurves nodes in series for complex multi-range adjustments.'
+      ],
+      effects:['Skin Tone Refinement','Selective Desaturation','Sky Enhancement'],
+      related:['ColorCorrector','BrightnessContrast','ColorSpace']
+    },
+    {
+      id:'blur', name:'Blur', type:'Filter', version:'DR 16+', complexity:'beg', usedIn:3847,
+      desc:'Applies a Gaussian blur with independent horizontal and vertical radius control. The most widely used softening node in Fusion.',
+      longDesc:'Blur uses a separable Gaussian convolution for performance. X and Y blur are independent, enabling anisotropic blur (motion-like smear in one axis). The Blend slider mixes the blurred result back with the original — useful for creating soft glows without a dedicated Glow node.',
+      params:[
+        {n:'X Blur',t:'Float',v:'2.0',d:'Horizontal blur radius in pixels.'},
+        {n:'Y Blur',t:'Float',v:'2.0',d:'Vertical blur radius in pixels.'},
+        {n:'Lock XY',t:'Boolean',v:'On',d:'Link X and Y blur sliders together.'},
+        {n:'Blend',t:'Float',v:'1.0',d:'Mix the blurred output with the original (1.0 = full blur).'},
+        {n:'Filter',t:'Dropdown',v:'Gaussian',d:'Convolution kernel: Gaussian, Box, Bartlett, Multi-Box.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Source image.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Blurred result.'}],
+      tips:[
+        'Unlock X and Y to create directional motion blur effects by blurring only one axis.',
+        'Set Blend to 0.3–0.6 for a soft glow treatment without a separate Glow node.',
+        'Use Box filter for faster renders when exact Gaussian accuracy is not needed.'
+      ],
+      effects:['Optical Flow Warp','Depth of Field','Glow Bloom','Atmospheric Haze','Bokeh Shape Mask'],
+      related:['Glow','Sharpen','Defocus']
+    },
+    {
+      id:'glow', name:'Glow', type:'Filter', version:'DR 16+', complexity:'beg', usedIn:2156,
+      desc:'Adds a luminous glow around bright areas of an image by blurring and blending the high-luminance regions back over the original.',
+      longDesc:'Glow isolates pixels above a luminance threshold, applies a large blur, and composites the result on top of the original using a Screen or Add blend. The result simulates light bleeding from bright sources. Combine with a ColorCorrector to tint the glow before blending.',
+      params:[
+        {n:'Glow Size',t:'Float',v:'0.5',d:'Radius of the glow spread.'},
+        {n:'Glow',t:'Float',v:'0.5',d:'Intensity of the glow effect.'},
+        {n:'Threshold',t:'Float',v:'0.7',d:'Luminance threshold above which glow is applied.'},
+        {n:'Red/Green/Blue',t:'Float',v:'1.0',d:'Per-channel glow colour tint.'},
+        {n:'Blend',t:'Float',v:'1.0',d:'Mix glow result with original.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Source image.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Image with glow applied.'}],
+      tips:[
+        'Lower the Threshold to 0.5–0.6 to make more of the image glow — including midtones.',
+        'Tint the glow with the RGB sliders for warm halation (raise Red) or cool neon (raise Blue).',
+        'Add a second Glow node with a very large size and very low intensity for a wide ambient bloom.'
+      ],
+      effects:['Glow Bloom','Neon Text Glow','Lens Flare System'],
+      related:['Blur','BrightnessContrast','Merge']
+    },
+    {
+      id:'sharpen', name:'Sharpen', type:'Filter', version:'DR 16+', complexity:'beg', usedIn:1023,
+      desc:'Enhances edge contrast using an unsharp mask. Increases perceived sharpness by boosting high-frequency detail.',
+      longDesc:'Sharpen uses unsharp masking: it subtracts a blurred version of the image from itself, then adds the resulting edge signal back to the original at a specified strength. The Softness parameter controls the blur radius used to generate the difference mask.',
+      params:[
+        {n:'XY Softness',t:'Float',v:'1.5',d:'Radius of the blur used for the unsharp mask.'},
+        {n:'Blend',t:'Float',v:'1.0',d:'Mix with original.'},
+        {n:'Sharpen',t:'Float',v:'1.0',d:'Sharpening strength.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Source image.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Sharpened result.'}],
+      tips:[
+        'Keep Softness at 1.0–2.0 for detail sharpening. Higher values sharpen macro-scale contrast instead.',
+        'Blend 0.4–0.7 avoids oversharpening artifacts on compressed footage.',
+        'Apply sharpening as the last step in a comp — never sharpen before grading.'
+      ],
+      effects:['Film Grain Stack','Texture Sharpening Pass'],
+      related:['Blur','Defocus','BrightnessContrast']
+    },
+    {
+      id:'merge', name:'Merge', type:'Composite', version:'DR 16+', complexity:'beg', usedIn:5241,
+      desc:'Composites a foreground layer over a background layer using alpha compositing and a blend mode operator. The most-used node in all Fusion compositions.',
+      longDesc:'Merge performs over-compositing by default — the foreground\'s alpha channel determines its transparency. It supports all standard blend modes (Screen, Add, Multiply, Overlay, etc.) and has separate controls for operator and apply mode. A single Merge replaces what would take many layers in a traditional compositing application.',
+      params:[
+        {n:'Blend Mode',t:'Dropdown',v:'Normal',d:'Compositing operator: Normal, Screen, Add, Multiply, Overlay, etc.'},
+        {n:'Operator',t:'Dropdown',v:'Over',d:'Alpha compositing operator: Over, In, Out, Atop, XOr.'},
+        {n:'Fg Opacity',t:'Float',v:'1.0',d:'Global opacity of the foreground layer.'},
+        {n:'Apply Mode',t:'Dropdown',v:'Normal',d:'Second-level blend applied after the primary composite.'},
+        {n:'Apply Mask Invert',t:'Boolean',v:'Off',d:'Invert the effect of any connected mask.'}
+      ],
+      inputs:[
+        {name:'Foreground',type:'Image',desc:'Top layer (composited over the background).'},
+        {name:'Background',type:'Image',desc:'Bottom layer.'},
+        {name:'Effect Mask',type:'Mask',desc:'Optional mask restricting where the merge applies.'}
+      ],
+      outputs:[{name:'Output',type:'Image',desc:'Composited result.'}],
+      tips:[
+        'Use Screen blend at 0.6 Fg Opacity to blend glows, light leaks, and haze effects without clipping highlights.',
+        'Add blend mode combined with a pre-multiplied alpha is the fastest way to add particles or fire elements.',
+        'MultiMerge is more efficient than a chain of Merge nodes when combining more than 3 layers.'
+      ],
+      effects:['Optical Flow Warp','Chromatic Aberration','Glow Bloom','All composite effects'],
+      related:['AlphaMatte','MultiMerge','Transform']
+    },
+    {
+      id:'alphamatte', name:'AlphaMatte', type:'Composite', version:'DR 16+', complexity:'int', usedIn:743,
+      desc:'Uses the alpha (or a selected channel) of one image to control the transparency of another. Enables travelling mattes and holdout compositing.',
+      longDesc:'AlphaMatte allows the luminance or alpha of a matte source to punch through or hold out a target image. It is the primary node for track-based rotoscoping workflows where the matte is separate from the source, and for applying extracted keyer results as transparency.',
+      params:[
+        {n:'Mode',t:'Dropdown',v:'Luma Matte',d:'How the matte is extracted: Luma Matte, Alpha Matte, or Inverted.'},
+        {n:'Invert',t:'Boolean',v:'Off',d:'Invert the extracted matte.'},
+        {n:'Gain',t:'Float',v:'1.0',d:'Gain on the matte channel before application.'},
+        {n:'Low',t:'Float',v:'0.0',d:'Remap matte black point.'},
+        {n:'High',t:'Float',v:'1.0',d:'Remap matte white point.'}
+      ],
+      inputs:[{name:'Image',type:'Image',desc:'The image to apply the matte to.'},{name:'Matte',type:'Image',desc:'The source from which the alpha/luma matte is extracted.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Image with the extracted matte applied as alpha.'}],
+      tips:[
+        'Use Invert to punch out an object from the background instead of applying a holdout.',
+        'Combine with a BrightnessContrast on the matte source to clean up the matte edges before applying.',
+        'In rotoscoping workflows, connect a separate roto paint layer as the Matte input.'
+      ],
+      effects:['Greenscreen Composite','Travelling Matte','Holdout Layer'],
+      related:['Merge','PolyMask','BSplineMask']
+    },
+    {
+      id:'polymask', name:'PolyMask', type:'Mask', version:'DR 16+', complexity:'beg', usedIn:4102,
+      desc:'Creates a polygon or bezier spline mask. The most common masking node for isolating regions, creating holdouts, and defining effect areas.',
+      longDesc:'PolyMask is a vector-based masking node. Each point can have bezier handles for smooth curves or sharp corners. The mask can be animated keyframe-by-keyframe and supports motion blur on the mask motion. PolyMask outputs a greyscale matte that any node\'s Effect Mask input accepts.',
+      params:[
+        {n:'Softness',t:'Float',v:'0.0',d:'Edge feather distance in pixels.'},
+        {n:'Border Width',t:'Float',v:'0.0',d:'Visible outline thickness on the mask.'},
+        {n:'Invert',t:'Boolean',v:'Off',d:'Invert the mask polarity.'},
+        {n:'Motion Blur',t:'Boolean',v:'Off',d:'Enable motion blur on animated mask movement.'},
+        {n:'Fill',t:'Boolean',v:'On',d:'Fill the polygon interior (Off = outline only).'}
+      ],
+      inputs:[],
+      outputs:[{name:'Mask',type:'Mask',desc:'Greyscale matte. White = full effect, Black = no effect.'}],
+      tips:[
+        'Press F to toggle between bezier and linear corner mode while drawing.',
+        'Animate Softness over time to feather in or out an effect gradually.',
+        'Stack multiple PolyMask nodes using Merge to build complex compound masks.'
+      ],
+      effects:['Secondary Colour Correction','Object Isolation','Motivated Vignette'],
+      related:['BSplineMask','RectangleMask','EllipseMask']
+    },
+    {
+      id:'bsplinemask', name:'BSplineMask', type:'Mask', version:'DR 16+', complexity:'int', usedIn:1867,
+      desc:'Creates a B-Spline curve mask. B-Splines are smooth by default with no visible control point corners, ideal for organic shapes like faces, skin, and cloth.',
+      longDesc:'Unlike PolyMask where bezier handles must be adjusted per-point, BSplineMask generates inherently smooth curves driven by the hull of control points. This makes it faster to draw organic shapes and produces naturally flowing edge motion when animated.',
+      params:[
+        {n:'Softness',t:'Float',v:'0.0',d:'Edge feather.'},
+        {n:'Invert',t:'Boolean',v:'Off',d:'Invert output.'},
+        {n:'Border Width',t:'Float',v:'0.0',d:'Outline thickness.'},
+        {n:'Motion Blur',t:'Boolean',v:'Off',d:'Motion blur on animated mask.'}
+      ],
+      inputs:[],
+      outputs:[{name:'Mask',type:'Mask',desc:'Greyscale matte output.'}],
+      tips:[
+        'B-Splines are better than PolyMask for skin and organic subjects — fewer control points needed.',
+        'Close the shape by clicking on the starting point.',
+        'Use BSplineMask for primary rotoscoping and PolyMask for hard-edged architectural shapes.'
+      ],
+      effects:['Skin Grade','Hair Isolation','Organic Shape Matte'],
+      related:['PolyMask','AlphaMatte','EllipseMask']
+    },
+    {
+      id:'transform', name:'Transform', type:'Transform', version:'DR 16+', complexity:'beg', usedIn:4863,
+      desc:'2D transformation node providing position, rotation, scale, shear, and pivot control. The primary node for positioning and animating elements in 2D space.',
+      longDesc:'Transform applies a 2D affine transformation matrix to its input. It supports sub-pixel accuracy and optional motion blur on the transform motion. The Pivot point determines the origin of rotation and scale operations. All transform parameters are fully keyframeable.',
+      params:[
+        {n:'Center X',t:'Float',v:'0.5',d:'Horizontal position (normalised 0–1, 0.5 = centre).'},
+        {n:'Center Y',t:'Float',v:'0.5',d:'Vertical position.'},
+        {n:'Size',t:'Float',v:'1.0',d:'Uniform scale factor.'},
+        {n:'Angle',t:'Float',v:'0.0',d:'Rotation in degrees.'},
+        {n:'Aspect',t:'Float',v:'1.0',d:'Non-uniform scale (stretches X vs Y).'},
+        {n:'Flip X',t:'Boolean',v:'Off',d:'Flip horizontally.'},
+        {n:'Flip Y',t:'Boolean',v:'Off',d:'Flip vertically.'},
+        {n:'Motion Blur',t:'Boolean',v:'Off',d:'Apply motion blur to transform animation.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Source image.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Transformed image.'}],
+      tips:[
+        'Animate Center X/Y to create smooth camera drift on a still image.',
+        'Enable Motion Blur for moving elements — set shutter angle to match your camera (180° is standard).',
+        'Use Aspect > 1.0 combined with an anamorphic squeeze factor to simulate widescreen lens character.'
+      ],
+      effects:['Ken Burns Effect','Element Positioning','Screen Replacement','All motion graphics'],
+      related:['Resize','Crop','DVE']
+    },
+    {
+      id:'resize', name:'Resize', type:'Transform', version:'DR 16+', complexity:'beg', usedIn:2034,
+      desc:'Resamples the image to a new resolution. Supports multiple filter methods including Lanczos for high-quality downscaling.',
+      longDesc:'Resize changes the pixel dimensions of its input without affecting its position in the frame. It is the correct node to use when changing working resolution mid-comp (e.g. upscaling a lower-res texture before compositing, or downscaling a high-res plate for a mobile delivery).',
+      params:[
+        {n:'Width',t:'Integer',v:'1920',d:'Output width in pixels.'},
+        {n:'Height',t:'Integer',v:'1080',d:'Output height in pixels.'},
+        {n:'Filter',t:'Dropdown',v:'Lanczos',d:'Resampling filter: Nearest, Bilinear, Bicubic, Lanczos.'},
+        {n:'Keep Aspect',t:'Boolean',v:'On',d:'Maintain aspect ratio when resizing.'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Source image.'}],
+      outputs:[{name:'Output',type:'Image',desc:'Resampled image.'}],
+      tips:[
+        'Lanczos produces the best quality for both upscaling and downscaling.',
+        'Use Nearest for pixel art or retro pixel aesthetics — it preserves hard edges.',
+        'Resize early in the pipeline if you are working with 4K+ footage and need a lower working resolution.'
+      ],
+      effects:['Resolution Normalisation','Texture Scaling'],
+      related:['Transform','Crop','DVE']
+    },
+    {
+      id:'fastnoise', name:'FastNoise', type:'Generator', version:'DR 16+', complexity:'int', usedIn:1456,
+      desc:'Procedurally generates noise patterns including fractal, plasma, turbulence, and caustic styles. Fully resolution-independent and animatable.',
+      longDesc:'FastNoise is Fusion\'s primary procedural texture generator. It can produce everything from subtle film grain to fluid slab fractals, and all parameters are fully animatable. The output is a greyscale image that can be used as a displacement map, matte source, or texture layer.',
+      params:[
+        {n:'Type',t:'Dropdown',v:'Fractal',d:'Noise algorithm: Fractal, Plasma, Turbulence, Caustic, Bias.'},
+        {n:'Scale',t:'Float',v:'5.0',d:'Spatial frequency — higher = smaller noise features.'},
+        {n:'Detail',t:'Float',v:'1.5',d:'Number of fractal octaves. Higher = more fine detail.'},
+        {n:'Contrast',t:'Float',v:'1.0',d:'Tonal contrast of the noise output.'},
+        {n:'Brightness',t:'Float',v:'0.5',d:'Overall brightness.'},
+        {n:'Scroll X/Y',t:'Float',v:'0.0',d:'Animate the noise pattern translation.'},
+        {n:'Seethe',t:'Float',v:'0.0',d:'Animate the noise evolution over time.'}
+      ],
+      inputs:[],
+      outputs:[{name:'Output',type:'Image',desc:'Procedural noise image.'}],
+      tips:[
+        'Animate Seethe to create flowing, evolving noise — works great as a displacement source for water and fire.',
+        'Use Scroll X/Y for horizontal or vertical noise drift — subtly animate both for organic motion.',
+        'Connect FastNoise to the Disp Map of DisplaceDistort to create heat haze or water refraction.'
+      ],
+      effects:['Heat Haze','Water Refraction','Organic Warp','Film Grain Stack'],
+      related:['Background','DisplaceDistort','Gradient']
+    },
+    {
+      id:'textplus', name:'Text+', type:'Text', version:'DR 16+', complexity:'int', usedIn:1892,
+      desc:'Rich text generation with full typography control, multi-line layout, per-character transforms, and built-in animation macros.',
+      longDesc:'Text+ is the primary text node in Fusion. It supports any system font, full unicode, per-character transforms, and a library of built-in animation macros (Typewrite, Blur In, Rotate, etc.). Text is rendered at the composition resolution and fully supports alpha compositing.',
+      params:[
+        {n:'StyledText',t:'String',v:'Text',d:'The text content. Supports rich text markup.'},
+        {n:'Font',t:'Font ref',v:'Open Sans',d:'System font family.'},
+        {n:'Style',t:'Dropdown',v:'Regular',d:'Font weight and style (Bold, Italic, etc.).'},
+        {n:'Size',t:'Float',v:'0.1',d:'Font size as a fraction of composition height.'},
+        {n:'Tracking',t:'Float',v:'0.0',d:'Letter spacing multiplier.'},
+        {n:'Leading',t:'Float',v:'1.0',d:'Line height multiplier.'},
+        {n:'Shading1 Color',t:'Color',v:'White',d:'Primary text colour.'},
+        {n:'Layout',t:'Dropdown',v:'Horizontal',d:'Text flow direction.'}
+      ],
+      inputs:[],
+      outputs:[{name:'Output',type:'Image',desc:'Rendered text with alpha channel.'}],
+      tips:[
+        'Use the Animate button in the Inspector to access the built-in animation macros library.',
+        'Per-character transforms let you animate each letter independently — essential for kinetic typography.',
+        'Set Size to a small value (0.05–0.15) for correct scale relative to the composition — not point-based sizing.'
+      ],
+      effects:['Neon Text Glow','Kinetic Text Reveal','Lower Third Build'],
+      related:['Transform','Glow','Merge']
+    },
+    {
+      id:'mediaout', name:'MediaOut', type:'Output', version:'DR 17+', complexity:'beg', usedIn:4180,
+      desc:'Routes the final Fusion composite result to the DaVinci Resolve timeline viewer and render pipeline. Required to view output in Resolve.',
+      longDesc:'MediaOut is the exit point of every Fusion composition. Without a MediaOut, Resolve cannot display or render the comp output. It accepts the final image and an optional effect mask. In timeline clips, MediaOut automatically connects to the timeline output and passes through frame metadata.',
+      params:[
+        {n:'Input',t:'Image',v:'–',d:'Final image to route to the timeline.'},
+        {n:'Clip',t:'Integer',v:'1',d:'Output clip index — use 1 for the primary output.'},
+        {n:'RGB Only',t:'Boolean',v:'Off',d:'Ignore alpha channel and output RGB only.'}
+      ],
+      inputs:[
+        {name:'Input',type:'Image',desc:'Final composite to render.'},
+        {name:'Effect Mask',type:'Mask',desc:'Optional mask restricting the output area.'}
+      ],
+      outputs:[],
+      tips:[
+        'A composition must have at least one MediaOut to be rendered from the Deliver page.',
+        'Use multiple MediaOut nodes (Clip 1, Clip 2) when your comp produces multiple outputs for multi-track timelines.',
+        'The viewer in Fusion always shows the currently selected node — switch to MediaOut to confirm final comp output.'
+      ],
+      effects:['All effects'],
+      related:['MediaIn','Saver','Merge']
+    },
+    {
+      id:'saver', name:'Saver', type:'Output', version:'DR 16+', complexity:'int', usedIn:624,
+      desc:'Exports the composition output directly to a specified file path and format, bypassing the DaVinci Resolve render pipeline.',
+      longDesc:'Saver is used when you need to render a Fusion comp to disk independently of the Deliver page — for example, generating intermediate files, export sequences, or driving batch renders from scripts. It supports all image sequence formats and video codecs available in Resolve.',
+      params:[
+        {n:'Filename',t:'File path',v:'–',d:'Output file path. Use %04d for frame-numbered sequences.'},
+        {n:'Format',t:'Dropdown',v:'TIFF',d:'Output file format: TIFF, EXR, PNG, JPEG, MOV, etc.'},
+        {n:'Process Mode',t:'Dropdown',v:'Full Frames',d:'Render mode: Full Frames, Fields, or Half Resolution.'},
+        {n:'Save Alpha',t:'Boolean',v:'On',d:'Include alpha channel in output (format-permitting).'}
+      ],
+      inputs:[{name:'Input',type:'Image',desc:'Image to save to disk.'}],
+      outputs:[],
+      tips:[
+        'Use EXR format for multi-channel exports with full float precision.',
+        'Add a %04d frame padding token in the filename path for numbered image sequences.',
+        'Saver renders are triggered by Resolve\'s render queue — they do not render in real-time playback.'
+      ],
+      effects:['Batch Export Workflow'],
+      related:['MediaOut','MediaIn','Loader']
+    }
+  ];
+
+  /* ═══════════════════════════════════════════
+     STATE
+     ═══════════════════════════════════════════ */
+  var activeType  = 'all';
+  var activeSort  = 'alpha';
+  var activeNode  = null;
+  var searchQuery = '';
+
+  /* ═══════════════════════════════════════════
+     EMPTY CANVAS ANIMATION
+     ═══════════════════════════════════════════ */
+  var ec = document.getElementById('emptyCanvas');
+  var ex = ec ? ec.getContext('2d') : null;
+  var ecRAF;
+  function drawEmptyCanvas (ts) {
+    if (!ex) { return; }
+    var t = (ts || 0) / 1000;
+    var W = 180, H = 100;
+    ex.clearRect(0, 0, W, H);
+    ex.fillStyle = '#06060d'; ex.fillRect(0, 0, W, H);
+    var types = Object.keys(TYPES);
+    var nodeW = 22, nodeH = 14, cols = 5, rows = 4, padX = 10, padY = 12;
+    var gx = (W - cols * nodeW - (cols - 1) * 4) / 2;
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var ti = (r * cols + c) % types.length;
+        var col2 = TYPES[types[ti]].col;
+        var x = gx + c * (nodeW + 4), y = padY + r * (nodeH + 5);
+        var pulse = 0.5 + 0.5 * Math.sin(t * 1.2 + r * 0.8 + c * 0.5);
+        ex.fillStyle = TYPES[types[ti]].bg; ex.beginPath();
+        ex.roundRect ? ex.roundRect(x, y, nodeW, nodeH, 2) : ex.rect(x, y, nodeW, nodeH);
+        ex.fill();
+        ex.strokeStyle = col2 + Math.round((0.3 + pulse * 0.4) * 255).toString(16).padStart(2,'0');
+        ex.lineWidth = 1; ex.stroke();
+        if (c < cols - 1) {
+          ex.beginPath(); ex.moveTo(x + nodeW, y + nodeH / 2); ex.lineTo(x + nodeW + 4, y + nodeH / 2);
+          ex.strokeStyle = 'rgba(108,123,255,0.25)'; ex.lineWidth = 0.8; ex.stroke();
+        }
+      }
+    }
+    ecRAF = requestAnimationFrame(drawEmptyCanvas);
+  }
+  if (ec) { ec.width = 360; ec.height = 200; ec.style.width='180px'; ec.style.height='100px'; }
+  if (ex) { ecRAF = requestAnimationFrame(drawEmptyCanvas); }
+
+  /* ═══════════════════════════════════════════
+     CATEGORY FILTER BUTTONS
+     ═══════════════════════════════════════════ */
+  function buildCatFilters () {
+    var wrap = document.getElementById('catFilters');
+    if (!wrap) { return; }
+    var allTypes = ['all'];
+    NODES.forEach(function (n) { if (allTypes.indexOf(n.type) === -1) { allTypes.push(n.type); } });
+    allTypes.forEach(function (t) {
+      var btn = document.createElement('button');
+      btn.className = 'cf-btn' + (t === 'all' ? ' active' : '');
+      btn.dataset.type = t;
+      var col = t === 'all' ? '#6c7bff' : tc(t).col;
+      btn.style.setProperty('--active-col', col);
+      var dot = '';
+      if (t !== 'all') { dot = '<span class="cf-dot" style="background:' + col + ';"></span>'; }
+      btn.innerHTML = dot + (t === 'all' ? 'All' : t);
+      btn.addEventListener('click', function () {
+        activeType = this.dataset.type;
+        document.querySelectorAll('.cf-btn').forEach(function (b) { b.classList.remove('active'); });
+        this.classList.add('active');
+        buildSidebar();
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  /* ═══════════════════════════════════════════
+     SIDEBAR NODE LIST
+     ═══════════════════════════════════════════ */
+  function filteredNodes () {
+    var q = searchQuery.toLowerCase();
+    return NODES.filter(function (n) {
+      if (activeType !== 'all' && n.type !== activeType) { return false; }
+      if (q) {
+        return n.name.toLowerCase().indexOf(q) !== -1 ||
+               n.type.toLowerCase().indexOf(q) !== -1 ||
+               n.desc.toLowerCase().indexOf(q) !== -1 ||
+               n.params.some(function (p) { return p.n.toLowerCase().indexOf(q) !== -1; });
+      }
+      return true;
+    }).sort(function (a, b) {
+      if (activeSort === 'usage') { return b.usedIn - a.usedIn; }
+      if (activeSort === 'type')  { return a.type.localeCompare(b.type) || a.name.localeCompare(b.name); }
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  function buildSidebar () {
+    var list = document.getElementById('sbList');
+    if (!list) { return; }
+    list.innerHTML = '';
+    var nodes = filteredNodes();
+    var cnt = document.getElementById('topCount');
+    if (cnt) { cnt.textContent = nodes.length + ' node' + (nodes.length !== 1 ? 's' : ''); }
+    if (!nodes.length) {
+      list.innerHTML = '<div class="sb-empty">No nodes match</div>';
+      return;
+    }
+    var groups = {};
+    if (activeSort === 'type') {
+      nodes.forEach(function (n) {
+        if (!groups[n.type]) { groups[n.type] = []; }
+        groups[n.type].push(n);
+      });
+    } else {
+      groups['_all'] = nodes;
+    }
+    Object.keys(groups).forEach(function (g) {
+      if (g !== '_all') {
+        var lbl = document.createElement('div');
+        lbl.className = 'sb-group-lbl';
+        lbl.style.color = tc(g).col;
+        lbl.textContent = g;
+        list.appendChild(lbl);
+      }
+      groups[g].forEach(function (n) {
+        var col = tc(n.type).col, bg = tc(n.type).bg;
+        var card = document.createElement('div');
+        card.className = 'sbn' + (activeNode && activeNode.id === n.id ? ' active' : '');
+        card.style.setProperty('--node-col', col);
+        card.style.setProperty('--node-bg', bg);
+        var portDots = '';
+        if (n.inputs.length) { portDots += '<span class="sbn-port" style="border-color:' + '#0fa888' + ';background:rgba(15,168,136,0.25)"></span>'; }
+        if (n.outputs.length) { portDots += '<span class="sbn-port" style="border-color:' + '#9ca8ff' + ';background:rgba(108,123,255,0.25)"></span>'; }
+        card.innerHTML =
+          '<div class="sbn-colour" style="background:' + col + '"></div>' +
+          '<div class="sbn-labels"><div class="sbn-name">' + n.name + '</div><div class="sbn-type">' + n.type + '</div></div>' +
+          '<div class="sbn-meta"><div class="sbn-effects">' + n.usedIn.toLocaleString() + '</div><div class="sbn-ports">' + portDots + '</div></div>';
+        (function (node) {
+          card.addEventListener('click', function () {
+            activeNode = node;
+            buildSidebar();
+            showDetail(node);
+          });
+        }(n));
+        list.appendChild(card);
+      });
+    });
+  }
+
+  /* ═══════════════════════════════════════════
+     DETAIL PANEL
+     ═══════════════════════════════════════════ */
+  function showDetail (n) {
+    var empty = document.getElementById('detailEmpty');
+    var scroll = document.getElementById('detailScroll');
+    if (empty)  { empty.style.display = 'none'; }
+    if (scroll) { scroll.style.display = ''; scroll.innerHTML = ''; }
+    if (ecRAF)  { cancelAnimationFrame(ecRAF); ecRAF = null; }
+
+    var col = tc(n.type).col, bg = tc(n.type).bg;
+    var complexBadge = {beg:'complexity-beg',int:'complexity-int',adv:'complexity-adv'}[n.complexity] || 'complexity-beg';
+    var complexTxt   = {beg:'Beginner',int:'Intermediate',adv:'Advanced'}[n.complexity] || 'Beginner';
+
+    /* port dots on card */
+    var portsHTML = '';
+    n.inputs.forEach(function (p, i) {
+      portsHTML += '<span class="det-port-dot" style="border-color:#0fa888;background:rgba(15,168,136,0.25);"></span>';
+      portsHTML += '<span class="det-port-lbl" style="color:#0fa888;">in</span>';
+      if (i < n.inputs.length - 1) { portsHTML += '<span class="det-port-sep"></span>'; }
+    });
+    if (n.inputs.length && n.outputs.length) { portsHTML += '<span class="det-port-sep"></span>'; }
+    n.outputs.forEach(function (p, i) {
+      portsHTML += '<span class="det-port-dot" style="border-color:#9ca8ff;background:rgba(108,123,255,0.25);"></span>';
+      portsHTML += '<span class="det-port-lbl" style="color:#9ca8ff;">out</span>';
+      if (i < n.outputs.length - 1) { portsHTML += '<span class="det-port-sep"></span>'; }
+    });
+    if (!n.inputs.length && !n.outputs.length) {
+      portsHTML = '<span style="font-family:var(--fm);font-size:8px;color:rgba(88,88,112,0.7);text-transform:uppercase;letter-spacing:0.06em;">No external ports</span>';
+    }
+
+    /* params table */
+    var paramsHTML = '<div class="params-table"><div class="params-head"><span>Parameter</span><span>Type</span><span>Default</span><span>Description</span></div>';
+    n.params.forEach(function (p) {
+      paramsHTML += '<div class="param-row">' +
+        '<span class="param-name">' + p.n + '</span>' +
+        '<span class="param-type">' + p.t + '</span>' +
+        '<span class="param-default">' + p.v + '</span>' +
+        '<span class="param-desc">' + p.d + '</span>' +
+        '</div>';
+    });
+    paramsHTML += '</div>';
+
+    /* IO grid */
+    var inHTML = '', outHTML = '';
+    n.inputs.forEach(function (io) {
+      inHTML += '<div class="io-item"><div class="io-item-name in">' + io.name + '</div><div class="io-item-type">' + io.type + '</div><div class="io-item-desc">' + io.desc + '</div></div>';
+    });
+    n.outputs.forEach(function (io) {
+      outHTML += '<div class="io-item"><div class="io-item-name out">' + io.name + '</div><div class="io-item-type">' + io.type + '</div><div class="io-item-desc">' + io.desc + '</div></div>';
+    });
+
+    /* tips */
+    var tipsHTML = n.tips.map(function (t, i) {
+      return '<div class="tip-item"><span class="tip-num">0' + (i+1) + '</span><span class="tip-txt">' + t + '</span></div>';
+    }).join('');
+
+    /* effects */
+    var effHTML = n.effects.slice(0, 8).map(function (e) {
+      return '<div class="eff-chip" onclick="showToastGlobal(\'Opening ' + e + '...\')"><div class="eff-chip-name">' + e + '</div><div class="eff-chip-meta">View effect</div></div>';
+    }).join('');
+
+    /* related nodes */
+    var relHTML = n.related.map(function (r) {
+      var rn = NODES.find(function (x) { return x.name === r; });
+      var rc = rn ? tc(rn.type).col : '#6c7bff', rb = rn ? tc(rn.type).bg : 'rgba(108,123,255,0.13)';
+      return '<div class="rel-node" style="border-color:' + rc + '55;background:#06060d;" onclick="selectNodeByName(\'' + r + '\')">' +
+        '<span class="rel-node-dot" style="background:' + rc + '"></span>' +
+        '<span class="rel-node-name">' + r + '</span></div>';
+    }).join('');
+
+    var html =
+      '<div class="det-hd">' +
+        '<div class="det-hd-top">' +
+          '<div class="det-node-card" style="border-color:' + col + '55;">' +
+            '<span class="det-node-dot" style="background:' + col + '"></span>' +
+            '<div class="det-node-labels">' +
+              '<div class="det-node-type" style="color:' + col + ';">' + n.type + '</div>' +
+              '<div class="det-node-name">' + n.name + '</div>' +
+              '<div class="det-node-ports-row">' + portsHTML + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="det-hd-info">' +
+            '<div class="det-title">' + n.name + '</div>' +
+            '<div class="det-meta-row">' +
+              '<span class="det-badge type" style="color:' + col + ';border-color:' + col + '44;background:' + bg + '">' + n.type + '</span>' +
+              '<span class="det-badge ver">' + n.version + '</span>' +
+              '<span class="det-badge ' + complexBadge + '">' + complexTxt + '</span>' +
+            '</div>' +
+            '<div class="det-used">Used in <span>' + n.usedIn.toLocaleString() + '</span> effects</div>' +
+            '<div class="det-desc">' + n.longDesc + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="det-hd-actions">' +
+          '<button class="btn-primary" onclick="showToastGlobal(\'Node tree copied — paste in Fusion\')">' +
+            '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+            'Copy node name' +
+          '</button>' +
+          '<button class="btn-glass" onclick="showToastGlobal(\'Effect search: ' + n.name + '\')">' +
+            'Find effects using this node' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="det-body">';
+
+    /* parameters */
+    if (n.params.length) {
+      html += '<div class="sec"><div class="sec-hd"><div class="sec-title">Parameters</div><span class="sec-count">' + n.params.length + ' parameter' + (n.params.length!==1?'s':'') + '</span></div>' + paramsHTML + '</div>';
+    }
+
+    /* IO */
+    if (n.inputs.length || n.outputs.length) {
+      html += '<div class="sec"><div class="sec-hd"><div class="sec-title">Inputs &amp; Outputs</div></div><div class="io-grid">';
+      if (n.inputs.length)  { html += '<div class="io-group"><span class="io-group-lbl in">Inputs</span>'  + inHTML  + '</div>'; }
+      if (n.outputs.length) { html += '<div class="io-group"><span class="io-group-lbl out">Outputs</span>' + outHTML + '</div>'; }
+      html += '</div></div>';
+    }
+
+    /* tips */
+    if (n.tips.length) {
+      html += '<div class="sec"><div class="sec-hd"><div class="sec-title">Usage tips</div></div><div class="tips-list">' + tipsHTML + '</div></div>';
+    }
+
+    /* effects */
+    if (n.effects.length) {
+      html += '<div class="sec"><div class="sec-hd"><div class="sec-title">Used in effects</div><span class="sec-count">' + n.effects.length + ' effect' + (n.effects.length!==1?'s':'') + '</span></div><div class="effects-grid">' + effHTML + '</div></div>';
+    }
+
+    /* related nodes */
+    if (n.related.length) {
+      html += '<div class="sec"><div class="sec-hd"><div class="sec-title">Related nodes</div></div><div class="related-nodes">' + relHTML + '</div></div>';
+    }
+
+    html += '</div>';
+
+    if (scroll) { scroll.innerHTML = html; scroll.scrollTop = 0; }
+  }
+
+  /* ═══════════════════════════════════════════
+     SORT BUTTONS
+     ═══════════════════════════════════════════ */
+  document.querySelectorAll('.sb-sort-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      activeSort = this.dataset.sort;
+      document.querySelectorAll('.sb-sort-btn').forEach(function (b) { b.classList.remove('on'); });
+      this.classList.add('on');
+      buildSidebar();
+    });
+  });
+
+  /* ═══════════════════════════════════════════
+     SEARCH
+     ═══════════════════════════════════════════ */
+  document.getElementById('globalSearch').addEventListener('input', function () {
+    searchQuery = this.value;
+    buildSidebar();
+  });
+
+  /* ═══════════════════════════════════════════
+     GLOBAL HELPERS (called from innerHTML onclick)
+     ═══════════════════════════════════════════ */
+  window.showToastGlobal = function (msg) {
+    var t = document.getElementById('toast'), m = document.getElementById('toastMsg');
+    if (m) { m.textContent = msg; }
+    t.classList.add('show'); clearTimeout(t._t);
+    t._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  };
+  window.selectNodeByName = function (name) {
+    var n = NODES.find(function (x) { return x.name === name; });
+    if (n) { activeNode = n; buildSidebar(); showDetail(n); }
+  };
+
+  /* ═══════════════════════════════════════════
+     THEME
+     ═══════════════════════════════════════════ */
+  document.getElementById('themeBtn').addEventListener('click', function () {
+    var h = document.documentElement, tr = document.getElementById('ttTrack'), lb = document.getElementById('ttLabel');
+    if (h.getAttribute('data-theme') === 'light') { h.removeAttribute('data-theme'); tr.classList.add('on'); lb.textContent = 'Night'; }
+    else { h.setAttribute('data-theme','light'); tr.classList.remove('on'); lb.textContent = 'Day'; }
+  });
+
+  /* ═══════════════════════════════════════════
+     INIT
+     ═══════════════════════════════════════════ */
+  buildCatFilters();
+  buildSidebar();
+
+  /* auto-select first node */
+  setTimeout(function () {
+    if (NODES.length) { activeNode = NODES[0]; buildSidebar(); showDetail(NODES[0]); }
+  }, 120);
+
+}());
+</script>
+
+</body>
+</html>

@@ -11,6 +11,12 @@
 
 <title>Expressions — Resolve Library</title>
 <link rel="manifest" href="manifest.json">
+
+<!-- Noding Shared Resources -->
+<link rel="stylesheet" href="noding-shared.css">
+<script src="auth.js"></script>
+<script src="noding-shared.js"></script>
+
 <script>if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){navigator.serviceWorker.register("./sw.js").catch(function(){});}</script>
 <script>
 (function(){try{var t=JSON.parse(localStorage.getItem('rl-theme')||'{}'),s=document.documentElement.style,h=function(x){var r=parseInt(x.slice(1,3),16),g=parseInt(x.slice(3,5),16),b=parseInt(x.slice(5,7),16);return[r,g,b]};if(t.accent){s.setProperty('--accent',t.accent);var a=h(t.accent);s.setProperty('--accent-dim','rgba('+a+',0.08)');s.setProperty('--tag-bg','rgba('+a+',0.08)');s.setProperty('--tag-color',t.accent);}if(t.accent2){s.setProperty('--accent2',t.accent2);var c=h(t.accent2);s.setProperty('--accent2-dim','rgba('+c+',0.08)');}if(t.bg)s.setProperty('--bg',t.bg);if(t.surface)s.setProperty('--surface',t.surface);if(t.surface2)s.setProperty('--surface2',t.surface2);if(t.surface3)s.setProperty('--surface3',t.surface3);if(t.text)s.setProperty('--text',t.text);}catch(e){}
@@ -496,7 +502,7 @@ header{display:grid!important;grid-template-columns:auto 1fr auto!important;alig
   </div>
   <div class="sh-sb-sec">
     <div class="sh-sb-lbl">Account</div>
-    <div class="sh-auth-wrap" id="sh-auth-wrap"></div>
+    <div id="sb-auth-group"></div>
   </div>
 </div>
 <!-- WISHLIST MODAL -->
@@ -569,9 +575,9 @@ header{display:grid!important;grid-template-columns:auto 1fr auto!important;alig
     <div class="cat-filter-btns" id="expr-cat-btns"></div>
   </div>
 
-  <button class="tab-add-btn" onclick="openExprModal()">
+  <button class="tab-add-btn" onclick="shOpenAddModal('modal-add-expression')">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    + Expression
+    + Expr
   </button>
 
   <!-- Built-in reference -->
@@ -590,7 +596,7 @@ header{display:grid!important;grid-template-columns:auto 1fr auto!important;alig
 </div>
 
 <!-- Add Expression Modal -->
-<div id="expr-modal-overlay" class="add-modal-overlay" onclick="handleExprOverlayClick(event)">
+<div id="modal-add-expression" class="add-modal-overlay" onclick="handleExprOverlayClick(event)">
   <div class="add-modal">
     <div class="add-modal-header">
       <div class="add-modal-title">Save custom expression</div>
@@ -643,6 +649,27 @@ header{display:grid!important;grid-template-columns:auto 1fr auto!important;alig
     </div>
   </div>
 </div>
+
+<!-- FOOTER -->
+<footer style="border-top:1px solid var(--border);padding:40px 24px;margin-top:60px;position:relative;z-index:1;background:var(--surface);">
+  <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:24px;height:24px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.2" fill="#070708"/><rect x="8" y="1" width="5" height="5" rx="1.2" fill="#070708" opacity=".6"/><rect x="1" y="8" width="5" height="5" rx="1.2" fill="#070708" opacity=".6"/><rect x="8" y="8" width="5" height="5" rx="1.2" fill="#070708" opacity=".35"/></svg>
+        </div>
+        <span style="font-family:var(--font-head);font-weight:800;font-size:0.9rem;letter-spacing:-0.03em;color:var(--text);">Noding</span><span style="color:var(--accent);font-family:var(--font-head);font-weight:800;font-size:0.9rem;">.</span>
+      </div>
+      <span style="font-family:var(--font-mono);font-size:0.6875rem;color:var(--muted);letter-spacing:0.06em;">© 2025 Noding · All rights reserved</span>
+    </div>
+    <div style="display:flex;gap:24px;">
+      <a href="terms.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Terms</a>
+      <a href="privacy.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Privacy</a>
+      <a href="community.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Community</a>
+      <a href="settings.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Settings</a>
+    </div>
+  </div>
+</footer>
 
 <script>
 function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -810,20 +837,18 @@ function delExpr(id) {
 }
 
 // ── Add modal ─────────────────────────────────────────────────────────────
+function closeExprModal() {
+  shCloseModal('modal-add-expression');
+}
+function handleExprOverlayClick(e) {
+  if (e.target.id === 'modal-add-expression') closeExprModal();
+}
 function openExprModal() {
   ['ex-title','ex-code','ex-desc','ex-tags'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('ex-cat').value = 'Custom';
   document.getElementById('ex-type').value = 'expression';
-  document.getElementById('expr-modal-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  shOpenAddModal('modal-add-expression');
   setTimeout(() => document.getElementById('ex-title').focus(), 100);
-}
-function closeExprModal() {
-  document.getElementById('expr-modal-overlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
-function handleExprOverlayClick(e) {
-  if (e.target.id === 'expr-modal-overlay') closeExprModal();
 }
 function saveExpr() {
   const title = document.getElementById('ex-title').value.trim();
@@ -882,7 +907,7 @@ function shCloseSidebar(){
 
 // Auth
 function shRenderAuth(){
-  var el=document.getElementById('sh-auth-wrap');if(!el)return;
+  var el=document.getElementById('sb-auth-group');if(!el)return;
   var u=null;try{u=JSON.parse(localStorage.getItem('rl-auth-user')||'null');}catch(e){}
   if(u){
     el.innerHTML='<div style="display:flex;align-items:center;gap:9px"><div class="sh-auth-avatar">'+(_shE((u.name||u.email||'U')[0]).toUpperCase())+'</div><div><div style="font-size:13px;font-weight:500;color:var(--text)">'+_shE(u.name||u.email)+'</div></div></div><button class="sh-auth-out" onclick="shSignOut()">Sign out</button>';
