@@ -94,142 +94,32 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
 html,body{height:100%;line-height:1.5;}
 body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-weight: 300; height: 100vh; overflow: hidden; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
 
-/* ── NODING NAV PILL HEADER ── */
-.noding-header {
-  display: grid !important;
-  grid-template-columns: auto 1fr auto !important;
-  align-items: center;
-  gap: 0;
-  height: 56px;
-  padding: 0 1.25rem;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.noding-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-head);
-  font-weight: 800;
-  font-size: .88rem;
-  color: var(--text);
-  text-decoration: none;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.noding-logo-mark {
-  width: 24px;
-  height: 24px;
-  background: var(--accent);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.noding-logo em { color: var(--accent); font-style: normal; }
-
-.nav-pill {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: 999px;
-  padding: 3px;
-  z-index: 1;
-}
-.nlink {
-  font-size: 12.5px;
-  font-family: var(--font-body);
-  padding: 6px 16px;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  color: var(--text2);
-  cursor: pointer;
-  text-decoration: none;
-  transition: color .15s, background .15s;
-  white-space: nowrap;
-}
-.nlink:hover { color: var(--text); }
-.nlink.active { color: #fff; background: rgba(108,123,255,0.82); box-shadow: inset 0 1px 0 rgba(255,255,255,0.10); }
-
-.hdr-right { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
-.hdr-icon-btn {
-  background: transparent;
-  border: none;
-  color: var(--text2);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 7px;
-  display: inline-flex;
-  align-items: center;
-  transition: color .15s, background .15s;
-}
-.hdr-icon-btn:hover { color: var(--text); background: rgba(255,255,255,.06); }
-.hdr-icon-btn svg { display: block; }
-
-.hdr-hbg-btn {
-  background: transparent;
-  border: none;
-  color: var(--text2);
-  cursor: pointer;
-  padding: 7px 8px;
-  border-radius: 7px;
-  display: flex;
-  flex-direction: column;
-  gap: 4.5px;
-  align-items: center;
-  justify-content: center;
-  transition: color .15s, background .15s;
-}
-.hdr-hbg-btn:hover { color: var(--text); background: rgba(255,255,255,.06); }
-.hdr-hbg-btn span { display: block; width: 17px; height: 1.5px; background: currentColor; border-radius: 2px; }
-
-.hdr-add-btn {
-  background: var(--spline-coral-pale);
-  color: var(--spline-coral);
-  border: 1px solid var(--spline-coral-border);
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 12px;
-  padding: 7px 14px;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  white-space: nowrap;
-  font-family: var(--font-body);
-  flex-shrink: 0;
-}
-.hdr-add-btn:hover { filter: brightness(1.08); }
-
-@media(max-width:780px) { 
-  .nav-pill { display: none !important; } 
-}
+/* ── HEADER ─────────────────────────────────────────────── */
+header { position: relative; top:0; left:0; right:0; z-index:1000 !important; display:flex; align-items:center; height:64px; padding:0 20px; background:var(--bg); border-bottom:1px solid var(--border); flex-shrink:0; }
+.logo { display:flex; align-items:center; gap:9px; flex-shrink:0; text-decoration:none; }
+.brand-text { font-family:var(--font-head); font-weight:800; font-size:1.1rem; letter-spacing:-0.03em; color:var(--text); }
+.share-dot { color:var(--accent); font-family:var(--font-head); font-weight:800; font-size:1.1rem; }
+.nav-center { flex:1; display:flex; justify-content:center; }
+.nav-pill { display:flex; align-items:center; gap:2px; padding:5px 6px; background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); border:1px solid var(--border); border-radius:var(--radius-pill); box-shadow:var(--glass-shadow),var(--glass-shine); }
+.nav-item { font-family:var(--font-body); font-size:0.8125rem; font-weight:500; color:var(--text2); padding:5px 14px; border-radius:var(--radius-pill); transition:var(--transition); white-space:nowrap; text-decoration:none; }
+.nav-item:hover { color:var(--text); background:rgba(255,255,255,0.06); }
+.nav-item.active { color:#fff; background:rgba(108,123,255,0.82); box-shadow:inset 0 1px 0 rgba(255,255,255,0.10); }
+.hdr-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.sh-btn-plus { height:36px; padding:0 14px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--glass-bg); backdrop-filter:var(--glass-blur); color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:var(--transition); }
+.sh-btn-plus:hover { color:var(--text); background:var(--glass-bg); }
+@media(max-width:767px) { .nav-center{display:none;} }
 
 /* ── NO-SCROLL VIEWPORT CONTAINER ── */
 .app-viewport {
-  height: calc(100vh - 100px);
+  height: calc(100vh - 64px - 28px);
   overflow: hidden;
   position: relative;
   display: flex;
   flex-direction: column;
+  z-index: 1;
 }
 @media(max-width:780px) {
-  .app-viewport { height: calc(100vh - 60px); }
+  .app-viewport { height: calc(100vh - 64px - 60px - var(--safe-b)); }
 }
 
 /* ── STATUS BAR (thin, non-scrolling) ── */
@@ -347,8 +237,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .sh-bn-lbl { font-family:var(--font-mono); font-size:9px; letter-spacing:0.06em; text-transform:uppercase; }
 
 /* full-height wrapper */
-.app { display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
-.workspace { display:flex; flex-direction:row; flex:1; min-height:0; overflow:hidden; }
+.app { display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; position:relative; z-index:1; }
+.workspace { display:flex; flex-direction:row; flex:1; min-height:0; overflow:hidden; position:relative; z-index:1; }
 
 /* ── LEFT SIDEBAR — collapsible (matches nodegraph) ── */
 .sidebar-wrap { display:flex; flex-direction:row; flex-shrink:0; position:relative; }
@@ -377,8 +267,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .pitem:hover .pdel { opacity:1; }
 
 /* ── CENTRE ── */
-.centre { display:flex; flex-direction:column; overflow:hidden; background:var(--surface2); min-height:0; flex:1; }
-.graph-toolbar { background:rgba(8,8,9,0.82); border-bottom:1px solid var(--border); padding:0 1.5rem; height:44px; display:flex; align-items:center; gap:2px; flex-shrink:0; backdrop-filter:blur(12px); }
+.centre { display:flex; flex-direction:column; overflow:hidden; background:var(--surface2); min-height:0; flex:1; position:relative; z-index:1; }
+.graph-toolbar { background:rgba(8,8,9,0.82); border-bottom:1px solid var(--border); padding:0 1.5rem; height:44px; display:flex; align-items:center; gap:2px; flex-shrink:0; backdrop-filter:blur(12px); position:relative; z-index:2; }
 .tb-lbl { font-size:10px; font-family:var(--font-mono); color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-right:4px; }
 .tb-sep { width:1px; height:16px; background:var(--border2); margin:0 4px; flex-shrink:0; }
 .tbbtn { font-family:var(--font-body); font-size:13px; font-weight:400; padding:6px 13px; border-radius:var(--radius-sm); border:none; background:transparent; color:var(--text2); cursor:pointer; transition:var(--transition); display:inline-flex; align-items:center; gap:5px; white-space:nowrap; line-height:1; }
@@ -603,43 +493,29 @@ header{position:-webkit-sticky;position:sticky;}
 })();
 </script>
 
-<!-- NODING NAV PILL HEADER -->
-<header class="noding-header">
-  <a class="noding-logo" href="index.html">
-    <div class="noding-logo-mark">
-      <svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="11" cy="11" r="5" fill="rgba(108,123,255,0.15)" stroke="rgba(108,123,255,0.4)" stroke-width="1"/>
-        <circle cx="25" cy="11" r="5" fill="rgba(108,123,255,0.15)" stroke="rgba(108,123,255,0.4)" stroke-width="1"/>
-        <circle cx="18" cy="25" r="5" fill="rgba(108,123,255,0.28)" stroke="#6c7bff" stroke-width="1"/>
-        <circle cx="11" cy="11" r="2" fill="#4451d4"/>
-        <circle cx="25" cy="11" r="2" fill="#4451d4"/>
-        <circle cx="18" cy="25" r="2" fill="#6c7bff"/>
-        <line x1="16" y1="11" x2="20" y2="11" stroke="#6c7bff" stroke-width="1.2" stroke-linecap="round"/>
-        <line x1="13.5" y1="15" x2="16.5" y2="21" stroke="#6c7bff" stroke-width="1.2" stroke-linecap="round"/>
-        <line x1="22.5" y1="15" x2="19.5" y2="21" stroke="#6c7bff" stroke-width="1.2" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <span style="font-family:var(--font-head);font-weight:700;font-size:17px;letter-spacing:-0.03em;color:var(--text)">Noding</span><span style="display:inline-block;width:3px;height:3px;background:var(--accent);margin-left:1px;transform:translateY(4px);overflow:hidden;text-indent:-9999px">.</span>
+<!-- ── HEADER ─────────────────────────────────────────────── -->
+<header> 
+  <a href="index.html" class="logo" style="z-index:1001;position:relative;">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" style="display:block;"><rect width="26" height="26" rx="7" fill="#6c7bff"/><circle cx="9" cy="13" r="3" fill="#09090e"/><circle cx="18" cy="9" r="2.2" fill="#09090e"/><circle cx="18" cy="17" r="2.2" fill="#09090e"/><line x1="12" y1="11.3" x2="16" y2="9.8" stroke="#09090e" stroke-width="1.4"/><line x1="12" y1="14.7" x2="16" y2="16.2" stroke="#09090e" stroke-width="1.4"/></svg>
+    <span class="brand-text">noding<span class="share-dot">.</span></span>
   </a>
-  <!-- CENTER: nav pill -->
-  <div class="nav-pill">
-    <a class="nlink" href="index.html">Home</a>
-    <a class="nlink" href="effects.html">Effects</a>
-    <a class="nlink" href="videos.html">Videos</a>
-    <a class="nlink active" href="spline.html">Spline</a>
-    <a class="nlink" href="nodes.html">Node Graph</a>
-    <a class="nlink" href="library.html">Library</a>
-  </div>
-  <!-- RIGHT: actions -->
-  <div class="hdr-right">
-    <button class="hdr-icon-btn" onclick="shOpenNote()" title="Quick note">
-      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-    </button>
-    <button class="hdr-add-btn" onclick="openAddSplineModal()" style="background:var(--spline-coral-pale);color:var(--spline-coral);border:1px solid var(--spline-coral-border);">
-      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Spline
-    </button>
-    <button class="hdr-hbg-btn" onclick="shOpenSidebar()" aria-label="Menu">
-      <span></span><span></span><span></span>
+  <nav class="nav-center" style="z-index:1001;position:relative;">
+    <div class="nav-pill">
+      <a class="nav-item" href="index.html">Home</a>
+      <a class="nav-item" href="effects.html">Effects</a>
+      <a class="nav-item" href="videos.html">Videos</a>
+      <a class="nav-item active" href="spline.html">Spline</a>
+      <a class="nav-item" href="nodes.html">Nodes</a>
+      <a class="nav-item" href="library.html">Library</a>
+    </div>
+  </nav>
+  <div class="hdr-right" style="z-index:1001;position:relative;">
+    <button class="sh-btn-plus" aria-label="Menu" onclick="shOpenSidebar()" style="height:36px;padding:0 14px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
     </button>
   </div>
 </header>

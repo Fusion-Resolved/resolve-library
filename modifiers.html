@@ -62,31 +62,20 @@ input,select,textarea{font-size:16px!important;-webkit-appearance:none;box-sizin
 @keyframes ambDrift3{0%{transform:translate(0,0)}33%{transform:translate(55px,-75px)}66%{transform:translate(110px,-35px)}100%{transform:translate(0,0)}}
 @keyframes ambDrift4{0%{transform:translate(0,0)}25%{transform:translate(-55px,-65px)}50%{transform:translate(-18px,-120px)}75%{transform:translate(-75px,-25px)}100%{transform:translate(0,0)}}
 
-/* ── HEADER ──────────────────────────────────────────────── */
-header{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;height:64px;padding:0 20px;pointer-events:none;}
-header::before{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(9,9,14,0.7) 0%,transparent 100%);pointer-events:none;}
-.logo{display:flex;align-items:center;gap:9px;pointer-events:all;flex-shrink:0;text-decoration:none;}
-.brand-mark{width:26px;height:26px;background:var(--violet);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.brand-text{font-family:var(--font-display);font-weight:800;font-size:1.05rem;letter-spacing:-0.03em;color:var(--text-primary);}
-.brand-dot{color:var(--violet);}
-.nav-center{flex:1;display:flex;justify-content:center;pointer-events:all;}
-.nav-pill{display:flex;align-items:center;gap:2px;padding:5px 6px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-surface);border-radius:var(--radius-pill);box-shadow:var(--glass-shadow),var(--glass-shine);}
-.nlink{font-family:var(--font-body);font-size:.8125rem;font-weight:500;color:var(--text-secondary);padding:5px 14px;border-radius:var(--radius-pill);transition:var(--transition);white-space:nowrap;text-decoration:none;border:none;background:transparent;cursor:pointer;}
-.nlink:hover{color:var(--text-primary);background:rgba(255,255,255,0.06);}
-.nlink.active{color:var(--white);background:var(--glass-bg-active);}
-.sh-hdr-right{display:flex;align-items:center;gap:6px;flex-shrink:0;pointer-events:all;}
-.sh-icon-btn{width:36px;height:36px;border-radius:var(--radius-sm);border:1px solid var(--border-surface);background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition);}
-.sh-icon-btn:hover{color:var(--text-primary);background:var(--glass-bg-2);}
-.sh-icon-btn:active{transform:scale(0.93);}
-.sh-icon-btn svg{display:block;}
-.sh-add-btn{height:36px;padding:0 14px;border-radius:var(--radius-sm);border:1px solid rgba(108,123,255,0.35);background:rgba(108,123,255,0.12);color:var(--violet-light);font-family:var(--font-body);font-size:.8125rem;font-weight:500;cursor:pointer;transition:var(--transition);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
-.sh-add-btn:hover{background:rgba(108,123,255,0.22);border-color:var(--violet);color:#fff;}
-.sh-add-btn:active{transform:scale(0.96);}
-.sh-hbg-btn{width:36px;height:36px;border-radius:var(--radius-sm);border:1px solid var(--border-surface);background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);color:var(--text-secondary);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:var(--transition);}
-.sh-hbg-btn:hover{color:var(--text-primary);background:var(--glass-bg-2);}
-.sh-hbg-btn:active{transform:scale(0.93);}
-.sh-hbg-btn span{display:block;width:14px;height:1.5px;background:currentColor;border-radius:2px;}
-@media(max-width:767px){.nav-center{display:none;}.sh-add-btn{display:none;}header{height:56px;}}
+/* ── HEADER ─────────────────────────────────────────────── */
+header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; height:64px; padding:0 20px; pointer-events:none; background:transparent; border-bottom:none; }
+.logo { display:flex; align-items:center; gap:9px; pointer-events:all; flex-shrink:0; text-decoration:none; }
+.brand-text { font-family:var(--font-display); font-weight:800; font-size:1.1rem; letter-spacing:-0.03em; color:var(--text-primary); }
+.share-dot { color:var(--violet); font-family:var(--font-display); font-weight:800; font-size:1.1rem; }
+.nav-center { flex:1; display:flex; justify-content:center; pointer-events:all; }
+.nav-pill { display:flex; align-items:center; gap:2px; padding:5px 6px; background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur); border:1px solid var(--border-surface); border-radius:var(--radius-pill); box-shadow:var(--glass-shadow),var(--glass-shine); }
+.nav-item { font-family:var(--font-body); font-size:0.8125rem; font-weight:500; color:var(--text-secondary); padding:5px 14px; border-radius:var(--radius-pill); transition:var(--transition); white-space:nowrap; text-decoration:none; }
+.nav-item:hover { color:var(--text-primary); background:rgba(255,255,255,0.06); }
+.nav-item.active { color:var(--white); background:var(--glass-bg-active); }
+.hdr-right { display:flex; align-items:center; gap:6px; flex-shrink:0; pointer-events:all; }
+.sh-btn-plus { height:36px; padding:0 14px; border-radius:var(--radius-sm); border:1px solid var(--border-surface); background:var(--glass-bg); backdrop-filter:var(--glass-blur); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:var(--transition); }
+.sh-btn-plus:hover { color:var(--text-primary); background:var(--glass-bg-2); }
+@media (max-width:767px) { .nav-center{display:none;} }
 
 /* ── BOTTOM NAV ──────────────────────────────────────────── */
 .sh-bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;height:calc(60px + var(--safe-b));padding-bottom:var(--safe-b);background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-top:1px solid var(--border-surface);display:none;align-items:flex-start;justify-content:space-around;padding-top:8px;}
@@ -180,8 +169,8 @@ header::before{content:'';position:absolute;inset:0;background:linear-gradient(t
 /* Library sub-nav */
 .lib-subnav-wrap{padding:0 24px;margin-bottom:2rem;animation:fadeUp .6s var(--ease-out-expo) .5s both;}
 .lib-subnav{display:inline-flex;align-items:center;gap:2px;padding:4px 5px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-surface);border-radius:var(--radius-pill);box-shadow:var(--glass-shadow);flex-wrap:wrap;}
-.lib-subnav .nlink{font-size:.75rem;padding:4px 12px;}
-.lib-subnav .nlink.active{background:rgba(108,123,255,0.18);color:var(--violet-light);}
+.lib-subnav .nav-item{font-size:.75rem;padding:4px 12px;}
+.lib-subnav .nav-item.active{background:rgba(108,123,255,0.18);color:var(--violet-light);}
 
 /* ── MAIN CONTAINER ──────────────────────────────────────── */
 .container{max-width:1120px;margin:0 auto;padding:0 24px 4rem;}
@@ -337,40 +326,28 @@ header::before{content:'';position:absolute;inset:0;background:linear-gradient(t
 <div id="noding-toast" class="noding-toast" role="status" aria-live="polite"></div>
 
 <!-- ── HEADER ─────────────────────────────────────────────── -->
-<header>
-  <a class="logo" href="index.html">
-    <div class="brand-mark">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <rect x="1" y="1" width="5" height="5" rx="1.2" fill="#09090e"/>
-        <rect x="8" y="1" width="5" height="5" rx="1.2" fill="#09090e" opacity=".6"/>
-        <rect x="1" y="8" width="5" height="5" rx="1.2" fill="#09090e" opacity=".6"/>
-        <rect x="8" y="8" width="5" height="5" rx="1.2" fill="#09090e" opacity=".35"/>
-      </svg>
-    </div>
-    <span class="brand-text">Noding<span class="brand-dot">.</span></span>
+<header> 
+  <a href="index.html" class="logo">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect width="26" height="26" rx="7" fill="#6c7bff"/><circle cx="9" cy="13" r="3" fill="#09090e"/><circle cx="18" cy="9" r="2.2" fill="#09090e"/><circle cx="18" cy="17" r="2.2" fill="#09090e"/><line x1="12" y1="11.3" x2="16" y2="9.8" stroke="#09090e" stroke-width="1.4"/><line x1="12" y1="14.7" x2="16" y2="16.2" stroke="#09090e" stroke-width="1.4"/></svg>
+    <span class="brand-text">noding<span class="share-dot">.</span></span>
   </a>
-
-  <div class="nav-center">
-    <nav class="nav-pill" aria-label="Main navigation">
-      <a class="nlink" href="index.html">Home</a>
-      <a class="nlink" href="effects.html">Effects</a>
-      <a class="nlink" href="spline.html">Spline</a>
-      <a class="nlink" href="nodegraph.html">Node Graph</a>
-      <a class="nlink" href="community.html">Community</a>
-      <a class="nlink active" href="nodes-reference.html">Library</a>
-    </nav>
-  </div>
-
-  <div class="sh-hdr-right">
-    <button class="sh-icon-btn" onclick="shOpenNote()" title="Quick note" aria-label="Quick note">
-      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-    </button>
-    <button class="sh-add-btn" onclick="shOpenAddModal('modal-add-modifier')" aria-label="Add modifier">
-      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      + Mod
-    </button>
-    <button class="sh-hbg-btn" onclick="shOpenSidebar()" aria-label="Menu">
-      <span></span><span></span><span></span>
+  <nav class="nav-center">
+    <div class="nav-pill">
+      <a class="nav-item" href="index.html">Home</a>
+      <a class="nav-item" href="effects.html">Effects</a>
+      <a class="nav-item" href="videos.html">Videos</a>
+      <a class="nav-item" href="spline.html">Spline</a>
+      <a class="nav-item" href="nodes.html">Nodes</a>
+      <a class="nav-item active" href="library.html">Library</a>
+    </div>
+  </nav>
+  <div class="hdr-right">
+    <button class="sh-btn-plus" aria-label="Menu" onclick="shOpenSidebar()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
     </button>
   </div>
 </header>
@@ -479,11 +456,11 @@ header::before{content:'';position:absolute;inset:0;background:linear-gradient(t
   <!-- Library sub-nav -->
   <div class="lib-subnav-wrap">
     <nav class="lib-subnav" aria-label="Library sections">
-      <a class="nlink" href="nodes-reference.html">Node Reference</a>
-      <a class="nlink" href="expressions.html">Expressions</a>
-      <a class="nlink active" href="modifiers.html">Modifiers</a>
-      <a class="nlink" href="plugins.html">Plugins</a>
-      <a class="nlink" href="inspiration.html">Inspiration</a>
+      <a class="nav-item" href="nodes-reference.html">Node Reference</a>
+      <a class="nav-item" href="expressions.html">Expressions</a>
+      <a class="nav-item active" href="modifiers.html">Modifiers</a>
+      <a class="nav-item" href="plugins.html">Plugins</a>
+      <a class="nav-item" href="inspiration.html">Inspiration</a>
     </nav>
   </div>
 
