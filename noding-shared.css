@@ -230,6 +230,7 @@ header {
   z-index: 100; 
   display: flex; 
   align-items: center; 
+  justify-content: space-between;
   height: 64px; 
   padding: 0 20px; 
   pointer-events: none; 
@@ -311,6 +312,7 @@ header {
   gap: 6px; 
   flex-shrink: 0; 
   pointer-events: all; 
+  margin-left: auto;
 }
 
 .sh-btn-plus { 
