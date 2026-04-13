@@ -67,10 +67,10 @@ async function checkInitialSession() {
   try {
     const { data: { session } } = await window._supabase.auth.getSession();
     currentUser = session ? session.user : null;
-    updateAllSidebarPortals(currentUser);
+    await updateAllSidebarPortals(currentUser);
   } catch (err) {
     console.error("[auth.js] Failed to get initial session:", err);
-    updateAllSidebarPortals(null);
+    await updateAllSidebarPortals(null);
   }
 }
 
@@ -78,9 +78,26 @@ async function checkInitialSession() {
    SIDEBAR PORTAL INJECTION — SINGLE SOURCE OF TRUTH
    ============================================================ */
 
-function updateAllSidebarPortals(user) {
+async function updateAllSidebarPortals(user) {
   // Find ALL portal containers across the entire page
   const portals = document.querySelectorAll('#sidebar-auth-portal, #sb-auth-group');
+
+  // Fetch profile data if user is logged in
+  let profile = null;
+  if (user && window._supabase) {
+    try {
+      const { data, error } = await window._supabase
+        .from('profiles')
+        .select('avatar_url, avatar_pos')
+        .eq('id', user.id)
+        .single();
+      if (!error && data) {
+        profile = data;
+      }
+    } catch (err) {
+      console.log("[auth.js] Could not fetch profile for sidebar:", err);
+    }
+  }
 
   portals.forEach(portal => {
     if (!portal) return;
@@ -88,11 +105,36 @@ function updateAllSidebarPortals(user) {
     if (user) {
       // LOGGED IN: Show user info + Sign Out
       const email = user.email || 'User';
-      const avatar = email.charAt(0).toUpperCase();
+      const emailInitial = email.charAt(0).toUpperCase();
+      
+      // Build avatar HTML - image if available, otherwise initial
+      let avatarHtml = '';
+      if (profile && profile.avatar_url) {
+        const avatarUrlWithCache = profile.avatar_url + '?t=' + new Date().getTime();
+        let bgSize = 'cover';
+        let bgPos = 'center';
+        
+        // Apply saved position if exists
+        if (profile.avatar_pos) {
+          const posParts = profile.avatar_pos.split(',');
+          if (posParts.length === 3) {
+            const x = parseInt(posParts[0], 10) || 0;
+            const y = parseInt(posParts[1], 10) || 0;
+            const zoom = parseInt(posParts[2], 10) || 100;
+            bgSize = zoom + '%';
+            bgPos = 'calc(50% + ' + x + 'px) calc(50% + ' + y + 'px)';
+          }
+        }
+        
+        avatarHtml = `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${avatarUrlWithCache}');background-size:${bgSize};background-position:${bgPos};background-repeat:no-repeat;flex-shrink:0;border:1px solid rgba(108,123,255,0.3);"></div>`;
+      } else {
+        // Fallback to initial letter
+        avatarHtml = `<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6c7bff 0%,#4451d4 100%);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:#fff;flex-shrink:0;">${escapeHtml(emailInitial)}</div>`;
+      }
 
       portal.innerHTML = `
         <div class="sh-nav-item" style="cursor:default;opacity:1;padding:10px 14px;display:flex;align-items:center;gap:10px;">
-          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6c7bff 0%,#4451d4 100%);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:#fff;flex-shrink:0;">${escapeHtml(avatar)}</div>
+          ${avatarHtml}
           <div style="flex:1;min-width:0;">
             <div style="font-size:12px;font-weight:500;color:var(--tp,#f4f4fb);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(email)}</div>
             <div style="font-size:10px;color:var(--ts,#8f8fa8);">Pro Member</div>

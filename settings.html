@@ -462,7 +462,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   <!-- Auth State Display -->
   <div id="leftnav-auth-state" style="padding:8px 10px;margin:0 6px 8px;border-radius:8px;background:var(--bg3);border:1px solid var(--bs);display:none;">
     <div style="display:flex;align-items:center;gap:10px;">
-      <div id="leftnav-avatar" style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--violet) 0%,var(--violet-dark) 100%);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:12px;font-weight:600;color:#fff;">?</div>
+      <div id="leftnav-avatar" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--violet) 0%,var(--violet-dark) 100%);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:12px;font-weight:600;color:#fff;background-size:cover;background-position:center;flex-shrink:0;">?</div>
       <div style="flex:1;min-width:0;">
         <div id="leftnav-email" style="font-size:11px;font-weight:500;color:var(--tp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Not signed in</div>
         <div style="font-size:9px;color:var(--ts);">Click to manage</div>
@@ -1288,19 +1288,6 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       pendingAvatarFile = null;
     }
   };
-        avatar.style.backgroundSize = (pendingCropData.zoom * 100 / 200) + '%';
-        avatar.style.backgroundPosition = 'calc(50% + ' + pendingCropData.x + 'px) calc(50% + ' + pendingCropData.y + 'px)';
-        avatar.textContent = '';
-      }
-
-      toast('Avatar uploaded successfully ✓');
-    } catch (err) {
-      console.error('Avatar upload failed:', err);
-      toast('Upload failed: ' + (err.message || 'Unknown error'));
-    } finally {
-      pendingAvatarFile = null;
-    }
-  };
 
   window.removeAvatar = async function () {
     try {
@@ -1713,6 +1700,10 @@ input,textarea,select{font-family:var(--fb);outline:none;}
             }
           }
         }
+
+        // Update leftnav with profile
+        updateLeftnavAuthState(user, profile);
+
       } else {
         console.log('[Settings] No profile found, using defaults');
         // No profile yet - set defaults from user metadata
@@ -1750,9 +1741,23 @@ input,textarea,select{font-family:var(--fb);outline:none;}
             avatarCircle.textContent = '?';
           }
         }
+
+        // Also clear sidebar avatar
+        var leftnavAvatarNoProfile = document.getElementById('leftnav-avatar');
+        if (leftnavAvatarNoProfile) {
+          leftnavAvatarNoProfile.style.backgroundImage = '';
+          leftnavAvatarNoProfile.style.backgroundSize = '';
+          leftnavAvatarNoProfile.style.backgroundPosition = '';
+          leftnavAvatarNoProfile.textContent = (user.email || 'U').charAt(0).toUpperCase();
+        }
+
+        // Update leftnav auth state with null profile (no profile found)
+        updateLeftnavAuthState(user, null);
       }
     } catch (err) {
       console.error('[Settings] Failed to load profile:', err);
+      // Still update leftnav with user but no profile
+      updateLeftnavAuthState(user, null);
     }
   }
 
@@ -1775,7 +1780,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 
   /* ── Handle PASSWORD_RECOVERY redirect from Supabase reset email ── */
   if (window._supabase) {
-    window._supabase.auth.onAuthStateChange(function (event, session) {
+    window._supabase.auth.onAuthStateChange(async function (event, session) {
       if (event === 'PASSWORD_RECOVERY') {
         // Navigate to the Account & Security panel and reveal the banner
         var acctNav = document.querySelector('.nav-item[data-panel="account"]');
@@ -1784,14 +1789,32 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         toast('Enter your new password below.');
       }
       var user = session ? session.user : null;
+
+      // Fetch profile for leftnav avatar
+      var profile = null;
+      if (user && window._supabase) {
+        try {
+          var result = await window._supabase
+            .from('profiles')
+            .select('avatar_url, avatar_pos')
+            .eq('id', user.id)
+            .single();
+          if (!result.error && result.data) {
+            profile = result.data;
+          }
+        } catch (e) {
+          console.log("[Settings] Could not fetch profile for leftnav:", e);
+        }
+      }
+
       renderAccountPanel(user);
       wirePasswordResetBtn(user);
-      updateLeftnavAuthState(user);
+      updateLeftnavAuthState(user, profile);
     });
   }
 
   /* ── Update Left Nav Auth Display ── */
-  function updateLeftnavAuthState(user) {
+  function updateLeftnavAuthState(user, profile) {
     const authStateBox = document.getElementById('leftnav-auth-state');
     const loginPrompt = document.getElementById('leftnav-login-prompt');
     const avatar = document.getElementById('leftnav-avatar');
@@ -1803,14 +1826,48 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       // Show logged in state
       authStateBox.style.display = 'block';
       loginPrompt.style.display = 'none';
-      if (avatar) avatar.textContent = (user.email || 'U').charAt(0).toUpperCase();
+
+      // Update email
       if (email) email.textContent = user.email || 'Signed in';
+
+      // Update avatar circle with profile image if available
+      if (avatar) {
+        if (profile && profile.avatar_url) {
+          const avatarUrlWithCache = profile.avatar_url + '?t=' + new Date().getTime();
+          avatar.style.backgroundImage = 'url(' + avatarUrlWithCache + ')';
+          avatar.textContent = '';
+
+          // Apply position if exists
+          if (profile.avatar_pos) {
+            const posParts = profile.avatar_pos.split(',');
+            if (posParts.length === 3) {
+              const x = parseInt(posParts[0], 10) || 0;
+              const y = parseInt(posParts[1], 10) || 0;
+              const zoom = parseInt(posParts[2], 10) || 100;
+              avatar.style.backgroundSize = zoom + '%';
+              avatar.style.backgroundPosition = 'calc(50% + ' + x + 'px) calc(50% + ' + y + 'px)';
+            }
+          } else {
+            avatar.style.backgroundSize = 'cover';
+            avatar.style.backgroundPosition = 'center';
+          }
+        } else {
+          // No avatar - show initial
+          avatar.style.backgroundImage = '';
+          avatar.style.backgroundSize = '';
+          avatar.style.backgroundPosition = '';
+          avatar.textContent = (user.email || 'U').charAt(0).toUpperCase();
+        }
+      }
     } else {
       // Show logged out state
       authStateBox.style.display = 'none';
       loginPrompt.style.display = 'block';
     }
   }
+
+  // Initialization success log
+  console.log("[Settings] Initialized successfully");
 
 }());
 </script>
