@@ -473,36 +473,37 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         <div class="avatar-row">
           <div class="avatar-circle" id="profileAvatar">?</div>
           <div class="avatar-actions">
-            <span>Profile photo · JPG or PNG, max 2 MB</span>
+            <span>Profile photo · Max 50KB (Optimized JPG/PNG)</span>
             <div class="avatar-btn-row">
-              <button class="btn-sm violet" onclick="toast('Opening file picker…')">Upload photo</button>
-              <button class="btn-sm ghost" onclick="toast('Avatar removed')">Remove</button>
+              <input type="file" id="avatarInput" accept="image/jpeg,image/png" style="display:none;" onchange="validateAndUploadAvatar(this)">
+              <button class="btn-sm violet" onclick="document.getElementById('avatarInput').click()">Upload photo</button>
+              <button class="btn-sm ghost" onclick="removeAvatar()">Remove</button>
             </div>
           </div>
         </div>
         <div class="fgroup">
           <label class="fl">Display name</label>
-          <input class="fi" type="text" value="fxNode_kai" oninput="markDirty()">
+          <input class="fi" id="displayNameInput" type="text" value="" placeholder="Your display name" oninput="markDirty()">
         </div>
         <div class="fgroup">
           <div class="fhd"><label class="fl">Username</label><span style="font-family:var(--fm);font-size:9px;color:var(--tm);">Changes your public URL</span></div>
-          <input class="fi" type="text" value="fxNode_kai" oninput="markDirty()">
+          <input class="fi" id="usernameInput" type="text" value="" placeholder="username" oninput="markDirty()">
           <div class="url-row" style="margin-top:4px;">
             <span class="url-prefix">noding.io/u/</span>
-            <span class="url-val">fxNode_kai</span>
+            <span class="url-val" id="usernameDisplay">username</span>
           </div>
         </div>
         <div class="fgroup">
-          <div class="fhd"><label class="fl">Bio</label><span class="char-count" id="bioCount">68 / 280</span></div>
-          <textarea class="fi-area" id="bioInput" maxlength="280" oninput="onBioInput(this)">DaVinci Resolve artist. Node graph obsessive. Building tools for the community one Fusion comp at a time.</textarea>
+          <div class="fhd"><label class="fl">Bio</label><span class="char-count" id="bioCount">0 / 280</span></div>
+          <textarea class="fi-area" id="bioInput" maxlength="280" placeholder="Tell the community about yourself..." oninput="onBioInput(this)"></textarea>
         </div>
         <div class="fgroup">
           <label class="fl">Website</label>
-          <input class="fi" type="url" placeholder="https://your-site.com" oninput="markDirty()">
+          <input class="fi" id="websiteInput" type="url" placeholder="https://your-site.com" oninput="markDirty()">
         </div>
         <div class="fgroup">
           <label class="fl">Location</label>
-          <input class="fi" type="text" placeholder="London, UK" oninput="markDirty()">
+          <input class="fi" id="locationInput" type="text" placeholder="London, UK" oninput="markDirty()">
         </div>
         <div class="fgroup" style="border-bottom:none;">
           <label class="fl">Default DaVinci Resolve version</label>
@@ -871,7 +872,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       if (dot) { dot.classList.add('show'); }
     }
   };
-  window.saveChanges = function () {
+  window.saveChanges = async function () {
     var btn = document.getElementById('btnSave');
     var originalHTML = btn.innerHTML;
 
@@ -879,26 +880,45 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     btn.innerHTML = '<span class="btn-spinner" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;margin-right:6px;"></span>Saving…';
     btn.disabled = true;
 
-    // ── Collect values from every input in the active panel ──────────────────
-    // NOTE: This uses localStorage as a temporary persistence layer until the
-    // Supabase `user_settings` DB table is finalised. Replace the
-    // localStorage.setItem call below with a supabase.from('user_settings')
-    // .upsert({ user_id: session.user.id, ...settings }) at that point.
-    var activePanel = document.querySelector('.panel.active');
-    var settings = {};
-    if (activePanel) {
-      activePanel.querySelectorAll('input, select, textarea').forEach(function (input) {
-        if (input.id) {
-          settings[input.id] = input.type === 'checkbox' ? input.checked : input.value;
-        }
-      });
-    }
+    // ── Collect profile values ────────────────────────────────────────────────
+    var profileData = {
+      display_name: document.getElementById('displayNameInput')?.value || '',
+      bio: document.getElementById('bioInput')?.value || '',
+      website: document.getElementById('websiteInput')?.value || ''
+    };
 
     try {
-      // Merge with any previously stored settings so other-panel values survive
+      // Check if Supabase is available
+      if (!window._supabase) {
+        throw new Error('Supabase not initialized');
+      }
+
+      // Get current user
+      var sessionRes = await window._supabase.auth.getSession();
+      var session = sessionRes.data?.session;
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      var userId = session.user.id;
+
+      // Upsert to public.profiles table
+      var { data, error } = await window._supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          display_name: profileData.display_name,
+          bio: profileData.bio,
+          website: profileData.website,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+      if (error) throw error;
+
+      // Also save to localStorage as cache
       var existing = {};
       try { existing = JSON.parse(localStorage.getItem('noding-settings') || '{}'); } catch (_) {}
-      var merged = Object.assign({}, existing, settings, { _savedAt: new Date().toISOString() });
+      var merged = Object.assign({}, existing, profileData, { _savedAt: new Date().toISOString() });
       localStorage.setItem('noding-settings', JSON.stringify(merged));
 
       dirty = false;
@@ -906,11 +926,10 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       document.getElementById('btnSave').classList.remove('show');
       document.getElementById('btnDiscard').classList.remove('show');
       document.querySelectorAll('.nav-dirty').forEach(function (d) { d.classList.remove('show'); });
-      toast('Changes saved ✓');
+      toast('Profile saved to cloud ✓');
     } catch (err) {
-      // localStorage can throw if storage is full or in private-browsing mode
-      console.error('Settings save failed:', err);
-      toast('Could not save — storage unavailable.');
+      console.error('Profile save failed:', err);
+      toast('Save failed: ' + (err.message || 'Unknown error'));
     } finally {
       btn.innerHTML = originalHTML;
       btn.disabled = false;
@@ -967,6 +986,128 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     var el = document.getElementById('bioCount');
     if (el) { el.textContent = ta.value.length + ' / 280'; el.className = 'char-count' + (ta.value.length > 250 ? ' warn' : ''); }
     markDirty();
+  };
+
+  /* ── AVATAR UPLOAD — 50KB LIMIT + SUPABASE STORAGE ── */
+  window.validateAndUploadAvatar = async function (input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+
+    var maxSize = 50 * 1024; // 50KB in bytes
+
+    if (file.size > maxSize) {
+      var sizeKB = (file.size / 1024).toFixed(1);
+      alert('File too large (' + sizeKB + 'KB). To keep Noding fast, please limit profile pictures to 50KB.');
+      input.value = ''; // Clear the input
+      return;
+    }
+
+    // Check Supabase availability
+    if (!window._supabase) {
+      toast('Authentication not ready — please try again');
+      return;
+    }
+
+    try {
+      // Get current user
+      var sessionRes = await window._supabase.auth.getSession();
+      var session = sessionRes.data?.session;
+      if (!session) {
+        toast('Please sign in to upload avatar');
+        return;
+      }
+
+      var userId = session.user.id;
+      var filePath = 'avatars/' + userId + '/avatar.png';
+
+      toast('Uploading avatar…');
+
+      // Upload to Supabase Storage
+      var { data: uploadData, error: uploadError } = await window._supabase.storage
+        .from('profiles')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      var { data: urlData } = window._supabase.storage
+        .from('profiles')
+        .getPublicUrl(filePath);
+
+      var publicUrl = urlData?.publicUrl;
+
+      // Update avatar_url in profiles table
+      var { error: updateError } = await window._supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+      if (updateError) throw updateError;
+
+      // Update UI
+      var avatar = document.getElementById('profileAvatar');
+      if (avatar) {
+        avatar.style.backgroundImage = 'url(' + publicUrl + ')';
+        avatar.style.backgroundSize = 'cover';
+        avatar.textContent = '';
+      }
+
+      toast('Avatar uploaded successfully ✓');
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+      toast('Upload failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      input.value = ''; // Clear input for re-upload
+    }
+  };
+
+  window.removeAvatar = async function () {
+    try {
+      if (!window._supabase) {
+        toast('Authentication not ready');
+        return;
+      }
+
+      var sessionRes = await window._supabase.auth.getSession();
+      var session = sessionRes.data?.session;
+      if (!session) {
+        toast('Please sign in');
+        return;
+      }
+
+      var userId = session.user.id;
+
+      // Remove from storage
+      await window._supabase.storage
+        .from('profiles')
+        .remove(['avatars/' + userId + '/avatar.png']);
+
+      // Update profiles table
+      await window._supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          avatar_url: null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+      // Update UI
+      var avatar = document.getElementById('profileAvatar');
+      if (avatar) {
+        avatar.style.backgroundImage = '';
+        avatar.textContent = (document.getElementById('leftnav-email')?.textContent || 'U').charAt(0).toUpperCase() || '?';
+      }
+      toast('Avatar removed');
+    } catch (err) {
+      console.error('Avatar removal failed:', err);
+      toast('Failed to remove avatar');
+    }
   };
 
   /* ── API KEY ── */
@@ -1146,6 +1287,71 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     }
   };
 
+  /* ════════════════════════════════════════════════════
+     PROFILE LOADING — Fetch from Supabase on page load
+     ════════════════════════════════════════════════════ */
+
+  async function loadUserProfile(user) {
+    if (!user || !window._supabase) return;
+
+    try {
+      var { data: profile, error } = await window._supabase
+        .from('profiles')
+        .select('display_name, bio, website, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows returned, which is fine for new users
+        console.error('Error loading profile:', error);
+        return;
+      }
+
+      if (profile) {
+        // Populate profile form fields
+        var displayNameInput = document.getElementById('displayNameInput');
+        var bioInput = document.getElementById('bioInput');
+        var websiteInput = document.getElementById('websiteInput');
+        var avatarCircle = document.getElementById('profileAvatar');
+        var usernameDisplay = document.getElementById('usernameDisplay');
+
+        if (displayNameInput) displayNameInput.value = profile.display_name || '';
+        if (bioInput) {
+          bioInput.value = profile.bio || '';
+          // Update char counter
+          var bioCount = document.getElementById('bioCount');
+          if (bioCount) {
+            bioCount.textContent = (profile.bio || '').length + ' / 280';
+          }
+        }
+        if (websiteInput) websiteInput.value = profile.website || '';
+        if (usernameDisplay) usernameDisplay.textContent = user.email?.split('@')[0] || 'username';
+
+        // Set avatar if exists
+        if (avatarCircle && profile.avatar_url) {
+          avatarCircle.style.backgroundImage = 'url(' + profile.avatar_url + ')';
+          avatarCircle.style.backgroundSize = 'cover';
+          avatarCircle.textContent = '';
+        } else if (avatarCircle && user.email) {
+          avatarCircle.textContent = user.email[0].toUpperCase();
+        }
+      } else {
+        // No profile yet - set defaults from user metadata
+        var displayNameInput = document.getElementById('displayNameInput');
+        var usernameDisplay = document.getElementById('usernameDisplay');
+        var avatarCircle = document.getElementById('profileAvatar');
+
+        if (displayNameInput) displayNameInput.value = user.user_metadata?.display_name || '';
+        if (usernameDisplay) usernameDisplay.textContent = user.email?.split('@')[0] || 'username';
+        if (avatarCircle && user.email) {
+          avatarCircle.textContent = user.email[0].toUpperCase();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+    }
+  }
+
   /* ── Boot: listen for auth.js session resolution ── */
   window.addEventListener('authStateChanged', function () {
     if (!window._supabase) {
@@ -1158,6 +1364,8 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       renderAccountPanel(user);
       wirePasswordResetBtn(user);
       wireSignOutBtn();
+      // Load profile data when auth is ready
+      loadUserProfile(user);
     });
   });
 

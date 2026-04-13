@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
 
-  <!-- ═══ Supabase SDK + Auth (live — keep as-is, one source of truth) ═══ -->
+  <!-- ═══ Supabase SDK + Auth (live — with safety wrapper) ═══ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth.js"></script>
   <script src="noding-shared.js"></script>
@@ -2052,8 +2052,6 @@ body.bulk-mode .card-select-check { display: flex; }
 
 </style>
 
-<script src="auth.js"></script>
-
 </head>
 
 <body>
@@ -2535,7 +2533,7 @@ window.nodingBlobsEnabled = function () {
 
     <!-- ── TABS ────────────────────────────────────────────────── -->
     <div class="tabs-container">
-      <button class="tab-btn active" onclick="switchTab('system')">Noding.app Effects</button>
+      <button class="tab-btn active" onclick="switchTab('system')">Community Effects</button>
       <button class="tab-btn"        onclick="switchTab('mine')">My Effects</button>
     </div>
 
@@ -6084,7 +6082,7 @@ function render() {
   }
 
   // ── Split into System and My Effects ────────────────────────────────────
-  // System Effects: is_public === true (visible to all, curated by Noding.app)
+  // System Effects: is_public === true (visible to all, curated by Community)
   // My Effects: owned by current user AND not public (prevents duplicates for admins)
   // Shared-link effects (not owned, not public) are excluded from both galleries.
   let systemList = effects.filter(e => e.is_public === true && baseFilter(e));
@@ -6180,7 +6178,7 @@ function render() {
 
 function setFilter(k) { activeFilter = k; render(); }
 
-// ── switchTab — toggle between "Noding.app Effects" and "My Effects" tabs ──
+// ── switchTab — toggle between "Community Effects" and "My Effects" tabs ──
 function switchTab(tabId) {
   document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
   document.querySelectorAll('.tab-content').forEach(function(content) { content.style.display = 'none'; });
