@@ -901,6 +901,8 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       }
 
       var userId = session.user.id;
+      console.log('[Settings] Saving profile for userId:', userId);
+      console.log('[Settings] Profile Data:', profileData);
 
       // Upsert to public.profiles table
       var { data, error } = await window._supabase
@@ -913,7 +915,12 @@ input,textarea,select{font-family:var(--fb);outline:none;}
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
 
-      if (error) throw error;
+      console.log('[Settings] Upsert result:', { data, error });
+
+      if (error) {
+        console.error('[Settings] Supabase upsert error:', error);
+        throw error;
+      }
 
       // Also save to localStorage as cache
       var existing = {};
@@ -1018,29 +1025,39 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       }
 
       var userId = session.user.id;
+      console.log('[Settings] Uploading avatar for userId:', userId);
+
       var filePath = 'avatars/' + userId + '/avatar.png';
 
       toast('Uploading avatar…');
 
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage — CRITICAL: bucket name is 'avatars'
+      console.log('[Settings] Uploading to bucket: avatars, path:', filePath);
       var { data: uploadData, error: uploadError } = await window._supabase.storage
-        .from('profiles')
+        .from('avatars')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: true
         });
 
-      if (uploadError) throw uploadError;
+      console.log('[Settings] Upload result:', { uploadData, uploadError });
+
+      if (uploadError) {
+        console.error('[Settings] Storage upload error:', uploadError);
+        throw uploadError;
+      }
 
       // Get public URL
       var { data: urlData } = window._supabase.storage
-        .from('profiles')
+        .from('avatars')
         .getPublicUrl(filePath);
 
       var publicUrl = urlData?.publicUrl;
+      console.log('[Settings] Public URL:', publicUrl);
 
       // Update avatar_url in profiles table
-      var { error: updateError } = await window._supabase
+      console.log('[Settings] Updating profiles table with avatar_url');
+      var { data: updateData, error: updateError } = await window._supabase
         .from('profiles')
         .upsert({
           id: userId,
@@ -1048,7 +1065,12 @@ input,textarea,select{font-family:var(--fb);outline:none;}
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
 
-      if (updateError) throw updateError;
+      console.log('[Settings] Profile upsert result:', { updateData, updateError });
+
+      if (updateError) {
+        console.error('[Settings] Profile update error:', updateError);
+        throw updateError;
+      }
 
       // Update UI
       var avatar = document.getElementById('profileAvatar');
@@ -1082,19 +1104,30 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       }
 
       var userId = session.user.id;
+      console.log('[Settings] Removing avatar for userId:', userId);
 
-      // Remove from storage
-      await window._supabase.storage
-        .from('profiles')
+      // Remove from storage — CRITICAL: bucket name is 'avatars'
+      var { data: removeData, error: removeError } = await window._supabase.storage
+        .from('avatars')
         .remove(['avatars/' + userId + '/avatar.png']);
 
+      console.log('[Settings] Storage remove result:', { removeData, removeError });
+
+      if (removeError) {
+        console.error('[Settings] Storage remove error:', removeError);
+      }
+
       // Update profiles table
-      await window._supabase
+      console.log('[Settings] Clearing avatar_url in profiles table');
+      var { data: updateData, error: updateError } = await window._supabase
         .from('profiles')
         .upsert({
           id: userId,
           avatar_url: null,
           updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+      console.log('[Settings] Profile clear result:', { updateData, updateError });
         }, { onConflict: 'id' });
 
       // Update UI
@@ -1294,6 +1327,8 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   async function loadUserProfile(user) {
     if (!user || !window._supabase) return;
 
+    console.log('[Settings] Loading profile for userId:', user.id);
+
     try {
       var { data: profile, error } = await window._supabase
         .from('profiles')
@@ -1301,13 +1336,16 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         .eq('id', user.id)
         .single();
 
+      console.log('[Settings] Profile load result:', { profile, error });
+
       if (error && error.code !== 'PGRST116') {
         // PGRST116 = no rows returned, which is fine for new users
-        console.error('Error loading profile:', error);
+        console.error('[Settings] Error loading profile:', error);
         return;
       }
 
       if (profile) {
+        console.log('[Settings] Profile found, populating fields');
         // Populate profile form fields
         var displayNameInput = document.getElementById('displayNameInput');
         var bioInput = document.getElementById('bioInput');
@@ -1329,6 +1367,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 
         // Set avatar if exists
         if (avatarCircle && profile.avatar_url) {
+          console.log('[Settings] Setting avatar from URL:', profile.avatar_url);
           avatarCircle.style.backgroundImage = 'url(' + profile.avatar_url + ')';
           avatarCircle.style.backgroundSize = 'cover';
           avatarCircle.textContent = '';
@@ -1336,6 +1375,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
           avatarCircle.textContent = user.email[0].toUpperCase();
         }
       } else {
+        console.log('[Settings] No profile found, using defaults');
         // No profile yet - set defaults from user metadata
         var displayNameInput = document.getElementById('displayNameInput');
         var usernameDisplay = document.getElementById('usernameDisplay');
@@ -1348,7 +1388,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         }
       }
     } catch (err) {
-      console.error('Failed to load profile:', err);
+      console.error('[Settings] Failed to load profile:', err);
     }
   }
 
