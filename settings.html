@@ -303,6 +303,22 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 .pw-rec-row{display:flex;gap:10px;align-items:center;}
 .pw-rec-row .fi{max-width:280px;}
 
+/* avatar crop modal */
+.crop-ov{display:none;position:fixed;inset:0;background:rgba(9,9,14,0.9);z-index:600;backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1rem;}
+.crop-ov.open{display:flex;}
+.crop-box{background:var(--gb2);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);box-shadow:var(--gs),0 20px 60px rgba(0,0,0,0.7);border:1px solid var(--bsb);border-radius:var(--rlg);padding:1.5rem;max-width:400px;width:100%;display:flex;flex-direction:column;gap:16px;animation:popIn 0.2s var(--ease);}
+.crop-title{font-family:var(--fd);font-size:1.1rem;font-weight:700;letter-spacing:-0.02em;color:var(--tp);text-align:center;}
+.crop-preview-wrap{position:relative;width:200px;height:200px;margin:0 auto;border-radius:50%;overflow:hidden;border:3px solid var(--violet);background:var(--bg3);cursor:move;}
+.crop-preview-img{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:none;pointer-events:none;user-select:none;}
+.crop-zoom{display:flex;align-items:center;gap:12px;margin-top:8px;}
+.crop-zoom label{font-family:var(--fm);font-size:11px;color:var(--ts);text-transform:uppercase;letter-spacing:0.05em;}
+.crop-zoom input[type="range"]{flex:1;height:4px;background:var(--bc);border-radius:2px;outline:none;cursor:pointer;}
+.crop-zoom input[type="range"]::-webkit-slider-thumb{width:16px;height:16px;border-radius:50%;background:var(--violet);cursor:pointer;-webkit-appearance:none;}
+.crop-acts{display:flex;gap:8px;margin-top:8px;}
+.crop-acts button{flex:1;height:40px;border-radius:var(--rsm);border:1px solid var(--bsb);background:var(--gb2);color:var(--ts);font-size:13px;cursor:pointer;transition:var(--tr);}
+.crop-acts button.violet{background:var(--violet);color:#fff;border-color:var(--violet);}
+.crop-acts button:hover{filter:brightness(1.1);}
+
 /* confirm overlay */
 .confirm-ov{display:none;position:fixed;inset:0;background:rgba(9,9,14,0.82);z-index:500;backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1rem;}
 .confirm-ov.open{display:flex;}
@@ -489,8 +505,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
           <div class="fhd"><label class="fl">Username</label><span style="font-family:var(--fm);font-size:9px;color:var(--tm);">Changes your public URL</span></div>
           <input class="fi" id="usernameInput" type="text" value="" placeholder="username" oninput="markDirty()">
           <div class="url-row" style="margin-top:4px;">
-            <span class="url-prefix">noding.app/u/</span>
-            <span class="url-val" id="usernameDisplay">username</span>
+            <span class="url-prefix">noding.app/u/<span id="usernamePreview" style="color:var(--violet-light);font-family:var(--fm);font-size:12px;">username</span></span>
             <a href="#" id="viewProfileBtn" target="_blank" style="margin-left:auto;font-size:11px;color:var(--violet);text-decoration:none;">View Profile →</a>
           </div>
         </div>
@@ -818,6 +833,24 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   </div><!-- /content -->
 </div><!-- /app-body -->
 
+<!-- AVATAR CROP MODAL -->
+<div class="crop-ov" id="cropOv">
+  <div class="crop-box">
+    <div class="crop-title">Position Your Avatar</div>
+    <div class="crop-preview-wrap" id="cropPreviewWrap">
+      <img class="crop-preview-img" id="cropPreviewImg" src="" alt="Preview">
+    </div>
+    <div class="crop-zoom">
+      <label>Zoom</label>
+      <input type="range" id="cropZoom" min="100" max="300" value="100">
+    </div>
+    <div class="crop-acts">
+      <button onclick="closeCropModal()">Cancel</button>
+      <button class="violet" onclick="applyCrop()">Apply</button>
+    </div>
+  </div>
+</div>
+
 <!-- DELETE CONFIRM -->
 <div class="confirm-ov" id="confirmOv">
   <div class="confirm-box">
@@ -1014,9 +1047,26 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     if (bioInput) {
       bioInput.addEventListener('input', function() { onBioInput(this); });
     }
+
+    // Real-time username preview
+    var usernameInput = document.getElementById('usernameInput');
+    var usernamePreview = document.getElementById('usernamePreview');
+    if (usernameInput && usernamePreview) {
+      usernameInput.addEventListener('input', function(e) {
+        var val = e.target.value || 'username';
+        // Sanitize: lowercase and replace spaces with dashes
+        usernamePreview.textContent = val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      });
+    }
   });
 
-  /* ── AVATAR UPLOAD — 50KB LIMIT + SUPABASE STORAGE ── */
+  /* ── AVATAR UPLOAD — 50KB LIMIT + CROP MODAL ── */
+
+  // Store file and crop data between modal open and apply
+  var pendingAvatarFile = null;
+  var pendingCropData = { x: 0, y: 0, zoom: 100 };
+  var cropDragState = { dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0 };
+
   window.validateAndUploadAvatar = async function (input) {
     var file = input.files && input.files[0];
     if (!file) return;
@@ -1036,6 +1086,106 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       return;
     }
 
+    // Store file for later upload
+    pendingAvatarFile = file;
+
+    // Open crop modal with file preview
+    openCropModal(file);
+
+    // Clear input for re-upload
+    input.value = '';
+  };
+
+  window.openCropModal = function (file) {
+    var cropOv = document.getElementById('cropOv');
+    var cropPreviewImg = document.getElementById('cropPreviewImg');
+    var cropZoom = document.getElementById('cropZoom');
+
+    if (!cropOv || !cropPreviewImg) return;
+
+    // Reset crop data
+    pendingCropData = { x: 0, y: 0, zoom: 100 };
+    cropZoom.value = 100;
+    cropDragState = { dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0 };
+
+    // Load image into preview
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      cropPreviewImg.src = e.target.result;
+      cropPreviewImg.style.width = '200px';
+      cropPreviewImg.style.height = 'auto';
+      cropPreviewImg.style.transform = 'translate(-50%, -50%)';
+    };
+    reader.readAsDataURL(file);
+
+    // Show modal
+    cropOv.classList.add('open');
+  };
+
+  window.closeCropModal = function () {
+    var cropOv = document.getElementById('cropOv');
+    if (cropOv) cropOv.classList.remove('open');
+    pendingAvatarFile = null;
+  };
+
+  // Zoom slider handler
+  document.addEventListener('DOMContentLoaded', function() {
+    var cropZoom = document.getElementById('cropZoom');
+    var cropPreviewImg = document.getElementById('cropPreviewImg');
+
+    if (cropZoom && cropPreviewImg) {
+      cropZoom.addEventListener('input', function(e) {
+        var zoom = parseInt(e.target.value, 10);
+        pendingCropData.zoom = zoom;
+        updateCropPreview();
+      });
+    }
+
+    // Drag handlers for positioning
+    var cropPreviewWrap = document.getElementById('cropPreviewWrap');
+    if (cropPreviewWrap && cropPreviewImg) {
+      cropPreviewWrap.addEventListener('mousedown', function(e) {
+        cropDragState.dragging = true;
+        cropDragState.startX = e.clientX;
+        cropDragState.startY = e.clientY;
+        cropDragState.imgX = pendingCropData.x;
+        cropDragState.imgY = pendingCropData.y;
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!cropDragState.dragging) return;
+        var dx = e.clientX - cropDragState.startX;
+        var dy = e.clientY - cropDragState.startY;
+        pendingCropData.x = cropDragState.imgX + dx;
+        pendingCropData.y = cropDragState.imgY + dy;
+        updateCropPreview();
+      });
+
+      document.addEventListener('mouseup', function() {
+        cropDragState.dragging = false;
+      });
+    }
+  });
+
+  function updateCropPreview() {
+    var cropPreviewImg = document.getElementById('cropPreviewImg');
+    if (!cropPreviewImg) return;
+
+    var scale = pendingCropData.zoom / 100;
+    var x = pendingCropData.x;
+    var y = pendingCropData.y;
+
+    cropPreviewImg.style.width = (200 * scale) + 'px';
+    cropPreviewImg.style.transform = 'translate(calc(-50% + ' + x + 'px), calc(-50% + ' + y + 'px))';
+  }
+
+  window.applyCrop = async function () {
+    if (!pendingAvatarFile) return;
+
+    var cropOv = document.getElementById('cropOv');
+    if (cropOv) cropOv.classList.remove('open');
+
     try {
       // Get current user
       var sessionRes = await window._supabase.auth.getSession();
@@ -1046,28 +1196,19 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       }
 
       var userId = session.user.id;
-      console.log('[Settings] Uploading avatar for userId:', userId);
-
-      // File path inside the bucket — NO "avatars/" prefix (bucket is specified in .from())
       var filePath = userId + '/avatar.png';
 
       toast('Uploading avatar…');
 
-      // Upload to Supabase Storage — bucket name is 'avatars'
-      console.log('[Settings] Uploading to bucket: avatars, path:', filePath);
+      // Upload to Supabase Storage
       var { data: uploadData, error: uploadError } = await window._supabase.storage
         .from('avatars')
-        .upload(filePath, file, {
+        .upload(filePath, pendingAvatarFile, {
           cacheControl: '3600',
           upsert: true
         });
 
-      console.log('[Settings] Upload result:', { uploadData, uploadError });
-
-      if (uploadError) {
-        console.error('[Settings] Storage upload error:', uploadError);
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
       // Get public URL
       var { data: urlData } = window._supabase.storage
@@ -1075,33 +1216,32 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         .getPublicUrl(filePath);
 
       var publicUrl = urlData && urlData.publicUrl;
-      console.log('[Settings] Final Avatar URL:', publicUrl); // Clickable in console for testing
+      console.log('[Settings] Final Avatar URL:', publicUrl);
 
-      // Add cache-busting timestamp to force browser to load new image
+      // Save crop position as string "x,y,zoom"
+      var avatarPos = pendingCropData.x + ',' + pendingCropData.y + ',' + pendingCropData.zoom;
+
+      // Add cache-busting timestamp for display
       var publicUrlWithCache = publicUrl + '?t=' + new Date().getTime();
 
-      // Update avatar_url in profiles table (save the clean URL, not cache-busted)
-      console.log('[Settings] Updating profiles table with avatar_url');
-      var { data: updateData, error: updateError } = await window._supabase
+      // Update profiles table with URL and position
+      var { error: updateError } = await window._supabase
         .from('profiles')
         .upsert({
           id: userId,
           avatar_url: publicUrl,
+          avatar_pos: avatarPos,
           updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
 
-      console.log('[Settings] Profile upsert result:', { updateData, updateError });
+      if (updateError) throw updateError;
 
-      if (updateError) {
-        console.error('[Settings] Profile update error:', updateError);
-        throw updateError;
-      }
-
-      // Update UI — avatar is a div with background-image
+      // Update UI with position
       var avatar = document.getElementById('profileAvatar');
       if (avatar) {
         avatar.style.backgroundImage = 'url(' + publicUrlWithCache + ')';
-        avatar.style.backgroundSize = 'cover';
+        avatar.style.backgroundSize = (pendingCropData.zoom * 100 / 200) + '%';
+        avatar.style.backgroundPosition = 'calc(50% + ' + pendingCropData.x + 'px) calc(50% + ' + pendingCropData.y + 'px)';
         avatar.textContent = '';
       }
 
@@ -1110,7 +1250,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       console.error('Avatar upload failed:', err);
       toast('Upload failed: ' + (err.message || 'Unknown error'));
     } finally {
-      input.value = ''; // Clear input for re-upload
+      pendingAvatarFile = null;
     }
   };
 
@@ -1361,7 +1501,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     try {
       var { data: profile, error } = await window._supabase
         .from('profiles')
-        .select('display_name, username, bio, website, avatar_url')
+        .select('display_name, username, bio, website, avatar_url, avatar_pos')
         .eq('id', user.id)
         .single();
 
@@ -1390,26 +1530,61 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         if (usernameInput) usernameInput.value = username;
         if (usernameDisplay) usernameDisplay.textContent = username;
 
+        // Update username preview with sanitized value
+        var usernamePreview = document.getElementById('usernamePreview');
+        if (usernamePreview) {
+          usernamePreview.textContent = username.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        }
+
         // Update View Profile button link
         var viewProfileBtn = document.getElementById('viewProfileBtn');
         if (viewProfileBtn) {
           viewProfileBtn.href = 'profile.html?u=' + encodeURIComponent(username);
         }
 
-        // Set avatar if exists — with cache busting
+        // Set bio
+        if (bioInput) {
+          bioInput.value = profile.bio || '';
+          // Update char counter
+          var bioCount = document.getElementById('bioCount');
+          if (bioCount) {
+            bioCount.textContent = (profile.bio || '').length + ' / 280';
+          }
+        }
+
+        // Set website
+        if (websiteInput) websiteInput.value = profile.website || '';
+
+        // Set avatar if exists — with cache busting and position
         if (avatarCircle) {
           if (profile.avatar_url) {
             console.log('[Settings] Setting avatar from URL:', profile.avatar_url);
             // Add cache-busting timestamp
             var avatarUrlWithCache = profile.avatar_url + '?t=' + new Date().getTime();
             avatarCircle.style.backgroundImage = 'url(' + avatarUrlWithCache + ')';
-            avatarCircle.style.backgroundSize = 'cover';
             avatarCircle.textContent = '';
+
+            // Apply saved position if exists
+            if (profile.avatar_pos) {
+              var posParts = profile.avatar_pos.split(',');
+              if (posParts.length === 3) {
+                var x = parseInt(posParts[0], 10) || 0;
+                var y = parseInt(posParts[1], 10) || 0;
+                var zoom = parseInt(posParts[2], 10) || 100;
+                avatarCircle.style.backgroundSize = zoom + '%';
+                avatarCircle.style.backgroundPosition = 'calc(50% + ' + x + 'px) calc(50% + ' + y + 'px)';
+                console.log('[Settings] Applied avatar position:', { x, y, zoom });
+              }
+            } else {
+              avatarCircle.style.backgroundSize = 'cover';
+              avatarCircle.style.backgroundPosition = 'center';
+            }
           } else {
             // No avatar_url — clear background and show initial
             console.log('[Settings] No avatar_url, showing initial');
             avatarCircle.style.backgroundImage = '';
             avatarCircle.style.backgroundSize = '';
+            avatarCircle.style.backgroundPosition = '';
             if (user.email) {
               avatarCircle.textContent = user.email[0].toUpperCase();
             } else {
@@ -1432,6 +1607,12 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         if (usernameInput) usernameInput.value = username;
         if (usernameDisplay) usernameDisplay.textContent = username;
 
+        // Update username preview with sanitized value
+        var usernamePreview = document.getElementById('usernamePreview');
+        if (usernamePreview) {
+          usernamePreview.textContent = username.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        }
+
         // Update View Profile button link
         var viewProfileBtn = document.getElementById('viewProfileBtn');
         if (viewProfileBtn) {
@@ -1441,6 +1622,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
           // No profile yet — clear avatar and show initial
           avatarCircle.style.backgroundImage = '';
           avatarCircle.style.backgroundSize = '';
+          avatarCircle.style.backgroundPosition = '';
           if (user.email) {
             avatarCircle.textContent = user.email[0].toUpperCase();
           } else {
