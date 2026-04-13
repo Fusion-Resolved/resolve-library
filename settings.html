@@ -219,7 +219,10 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 
 /* avatar */
 .avatar-row{display:flex;align-items:center;gap:16px;padding:18px 18px;border-bottom:1px solid var(--bs);}
-.avatar-circle{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(108,123,255,0.3),rgba(108,123,255,0.1));border:1px solid rgba(108,123,255,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:1.4rem;color:var(--violet-light);flex-shrink:0;}
+.avatar-circle{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(108,123,255,0.3),rgba(108,123,255,0.1));border:1px solid rgba(108,123,255,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:1.4rem;color:var(--violet-light);flex-shrink:0;cursor:pointer;position:relative;overflow:hidden;transition:filter 150ms ease;}
+.avatar-circle:hover{filter:brightness(0.85);}
+.avatar-circle::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,0.4);opacity:0;transition:opacity 150ms ease;display:flex;align-items:center;justify-content:center;}
+.avatar-circle:hover::after{opacity:1;content:"📷";font-size:24px;}
 .avatar-actions{display:flex;flex-direction:column;gap:6px;}
 .avatar-actions span{font-size:12.5px;color:var(--ts);margin-bottom:2px;display:block;}
 .avatar-btn-row{display:flex;gap:8px;}
@@ -493,6 +496,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
             <div class="avatar-btn-row">
               <input type="file" id="avatarInput" accept="image/jpeg,image/png" style="display:none;" onchange="openCropModal(this)">
               <button class="btn-sm violet" onclick="document.getElementById('avatarInput').click()">Upload photo</button>
+              <button class="btn-sm ghost" onclick="openRepositionModal()">Edit Position</button>
               <button class="btn-sm ghost" onclick="removeAvatar()">Remove</button>
             </div>
           </div>
@@ -1058,6 +1062,23 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         usernamePreview.textContent = val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       });
     }
+
+    // Click avatar to trigger file upload
+    var profileAvatar = document.getElementById('profileAvatar');
+    var avatarInput = document.getElementById('avatarInput');
+    if (profileAvatar && avatarInput) {
+      profileAvatar.addEventListener('click', function() {
+        avatarInput.click();
+      });
+    }
+
+    // Edit position button (if exists)
+    var editPosBtn = document.getElementById('editAvatarPosBtn');
+    if (editPosBtn) {
+      editPosBtn.addEventListener('click', function() {
+        openRepositionModal();
+      });
+    }
   });
 
   /* ── AVATAR UPLOAD — 50KB LIMIT + CROP MODAL ── */
@@ -1187,8 +1208,6 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   }
 
   window.applyCrop = async function () {
-    if (!pendingAvatarFile) return;
-
     var cropOv = document.getElementById('cropOv');
     if (cropOv) cropOv.classList.remove('open');
 
@@ -1202,50 +1221,73 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       }
 
       var userId = session.user.id;
-      var filePath = userId + '/avatar.png';
-
-      toast('Uploading avatar…');
-
-      // Upload to Supabase Storage
-      var { data: uploadData, error: uploadError } = await window._supabase.storage
-        .from('avatars')
-        .upload(filePath, pendingAvatarFile, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      var { data: urlData } = window._supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      var publicUrl = urlData && urlData.publicUrl;
-      console.log('[Settings] Final Avatar URL:', publicUrl);
 
       // Save crop position as string "x,y,zoom"
       var avatarPos = pendingCropData.x + ',' + pendingCropData.y + ',' + pendingCropData.zoom;
 
-      // Add cache-busting timestamp for display
-      var publicUrlWithCache = publicUrl + '?t=' + new Date().getTime();
+      // If there's a new file, upload it
+      var publicUrl = null;
+      if (pendingAvatarFile) {
+        var filePath = userId + '/avatar.png';
+        toast('Uploading avatar…');
 
-      // Update profiles table with URL and position
+        // Upload to Supabase Storage
+        var { data: uploadData, error: uploadError } = await window._supabase.storage
+          .from('avatars')
+          .upload(filePath, pendingAvatarFile, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        var { data: urlData } = window._supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        publicUrl = urlData && urlData.publicUrl;
+        console.log('[Settings] Final Avatar URL:', publicUrl);
+      }
+
+      // Add cache-busting timestamp for display
+      var publicUrlWithCache = publicUrl ? (publicUrl + '?t=' + new Date().getTime()) : null;
+
+      // Update profiles table with position (and URL if new file)
+      var upsertData = {
+        id: userId,
+        avatar_pos: avatarPos,
+        updated_at: new Date().toISOString()
+      };
+      if (publicUrl) {
+        upsertData.avatar_url = publicUrl;
+      }
+
       var { error: updateError } = await window._supabase
         .from('profiles')
-        .upsert({
-          id: userId,
-          avatar_url: publicUrl,
-          avatar_pos: avatarPos,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'id' });
+        .upsert(upsertData, { onConflict: 'id' });
 
       if (updateError) throw updateError;
 
       // Update UI with position
       var avatar = document.getElementById('profileAvatar');
       if (avatar) {
-        avatar.style.backgroundImage = 'url(' + publicUrlWithCache + ')';
+        if (publicUrlWithCache) {
+          avatar.style.backgroundImage = 'url(' + publicUrlWithCache + ')';
+        }
+        avatar.style.backgroundSize = (pendingCropData.zoom) + '%';
+        avatar.style.backgroundPosition = 'calc(50% + ' + pendingCropData.x + 'px) calc(50% + ' + pendingCropData.y + 'px)';
+        avatar.textContent = '';
+      }
+
+      toast('Avatar ' + (pendingAvatarFile ? 'uploaded' : 'position updated') + ' successfully ✓');
+    } catch (err) {
+      console.error('Avatar save failed:', err);
+      toast('Failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      pendingAvatarFile = null;
+    }
+  };
         avatar.style.backgroundSize = (pendingCropData.zoom * 100 / 200) + '%';
         avatar.style.backgroundPosition = 'calc(50% + ' + pendingCropData.x + 'px) calc(50% + ' + pendingCropData.y + 'px)';
         avatar.textContent = '';
@@ -1315,6 +1357,79 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     } catch (err) {
       console.error('Avatar removal failed:', err);
       toast('Failed to remove avatar');
+    }
+  };
+
+  /* ── AVATAR REPOSITION (no new upload) ── */
+  window.openRepositionModal = async function () {
+    console.log("Opening Reposition Modal");
+
+    // Get current user's avatar URL
+    if (!window._supabase) {
+      toast('Authentication not ready');
+      return;
+    }
+
+    try {
+      var sessionRes = await window._supabase.auth.getSession();
+      var session = sessionRes.data && sessionRes.data.session;
+      if (!session) {
+        toast('Please sign in');
+        return;
+      }
+
+      var userId = session.user.id;
+
+      // Fetch current avatar data
+      var { data: profile, error } = await window._supabase
+        .from('profiles')
+        .select('avatar_url, avatar_pos')
+        .eq('id', userId)
+        .single();
+
+      if (error || !profile || !profile.avatar_url) {
+        toast('No avatar to reposition — upload one first');
+        return;
+      }
+
+      // Open modal with existing avatar
+      var cropOv = document.getElementById('cropOv');
+      var cropPreviewImg = document.getElementById('cropPreviewImg');
+      var cropZoom = document.getElementById('cropZoom');
+
+      if (!cropOv || !cropPreviewImg) {
+        console.error("Crop modal elements not found");
+        return;
+      }
+
+      // Load existing position or default
+      pendingAvatarFile = null; // No new file
+      if (profile.avatar_pos) {
+        var posParts = profile.avatar_pos.split(',');
+        pendingCropData = {
+          x: parseInt(posParts[0], 10) || 0,
+          y: parseInt(posParts[1], 10) || 0,
+          zoom: parseInt(posParts[2], 10) || 100
+        };
+      } else {
+        pendingCropData = { x: 0, y: 0, zoom: 100 };
+      }
+
+      if (cropZoom) cropZoom.value = pendingCropData.zoom;
+      cropDragState = { dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0 };
+
+      // Load existing avatar into preview
+      cropPreviewImg.src = profile.avatar_url + '?t=' + new Date().getTime();
+      cropPreviewImg.style.width = (200 * pendingCropData.zoom / 100) + 'px';
+      cropPreviewImg.style.height = 'auto';
+      updateCropPreview();
+
+      // Show modal
+      cropOv.classList.add('open');
+
+    } catch (err) {
+      console.error('Failed to load avatar for repositioning:', err);
+      toast('Failed to load avatar');
     }
   };
 
