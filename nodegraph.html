@@ -125,16 +125,6 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
     --tag-color:      #9ca8ff;
     --node-teal-dim:  rgba(15,168,136,0.08);
 
-    /* ── Glass morphism (handoff §2) ── */
-    --glass-bg:        rgba(15,15,22,0.82);
-    --glass-bg-2:      rgba(22,22,31,0.82);
-    --glass-bg-active: rgba(108,123,255,0.82);
-    --glass-blur:      blur(18px) saturate(1.6);
-    --glass-shine:     inset 0 1px 0 rgba(255,255,255,0.07),
-                       inset 0 -1px 0 rgba(0,0,0,0.12);
-    --glass-shadow:    0 2px 12px rgba(0,0,0,0.22),
-                       0 1px 3px  rgba(0,0,0,0.16);
-
     /* ── Legacy alias map (all original functional CSS uses these) ──
        Remapping here is the single switch that applies the Noding palette
        without touching a single line of functional JavaScript. */
@@ -163,10 +153,6 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
     --text-primary: #09090e; --text-secondary: #3b3d6e; --text-muted: #7577a8;
     --border-surface: rgba(108,123,255,0.12); --border-subtle: rgba(108,123,255,0.18);
     --border-color: rgba(108,123,255,0.35);
-    --glass-bg: rgba(236,239,254,0.78); --glass-bg-2: rgba(226,230,253,0.78);
-    --glass-bg-active: rgba(108,123,255,0.88);
-    --glass-shine: inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(108,123,255,0.08);
-    --glass-shadow: 0 2px 10px rgba(108,123,255,0.10), 0 1px 3px rgba(108,123,255,0.08);
     --bg: #ffffff; --surface: #eceffe; --surface2: #e2e6fd; --surface3: #d6dbfc;
     --text: #09090e; --text2: #3b3d6e; --muted: #7577a8;
     --border: rgba(108,123,255,0.12); --border2: rgba(108,123,255,0.18); --border3: rgba(108,123,255,0.35);
