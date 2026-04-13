@@ -39,10 +39,10 @@ a{color:inherit;text-decoration:none;}
     linear-gradient(to bottom, rgba(6,6,13,0.5) 0%, transparent 20%, transparent 80%, rgba(6,6,13,0.5) 100%);}
 
 /* page */
-.page{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.page{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;padding-bottom:32px;}
 
 /* card */
-.card{width:100%;max-width:460px;max-height:90vh;background:rgba(15,15,22,0.82);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.15),0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(0,0,0,0.3);overflow:hidden;display:flex;flex-direction:column;}
+.card{width:100%;max-width:460px;max-height:calc(100vh - 100px);background:rgba(15,15,22,0.82);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.15),0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(0,0,0,0.3);overflow:hidden;display:flex;flex-direction:column;}
 
 /* card header */
 .card-top{padding:1.75rem 2rem 0;display:flex;flex-direction:column;align-items:center;gap:1rem;flex-shrink:0;}
@@ -537,17 +537,16 @@ a{color:inherit;text-decoration:none;}
         // Listen for auth state changes (SIGNED_IN event)
         window._supabase.auth.onAuthStateChange(function (event, session) {
           if (event === 'SIGNED_IN' && session) {
-            // Immediate redirect for OAuth/Social logins
-            var returnTo = new URLSearchParams(window.location.search).get('return') || 'index.html';
-            window.location.href = returnTo;
+            // Redirect for OAuth/Social logins
+            console.log("OAuth login success, redirecting...");
+            window.location.assign('index.html');
           }
         });
         
         // Check if already signed in
         window._supabase.auth.getSession().then(function (res) {
           if (res.data && res.data.session) {
-            var returnTo = new URLSearchParams(window.location.search).get('return') || 'index.html';
-            window.location.href = returnTo;
+            window.location.assign('index.html');
           }
         });
       }
@@ -707,11 +706,15 @@ a{color:inherit;text-decoration:none;}
       var error = res.error;
       
       if (!error) {
-        // Success: Show welcome toast then redirect
-        showToast('Welcome back!', 'success');
-        console.log("Login successful, redirecting...");
+        // Success: Extract user name and show personalized welcome toast
+        var user = res.data && res.data.user;
+        var userName = user && (user.user_metadata.display_name || user.user_metadata.full_name);
+        var welcomeMsg = userName ? 'Welcome back, ' + userName + '!' : 'Welcome back!';
+        
+        showToast(welcomeMsg, 'success');
+        console.log("Login success, redirecting...");
         setTimeout(function () {
-          window.location.href = 'index.html';
+          window.location.assign('index.html');
         }, 1000);
       } else {
         throw error;
@@ -796,6 +799,9 @@ a{color:inherit;text-decoration:none;}
     try {
       var res = await window._supabase.auth.verifyOtp({ email: email, token: code, type: 'signup' });
       if (res.error) throw res.error;
+      
+      // Success: Show welcome toast for new users
+      showToast('Welcome to Noding.app!', 'success');
       setView('success');
     } catch (err) {
       showToast(err.message || 'Invalid code. Please try again.');
