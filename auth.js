@@ -6,9 +6,33 @@
 const SUPABASE_URL = 'https://nestqkrkxwrptoejlvno.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_hAmhQaWOO0w4f-O8EEPxlg_0cw_i1m4';
 
-// Initialize Supabase client
-window._supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-Object.freeze(window._supabase);
+/* ============================================================
+   SAFE INITIALIZATION — Wait for Supabase Library
+   ============================================================ */
+
+function initSupabase() {
+  // Check if supabase library is loaded
+  if (typeof supabase === 'undefined') {
+    console.error("[auth.js] Supabase library not loaded yet. Retrying in 100ms...");
+    setTimeout(initSupabase, 100);
+    return;
+  }
+
+  // Initialize only once
+  if (!window._supabase) {
+    try {
+      window._supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      Object.freeze(window._supabase);
+      console.log("[auth.js] Supabase client initialized successfully");
+    } catch (err) {
+      console.error("[auth.js] Failed to initialize Supabase:", err);
+      return;
+    }
+  }
+
+  // Start auth system
+  startAuthSystem();
+}
 
 /* ============================================================
    AUTH STATE MANAGEMENT — SOURCE OF TRUTH
@@ -16,30 +40,39 @@ Object.freeze(window._supabase);
 
 let currentUser = null;
 
-// Listen for auth state changes — THIS IS THE SOURCE OF TRUTH
-window._supabase.auth.onAuthStateChange(function (event, session) {
-  const user = session ? session.user : null;
-  currentUser = user;
+function startAuthSystem() {
+  // Listen for auth state changes — THIS IS THE SOURCE OF TRUTH
+  window._supabase.auth.onAuthStateChange(function (event, session) {
+    const user = session ? session.user : null;
+    currentUser = user;
 
-  // Dispatch custom event for all pages
-  window.dispatchEvent(new CustomEvent('authStateChanged', {
-    detail: { event: event, session: session, user: user }
-  }));
+    // Dispatch custom event for all pages
+    window.dispatchEvent(new CustomEvent('authStateChanged', {
+      detail: { event: event, session: session, user: user }
+    }));
 
-  // Update ALL sidebar auth portals on EVERY state change
-  updateAllSidebarPortals(user);
+    // Update ALL sidebar auth portals on EVERY state change
+    updateAllSidebarPortals(user);
 
-  // Handle specific events
-  if (event === 'SIGNED_OUT') {
-    currentUser = null;
+    // Handle specific events
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+    }
+  });
+
+  // Initial session check
+  checkInitialSession();
+}
+
+async function checkInitialSession() {
+  try {
+    const { data: { session } } = await window._supabase.auth.getSession();
+    currentUser = session ? session.user : null;
+    updateAllSidebarPortals(currentUser);
+  } catch (err) {
+    console.error("[auth.js] Failed to get initial session:", err);
+    updateAllSidebarPortals(null);
   }
-});
-
-// Initial session check
-async function initAuth() {
-  const { data: { session } } = await window._supabase.auth.getSession();
-  currentUser = session ? session.user : null;
-  updateAllSidebarPortals(currentUser);
 }
 
 /* ============================================================
@@ -60,7 +93,7 @@ function updateAllSidebarPortals(user) {
 
       portal.innerHTML = `
         <div class="sh-nav-item" style="cursor:default;opacity:1;padding:10px 14px;display:flex;align-items:center;gap:10px;">
-          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6c7bff 0%,#4451d4 100%);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:#fff;flex-shrink:0;">${avatar}</div>
+          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6c7bff 0%,#4451d4 100%);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:#fff;flex-shrink:0;">${escapeHtml(avatar)}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:12px;font-weight:500;color:var(--tp,#f4f4fb);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(email)}</div>
             <div style="font-size:10px;color:var(--ts,#8f8fa8);">Pro Member</div>
@@ -99,15 +132,17 @@ function escapeHtml(text) {
    AUTH ACTIONS
    ============================================================ */
 
-// Global sign out handler
+// Global sign out handler — HARD REDIRECT
 window.handleSignOut = async function() {
   try {
-    await window._supabase.auth.signOut();
-    // Redirect to home after sign out
-    window.location.href = 'index.html';
+    if (window._supabase) {
+      await window._supabase.auth.signOut();
+    }
   } catch (err) {
-    console.error('Sign out error:', err);
-    alert('Failed to sign out. Please try again.');
+    console.error('[auth.js] Sign out error:', err);
+  } finally {
+    // ALWAYS redirect to index.html — hard redirect to clear session state
+    window.location.href = 'index.html';
   }
 };
 
@@ -116,5 +151,10 @@ window.openAuthModal = function() {
   window.location.href = 'login.html';
 };
 
-// Initialize auth on page load
-document.addEventListener('DOMContentLoaded', initAuth);
+// Initialize auth system when DOM is ready AND supabase is available
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSupabase);
+} else {
+  // DOM already loaded, start immediately
+  initSupabase();
+}

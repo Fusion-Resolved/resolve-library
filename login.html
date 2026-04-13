@@ -8,13 +8,13 @@
 <!-- Anti-flash: apply saved theme before first paint -->
 <script>(function(){var s=localStorage.getItem('noding-theme');if(s==='light')document.documentElement.setAttribute('data-theme','light');}());</script>
 
+<!-- Supabase SDK (must load before auth.js) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <!-- Shared Noding System Resources -->
 <link rel="stylesheet" href="noding-shared.css">
 <script src="auth.js"></script>
 <script src="noding-shared.js"></script>
-
-<!-- Supabase SDK (must load before page script) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
