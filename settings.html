@@ -489,13 +489,14 @@ input,textarea,select{font-family:var(--fb);outline:none;}
           <div class="fhd"><label class="fl">Username</label><span style="font-family:var(--fm);font-size:9px;color:var(--tm);">Changes your public URL</span></div>
           <input class="fi" id="usernameInput" type="text" value="" placeholder="username" oninput="markDirty()">
           <div class="url-row" style="margin-top:4px;">
-            <span class="url-prefix">noding.io/u/</span>
+            <span class="url-prefix">noding.app/u/</span>
             <span class="url-val" id="usernameDisplay">username</span>
+            <a href="#" id="viewProfileBtn" target="_blank" style="margin-left:auto;font-size:11px;color:var(--violet);text-decoration:none;">View Profile →</a>
           </div>
         </div>
         <div class="fgroup">
           <div class="fhd"><label class="fl">Bio</label><span class="char-count" id="bioCount">0 / 280</span></div>
-          <textarea class="fi-area" id="bioInput" maxlength="280" placeholder="Tell the community about yourself..." oninput="onBioInput(this)"></textarea>
+          <textarea class="fi-area" id="bioInput" maxlength="280" placeholder="Tell the community about yourself..."></textarea>
         </div>
         <div class="fgroup">
           <label class="fl">Website</label>
@@ -880,13 +881,6 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     btn.innerHTML = '<span class="btn-spinner" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;margin-right:6px;"></span>Saving…';
     btn.disabled = true;
 
-    // ── Collect profile values ────────────────────────────────────────────────
-    var profileData = {
-      display_name: document.getElementById('displayNameInput')?.value || '',
-      bio: document.getElementById('bioInput')?.value || '',
-      website: document.getElementById('websiteInput')?.value || ''
-    };
-
     try {
       // Check if Supabase is available
       if (!window._supabase) {
@@ -895,10 +889,21 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 
       // Get current user
       var sessionRes = await window._supabase.auth.getSession();
-      var session = sessionRes.data?.session;
+      var session = sessionRes.data && sessionRes.data.session;
       if (!session) {
         throw new Error('No active session');
       }
+
+      // ── Collect profile values ────────────────────────────────────────────────
+      var usernameInput = document.getElementById('usernameInput');
+      var username = (usernameInput && usernameInput.value) || (session.user && session.user.email && session.user.email.split('@')[0]) || '';
+
+      var profileData = {
+        display_name: (document.getElementById('displayNameInput') && document.getElementById('displayNameInput').value) || '',
+        username: username,
+        bio: (document.getElementById('bioInput') && document.getElementById('bioInput').value) || '',
+        website: (document.getElementById('websiteInput') && document.getElementById('websiteInput').value) || ''
+      };
 
       var userId = session.user.id;
       console.log('[Settings] Saving profile for userId:', userId);
@@ -910,6 +915,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         .upsert({
           id: userId,
           display_name: profileData.display_name,
+          username: profileData.username,
           bio: profileData.bio,
           website: profileData.website,
           updated_at: new Date().toISOString()
@@ -933,6 +939,13 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       document.getElementById('btnSave').classList.remove('show');
       document.getElementById('btnDiscard').classList.remove('show');
       document.querySelectorAll('.nav-dirty').forEach(function (d) { d.classList.remove('show'); });
+
+      // Update View Profile button with new username
+      var viewProfileBtn = document.getElementById('viewProfileBtn');
+      if (viewProfileBtn && profileData.username) {
+        viewProfileBtn.href = 'profile.html?u=' + encodeURIComponent(profileData.username);
+      }
+
       toast('Profile saved to cloud ✓');
     } catch (err) {
       console.error('Profile save failed:', err);
@@ -995,6 +1008,14 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     markDirty();
   };
 
+  // Wire up bio input event listener after DOM loads
+  document.addEventListener('DOMContentLoaded', function() {
+    var bioInput = document.getElementById('bioInput');
+    if (bioInput) {
+      bioInput.addEventListener('input', function() { onBioInput(this); });
+    }
+  });
+
   /* ── AVATAR UPLOAD — 50KB LIMIT + SUPABASE STORAGE ── */
   window.validateAndUploadAvatar = async function (input) {
     var file = input.files && input.files[0];
@@ -1018,20 +1039,21 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     try {
       // Get current user
       var sessionRes = await window._supabase.auth.getSession();
-      var session = sessionRes.data?.session;
+      var session = sessionRes.data && sessionRes.data.session;
       if (!session) {
-        toast('Please sign in to upload avatar');
+        toast('Please sign in');
         return;
       }
 
       var userId = session.user.id;
       console.log('[Settings] Uploading avatar for userId:', userId);
 
-      var filePath = 'avatars/' + userId + '/avatar.png';
+      // File path inside the bucket — NO "avatars/" prefix (bucket is specified in .from())
+      var filePath = userId + '/avatar.png';
 
       toast('Uploading avatar…');
 
-      // Upload to Supabase Storage — CRITICAL: bucket name is 'avatars'
+      // Upload to Supabase Storage — bucket name is 'avatars'
       console.log('[Settings] Uploading to bucket: avatars, path:', filePath);
       var { data: uploadData, error: uploadError } = await window._supabase.storage
         .from('avatars')
@@ -1052,10 +1074,13 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         .from('avatars')
         .getPublicUrl(filePath);
 
-      var publicUrl = urlData?.publicUrl;
-      console.log('[Settings] Public URL:', publicUrl);
+      var publicUrl = urlData && urlData.publicUrl;
+      console.log('[Settings] Final Avatar URL:', publicUrl); // Clickable in console for testing
 
-      // Update avatar_url in profiles table
+      // Add cache-busting timestamp to force browser to load new image
+      var publicUrlWithCache = publicUrl + '?t=' + new Date().getTime();
+
+      // Update avatar_url in profiles table (save the clean URL, not cache-busted)
       console.log('[Settings] Updating profiles table with avatar_url');
       var { data: updateData, error: updateError } = await window._supabase
         .from('profiles')
@@ -1072,10 +1097,10 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         throw updateError;
       }
 
-      // Update UI
+      // Update UI — avatar is a div with background-image
       var avatar = document.getElementById('profileAvatar');
       if (avatar) {
-        avatar.style.backgroundImage = 'url(' + publicUrl + ')';
+        avatar.style.backgroundImage = 'url(' + publicUrlWithCache + ')';
         avatar.style.backgroundSize = 'cover';
         avatar.textContent = '';
       }
@@ -1097,7 +1122,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       }
 
       var sessionRes = await window._supabase.auth.getSession();
-      var session = sessionRes.data?.session;
+      var session = sessionRes.data && sessionRes.data.session;
       if (!session) {
         toast('Please sign in');
         return;
@@ -1106,10 +1131,11 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       var userId = session.user.id;
       console.log('[Settings] Removing avatar for userId:', userId);
 
-      // Remove from storage — CRITICAL: bucket name is 'avatars'
+      // Remove from storage — bucket name is 'avatars', path is relative to bucket
+      var filePath = userId + '/avatar.png';
       var { data: removeData, error: removeError } = await window._supabase.storage
         .from('avatars')
-        .remove(['avatars/' + userId + '/avatar.png']);
+        .remove([filePath]);
 
       console.log('[Settings] Storage remove result:', { removeData, removeError });
 
@@ -1137,7 +1163,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       var avatar = document.getElementById('profileAvatar');
       if (avatar) {
         avatar.style.backgroundImage = '';
-        avatar.textContent = (document.getElementById('leftnav-email')?.textContent || 'U').charAt(0).toUpperCase() || '?';
+        avatar.textContent = ((document.getElementById('leftnav-email') && document.getElementById('leftnav-email').textContent) || 'U').charAt(0).toUpperCase() || '?';
       }
       toast('Avatar removed');
     } catch (err) {
@@ -1335,7 +1361,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     try {
       var { data: profile, error } = await window._supabase
         .from('profiles')
-        .select('display_name, bio, website, avatar_url')
+        .select('display_name, username, bio, website, avatar_url')
         .eq('id', user.id)
         .single();
 
@@ -1351,43 +1377,75 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         console.log('[Settings] Profile found, populating fields');
         // Populate profile form fields
         var displayNameInput = document.getElementById('displayNameInput');
+        var usernameInput = document.getElementById('usernameInput');
         var bioInput = document.getElementById('bioInput');
         var websiteInput = document.getElementById('websiteInput');
         var avatarCircle = document.getElementById('profileAvatar');
         var usernameDisplay = document.getElementById('usernameDisplay');
 
         if (displayNameInput) displayNameInput.value = profile.display_name || '';
-        if (bioInput) {
-          bioInput.value = profile.bio || '';
-          // Update char counter
-          var bioCount = document.getElementById('bioCount');
-          if (bioCount) {
-            bioCount.textContent = (profile.bio || '').length + ' / 280';
-          }
-        }
-        if (websiteInput) websiteInput.value = profile.website || '';
-        if (usernameDisplay) usernameDisplay.textContent = user.email?.split('@')[0] || 'username';
 
-        // Set avatar if exists
-        if (avatarCircle && profile.avatar_url) {
-          console.log('[Settings] Setting avatar from URL:', profile.avatar_url);
-          avatarCircle.style.backgroundImage = 'url(' + profile.avatar_url + ')';
-          avatarCircle.style.backgroundSize = 'cover';
-          avatarCircle.textContent = '';
-        } else if (avatarCircle && user.email) {
-          avatarCircle.textContent = user.email[0].toUpperCase();
+        // Set username — use profile.username or fallback to email prefix
+        var username = profile.username || (user.email && user.email.split('@')[0]) || 'username';
+        if (usernameInput) usernameInput.value = username;
+        if (usernameDisplay) usernameDisplay.textContent = username;
+
+        // Update View Profile button link
+        var viewProfileBtn = document.getElementById('viewProfileBtn');
+        if (viewProfileBtn) {
+          viewProfileBtn.href = 'profile.html?u=' + encodeURIComponent(username);
+        }
+
+        // Set avatar if exists — with cache busting
+        if (avatarCircle) {
+          if (profile.avatar_url) {
+            console.log('[Settings] Setting avatar from URL:', profile.avatar_url);
+            // Add cache-busting timestamp
+            var avatarUrlWithCache = profile.avatar_url + '?t=' + new Date().getTime();
+            avatarCircle.style.backgroundImage = 'url(' + avatarUrlWithCache + ')';
+            avatarCircle.style.backgroundSize = 'cover';
+            avatarCircle.textContent = '';
+          } else {
+            // No avatar_url — clear background and show initial
+            console.log('[Settings] No avatar_url, showing initial');
+            avatarCircle.style.backgroundImage = '';
+            avatarCircle.style.backgroundSize = '';
+            if (user.email) {
+              avatarCircle.textContent = user.email[0].toUpperCase();
+            } else {
+              avatarCircle.textContent = '?';
+            }
+          }
         }
       } else {
         console.log('[Settings] No profile found, using defaults');
         // No profile yet - set defaults from user metadata
         var displayNameInput = document.getElementById('displayNameInput');
+        var usernameInput = document.getElementById('usernameInput');
         var usernameDisplay = document.getElementById('usernameDisplay');
         var avatarCircle = document.getElementById('profileAvatar');
 
-        if (displayNameInput) displayNameInput.value = user.user_metadata?.display_name || '';
-        if (usernameDisplay) usernameDisplay.textContent = user.email?.split('@')[0] || 'username';
-        if (avatarCircle && user.email) {
-          avatarCircle.textContent = user.email[0].toUpperCase();
+        if (displayNameInput) displayNameInput.value = (user.user_metadata && user.user_metadata.display_name) || '';
+
+        // Set username from email prefix when no profile exists
+        var username = (user.email && user.email.split('@')[0]) || 'username';
+        if (usernameInput) usernameInput.value = username;
+        if (usernameDisplay) usernameDisplay.textContent = username;
+
+        // Update View Profile button link
+        var viewProfileBtn = document.getElementById('viewProfileBtn');
+        if (viewProfileBtn) {
+          viewProfileBtn.href = 'profile.html?u=' + encodeURIComponent(username);
+        }
+        if (avatarCircle) {
+          // No profile yet — clear avatar and show initial
+          avatarCircle.style.backgroundImage = '';
+          avatarCircle.style.backgroundSize = '';
+          if (user.email) {
+            avatarCircle.textContent = user.email[0].toUpperCase();
+          } else {
+            avatarCircle.textContent = '?';
+          }
         }
       }
     } catch (err) {
