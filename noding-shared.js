@@ -61,6 +61,18 @@ window.shSaveNote = function() {
     at: new Date().toISOString() 
   });
   
+  // ── STORED XSS WARNING ───────────────────────────────────────────────────
+  // Note data is raw user input. It is safe here (stored as JSON string),
+  // but it MUST be rendered via .textContent (never .innerHTML or
+  // insertAdjacentHTML) wherever notes are displayed in the library or
+  // elsewhere. Example of the ONLY safe render pattern:
+  //
+  //   noteEl.querySelector('.note-title').textContent = note.title;
+  //   noteEl.querySelector('.note-body').textContent  = note.note;
+  //
+  // If you ever need to render markdown/rich text from notes, run the content
+  // through a sanitiser (e.g. DOMPurify.sanitize()) BEFORE touching innerHTML.
+  // ────────────────────────────────────────────────────────────────────────
   localStorage.setItem('rl-quick-notes', JSON.stringify(notes));
   
   // Cleanup
@@ -72,6 +84,11 @@ window.shSaveNote = function() {
 };
 
 /** ── 3. UNIVERSAL MODALS & UI ── **/
+
+/** Search stub — header button calls this */
+window.shOpenSearch = function() {
+  window.toast("Search feature coming soon");
+};
 
 window.shOpenAddModal = function(id) {
   const m = document.getElementById(id);
@@ -108,25 +125,14 @@ window.toast = function(msg, type = 'v') {
 
 /** ── 4. SETTINGS ENGINE ── **/
 
-window.goPanel = function(panelId, navEl) {
-  // 1. Hide all panels
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  
-  // 2. Show target panel
-  const target = document.getElementById('panel-' + panelId);
-  if (target) {
-    target.classList.add('active');
-    // Scroll to top of settings container
-    const container = document.querySelector('.settings-main');
-    if (container) container.scrollTop = 0;
-  }
-  
-  // 3. Update Sidebar Nav highlight
-  if (navEl) {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    navEl.classList.add('active');
-  }
-};
+// NOTE: goPanel is intentionally NOT defined here.
+// settings.html declares its own authoritative goPanel() in its inline script,
+// which targets the correct scroll container (.content) for that page's layout.
+// Defining it here as well would create a last-write-wins race depending on
+// load order, and the shared version's .settings-main scroll target doesn't
+// exist on that page. If other pages ever need panel navigation, define a
+// page-specific version in their own inline script rather than re-centralising
+// it here.
 
 // Tracks if settings have changed without saving
 window.markDirty = function() {
@@ -143,8 +149,7 @@ window.discardChanges = function() {
 };
 
 /** ── 5. AUTO-PATH NORMALIZER ── **/
-// Automatically fixes links like "/effects" to "effects.html"
-// This solves the [GHOST] pathing errors identified in the audit.
+// Handles both legacy .html links and new clean directory URLs
 
 document.addEventListener('click', e => {
   const link = e.target.closest('a');
@@ -152,17 +157,27 @@ document.addEventListener('click', e => {
   
   const href = link.getAttribute('href');
   
-  // If it's a root-style path (e.g. /effects) but not an external link
-  if (href.startsWith('/') && !href.includes('.') && !href.includes('#') && href.length > 1) {
+  // Handle legacy root-style paths (e.g. /effects) — convert to clean URL
+  if (href.startsWith('/') && !href.includes('.') && href.length > 1) {
     e.preventDefault();
-    const fileName = href.substring(1) + '.html';
-    window.location.href = fileName;
+    const folderName = href.substring(1);
+    window.location.href = folderName + '/';
+    return;
   }
   
-  // Fix "home.html" to "index.html"
+  // Fix legacy "home.html" to root
   if (href === 'home.html') {
     e.preventDefault();
-    window.location.href = 'index.html';
+    window.location.href = './';
+    return;
+  }
+  
+  // Fix legacy ".html" links to clean URLs
+  const htmlMatch = href.match(/^(.+)\.html$/);
+  if (htmlMatch && !href.includes('/') && !href.startsWith('http')) {
+    e.preventDefault();
+    window.location.href = htmlMatch[1] + '/';
+    return;
   }
 });
 

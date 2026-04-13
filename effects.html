@@ -49,7 +49,7 @@
   <script>
   (function () {
     try {
-      var t = JSON.parse(localStorage.getItem('rl-theme') || '{}');
+      var t = JSON.parse(localStorage.getItem('noding-theme') || '{}');
       var s = document.documentElement.style;
       function hexToRGB(x) {
         return [parseInt(x.slice(1,3),16), parseInt(x.slice(3,5),16), parseInt(x.slice(5,7),16)];
@@ -2113,10 +2113,9 @@ window.nodingBlobsEnabled = function () {
     <div class="nav-pill">
       <a class="nav-item" href="index.html">Home</a>
       <a class="nav-item active" href="effects.html">Effects</a>
-      <a class="nav-item" href="videos.html">Videos</a>
-      <a class="nav-item" href="spline.html">Spline</a>
-      <a class="nav-item" href="nodes.html">Nodes</a>
+      <a class="nav-item" href="nodegraph.html">Node Graph</a>
       <a class="nav-item" href="library.html">Library</a>
+      <a class="nav-item" href="community.html">Community</a>
     </div>
   </nav>
   <div class="hdr-right">
@@ -2150,14 +2149,14 @@ window.nodingBlobsEnabled = function () {
     </svg>
     <span class="sh-bn-lbl">Effects</span>
   </a>
-  <a class="sh-bn-item" href="videos.html">
+  <a class="sh-bn-item" href="library/videos/">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
       <rect x="2" y="3" width="20" height="14" rx="2"/>
       <path d="m10 8 5 3-5 3V8z" fill="currentColor" stroke="none"/>
     </svg>
     <span class="sh-bn-lbl">Videos</span>
   </a>
-  <a class="sh-bn-item" href="nodes-reference.html">
+  <a class="sh-bn-item" href="nodes/">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
       <circle cx="5" cy="12" r="2"/>
       <circle cx="19" cy="5" r="2"/>
@@ -2166,7 +2165,7 @@ window.nodingBlobsEnabled = function () {
     </svg>
     <span class="sh-bn-lbl">Library</span>
   </a>
-  <a class="sh-bn-item" href="nodegraph.html">
+  <a class="sh-bn-item" href="nodes/">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
       <rect x="3" y="3" width="5" height="5" rx="1"/>
       <rect x="16" y="3" width="5" height="5" rx="1"/>
@@ -2198,7 +2197,7 @@ window.nodingBlobsEnabled = function () {
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
       Effects
     </a>
-    <a class="sh-sb-item" href="videos.html">
+    <a class="sh-sb-item" href="library/videos/">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 5 3-5 3V8z" fill="currentColor" stroke="none"/></svg>
       Videos
     </a>
@@ -2206,11 +2205,11 @@ window.nodingBlobsEnabled = function () {
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M4 4c0 0 4 0 8 4s8 4 8 4"/><path d="M4 12c0 0 4 0 8 4s8 4 8 4"/></svg>
       Spline
     </a>
-    <a class="sh-sb-item" href="nodegraph.html">
+    <a class="sh-sb-item" href="nodes/">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M8 5.5h8M5.5 8v8M19 8v3a2 2 0 0 1-2 2h-3"/></svg>
       Node Graph
     </a>
-    <a class="sh-sb-item" href="nodes-reference.html">
+    <a class="sh-sb-item" href="nodes/">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 12h4m3-7h-4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg>
       Library
     </a>
@@ -2937,7 +2936,7 @@ window.nodingBlobsEnabled = function () {
 <script>
   (function () {
     try {
-      var t = JSON.parse(localStorage.getItem('rl-theme') || '{}');
+      var t = JSON.parse(localStorage.getItem('noding-theme') || '{}');
       var s = document.documentElement.style;
       function hexToRGB(x) {
         return [parseInt(x.slice(1,3),16), parseInt(x.slice(3,5),16), parseInt(x.slice(5,7),16)];
@@ -3256,7 +3255,7 @@ function buildEffectSmartTree(effectId) {
 // Opens the EFFECTS_DETAIL blueprint in nodegraph.html via raw ID routing.
 // Do NOT encodeURIComponent here — raw IDs avoid decode mismatches.
 function openEffectInNodeGraph(effectId) {
-  window.location.href = 'nodegraph.html?id=' + effectId;
+  window.location.href = 'nodegraph/?id=' + effectId;
 }
 
 /* ════════════════════════════════════════
@@ -5160,7 +5159,7 @@ function renderLinkedVideos(effectId) {
   }
   return `<div class="linked-videos">${linked.map(v => {
     const thumb = getYouTubeThumb(v.videoUrl);
-    return `<div class="linked-video-card" onclick="event.stopPropagation();window.location.href='videos.html#v=${v.id}'">
+    return `<div class="linked-video-card" onclick="event.stopPropagation();window.location.href='library/videos/#v='${v.id}'">
       <div class="linked-video-thumb">
         ${thumb ? `<img src="${thumb}" alt="">` : `<div class="no-thumb"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m10 8 6 4-6 4V8z"/></svg></div>`}
       </div>
@@ -5675,7 +5674,7 @@ function renderNodeParamsSection(effect) {
 
   const noParamsHint = !hasAnyParams ? `
     <p class="npref-empty-hint">No parameters stored yet. Open the node graph, select each node, paste its Fusion .setting clipboard text, then save.</p>
-    <a class="npref-graph-link" href="nodegraph.html?id=${effect.id}">→ Open node graph</a>` : '';
+    <a class="npref-graph-link" href="nodegraph/?id=${effect.id}">→ Open node graph</a>` : '';
 
   // ── SSOT Smart Tree (from EFFECTS_DETAIL) ─────────────────────────────
   var _smartTreeHTML = buildEffectSmartTree(effect.id);
@@ -6196,7 +6195,7 @@ function switchTab(tabId) {
 window.openEffectInGraph = function(id) {
   if (!id) return;
   // This constructs the URL to bridge the two pages
-  window.location.href = 'nodegraph.html?id=' + id;
+  window.location.href = 'nodegraph/?id=' + id;
 };
 
 // ── Compatibility badges renderer ─────────────────────────────────────────
@@ -6367,7 +6366,7 @@ function openNodeQL(nodeName, evt) {
   const body = document.getElementById('nql-body');
   if (!info) {
     body.innerHTML = `<p class="nql-unknown">No quick-look info for <strong>${escHtml(nodeName)}</strong> yet.</p>
-      <a class="nql-ref-link" href="nodes-reference.html" target="_blank">Open Node Reference ↗</a>`;
+      <a class="nql-ref-link" href="nodes/" target="_blank">Open Node Reference ↗</a>`;
   } else {
     let html = `<p class="nql-short">${escHtml(info.short)}</p>`;
     if (info.detail) html += `<div class="nql-divider" style="height:1px;background:var(--border)"></div><p class="nql-detail">${escHtml(info.detail)}</p>`;
@@ -6384,7 +6383,7 @@ function openNodeQL(nodeName, evt) {
       html += `</div>`;
     }
     if (info.tip) html += `<div class="nql-tip">💡 ${escHtml(info.tip)}</div>`;
-    html += `<a class="nql-ref-link" href="nodes-reference.html" target="_blank">Full Node Reference ↗</a>`;
+    html += `<a class="nql-ref-link" href="nodes/" target="_blank">Full Node Reference ↗</a>`;
     body.innerHTML = html;
   }
 
@@ -6648,7 +6647,7 @@ function wishlistToEffect(idx) {
   if (!item) return;
   sessionStorage.setItem('effect-prefill', JSON.stringify({ name: item.name, desc: item.note || '' }));
   closeWishlist();
-  window.location.href = 'add.html';
+  window.location.href = 'add/';
 }
 
 document.getElementById('wishlist-inp')?.addEventListener('keydown', e => { if(e.key==='Enter') addWishlistItem(); });
@@ -7348,7 +7347,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     document.getElementById('search').focus();
   }
-  if (e.key === 'n' && !e.metaKey && !e.ctrlKey) { window.location.href = 'add.html'; }
+  if (e.key === 'n' && !e.metaKey && !e.ctrlKey) { window.location.href = 'add/'; }
   if (e.key === 'Escape') {
     closeDetail(); closeEdit(); closeConfirm(); closeBackup(); closeWishlist();
     if (bulkMode) exitBulkMode();
@@ -8372,7 +8371,7 @@ function buildEffectSmartTree(effectId) {
 // Opens the EFFECTS_DETAIL blueprint in nodegraph.html via raw ID routing.
 // Do NOT encodeURIComponent here — raw IDs avoid decode mismatches.
 function openEffectInNodeGraph(effectId) {
-  window.location.href = 'nodegraph.html?id=' + effectId;
+  window.location.href = 'nodegraph/?id=' + effectId;
 }
 
 /* ════════════════════════════════════════
@@ -9611,8 +9610,8 @@ if (typeof window._shToast !== 'function') {
       <span style="font-family:var(--font-mono);font-size:0.6875rem;color:var(--text-muted);letter-spacing:0.06em;">© 2025 Noding · All rights reserved</span>
     </div>
     <div style="display:flex;gap:24px;">
-      <a href="terms.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text-muted);transition:color var(--duration-fast) ease;text-decoration:none;">Terms</a>
-      <a href="privacy.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text-muted);transition:color var(--duration-fast) ease;text-decoration:none;">Privacy</a>
+      <a href="terms/" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text-muted);transition:color var(--duration-fast) ease;text-decoration:none;">Terms</a>
+      <a href="terms/" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text-muted);transition:color var(--duration-fast) ease;text-decoration:none;">Privacy</a>
       <a href="community.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text-muted);transition:color var(--duration-fast) ease;text-decoration:none;">Community</a>
       <a href="settings.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text-muted);transition:color var(--duration-fast) ease;text-decoration:none;">Settings</a>
     </div>

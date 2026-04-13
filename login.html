@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Noding — Sign In</title>
+
+<!-- Anti-flash: apply saved theme before first paint -->
+<script>(function(){var s=localStorage.getItem('noding-theme');if(s==='light')document.documentElement.setAttribute('data-theme','light');}());</script>
 
 <!-- Shared Noding System Resources -->
 <link rel="stylesheet" href="noding-shared.css">
@@ -284,7 +287,7 @@ a{color:inherit;text-decoration:none;}
       <label class="check-row">
         <input type="checkbox" id="termsCheck">
         <div class="check-box"></div>
-        <span class="check-lbl">I agree to the <a href="terms%20&amp;%20privacy.html">Terms of Service</a> and <a href="terms%20&amp;%20privacy.html">Privacy Policy</a></span>
+        <span class="check-lbl">I agree to the <a href="terms/">Terms of Service</a> and <a href="terms/">Privacy Policy</a></span>
       </label>
       <button class="btn-submit" id="btnSignup" onclick="doSignup()">
         <span class="btn-txt">Create account</span>
@@ -362,7 +365,7 @@ a{color:inherit;text-decoration:none;}
         <div class="stat-item"><div class="stat-n">4<span>k+</span></div><div class="stat-l">Effects</div></div>
         <div class="stat-item"><div class="stat-n">280<span>+</span></div><div class="stat-l">Nodes</div></div>
       </div>
-      <button class="btn-submit" onclick="location.href='index.html'">
+      <button class="btn-submit" onclick="location.href='./'">
         <span class="btn-txt">Start exploring &#8594;</span>
         <div class="btn-spinner"></div>
       </button>
@@ -391,8 +394,8 @@ a{color:inherit;text-decoration:none;}
 
 <!-- SCROLLING FOOTER -->
 <footer class="sh-status-bar">
-  <a href="terms%20&amp;%20privacy.html">Terms</a>
-  <a href="terms%20&amp;%20privacy.html">Privacy</a>
+  <a href="terms/">Terms</a>
+  <a href="terms/">Privacy</a>
   <a href="index.html">Home</a>
 </footer>
 
@@ -675,7 +678,7 @@ a{color:inherit;text-decoration:none;}
     try {
       var res = await window._supabase.auth.signInWithPassword({ email: email, password: pw });
       if (res.error) throw res.error;
-      var returnTo = new URLSearchParams(window.location.search).get('return') || 'index.html';
+      var returnTo = new URLSearchParams(window.location.search).get('return') || './';
       window.location.href = returnTo;
     } catch (err) {
       loading('btnSignin', false);
@@ -718,7 +721,7 @@ a{color:inherit;text-decoration:none;}
     if (!email || !/.+@.+\..+/.test(email)) { showToast('Please enter a valid email address.'); return; }
     try {
       var res = await window._supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/settings.html'
+        redirectTo: window.location.origin + '/settings/'
       });
       if (res.error) throw res.error;
       document.getElementById('forgotEmailDisplay').textContent = email;
@@ -765,7 +768,7 @@ a{color:inherit;text-decoration:none;}
     try {
       var res = await window._supabase.auth.signInWithOAuth({
         provider: provider.toLowerCase(),
-        options: { redirectTo: window.location.origin + '/index.html' }
+        options: { redirectTo: window.location.origin + '/' }
       });
       if (res.error) throw res.error;
     } catch (err) {
