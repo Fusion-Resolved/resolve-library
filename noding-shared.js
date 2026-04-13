@@ -186,3 +186,24 @@ window.openAddSheet = function() {
   const sheet = document.getElementById('add-video-sheet');
   if (sheet) sheet.classList.add('open');
 };
+
+/** ── 4. BENTO CARD MOUSE TRACKING (from source-of-truth.html) ── **/
+
+/**
+ * Per-card cursor spotlight — tracks mouse position within each .bento-card
+ * and updates --mouse-x / --mouse-y custom properties so the ::before
+ * radial-gradient glow follows the cursor.
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  const cards = document.querySelectorAll('.bento-card');
+
+  cards.forEach(function(card) {
+    card.addEventListener('mousemove', function(e) {
+      const rect = card.getBoundingClientRect();
+      const xPct = ((e.clientX - rect.left) / rect.width * 100).toFixed(2) + '%';
+      const yPct = ((e.clientY - rect.top) / rect.height * 100).toFixed(2) + '%';
+      card.style.setProperty('--mouse-x', xPct);
+      card.style.setProperty('--mouse-y', yPct);
+    });
+  });
+});
