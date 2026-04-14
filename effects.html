@@ -62,9 +62,9 @@
   align-items: center;
   gap: 7px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.625rem;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: 0.14em;
   color: var(--text-secondary);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -87,8 +87,8 @@
   font-family: var(--font-display);
   font-size: clamp(2.4rem, 5.5vw, 3.6rem);
   font-weight: 800;
-  line-height: 1.06;
-  letter-spacing: -0.035em;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
   color: var(--text-primary);
   margin-bottom: 1rem;
 }
@@ -97,12 +97,12 @@
   font-style: normal;
 }
 .hero p {
-  font-size: 15px;
+  font-size: clamp(0.9375rem, 1.8vw, 1.1rem);
+  font-weight: 300;
   color: var(--text-secondary);
   max-width: 440px;
   margin: 0 auto;
-  line-height: 1.75;
-  font-weight: 300;
+  line-height: 1.7;
 }
 
 /* Stats Bar */
@@ -136,18 +136,19 @@
   background: var(--glass-bg-2);
 }
 .stat-num {
-  font-family: var(--font-mono);
-  font-size: 1.55rem;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+  font-weight: 800;
   color: var(--violet);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   line-height: 1;
 }
 .stat-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-family: var(--font-body);
-  line-height: 1.3;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 /* Container */
@@ -241,9 +242,9 @@
 }
 .lib-sb-filters-lbl {
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 0.625rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   color: var(--text-muted);
   margin-bottom: 7px;
   display: block;
@@ -259,14 +260,14 @@
 .lib-cat-scroll::-webkit-scrollbar { display: none; }
 .lib-cf-btn {
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  padding: 4px 9px;
+  padding: 5px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-color);
   background: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: var(--transition);
   white-space: nowrap;
@@ -300,22 +301,22 @@
 }
 .lib-sb-sort-lbl {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.625rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   color: var(--text-muted);
   flex-shrink: 0;
 }
 .lib-sb-sort-btn {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.6875rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 3px 8px;
+  letter-spacing: 0.07em;
+  padding: 5px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-color);
   background: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: var(--transition);
 }
@@ -337,19 +338,19 @@
 }
 .lib-adv-chip {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 0.6875rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 4px 10px;
+  letter-spacing: 0.07em;
+  padding: 5px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-surface);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: var(--transition);
   white-space: nowrap;
 }
-.lib-adv-chip:hover { border-color: var(--border-subtle); color: var(--text-secondary); }
+.lib-adv-chip:hover { border-color: var(--border-subtle); color: var(--text-primary); }
 .lib-adv-chip.on {
   background: rgba(108,123,255,0.10);
   border-color: rgba(108,123,255,0.35);
@@ -366,16 +367,16 @@
 }
 .lib-sb-count {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.6rem;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
 }
 .lib-sb-clear {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.6rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
   cursor: pointer;
   background: none;
@@ -394,9 +395,9 @@
 }
 .lib-sb-col-lbl {
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 0.625rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   color: var(--text-muted);
   padding: 8px 4px 4px;
   display: block;
@@ -411,7 +412,8 @@
   background: none;
   color: var(--text-secondary);
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
   width: 100%;
   text-align: left;
@@ -456,7 +458,8 @@
   box-shadow: var(--glass-shine), var(--glass-shadow);
   color: var(--text-secondary);
   font-family: var(--font-body);
-  font-size: 12.5px;
+  font-size: 0.8125rem;
+  font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
 }
@@ -499,7 +502,7 @@
   padding: 9px 14px 9px 40px;
   color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 0.875rem;
   outline: none;
   transition: border-color var(--duration-fast) ease-out, box-shadow var(--duration-fast) ease-out;
 }
@@ -512,15 +515,16 @@
 /* Filter Chips */
 .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip {
-  font-size: 12px;
-  padding: 5px 13px;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 5px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-surface);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   transition: var(--transition);
-  font-family: var(--font-body);
   white-space: nowrap;
 }
 .chip:hover { border-color: var(--border-subtle); color: var(--text-primary); background: rgba(255,255,255,0.04); }
@@ -540,10 +544,10 @@
   border: 1px solid var(--border-surface);
   box-shadow: var(--glass-shine);
   border-radius: var(--radius);
-  padding: 9px 12px;
+  padding: 9px 14px;
   color: var(--text-secondary);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 0.8125rem;
   outline: none;
   cursor: pointer;
   transition: border-color var(--duration-fast) ease-out;
@@ -559,18 +563,20 @@
 }
 @media (min-width: 901px) { .adv-filters { display: none; } }
 .adv-chip {
-  font-size: 11px;
-  padding: 4px 11px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 5px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-surface);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
-  font-family: var(--font-body);
   transition: var(--transition);
   white-space: nowrap;
 }
-.adv-chip:hover { border-color: var(--border-subtle); color: var(--text-secondary); }
+.adv-chip:hover { border-color: var(--border-subtle); color: var(--text-primary); }
 .adv-chip.on {
   background: rgba(108,123,255,0.10);
   border-color: rgba(108,123,255,0.35);
@@ -590,7 +596,7 @@
   color: var(--text-secondary);
   padding: 10px 5px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 0.8125rem;
   font-weight: 600;
   border-bottom: 2px solid transparent;
   transition: color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
@@ -615,11 +621,12 @@
   gap: 12px;
 }
 .bulk-bar.active { display: flex; }
-.bulk-count { font-size: 13px; font-weight: 500; color: var(--text-primary); flex: 1; }
+.bulk-count { font-size: 0.8125rem; font-weight: 500; color: var(--text-primary); flex: 1; }
 .bulk-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .bulk-btn {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
   padding: 6px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-surface);
@@ -772,14 +779,14 @@
   position: absolute;
   bottom: 7px;
   right: 8px;
-  font-size: 9px;
   font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   background: rgba(0,0,0,0.65);
   color: rgba(255,255,255,0.75);
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: var(--radius-pill);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   pointer-events: none;
   z-index: 4;
   transition: opacity 0.2s;
@@ -790,18 +797,20 @@
 .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .card-title {
   font-family: var(--font-display);
-  font-size: 0.92rem;
-  font-weight: 600;
+  font-size: 0.9375rem;
+  font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.3;
   color: var(--text-primary);
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .card-desc {
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--text-secondary);
-  line-height: 1.55;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -813,20 +822,24 @@
   align-items: center;
   gap: 5px;
   flex-wrap: wrap;
-  font-size: 11px;
   font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
   color: var(--text-muted);
   line-height: 1;
 }
 .card-meta-dot { color: var(--border-color); opacity: 0.6; }
 .card-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
 .tag {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 0.5875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
   background: var(--tag-bg);
   color: var(--tag-color);
-  font-family: var(--font-mono);
+  border: 1px solid rgba(108,123,255,0.15);
   white-space: nowrap;
 }
 .card-footer {
@@ -841,12 +854,12 @@
 
 /* Category Badges */
 .cat-badge {
-  font-size: 10px;
   font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
   padding: 3px 8px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-pill);
   border: 1px solid;
   white-space: nowrap;
   flex-shrink: 0;
@@ -860,7 +873,7 @@
 .cat-default { color: var(--text-secondary); border-color: var(--border-subtle); background: transparent; }
 
 /* Difficulty Badge */
-.diff-badge { font-size: 10px; font-family: var(--font-mono); line-height: 1; }
+.diff-badge { font-family: var(--font-mono); font-size: 0.5625rem; letter-spacing: 0.04em; line-height: 1; }
 .diff-beginner { color: #60c890; }
 .diff-intermediate { color: var(--signal-amber); }
 .diff-advanced { color: var(--danger); }
@@ -870,12 +883,12 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
   font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px 8px;
-  border-radius: var(--radius-xs);
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
   border: 1px solid;
   white-space: nowrap;
 }
@@ -889,11 +902,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
   font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: var(--radius-pill);
   border: 1px solid;
   white-space: nowrap;
@@ -971,7 +984,8 @@ body.bulk-mode .card-select-check { display: flex; }
   text-align: center;
   padding: 3rem 1rem;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 0.8125rem;
+  line-height: 1.6;
 }
 .empty-state strong { color: var(--text-primary); font-weight: 600; }
 
@@ -1253,7 +1267,7 @@ body.bulk-mode .card-select-check { display: flex; }
         <button class="sh-modal-x" onclick="shCloseConfirmModal()">&#x2715;</button>
       </div>
       <div class="sh-modal-bd">
-        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">This action cannot be undone. The effect and all its data will be permanently removed.</p>
+        <p style="font-size:0.8125rem;color:var(--text-secondary);line-height:1.6;">This action cannot be undone. The effect and all its data will be permanently removed.</p>
       </div>
       <div class="sh-modal-ft">
         <button class="sh-btn-sec" onclick="shCloseConfirmModal()">Cancel</button>
@@ -1272,7 +1286,7 @@ body.bulk-mode .card-select-check { display: flex; }
       <div class="sh-modal-bd" id="sh-wishlist-bd"></div>
       <div style="padding:.75rem 1.25rem;border-top:1px solid var(--border-surface)">
         <div style="display:flex;gap:8px;">
-          <input id="sh-wishlist-inp" placeholder="Technique to learn…" style="flex:1;background:var(--bg-surface-2);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 11px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;">
+          <input id="sh-wishlist-inp" placeholder="Technique to learn…" style="flex:1;background:var(--bg-surface-2);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 11px;color:var(--text-primary);font-family:var(--font-body);font-size:0.875rem;outline:none;">
           <button class="sh-btn-sec" onclick="shAddWishlistItem()">Add</button>
         </div>
       </div>
@@ -1654,7 +1668,7 @@ body.bulk-mode .card-select-check { display: flex; }
           `<button class="lib-sb-col-btn ${activeCollection === c.id ? 'active' : ''}" onclick="setActiveCollection('${c.id}')">
             <span class="lib-sb-col-dot" style="background:${c.color}"></span>${escHtml(c.name)}
           </button>`
-        ).join('') || '<div style="font-size:12px;color:var(--text-muted);padding:4px;">No collections</div>';
+        ).join('') || '<div style="font-size:0.75rem;color:var(--text-muted);padding:4px;">No collections</div>';
       }
     }
 
@@ -1880,9 +1894,9 @@ body.bulk-mode .card-select-check { display: flex; }
           ${diff ? `<span class="diff-badge ${diff.cls}">● ${diff.label}</span>` : ''}
           ${e.status ? `<span class="status-badge status-${e.status}">${e.status.replace('-', ' ')}</span>` : ''}
         </div>
-        ${e.desc ? `<p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px;">${escHtml(e.desc)}</p>` : ''}
-        ${e.explanation ? `<div style="margin-bottom:12px;"><div style="font-size:10px;font-family:var(--font-mono);text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">How it works</div><p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">${escHtml(e.explanation)}</p></div>` : ''}
-        ${e.nodeCode ? `<div style="margin-bottom:12px;"><div style="font-size:10px;font-family:var(--font-mono);text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">Node Code</div><pre style="background:var(--bg-surface-2);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:10px;font-family:var(--font-mono);font-size:11px;overflow-x:auto;">${escHtml(e.nodeCode)}</pre></div>` : ''}
+        ${e.desc ? `<p style="font-size:0.8125rem;color:var(--text-secondary);line-height:1.6;margin-bottom:12px;">${escHtml(e.desc)}</p>` : ''}
+        ${e.explanation ? `<div style="margin-bottom:12px;"><div style="font-size:0.625rem;font-family:var(--font-mono);text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">How it works</div><p style="font-size:0.8125rem;color:var(--text-secondary);line-height:1.6;">${escHtml(e.explanation)}</p></div>` : ''}
+        ${e.nodeCode ? `<div style="margin-bottom:12px;"><div style="font-size:0.625rem;font-family:var(--font-mono);text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">Node Code</div><pre style="background:var(--bg-surface-2);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:10px;font-family:var(--font-mono);font-size:0.6875rem;overflow-x:auto;">${escHtml(e.nodeCode)}</pre></div>` : ''}
         ${(e.tags || []).length ? `<div class="card-tags" style="margin-top:8px;">${e.tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
         <div class="card-meta" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-surface);">
           ${e.version ? `<span>DR ${escHtml(e.version)}</span>` : ''}
