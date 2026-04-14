@@ -5,19 +5,24 @@
 
 /** ── 1. SIDEBAR & NAVIGATION ── **/
 
-window.shOpenSidebar = function() {
-  const sb = document.getElementById('sh-sidebar');
-  const ov = document.getElementById('sh-sidebar-overlay');
+window.shOpenSidebar = function () {
+  // Support both ID conventions across the app:
+  //   index.html  → sh-sidebar / sh-sidebar-overlay
+  //   effects.html and future pages → sh-sb / sh-sb-ov
+  const sb = document.getElementById('sh-sidebar') || document.getElementById('sh-sb');
+  const ov = document.getElementById('sh-sidebar-overlay') || document.getElementById('sh-sb-ov');
   if (sb) sb.classList.add('open');
-  if (ov) ov.style.display = 'block';
+  if (ov) ov.classList.add('open');
   document.body.style.overflow = 'hidden';
+  // Always refresh auth state when the drawer opens
+  if (typeof window.shRenderSidebarAuth === 'function') window.shRenderSidebarAuth();
 };
 
-window.shCloseSidebar = function() {
-  const sb = document.getElementById('sh-sidebar');
-  const ov = document.getElementById('sh-sidebar-overlay');
+window.shCloseSidebar = function () {
+  const sb = document.getElementById('sh-sidebar') || document.getElementById('sh-sb');
+  const ov = document.getElementById('sh-sidebar-overlay') || document.getElementById('sh-sb-ov');
   if (sb) sb.classList.remove('open');
-  if (ov) ov.style.display = 'none';
+  if (ov) ov.classList.remove('open');
   document.body.style.overflow = '';
 };
 
@@ -51,149 +56,300 @@ window.navIcons = {
 };
 
 /**
- * Inject sidebar navigation HTML into the page
- * CLEAN STRUCTURE:
- *   1. Main Navigation (5 core links)
- *   2. Account Section (Email → Settings → Auth Button)
- *      - Auth button shows "Sign Out" when logged in, "Sign In / Sign Up" when logged out
- *      - NO elements after the auth button
- * STRICT ISOLATION: No Wizard Steps, No Settings Tabs, No Modal navigation
- * @param {string} currentPage - Filename of current page (e.g., 'index.html')
+ * Inject the canonical sidebar HTML into the page.
+ *
+ * STRICT STRUCTURE (nothing may appear after the auth portal):
+ *   sh-sb-head   — title + close button
+ *   sh-sb-sec    — Navigate: exactly 5 links
+ *   sh-sb-sec    — Account: email pill → Settings → #sidebar-auth-portal
+ *
+ * Targets #sh-sidebar (index.html) or #sh-sb (effects.html / future pages).
+ * The auto-init listener below calls this automatically on DOMContentLoaded.
+ *
+ * @param {string} [currentPage] - Filename e.g. 'index.html'. Auto-detected if omitted.
  */
-window.shInjectSidebar = function(currentPage) {
-  const sidebar = document.getElementById('sh-sidebar');
-  if (!sidebar) {
-    console.warn('[Noding] shInjectSidebar: Sidebar element not found');
-    return;
-  }
+/** ── 1. THE ARCHITECT: Injects the layout and links ── **/
+window.shInjectSidebar = function (currentPage) {
+  const sidebar = document.getElementById('sh-sidebar') || document.getElementById('sh-sb');
+  if (!sidebar) return;
 
   const pageName = currentPage || window.location.pathname.split('/').pop() || 'index.html';
-  
-  // CORE NAVIGATION: Exactly 5 links
-  const mainNav = [
-    { href: 'index.html', name: 'Home', icon: 'home' },
-    { href: 'effects.html', name: 'Effects', icon: 'grid' },
-    { href: 'nodegraph.html', name: 'Node Graph', icon: 'git-branch' },
-    { href: 'library.html', name: 'Library', icon: 'layers' },
-    { href: 'community.html', name: 'Community', icon: 'users' }
+
+  const ICON = {
+    home: '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+    effects: '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+    nodegraph: '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M8 5.5h8M5.5 8v8M19 8v3a2 2 0 0 1-2 2h-3"/></svg>',
+    library: '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 12h4m3-7h-4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg>',
+    community: '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    settings: '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 9"/></svg>',
+    profile: '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    folder: '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+  };
+
+  const NAV = [
+    { href: 'index.html',     label: 'Home',       icon: ICON.home,      aliases: ['home.html'] },
+    { href: 'effects.html',   label: 'Effects',    icon: ICON.effects,   aliases: [] },
+    { href: 'nodegraph.html', label: 'Node Graph', icon: ICON.nodegraph, aliases: ['nodes.html'] },
+    { href: 'library.html',   label: 'Library',    icon: ICON.library,   aliases: [] },
+    { href: 'community.html', label: 'Community',  icon: ICON.community, aliases: [] },
   ];
 
-  // Build main nav with consistent styling
-  const mainNavHtml = mainNav.map(item => {
-    const isActive = pageName === item.href || pageName.endsWith('/' + item.href);
-    const iconSvg = window.navIcons[item.icon] || '';
-    return `
-      <a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-page="${item.href}" style="display:flex;align-items:center;gap:12px;padding:10px 16px;margin:0 8px 4px;border-radius:10px;transition:all 0.15s;color:rgba(244,244,251,0.7);text-decoration:none;">
-        <span style="display:flex;align-items:center;opacity:0.7;">${iconSvg}</span>
-        <span style="font-family:var(--font-body);font-size:13px;font-weight:500;">${item.name}</span>
-      </a>
-    `;
-  }).join('');
+  const isNavActive = (item) => [item.href, ...item.aliases].some(p => pageName === p || pageName.endsWith('/' + p));
 
-  // Settings active state check
-  const isSettingsPage = pageName === 'settings.html' || pageName.includes('settings');
+  const navLinks = NAV.map((item) => `
+    <a class="sh-sb-item${isNavActive(item) ? ' active' : ''}" href="${item.href}" data-page="${item.href}">
+      ${item.icon}${item.label}
+    </a>`).join('');
 
-  // CLEAN SIDEBAR — Single source of truth, no ghost items
+  const isDashboard = pageName === 'dashboard.html';
+  const isProfile   = pageName === 'profile.html';
+  const isMyEffects = pageName === 'effects.html' && window.location.search.includes('filter=mine');
+  const isSettings  = pageName === 'settings.html' || pageName.includes('settings');
+
   sidebar.innerHTML = `
-    <!-- ═══════════════════════════════════════════════════════════════════════
-         CORE NAVIGATION — 5 Links Only
-         ═══════════════════════════════════════════════════════════════════════ -->
-    <nav class="sh-sb-main" style="padding:20px 0;flex-shrink:0;">
-      ${mainNavHtml}
-    </nav>
-    
-    <!-- ═══════════════════════════════════════════════════════════════════════
-         ACCOUNT SECTION — Email → Settings → Auth
-         ═══════════════════════════════════════════════════════════════════════ -->
-    <div class="sh-sb-account" style="padding:20px 0;margin-top:auto;border-top:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
-      
-      <!-- Section Label -->
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:rgba(143,143,168,0.5);padding:0 20px 12px;font-family:var(--font-mono);">Account</div>
-      
-      <!-- User Email: Small, muted, DM Mono -->
-      <div style="padding:0 16px;margin:0 8px 12px;">
-        <div id="sidebar-email-container" style="font-size:11px;color:rgba(143,143,168,0.6);padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.05);font-family:var(--font-mono);letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          <span id="sidebar-user-email">Not signed in</span>
-        </div>
-      </div>
-      
-      <!-- Settings Link -->
-      <a href="settings.html" class="nav-item ${isSettingsPage ? 'active' : ''}" data-page="settings.html" style="display:flex;align-items:center;gap:12px;padding:10px 16px;margin:0 8px 4px;border-radius:10px;transition:all 0.15s;color:rgba(244,244,251,0.7);text-decoration:none;">
-        <span style="display:flex;align-items:center;opacity:0.7;">${window.navIcons['settings'] || ''}</span>
-        <span style="font-family:var(--font-body);font-size:13px;font-weight:500;">Settings</span>
+    <div class="sh-sb-head">
+      <span class="sh-sb-title">Noding</span>
+      <button class="sh-sb-close" onclick="shCloseSidebar()" aria-label="Close menu">&#x2715;</button>
+    </div>
+
+    <div class="sh-sb-sec">
+      <div class="sh-sb-lbl">Navigate</div>
+      ${navLinks}
+    </div>
+
+    <div class="sh-sb-sec sh-sb-account">
+      <div class="sh-sb-lbl">Account</div>
+
+      <div class="sh-sb-email" id="sidebar-email-container" aria-live="polite"></div>
+
+      <a class="sh-sb-item${isDashboard ? ' active' : ''}" href="dashboard.html" data-page="dashboard.html">
+        ${ICON.nodegraph} Dashboard
       </a>
-      
-      <!-- Auth Portal: Sign Out (logged in) OR Sign In/Up (logged out) -->
-      <div id="sidebar-auth-portal" style="margin-top:4px;"></div>
-      
+
+      <a class="sh-sb-item${isProfile ? ' active' : ''}" href="profile.html" data-page="profile.html">
+        ${ICON.profile} My Profile
+      </a>
+
+      <a class="sh-sb-item${isMyEffects ? ' active' : ''}" href="effects.html?filter=mine" data-page="my-effects">
+        ${ICON.folder} My Effects
+      </a>
+
+      <a class="sh-sb-item${isSettings ? ' active' : ''}" href="settings.html" data-page="settings.html">
+        ${ICON.settings} Settings
+      </a>
+
+      <div id="sidebar-auth-portal"></div>
     </div>
   `;
-  
-  // Apply flex layout
+
   sidebar.style.display = 'flex';
   sidebar.style.flexDirection = 'column';
-  sidebar.style.height = '100%';
 
-  console.log('[Noding] Sidebar injected:', pageName);
+  // ── IMPORTANT: Trigger the specialist to fill the user info slots ──
+  window.shRenderSidebarAuth();
+};
+
+
+/** ── 2. THE SPECIALIST: Fills the user info slots (Avatar, Username, etc.) ── **/
+window.shRenderSidebarAuth = function () {
+  const emailContainer = document.getElementById('sidebar-email-container');
+  const portal = document.getElementById('sidebar-auth-portal');
+  if (!portal || !emailContainer) return;
+
+  // 1. Resolve user from global state or storage
+  let user = window.__nodingUser || null;
+  if (!user) {
+    try {
+      user = JSON.parse(localStorage.getItem('rl-auth-user') || 'null');
+    } catch (_) {}
+  }
+
+  if (user) {
+    // ── LOGGED IN ──────────────────────────────────────────────────────────
+    const email = user.email;
+    const username = user.user_metadata?.full_name || user.email.split('@')[0] || 'User';
+    const avatar = user.user_metadata?.avatar_url || '';
+
+    // Inject the "User Pill" (Avatar + Username)
+    emailContainer.innerHTML = `
+      <div class="sh-sb-user-pill">
+        <div class="sh-sb-avatar">
+          ${avatar 
+            ? `<img src="${avatar}" alt="Profile">` 
+            : `<div class="sh-sb-avatar-initial">${username.charAt(0).toUpperCase()}</div>`
+          }
+        </div>
+        <div class="sh-sb-user-info">
+          <span class="sh-sb-username">${username}</span>
+          <span class="sh-sb-user-email">${email}</span>
+        </div>
+      </div>
+    `;
+
+    portal.innerHTML = `
+      <button class="sh-sb-item sh-sb-signout" onclick="window.shSidebarSignOut()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </button>
+    `;
+  } else {
+    // ── LOGGED OUT ─────────────────────────────────────────────────────────
+    emailContainer.innerHTML = `<span id="sidebar-user-email">Not signed in</span>`;
+    portal.innerHTML = `
+      <a class="sh-sb-item" href="login.html">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Sign In
+      </a>
+      <a class="sh-sb-item sh-sb-signup" href="login.html?mode=signup">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        Sign Up
+      </a>
+    `;
+  }
 };
 
 /**
- * Set active navigation state for PRIMARY navigation links only
- * STRICT: Does NOT affect Settings Sheet tabs (sh-nav class)
- * Applies visual active state (background, color, opacity) to core 5 + Settings
+ * Render (or re-render) only the auth portion of the sidebar.
+ *
+ * Reads auth state from:
+ *   1. window.__nodingUser   — set by auth.js when Supabase resolves a session
+ *   2. localStorage 'rl-auth-user'  — legacy / offline fallback
+ *
+ * Updates:
+ *   #sidebar-user-email   — the muted email pill above Settings
+ *   #sidebar-auth-portal  — Sign Out button (logged in)
+ *                           OR Sign In + Sign Up links (logged out)
+ *
+ * INVARIANT: nothing is written outside #sidebar-auth-portal.
+ * Called by shInjectSidebar() and shOpenSidebar() automatically.
+ * auth.js should also call this from its onAuthStateChange handler.
+ */
+window.shRenderSidebarAuth = function () {
+  const emailSpan = document.getElementById('sidebar-user-email');
+  const portal    = document.getElementById('sidebar-auth-portal');
+  if (!portal) return; // sidebar not on this page
+
+  // ── Resolve the current user ──
+  let user = window.__nodingUser || null;
+  if (!user) {
+    try {
+      user = JSON.parse(localStorage.getItem('rl-auth-user') || 'null');
+    } catch (_) {}
+  }
+
+  // Inline SVGs for auth buttons (self-contained — no dependency on ICON above)
+  const SVG_SIGNOUT = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+  const SVG_SIGNIN  = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>';
+  const SVG_SIGNUP  = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>';
+
+  if (user) {
+    // ── LOGGED IN ──────────────────────────────────────────────────────────
+    const email = user.email || user.name || 'Signed in';
+
+    if (emailSpan) {
+      emailSpan.textContent = email;
+      // Tooltip reveals the full address when the pill truncates
+      emailSpan.parentElement && (emailSpan.parentElement.title = email);
+    }
+
+    // Sign Out is the absolute last element in the sidebar.
+    portal.innerHTML = `
+      <button class="sh-sb-item sh-sb-signout"
+              onclick="window.shSidebarSignOut()"
+              aria-label="Sign out of Noding">
+        ${SVG_SIGNOUT}
+        Sign Out
+      </button>
+    `;
+  } else {
+    // ── LOGGED OUT ─────────────────────────────────────────────────────────
+    if (emailSpan) {
+      emailSpan.textContent = 'Not signed in';
+      emailSpan.parentElement && emailSpan.parentElement.removeAttribute('title');
+    }
+
+    // Sign In + Sign Up are the absolute last elements in the sidebar.
+    portal.innerHTML = `
+      <a class="sh-sb-item" href="login.html">
+        ${SVG_SIGNIN}
+        Sign In
+      </a>
+      <a class="sh-sb-item sh-sb-signup" href="login.html?mode=signup">
+        ${SVG_SIGNUP}
+        Sign Up
+      </a>
+    `;
+  }
+};
+
+/**
+ * Sign out from all auth layers then re-render the sidebar auth section.
+ * Handles both Supabase (via auth.js) and the localStorage fallback.
+ */
+window.shSidebarSignOut = async function () {
+  // 1. Supabase sign-out (if auth.js has initialised window.supabase)
+  try {
+    if (window.supabase && typeof window.supabase.auth?.signOut === 'function') {
+      await window.supabase.auth.signOut();
+    }
+  } catch (e) {
+    console.warn('[Noding] Supabase signOut error:', e);
+  }
+
+  // 2. Clear localStorage fallback session
+  localStorage.removeItem('rl-auth-user');
+  window.__nodingUser = null;
+
+  // 3. Refresh sidebar auth UI
+  window.shRenderSidebarAuth();
+
+  if (typeof window.toast === 'function') window.toast('Signed out', 'v');
+};
+
+/**
+ * Set active navigation state for PRIMARY navigation links only.
+ * STRICT: Does NOT affect Settings Sheet tabs (.sh-nav class).
+ *
+ * Works with both legacy .nav-item and the current .sh-sb-item class.
+ * Active state is driven entirely by CSS (.sh-sb-item.active) — no inline
+ * style overrides are applied, keeping specificity clean.
+ *
  * @param {string} pageName - Current page filename (e.g., 'index.html')
  */
-window.shSetActiveNav = function(pageName) {
+window.shSetActiveNav = function (pageName) {
   const currentPage = pageName || window.location.pathname.split('/').pop() || 'index.html';
-  
-  // STRICT: Only update nav-item elements in the GLOBAL sidebar (sh-sidebar)
-  // NEVER touch sh-nav items (those are for Settings Sheet internal navigation)
-  const globalSidebar = document.getElementById('sh-sidebar');
+
+  // Target whichever sidebar ID this page uses
+  const globalSidebar =
+    document.getElementById('sh-sidebar') ||
+    document.getElementById('sh-sb');
   if (!globalSidebar) return;
-  
-  // Check for settings page variants
-  const isSettingsPage = currentPage === 'settings.html' || 
-                         currentPage.includes('settings');
-  
-  // Only target nav-items within the global sidebar
-  globalSidebar.querySelectorAll('.nav-item').forEach(item => {
+
+  const isSettingsPage =
+    currentPage === 'settings.html' || currentPage.includes('settings');
+
+  // Match both class names — .sh-sb-item (current) and .nav-item (legacy)
+  globalSidebar.querySelectorAll('.sh-sb-item[data-page], .nav-item[data-page]').forEach(item => {
     const itemPage = item.getAttribute('data-page');
-    const href = item.getAttribute('href');
-    
-    // STRICT: Apply active state to primary nav links + Settings
-    let isActive = false;
-    
-    // Check main nav pages
-    if (itemPage === currentPage || href === currentPage) {
-      isActive = true;
-    }
-    
-    // Check for home.html alias
+    const href     = item.getAttribute('href') || '';
+
+    let isActive = itemPage === currentPage || href === currentPage;
+
+    // home.html alias → index.html
     if (currentPage === 'home.html' && (itemPage === 'index.html' || href === 'index.html')) {
       isActive = true;
     }
-    
-    // Check for Settings page (explicit match)
+    // nodegraph alias
+    if (currentPage === 'nodes.html' && (itemPage === 'nodegraph.html' || href === 'nodegraph.html')) {
+      isActive = true;
+    }
+    // Settings page variants
     if (isSettingsPage && (itemPage === 'settings.html' || href === 'settings.html')) {
       isActive = true;
     }
-    
-    // Apply active class and inline styles
+
+    // CSS class is the single source of truth for active appearance
     item.classList.toggle('active', isActive);
-    
-    if (isActive) {
-      // Active visual state: white text, subtle background, full opacity icon
-      item.style.background = 'rgba(255,255,255,0.08)';
-      item.style.color = '#f4f4fb';
-      const iconSpan = item.querySelector('span:first-child');
-      if (iconSpan) iconSpan.style.opacity = '1';
-    } else {
-      // Inactive visual state: muted text, transparent bg, dimmed icon
-      item.style.background = 'transparent';
-      item.style.color = 'rgba(244,244,251,0.7)';
-      const iconSpan = item.querySelector('span:first-child');
-      if (iconSpan) iconSpan.style.opacity = '0.7';
-    }
   });
 };
 
@@ -759,30 +915,35 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Auto-initialize sidebar navigation on DOMContentLoaded
- * Injects sidebar content and sets active nav state automatically
+ * Auto-initialize sidebar navigation on DOMContentLoaded.
+ * Works with both #sh-sidebar (index.html) and #sh-sb (effects.html / future pages).
+ * With `defer` on the script tags this fires after HTML is parsed but before
+ * the user can interact, so no race conditions with onclick attributes.
  */
-document.addEventListener('DOMContentLoaded', function() {
-  // Small delay to ensure auth.js has initialized first
-  setTimeout(function() {
-    // Get current page from URL
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    
-    // Check if sidebar exists on this page
-    const sidebar = document.getElementById('sh-sidebar');
-    if (sidebar) {
-      // Inject sidebar navigation
-      window.shInjectSidebar(currentPage);
-      
-      // Set active navigation state
-      window.shSetActiveNav(currentPage);
-      
-      // Ensure Settings link visibility
-      window.shCheckSettingsVisibility();
-      
-      console.log('[Noding] Sidebar navigation initialized for:', currentPage);
-    }
-  }, 50);
+document.addEventListener('DOMContentLoaded', function () {
+  // Drain any calls that were queued by the inline safety shim before this
+  // script loaded (covers the edge case of an extremely fast user interaction
+  // on a slow connection).
+  if (typeof window.__shDrainStubs === 'function') {
+    window.__shDrainStubs([
+      'shOpenSidebar', 'shCloseSidebar',
+      'shOpenNote', 'shCloseNote', 'shSaveNote',
+      'shOpenSearch', 'toast'
+    ]);
+  }
+
+  const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+
+  // Support both sidebar ID conventions
+  const sidebar =
+    document.getElementById('sh-sidebar') ||
+    document.getElementById('sh-sb');
+
+  if (sidebar) {
+    window.shInjectSidebar(currentPage);
+    window.shSetActiveNav(currentPage);
+    console.log('[Noding] Sidebar initialized for:', currentPage);
+  }
 });
 
 /** End of Global Modal & Navigation Logic */
