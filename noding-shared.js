@@ -52,7 +52,11 @@ window.navIcons = {
 
 /**
  * Inject sidebar navigation HTML into the page
- * STRICT STRUCTURE: 5 main links + Account section (Settings + Sign Out)
+ * STRICT STRUCTURE:
+ *   1. Main Navigation (5 links)
+ *   2. Account Section (Profile Email, Settings, Sign Out)
+ *      - Sign Out MUST be the absolute last item
+ *      - No elements after Sign Out
  * Call this from DOMContentLoaded to populate sidebar structure
  * @param {string} currentPage - Filename of current page (e.g., 'index.html')
  */
@@ -66,7 +70,7 @@ window.shInjectSidebar = function(currentPage) {
   // Get current page name for highlighting
   const pageName = currentPage || window.location.pathname.split('/').pop() || 'index.html';
   
-  // STRICT: Only these 5 main navigation items
+  // STRICT: Only these 5 main navigation items (NO ghosts, NO tabs, NO wizard steps)
   const mainNav = [
     { href: 'index.html', name: 'Home', icon: 'home' },
     { href: 'effects.html', name: 'Effects', icon: 'grid' },
@@ -82,52 +86,65 @@ window.shInjectSidebar = function(currentPage) {
     return `
       <a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-page="${item.href}">
         ${iconSvg}
-        <span>${item.name}</span>
+        <span style="font-family:var(--font-body);font-size:13px;font-weight:500;">${item.name}</span>
       </a>
     `;
   }).join('');
 
   // Check if on settings page (for Account section highlighting)
-  const isSettingsPage = pageName.includes('settings') || 
-                         pageName.includes('6 - noding-edit-settings');
+  const isSettingsPage = pageName === 'settings.html' || 
+                         pageName.includes('settings');
 
-  // STRICT Sidebar structure:
-  // 1. Main Navigation (5 links)
-  // 2. Account Section (Settings + Sign Out) - Sign Out MUST be last
+  // STRICT Sidebar structure - NO tabs, NO sh-nav contamination, NO elements after Sign Out
   const sidebarContent = `
-    <!-- Main Navigation -->
-    <div class="sh-sb-section" style="padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         MAIN NAVIGATION — 5 Core App Links
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <div class="sh-sb-main" style="padding:16px 0;flex-shrink:0;">
       ${mainNavHtml}
     </div>
     
-    <!-- Account Section - Always at bottom -->
-    <div class="sh-sb-account" style="padding:16px 0;margin-top:auto;border-top:1px solid rgba(255,255,255,0.06);">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(143,143,168,0.6);padding:0 20px 8px;">Account</div>
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         ACCOUNT SECTION — Strict order: Email → Settings → Sign Out
+         Sign Out MUST be the absolute last element in the sidebar.
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <div class="sh-sb-account" style="padding:16px 0;margin-top:auto;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+      
+      <!-- Account Label -->
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:rgba(143,143,168,0.5);padding:0 20px 12px;font-family:var(--font-mono);">Account</div>
+      
+      <!-- Profile Info: Email address (small, muted) — populated by auth.js -->
+      <div id="sidebar-user-profile" style="padding:0 16px 12px;margin:0 4px;">
+        <div style="font-size:11px;color:rgba(143,143,168,0.6);padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.05);">
+          <span id="sidebar-user-email" style="font-family:var(--font-mono);letter-spacing:0.02em;">Not signed in</span>
+        </div>
+      </div>
       
       <!-- Settings Link -->
-      <a href="settings.html" class="nav-item ${isSettingsPage ? 'active' : ''}" data-page="settings.html">
+      <a href="settings.html" class="nav-item ${isSettingsPage ? 'active' : ''}" data-page="settings.html" style="margin-bottom:4px;">
         ${window.navIcons['settings'] || ''}
-        <span>Settings</span>
+        <span style="font-family:var(--font-body);font-size:13px;font-weight:500;">Settings</span>
       </a>
       
-      <!-- User Info + Sign Out (injected by auth.js, but Sign Out structure defined here) -->
-      <div id="sidebar-auth-portal"></div>
+      <!-- Sign Out Button — ABSOLUTE LAST ITEM, no exceptions -->
+      <button class="nav-item" onclick="handleSignOut()" style="color:rgba(240,96,96,0.7);border:none;background:transparent;width:100%;text-align:left;cursor:pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span style="font-family:var(--font-body);font-size:13px;font-weight:500;">Sign Out</span>
+      </button>
+      
     </div>
   `;
 
-  // Insert content (clear any existing ghost tabs/links first)
-  const existingContent = sidebar.querySelector('.sh-sb-content');
-  if (existingContent) {
-    existingContent.innerHTML = sidebarContent;
-  } else {
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'sh-sb-content';
-    contentDiv.style.cssText = 'display:flex;flex-direction:column;height:100%;';
-    contentDiv.innerHTML = sidebarContent;
-    sidebar.appendChild(contentDiv);
-  }
+  // Insert content (completely replace any existing ghost content)
+  sidebar.innerHTML = sidebarContent;
+  
+  // Ensure proper flex layout on sidebar
+  sidebar.style.display = 'flex';
+  sidebar.style.flexDirection = 'column';
+  sidebar.style.height = '100%';
 
   console.log('[Noding] Sidebar injected for page:', pageName);
+  console.log('[Noding] Sidebar structure: 5 main links + Account (Email, Settings, Sign Out)');
 };
 
 /**
@@ -143,12 +160,16 @@ window.shSetActiveNav = function(pageName) {
   const globalSidebar = document.getElementById('sh-sidebar');
   if (!globalSidebar) return;
   
+  // Check for settings page variants
+  const isSettingsPage = currentPage === 'settings.html' || 
+                         currentPage.includes('settings');
+  
   // Only target nav-items within the global sidebar
   globalSidebar.querySelectorAll('.nav-item').forEach(item => {
     const itemPage = item.getAttribute('data-page');
     const href = item.getAttribute('href');
     
-    // STRICT: Only apply active state to primary nav links
+    // STRICT: Apply active state to primary nav links + Settings
     let isActive = false;
     
     // Check main nav pages
@@ -161,8 +182,10 @@ window.shSetActiveNav = function(pageName) {
       isActive = true;
     }
     
-    // STRICT: Settings active state is handled separately by shInjectSidebar
-    // Do NOT apply active state logic to settings sheet tabs here
+    // Check for Settings page (explicit match)
+    if (isSettingsPage && (itemPage === 'settings.html' || href === 'settings.html')) {
+      isActive = true;
+    }
     
     item.classList.toggle('active', isActive);
   });

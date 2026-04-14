@@ -50,8 +50,8 @@ function startAuthSystem() {
       detail: { event: event, session: session, user: user }
     }));
 
-    // Update ALL sidebar auth portals on EVERY state change
-    updateAllSidebarPortals(user);
+    // Update user email in sidebar
+    updateSidebarUserEmail(user);
 
     // Handle specific events
     if (event === 'SIGNED_OUT') {
@@ -67,102 +67,28 @@ async function checkInitialSession() {
   try {
     const { data: { session } } = await window._supabase.auth.getSession();
     currentUser = session ? session.user : null;
-    await updateAllSidebarPortals(currentUser);
+    await updateSidebarUserEmail(currentUser);
   } catch (err) {
     console.error("[auth.js] Failed to get initial session:", err);
-    await updateAllSidebarPortals(null);
+    await updateSidebarUserEmail(null);
   }
 }
 
 /* ============================================================
-   SIDEBAR PORTAL INJECTION — SINGLE SOURCE OF TRUTH
+   SIDEBAR USER EMAIL — Populates the email in Account section
    ============================================================ */
 
-async function updateAllSidebarPortals(user) {
-  // Find ALL portal containers across the entire page
-  const portals = document.querySelectorAll('#sidebar-auth-portal, #sb-auth-group');
+async function updateSidebarUserEmail(user) {
+  const emailEl = document.getElementById('sidebar-user-email');
+  if (!emailEl) return;
 
-  // Fetch profile data if user is logged in
-  let profile = null;
-  if (user && window._supabase) {
-    try {
-      const { data, error } = await window._supabase
-        .from('profiles')
-        .select('avatar_url, avatar_pos')
-        .eq('id', user.id)
-        .single();
-      if (!error && data) {
-        profile = data;
-      }
-    } catch (err) {
-      console.log("[auth.js] Could not fetch profile for sidebar:", err);
-    }
+  if (user && user.email) {
+    emailEl.textContent = user.email;
+    emailEl.style.color = 'rgba(244,244,251,0.8)';
+  } else {
+    emailEl.textContent = 'Not signed in';
+    emailEl.style.color = 'rgba(143,143,168,0.6)';
   }
-
-  portals.forEach(portal => {
-    if (!portal) return;
-
-    if (user) {
-      // LOGGED IN: Show user info + Sign Out
-      const email = user.email || 'User';
-      const emailInitial = email.charAt(0).toUpperCase();
-      
-      // Build avatar HTML - image if available, otherwise initial
-      let avatarHtml = '';
-      if (profile && profile.avatar_url) {
-        const avatarUrlWithCache = profile.avatar_url + '?t=' + new Date().getTime();
-        let bgSize = 'cover';
-        let bgPos = 'center';
-        
-        // Apply saved position if exists
-        if (profile.avatar_pos) {
-          const posParts = profile.avatar_pos.split(',');
-          if (posParts.length === 3) {
-            const x = parseInt(posParts[0], 10) || 0;
-            const y = parseInt(posParts[1], 10) || 0;
-            const zoom = parseInt(posParts[2], 10) || 100;
-            bgSize = zoom + '%';
-            bgPos = 'calc(50% + ' + x + 'px) calc(50% + ' + y + 'px)';
-          }
-        }
-        
-        avatarHtml = `<div style="width:32px;height:32px;border-radius:50%;background-image:url('${avatarUrlWithCache}');background-size:${bgSize};background-position:${bgPos};background-repeat:no-repeat;flex-shrink:0;border:1px solid rgba(108,123,255,0.3);"></div>`;
-      } else {
-        // Fallback to initial letter
-        avatarHtml = `<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6c7bff 0%,#4451d4 100%);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:#fff;flex-shrink:0;">${escapeHtml(emailInitial)}</div>`;
-      }
-
-      portal.innerHTML = `
-        <div class="sh-sb-item" style="cursor:default;opacity:1;">
-          ${avatarHtml}
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:500;color:var(--tp,#f4f4fb);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(email)}</div>
-            <div style="font-size:10px;color:var(--ts,#8f8fa8);">Pro Member</div>
-          </div>
-        </div>
-        <button class="sh-sb-item" onclick="handleSignOut()" style="width:100%;text-align:left;">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          Sign Out
-        </button>
-      `;
-    } else {
-      // LOGGED OUT: Show Login / Sign Up link ONLY
-      portal.innerHTML = `
-        <a href="login.html" class="sh-nav-link" style="display:flex;align-items:center;gap:10px;padding:10px 14px;color:var(--tp,#f4f4fb);text-decoration:none;transition:all 0.15s;">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          Login / Sign Up
-        </a>
-      `;
-    }
-  });
-}
-
-// Helper: Escape HTML to prevent XSS
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 /* ============================================================
