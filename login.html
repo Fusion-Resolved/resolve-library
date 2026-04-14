@@ -23,10 +23,24 @@
 <style>
 /* Page-specific styles */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  --violet:#6c7bff;
+  --violet-400:#818cf8;
+  --violet-600:#4451d4;
+  --ink:#09090e;
+  --ink-light:#0f0f16;
+  --font-display:'Syne',sans-serif;
+  --font-mono:'DM Mono',monospace;
+  --font-body:'DM Sans',sans-serif;
+  --transition-fast:150ms ease;
+  --transition-base:250ms ease;
+}
+
 html,body{height:100%;overflow:hidden;}
-body{background:#06060d;font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;}
-button{font-family:'DM Sans',sans-serif;cursor:pointer;border:none;background:none;}
-input{font-family:'DM Sans',sans-serif;outline:none;}
+body{background:#06060d;font-family:var(--font-body);-webkit-font-smoothing:antialiased;}
+button{font-family:var(--font-body);cursor:pointer;border:none;background:none;}
+input{font-family:var(--font-body);outline:none;}
 a{color:inherit;text-decoration:none;}
 
 /* canvas */
@@ -39,7 +53,7 @@ a{color:inherit;text-decoration:none;}
     linear-gradient(to bottom, rgba(6,6,13,0.5) 0%, transparent 20%, transparent 80%, rgba(6,6,13,0.5) 100%);}
 
 /* page */
-.page{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;padding-bottom:60px;}
+.page{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;padding-bottom:80px;}
 
 /* card */
 .card{width:100%;max-width:460px;max-height:85vh;background:rgba(15,15,22,0.82);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.15),0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(0,0,0,0.3);overflow:hidden;display:flex;flex-direction:column;}
@@ -115,6 +129,15 @@ a{color:inherit;text-decoration:none;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .btn-submit.loading .btn-txt{display:none;}
 .btn-submit.loading .btn-spinner{display:block;margin:auto;}
+
+/* Primary and Secondary Button Classes */
+.btn-primary{font-family:var(--font-display);padding:12px 24px;background:var(--violet);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition-fast);position:relative;overflow:hidden;}
+.btn-primary::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 60%);}
+.btn-primary:hover{background:var(--violet-600);transform:translateY(-1px);box-shadow:0 6px 24px rgba(108,123,255,0.45);}
+.btn-primary:active{transform:translateY(0);}
+
+.btn-secondary{font-family:var(--font-display);padding:12px 24px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.15);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition-fast);}
+.btn-secondary:hover{background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.25);}
 
 /* divider */
 .divider{display:flex;align-items:center;gap:12px;}
