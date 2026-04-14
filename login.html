@@ -22,7 +22,7 @@
 
 <style>
 /* ═════════════════════════════════════════════════════════════════════════════
-   LOGIN PAGE — COMPLETE STYLES
+   LOGIN PAGE — NODING DESIGN SYSTEM
    ═════════════════════════════════════════════════════════════════════════════ */
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -30,7 +30,7 @@
 :root{
   --violet:#6c7bff;
   --violet-400:#818cf8;
-  --violet-600:#4451d4;
+  --violet-600:#5a6de5;
   --ink:#09090e;
   --ink-light:#0f0f16;
   --font-display:'Syne',sans-serif;
@@ -56,7 +56,7 @@ a{color:inherit;text-decoration:none;}
     linear-gradient(to bottom, rgba(6,6,13,0.5) 0%, transparent 20%, transparent 80%, rgba(6,6,13,0.5) 100%);}
 
 /* ═════════════════════════════════════════════════════════════════════════════
-   LAYOUT — Equidistant Centering
+   LAYOUT — Equidistant Centering with Footer Offset
    ═════════════════════════════════════════════════════════════════════════════ */
 
 .page{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;padding-bottom:80px;}
@@ -132,13 +132,13 @@ a{color:inherit;text-decoration:none;}
 .forgot-link:hover{color:#9ca8ff;}
 
 /* ═════════════════════════════════════════════════════════════════════════════
-   BUTTONS — Primary & Secondary
+   BUTTONS — NODING DNA
    ═════════════════════════════════════════════════════════════════════════════ */
 
-/* Primary Button — Syne font, 700 weight, glow hover */
-.btn-primary{width:100%;height:46px;font-family:var(--font-display);font-weight:700;font-size:14px;color:#fff;background:var(--violet);border:none;border-radius:12px;cursor:pointer;transition:all var(--transition-fast);position:relative;overflow:hidden;}
+/* Primary Button — Syne font, 700 weight, violet glow */
+.btn-primary{width:100%;height:46px;font-family:var(--font-display);font-weight:700;font-size:14px;color:#fff;background:var(--violet);border:none;border-radius:12px;cursor:pointer;transition:all var(--transition-fast);position:relative;overflow:hidden;box-shadow:0 4px 15px rgba(108,123,255,0.3);}
 .btn-primary::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.12) 0%,transparent 60%);}
-.btn-primary:hover{background:var(--violet-600);transform:translateY(-1px);box-shadow:0 6px 24px rgba(108,123,255,0.45),0 0 30px rgba(108,123,255,0.3);}
+.btn-primary:hover{background:var(--violet-600);transform:translateY(-2px);box-shadow:0 8px 30px rgba(108,123,255,0.5),0 0 40px rgba(108,123,255,0.25);}
 .btn-primary:active{transform:translateY(0);}
 .btn-primary.loading{pointer-events:none;opacity:0.7;}
 .btn-primary .btn-spinner{display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;}
@@ -150,9 +150,6 @@ a{color:inherit;text-decoration:none;}
 .btn-secondary{width:100%;height:46px;font-family:var(--font-display);font-weight:600;font-size:14px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:12px;cursor:pointer;transition:all var(--transition-fast);}
 .btn-secondary:hover{background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.25);}
 
-/* Legacy submit button class (maps to primary) */
-.btn-submit{ composes: btn-primary; }
-
 /* divider */
 .divider{display:flex;align-items:center;gap:12px;}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07);}
@@ -163,10 +160,10 @@ a{color:inherit;text-decoration:none;}
 .btn-social{flex:1;height:42px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:rgba(244,244,251,0.75);cursor:pointer;transition:all 0.15s;}
 .btn-social:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.18);color:#f4f4fb;}
 
-/* switch prompt */
+/* switch prompt with violet links */
 .switch-prompt{text-align:center;font-size:13px;color:rgba(143,143,168,0.7);}
-.switch-prompt span{color:#9ca8ff;cursor:pointer;transition:color 0.15s;}
-.switch-prompt span:hover{color:#fff;}
+.switch-prompt span{color:var(--violet);font-weight:600;cursor:pointer;transition:all 0.15s;}
+.switch-prompt span:hover{color:#fff;text-shadow:0 0 20px rgba(108,123,255,0.5);}
 
 /* trust badges */
 .trust-row{display:flex;align-items:center;justify-content:center;gap:0.875rem;padding:0.75rem 2rem;border-top:1px solid rgba(255,255,255,0.05);flex-shrink:0;}
@@ -755,7 +752,7 @@ a{color:inherit;text-decoration:none;}
      AUTHENTICATION FUNCTIONS
      ═══════════════════════════════════════════════════════════════════════════ */
 
-  /* SIGN IN — with personalized welcome */
+  /* SIGN IN — with personalized welcome (username priority) */
   window.doSignin = async function (e) {
     e.preventDefault();
     clearErr('siEmailErr'); clearErr('siPwErr');
@@ -780,9 +777,10 @@ a{color:inherit;text-decoration:none;}
       
       if (!error) {
         var data = res.data;
-        var name = (data.user.user_metadata && (data.user.user_metadata.display_name || data.user.user_metadata.username)) || 'there';
+        /* Priority: username > display_name > 'user' */
+        var username = data.user.user_metadata?.username || data.user.user_metadata?.display_name || 'user';
         
-        showToast("Welcome back, " + name + "!", "success");
+        showToast("Welcome back, " + username + "!", "success");
         console.log("Redirecting to index.html...");
         setTimeout(function () {
           window.location.assign('index.html');
@@ -797,17 +795,17 @@ a{color:inherit;text-decoration:none;}
     }
   };
 
-  /* SIGN UP — with welcome toast */
+  /* SIGN UP — with welcome toast and username metadata */
   window.doSignup = async function (e) {
     e.preventDefault();
     clearErr('suUsernameErr'); clearErr('suEmailErr');
-    var un = document.getElementById('suUsername').value.trim();
+    var username = document.getElementById('suUsername').value.trim();
     var email = document.getElementById('suEmail').value.trim();
     var pw = document.getElementById('suPassword').value;
     var terms = document.getElementById('termsCheck').checked;
     var ok = true;
     
-    if (!un || un.length < 3) { 
+    if (!username || username.length < 3) { 
       showErr('suUsernameErr', 'Username must be at least 3 characters.'); 
       ok = false; 
     }
@@ -830,7 +828,7 @@ a{color:inherit;text-decoration:none;}
       var res = await window._supabase.auth.signUp({
         email: email,
         password: pw,
-        options: { data: { username: un } }
+        options: { data: { username: username } }
       });
       if (res.error) throw res.error;
       
