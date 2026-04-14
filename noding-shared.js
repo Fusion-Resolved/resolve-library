@@ -24,23 +24,22 @@ window.shCloseSidebar = function() {
 /** ── 1a. NAVIGATION MAP & SIDEBAR INJECTION ── **/
 
 /**
- * Global navigation map for all Noding pages
+ * Global navigation map for main app pages ONLY
  * Used by shSetActiveNav to determine active state
+ * STRICT: Only primary navigation links (no settings sheet tabs)
  */
 window.navMap = {
   'index.html': { name: 'Home', icon: 'home' },
-  'home.html': { name: 'Home', icon: 'home' },
+  'home.html': { name: 'Home', icon: 'home', alias: 'index.html' },
   'effects.html': { name: 'Effects', icon: 'grid' },
   'nodegraph.html': { name: 'Node Graph', icon: 'git-branch' },
   'library.html': { name: 'Library', icon: 'layers' },
-  'community.html': { name: 'Community', icon: 'users' },
-  'source-of-truth.html': { name: 'Docs', icon: 'book-open' },
-  'settings.html': { name: 'Settings', icon: 'settings' },
-  '6 - noding-edit-settings.html': { name: 'Settings', icon: 'settings', alias: 'settings.html' }
+  'community.html': { name: 'Community', icon: 'users' }
 };
 
 /**
- * SVG icon collection for navigation
+ * SVG icon collection for GLOBAL navigation ONLY
+ * STRICT: No Settings Sheet tab icons here (those are separate)
  */
 window.navIcons = {
   home: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
@@ -48,12 +47,12 @@ window.navIcons = {
   'git-branch': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
   layers: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
   users: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-  'book-open': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
   settings: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 4 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
 };
 
 /**
  * Inject sidebar navigation HTML into the page
+ * STRICT STRUCTURE: 5 main links + Account section (Settings + Sign Out)
  * Call this from DOMContentLoaded to populate sidebar structure
  * @param {string} currentPage - Filename of current page (e.g., 'index.html')
  */
@@ -67,7 +66,7 @@ window.shInjectSidebar = function(currentPage) {
   // Get current page name for highlighting
   const pageName = currentPage || window.location.pathname.split('/').pop() || 'index.html';
   
-  // Main navigation items
+  // STRICT: Only these 5 main navigation items
   const mainNav = [
     { href: 'index.html', name: 'Home', icon: 'home' },
     { href: 'effects.html', name: 'Effects', icon: 'grid' },
@@ -76,18 +75,8 @@ window.shInjectSidebar = function(currentPage) {
     { href: 'community.html', name: 'Community', icon: 'users' }
   ];
 
-  // Secondary/Utility navigation
-  const utilityNav = [
-    { href: 'source-of-truth.html', name: 'Docs', icon: 'book-open' }
-  ];
-
-  // Account section (always includes Settings)
-  const accountNav = [
-    { href: 'settings.html', name: 'Settings', icon: 'settings' }
-  ];
-
   // Build main nav HTML
-  let mainNavHtml = mainNav.map(item => {
+  const mainNavHtml = mainNav.map(item => {
     const isActive = pageName === item.href || pageName.endsWith('/' + item.href);
     const iconSvg = window.navIcons[item.icon] || '';
     return `
@@ -98,54 +87,35 @@ window.shInjectSidebar = function(currentPage) {
     `;
   }).join('');
 
-  // Build utility nav HTML
-  let utilityNavHtml = utilityNav.map(item => {
-    const isActive = pageName === item.href || pageName.endsWith('/' + item.href);
-    const iconSvg = window.navIcons[item.icon] || '';
-    return `
-      <a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-page="${item.href}">
-        ${iconSvg}
-        <span>${item.name}</span>
-      </a>
-    `;
-  }).join('');
+  // Check if on settings page (for Account section highlighting)
+  const isSettingsPage = pageName.includes('settings') || 
+                         pageName.includes('6 - noding-edit-settings');
 
-  // Build account nav HTML (Settings link)
-  let accountNavHtml = accountNav.map(item => {
-    const isActive = pageName === item.href || 
-                     pageName.endsWith('/' + item.href) ||
-                     pageName.includes('settings') ||
-                     pageName.includes('6 - noding-edit-settings');
-    const iconSvg = window.navIcons[item.icon] || '';
-    return `
-      <a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-page="${item.href}">
-        ${iconSvg}
-        <span>${item.name}</span>
-      </a>
-    `;
-  }).join('');
-
-  // Sidebar sections structure
+  // STRICT Sidebar structure:
+  // 1. Main Navigation (5 links)
+  // 2. Account Section (Settings + Sign Out) - Sign Out MUST be last
   const sidebarContent = `
     <!-- Main Navigation -->
     <div class="sh-sb-section" style="padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
       ${mainNavHtml}
     </div>
     
-    <!-- Utility Navigation -->
-    <div class="sh-sb-section" style="padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
-      ${utilityNavHtml}
-    </div>
-    
-    <!-- Account Section (Settings + Auth) -->
-    <div class="sh-sb-section sh-sb-account" style="padding:16px 0;margin-top:auto;">
+    <!-- Account Section - Always at bottom -->
+    <div class="sh-sb-account" style="padding:16px 0;margin-top:auto;border-top:1px solid rgba(255,255,255,0.06);">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(143,143,168,0.6);padding:0 20px 8px;">Account</div>
-      ${accountNavHtml}
+      
+      <!-- Settings Link -->
+      <a href="settings.html" class="nav-item ${isSettingsPage ? 'active' : ''}" data-page="settings.html">
+        ${window.navIcons['settings'] || ''}
+        <span>Settings</span>
+      </a>
+      
+      <!-- User Info + Sign Out (injected by auth.js, but Sign Out structure defined here) -->
       <div id="sidebar-auth-portal"></div>
     </div>
   `;
 
-  // Insert content (preserving existing structure if any)
+  // Insert content (clear any existing ghost tabs/links first)
   const existingContent = sidebar.querySelector('.sh-sb-content');
   if (existingContent) {
     existingContent.innerHTML = sidebarContent;
@@ -161,42 +131,41 @@ window.shInjectSidebar = function(currentPage) {
 };
 
 /**
- * Set active navigation state for any page
- * Call this after sidebar injection to highlight current page
- * @param {string} pageName - Current page filename (e.g., 'settings.html')
+ * Set active navigation state for PRIMARY navigation links only
+ * STRICT: Does NOT affect Settings Sheet tabs (sh-nav class)
+ * @param {string} pageName - Current page filename (e.g., 'index.html')
  */
 window.shSetActiveNav = function(pageName) {
   const currentPage = pageName || window.location.pathname.split('/').pop() || 'index.html';
   
-  // Update all nav-item links
-  document.querySelectorAll('.nav-item').forEach(item => {
+  // STRICT: Only update nav-item elements in the GLOBAL sidebar (sh-sidebar)
+  // NEVER touch sh-nav items (those are for Settings Sheet internal navigation)
+  const globalSidebar = document.getElementById('sh-sidebar');
+  if (!globalSidebar) return;
+  
+  // Only target nav-items within the global sidebar
+  globalSidebar.querySelectorAll('.nav-item').forEach(item => {
     const itemPage = item.getAttribute('data-page');
     const href = item.getAttribute('href');
     
-    // Check for exact match or alias match
+    // STRICT: Only apply active state to primary nav links
     let isActive = false;
+    
+    // Check main nav pages
     if (itemPage === currentPage || href === currentPage) {
       isActive = true;
     }
-    // Check settings aliases
-    if (currentPage.includes('settings') || currentPage.includes('6 - noding-edit-settings')) {
-      if (itemPage === 'settings.html' || href === 'settings.html') {
-        isActive = true;
-      }
+    
+    // Check for home.html alias
+    if (currentPage === 'home.html' && (itemPage === 'index.html' || href === 'index.html')) {
+      isActive = true;
     }
+    
+    // STRICT: Settings active state is handled separately by shInjectSidebar
+    // Do NOT apply active state logic to settings sheet tabs here
     
     item.classList.toggle('active', isActive);
   });
-
-  // Also check navMap for any special aliases
-  if (window.navMap[currentPage]) {
-    const navInfo = window.navMap[currentPage];
-    if (navInfo.alias) {
-      document.querySelectorAll(`[data-page="${navInfo.alias}"]`).forEach(item => {
-        item.classList.add('active');
-      });
-    }
-  }
 };
 
 /**
