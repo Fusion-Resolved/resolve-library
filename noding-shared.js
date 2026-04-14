@@ -52,12 +52,12 @@ window.navIcons = {
 
 /**
  * Inject sidebar navigation HTML into the page
- * STRICT STRUCTURE:
- *   1. Main Navigation (5 links)
- *   2. Account Section (Profile Email, Settings, Sign Out)
- *      - Sign Out MUST be the absolute last item
- *      - No elements after Sign Out
- * Call this from DOMContentLoaded to populate sidebar structure
+ * CLEAN STRUCTURE:
+ *   1. Main Navigation (5 core links)
+ *   2. Account Section (Email → Settings → Auth Button)
+ *      - Auth button shows "Sign Out" when logged in, "Sign In / Sign Up" when logged out
+ *      - NO elements after the auth button
+ * STRICT ISOLATION: No Wizard Steps, No Settings Tabs, No Modal navigation
  * @param {string} currentPage - Filename of current page (e.g., 'index.html')
  */
 window.shInjectSidebar = function(currentPage) {
@@ -67,10 +67,9 @@ window.shInjectSidebar = function(currentPage) {
     return;
   }
 
-  // Get current page name for highlighting
   const pageName = currentPage || window.location.pathname.split('/').pop() || 'index.html';
   
-  // STRICT: Only these 5 main navigation items (NO ghosts, NO tabs, NO wizard steps)
+  // CORE NAVIGATION: Exactly 5 links
   const mainNav = [
     { href: 'index.html', name: 'Home', icon: 'home' },
     { href: 'effects.html', name: 'Effects', icon: 'grid' },
@@ -79,77 +78,69 @@ window.shInjectSidebar = function(currentPage) {
     { href: 'community.html', name: 'Community', icon: 'users' }
   ];
 
-  // Build main nav HTML
+  // Build main nav with consistent styling
   const mainNavHtml = mainNav.map(item => {
     const isActive = pageName === item.href || pageName.endsWith('/' + item.href);
     const iconSvg = window.navIcons[item.icon] || '';
     return `
-      <a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-page="${item.href}">
-        ${iconSvg}
+      <a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-page="${item.href}" style="display:flex;align-items:center;gap:12px;padding:10px 16px;margin:0 8px 4px;border-radius:10px;transition:all 0.15s;color:rgba(244,244,251,0.7);text-decoration:none;">
+        <span style="display:flex;align-items:center;opacity:0.7;">${iconSvg}</span>
         <span style="font-family:var(--font-body);font-size:13px;font-weight:500;">${item.name}</span>
       </a>
     `;
   }).join('');
 
-  // Check if on settings page (for Account section highlighting)
-  const isSettingsPage = pageName === 'settings.html' || 
-                         pageName.includes('settings');
+  // Settings active state check
+  const isSettingsPage = pageName === 'settings.html' || pageName.includes('settings');
 
-  // STRICT Sidebar structure - NO tabs, NO sh-nav contamination, NO elements after Sign Out
-  const sidebarContent = `
+  // CLEAN SIDEBAR — Single source of truth, no ghost items
+  sidebar.innerHTML = `
     <!-- ═══════════════════════════════════════════════════════════════════════
-         MAIN NAVIGATION — 5 Core App Links
+         CORE NAVIGATION — 5 Links Only
          ═══════════════════════════════════════════════════════════════════════ -->
-    <div class="sh-sb-main" style="padding:16px 0;flex-shrink:0;">
+    <nav class="sh-sb-main" style="padding:20px 0;flex-shrink:0;">
       ${mainNavHtml}
-    </div>
+    </nav>
     
     <!-- ═══════════════════════════════════════════════════════════════════════
-         ACCOUNT SECTION — Strict order: Email → Settings → Sign Out
-         Sign Out MUST be the absolute last element in the sidebar.
+         ACCOUNT SECTION — Email → Settings → Auth
          ═══════════════════════════════════════════════════════════════════════ -->
-    <div class="sh-sb-account" style="padding:16px 0;margin-top:auto;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+    <div class="sh-sb-account" style="padding:20px 0;margin-top:auto;border-top:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
       
-      <!-- Account Label -->
+      <!-- Section Label -->
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:rgba(143,143,168,0.5);padding:0 20px 12px;font-family:var(--font-mono);">Account</div>
       
-      <!-- Profile Info: Email address (small, muted) — populated by auth.js -->
-      <div id="sidebar-user-profile" style="padding:0 16px 12px;margin:0 4px;">
-        <div style="font-size:11px;color:rgba(143,143,168,0.6);padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.05);">
-          <span id="sidebar-user-email" style="font-family:var(--font-mono);letter-spacing:0.02em;">Not signed in</span>
+      <!-- User Email: Small, muted, DM Mono -->
+      <div style="padding:0 16px;margin:0 8px 12px;">
+        <div id="sidebar-email-container" style="font-size:11px;color:rgba(143,143,168,0.6);padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.05);font-family:var(--font-mono);letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          <span id="sidebar-user-email">Not signed in</span>
         </div>
       </div>
       
       <!-- Settings Link -->
-      <a href="settings.html" class="nav-item ${isSettingsPage ? 'active' : ''}" data-page="settings.html" style="margin-bottom:4px;">
-        ${window.navIcons['settings'] || ''}
+      <a href="settings.html" class="nav-item ${isSettingsPage ? 'active' : ''}" data-page="settings.html" style="display:flex;align-items:center;gap:12px;padding:10px 16px;margin:0 8px 4px;border-radius:10px;transition:all 0.15s;color:rgba(244,244,251,0.7);text-decoration:none;">
+        <span style="display:flex;align-items:center;opacity:0.7;">${window.navIcons['settings'] || ''}</span>
         <span style="font-family:var(--font-body);font-size:13px;font-weight:500;">Settings</span>
       </a>
       
-      <!-- Sign Out Button — ABSOLUTE LAST ITEM, no exceptions -->
-      <button class="nav-item" onclick="handleSignOut()" style="color:rgba(240,96,96,0.7);border:none;background:transparent;width:100%;text-align:left;cursor:pointer;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        <span style="font-family:var(--font-body);font-size:13px;font-weight:500;">Sign Out</span>
-      </button>
+      <!-- Auth Portal: Sign Out (logged in) OR Sign In/Up (logged out) -->
+      <div id="sidebar-auth-portal" style="margin-top:4px;"></div>
       
     </div>
   `;
-
-  // Insert content (completely replace any existing ghost content)
-  sidebar.innerHTML = sidebarContent;
   
-  // Ensure proper flex layout on sidebar
+  // Apply flex layout
   sidebar.style.display = 'flex';
   sidebar.style.flexDirection = 'column';
   sidebar.style.height = '100%';
 
-  console.log('[Noding] Sidebar injected for page:', pageName);
-  console.log('[Noding] Sidebar structure: 5 main links + Account (Email, Settings, Sign Out)');
+  console.log('[Noding] Sidebar injected:', pageName);
 };
 
 /**
  * Set active navigation state for PRIMARY navigation links only
  * STRICT: Does NOT affect Settings Sheet tabs (sh-nav class)
+ * Applies visual active state (background, color, opacity) to core 5 + Settings
  * @param {string} pageName - Current page filename (e.g., 'index.html')
  */
 window.shSetActiveNav = function(pageName) {
@@ -187,7 +178,22 @@ window.shSetActiveNav = function(pageName) {
       isActive = true;
     }
     
+    // Apply active class and inline styles
     item.classList.toggle('active', isActive);
+    
+    if (isActive) {
+      // Active visual state: white text, subtle background, full opacity icon
+      item.style.background = 'rgba(255,255,255,0.08)';
+      item.style.color = '#f4f4fb';
+      const iconSpan = item.querySelector('span:first-child');
+      if (iconSpan) iconSpan.style.opacity = '1';
+    } else {
+      // Inactive visual state: muted text, transparent bg, dimmed icon
+      item.style.background = 'transparent';
+      item.style.color = 'rgba(244,244,251,0.7)';
+      const iconSpan = item.querySelector('span:first-child');
+      if (iconSpan) iconSpan.style.opacity = '0.7';
+    }
   });
 };
 
