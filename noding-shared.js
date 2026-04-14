@@ -176,28 +176,13 @@ window.shInjectSidebar = function (currentPage) {
 
 
 /** ── 2. THE SPECIALIST: Fills the user info slots (Avatar, Username, etc.) ── **/
-window.shRenderSidebarAuth = async function () {
+window.shRenderSidebarAuth = function () {
   const emailContainer = document.getElementById('sidebar-email-container');
   const portal = document.getElementById('sidebar-auth-portal');
   if (!portal || !emailContainer) return;
 
-  // 1. Resolve user from global state
+  // 1. Resolve user from global state or storage
   let user = window.__nodingUser || null;
-
-  // 2. NEW: If no local user, ask Supabase directly for the absolute truth
-  if (!user && window.supabase) {
-    try {
-      const { data } = await window.supabase.auth.getSession();
-      if (data && data.session && data.session.user) {
-        user = data.session.user;
-        window.__nodingUser = user; // Sync the cache
-      }
-    } catch (e) {
-      console.warn('[Noding] Could not fetch Supabase session for sidebar:', e);
-    }
-  }
-
-  // 3. Fallback to local storage if Supabase isn't loaded yet
   if (!user) {
     try {
       user = JSON.parse(localStorage.getItem('rl-auth-user') || 'null');
@@ -233,12 +218,16 @@ window.shRenderSidebarAuth = async function () {
       </button>
     `;
   } else {
-    // ── LOGGED OUT (Combined Button) ───────────────────────────────────────
+    // ── LOGGED OUT ─────────────────────────────────────────────────────────
     emailContainer.innerHTML = `<span id="sidebar-user-email">Not signed in</span>`;
     portal.innerHTML = `
       <a class="sh-sb-item" href="login.html">
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-        Sign In / Register
+        Sign In
+      </a>
+      <a class="sh-sb-item sh-sb-signup" href="login.html?mode=signup">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        Sign Up
       </a>
     `;
   }

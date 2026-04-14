@@ -22,6 +22,9 @@ function initSupabase() {
   if (!window._supabase) {
     try {
       window._supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        window.supabaseClient = window._supabase;
+        
       console.log("[auth.js] Supabase client initialized successfully");
     } catch (err) {
       console.error("[auth.js] Failed to initialize Supabase:", err);
