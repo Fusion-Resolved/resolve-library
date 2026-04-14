@@ -192,6 +192,35 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 .live-badge span { font-family:var(--font-mono); font-size:0.6875rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--node-teal); }
 @keyframes pulse-teal { 0%,100%{box-shadow:0 0 0 0 rgba(15,168,136,0.5)} 50%{box-shadow:0 0 0 5px rgba(15,168,136,0)} }
 
+/* ══ STATS STRIP ══ */
+.stats-strip {
+  position:relative; z-index:2;
+  background:var(--bg-surface); border-bottom:1px solid var(--border-surface);
+  padding:0 24px;
+}
+.stats-inner {
+  max-width:1100px; margin:0 auto;
+  display:flex; align-items:stretch; justify-content:space-around;
+  flex-wrap:wrap;
+}
+.stat-cell {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px; padding:20px 16px; flex:1; min-width:120px;
+  border-right:1px solid var(--border-surface);
+}
+.stat-cell:last-child { border-right:none; }
+.stat-num {
+  font-family:var(--font-display); font-weight:800;
+  font-size:clamp(1.4rem,2.4vw,1.9rem); letter-spacing:-0.03em;
+  color:var(--text-primary); line-height:1;
+}
+.stat-num.violet { color:var(--violet-light); }
+.stat-num.teal   { color:var(--node-teal); }
+.stat-lbl {
+  font-family:var(--font-mono); font-size:0.6rem;
+  letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted);
+}
+
 /* ══ ACTIVITY TICKER ══ */
 .ticker-wrap {
   overflow:hidden; border-bottom:1px solid var(--border-surface);
@@ -571,64 +600,39 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 </head>
 <body>
 
+<!-- GLOWING BACKGROUND -->
 <div class="ambient">
   <div class="amb-blob amb-1"></div>
   <div class="amb-blob amb-2"></div>
   <div class="amb-blob amb-3"></div>
 </div>
 
-<!-- HEADER -->
-<!-- ── HEADER ─────────────────────────────────────────────── -->
-<header> 
-  <a href="index.html" class="logo">
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect width="26" height="26" rx="7" fill="#6c7bff"/><circle cx="9" cy="13" r="3" fill="#09090e"/><circle cx="18" cy="9" r="2.2" fill="#09090e"/><circle cx="18" cy="17" r="2.2" fill="#09090e"/><line x1="12" y1="11.3" x2="16" y2="9.8" stroke="#09090e" stroke-width="1.4"/><line x1="12" y1="14.7" x2="16" y2="16.2" stroke="#09090e" stroke-width="1.4"/></svg>
-    <span class="brand-text">noding<span class="share-dot">.</span></span>
-  </a>
-  <nav class="nav-center">
-    <div class="nav-pill">
-      <a class="nav-item" href="index.html">Home</a>
-      <a class="nav-item" href="effects.html">Effects</a>
-      <a class="nav-item" href="nodegraph.html">Node Graph</a>
-      <a class="nav-item" href="library.html">Library</a>
-      <a class="nav-item active" href="community.html">Community</a>
-    </div>
-  </nav>
-  <div class="hdr-right">
-    <button class="sh-btn-plus" aria-label="Menu" onclick="shOpenSidebar()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-       </svg>
-    </button>
-  </div>
-</header>
+<!-- GLOBAL HEADER & SIDEBAR DRAWER ANCHORS -->
+<div id="master-header"></div>
+<aside id="sh-sb"></aside>
+
+<main class="page-main">
 
 <!-- HERO -->
 <section class="hero">
   <canvas id="community-canvas"></canvas>
-
   <div class="hero-content">
-    <div class="hero-eyebrow">Community · Submissions</div>
     <h1 class="hero-title">
-      <span class="title-line">Build Together,</span>
-      <span class="title-line"><span class="accent-violet">Share</span> Everything.</span>
+      <span class="title-line">The <span class="accent-violet">Community</span></span>
+      <span class="title-line sm">Node Library</span>
     </h1>
-    <p class="hero-sub">
-      Submit your own node effects, vote on favourites, and build the most comprehensive Resolve resource together.
-    </p>
+    <p class="hero-sub">Discover, share, and vote on the best custom effects and macro node trees built by the Resolve community.</p>
     <div class="hero-actions">
-      <button class="btn-primary" onclick="openModal()">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        Submit Your Effect
+      <button class="btn-primary" onclick="openSubmitModal()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Submit an Effect
       </button>
-      <button class="btn-ghost" onclick="document.getElementById('browse').scrollIntoView({behavior:'smooth'})">Browse Community</button>
+      <button class="btn-ghost" onclick="document.getElementById('browse').scrollIntoView({behavior:'smooth'})">Browse All</button>
     </div>
   </div>
-
   <div class="live-badge">
-    <span class="live-dot"></span>
-    <span id="live-count">14 online now</span>
+    <div class="live-dot"></div>
+    <span id="live-count">24 Nodes uploaded today</span>
   </div>
 </section>
 
@@ -722,7 +726,8 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
         </button>
       </div>
     </div>
-    <aside class="sidebar">
+    <!-- RIGHT COLUMN: changed from <aside> to <div> to avoid conflict with global drawer -->
+    <div class="sidebar">
       <!-- LEADERBOARD -->
       <div class="sidebar-card reveal">
         <div class="sidebar-head">
@@ -739,7 +744,7 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
         </div>
         <div class="activity-list" id="activityFeed"></div>
       </div>
-    </aside>
+    </div>
   </div>
 </section>
 
@@ -760,6 +765,8 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
     </div>
   </div>
 </section>
+
+</main>
 
 <!-- BOTTOM NAV (mobile) -->
 <nav class="sh-bottom-nav">
@@ -1381,6 +1388,7 @@ function countUp(){
 /* ══ MODAL ══ */
 function openModal(){ document.getElementById('submitModal').classList.add('open'); }
 function closeModal(){ document.getElementById('submitModal').classList.remove('open'); }
+function openSubmitModal(){ openModal(); }
 function handleModalOverlayClick(e){ if(e.target===e.currentTarget) closeModal(); }
 function toggleTag(btn){ btn.classList.toggle('active'); }
 function submitEffect(){
@@ -1418,6 +1426,7 @@ document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 /* ══ LIVE COUNT FLICKER ══ */
 function flickerLive(){
   const el = document.getElementById('live-count');
+  if(!el) return;
   const base = 12 + Math.floor(Math.random()*6);
   el.textContent = `${base} online now`;
   setTimeout(flickerLive, 8000+Math.random()*12000);
@@ -1451,6 +1460,18 @@ setTimeout(flickerLive, 12000);
     </div>
   </div>
 </footer>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof window.shInjectHeader === 'function') {
+      window.shInjectHeader({
+        actionText: "+ Submit Effect",
+        actionFunc: "openSubmitModal()",
+        activeId: "nav-community"
+      });
+    }
+  });
+</script>
 
 </body>
 </html>

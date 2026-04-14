@@ -26,33 +26,58 @@ window.shCloseSidebar = function () {
   document.body.style.overflow = '';
 };
 
-/** ── 1a. NAVIGATION MAP & SIDEBAR INJECTION ── **/
+/** ── 2. THE ARCHITECT: Master Header Injection ── **/
+window.shInjectHeader = function(options = {}) {
+  const headerContainer = document.getElementById('master-header');
+  if (!headerContainer) return;
 
-/**
- * Global navigation map for main app pages ONLY
- * Used by shSetActiveNav to determine active state
- * STRICT: Only primary navigation links (no settings sheet tabs)
- */
-window.navMap = {
-  'index.html': { name: 'Home', icon: 'home' },
-  'home.html': { name: 'Home', icon: 'home', alias: 'index.html' },
-  'effects.html': { name: 'Effects', icon: 'grid' },
-  'nodegraph.html': { name: 'Node Graph', icon: 'git-branch' },
-  'library.html': { name: 'Library', icon: 'layers' },
-  'community.html': { name: 'Community', icon: 'users' }
-};
+  // Nuances (Defaults if nothing is provided by the specific page)
+  const actionText = options.actionText || "+ Create";
+  const actionFunc = options.actionFunc || "openGlobalAdd()";
+  const activeId   = options.activeId   || "nav-home";
 
-/**
- * SVG icon collection for GLOBAL navigation ONLY
- * STRICT: No Settings Sheet tab icons here (those are separate)
- */
-window.navIcons = {
-  home: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
-  grid: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
-  'git-branch': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
-  layers: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
-  users: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-  settings: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 4 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
+  // The Universal HTML Shell
+  headerContainer.innerHTML = `
+    <header>
+      <a class="logo" href="index.html">
+        <div class="logo-mark">
+          <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+            <circle cx="11" cy="11" r="5" fill="rgba(108,123,255,0.15)" stroke="rgba(108,123,255,0.4)" stroke-width="1"/>
+            <circle cx="25" cy="11" r="5" fill="rgba(108,123,255,0.15)" stroke="rgba(108,123,255,0.4)" stroke-width="1"/>
+            <circle cx="18" cy="25" r="5" fill="rgba(108,123,255,0.28)" stroke="#6c7bff" stroke-width="1"/>
+            <circle cx="11" cy="11" r="2" fill="#4451d4"/><circle cx="25" cy="11" r="2" fill="#4451d4"/><circle cx="18" cy="25" r="2" fill="#6c7bff"/>
+            <line x1="16" y1="11" x2="20" y2="11" stroke="#6c7bff" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="13.5" y1="15" x2="16.5" y2="21" stroke="#6c7bff" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="22.5" y1="15" x2="19.5" y2="21" stroke="#6c7bff" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="brand-text">noding</span><span class="share-dot">.</span>
+      </a>
+
+      <div class="nav-center">
+        <div class="nav-pill">
+          <a class="nlink ${activeId === 'nav-home' ? 'active' : ''}" id="nav-home" href="index.html">Home</a>
+          <a class="nlink ${activeId === 'nav-effects' ? 'active' : ''}" id="nav-effects" href="effects.html">Effects</a>
+          <a class="nlink ${activeId === 'nav-nodes' ? 'active' : ''}" id="nav-nodes" href="nodegraph.html">Node Graph</a>
+          <a class="nlink ${activeId === 'nav-library' ? 'active' : ''}" id="nav-library" href="library.html">Library</a>
+          <a class="nlink ${activeId === 'nav-community' ? 'active' : ''}" id="nav-community" href="community.html">Community</a>
+        </div>
+      </div>
+
+      <div class="sh-hdr-right">
+        <div id="auth-btn-container"></div>
+        <button class="sh-icon-btn" onclick="shOpenNote()" title="Quick note">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        
+        <button class="sh-add-btn" id="master-action-btn" onclick="${actionFunc}">${actionText}</button>
+        
+        <button class="sh-hbg-btn" onclick="shOpenSidebar()" aria-label="Menu">
+          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </header>
+  `;
 };
 
 /**
@@ -202,80 +227,6 @@ window.shRenderSidebarAuth = function () {
       </a>
       <a class="sh-sb-item sh-sb-signup" href="login.html?mode=signup">
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-        Sign Up
-      </a>
-    `;
-  }
-};
-
-/**
- * Render (or re-render) only the auth portion of the sidebar.
- *
- * Reads auth state from:
- *   1. window.__nodingUser   — set by auth.js when Supabase resolves a session
- *   2. localStorage 'rl-auth-user'  — legacy / offline fallback
- *
- * Updates:
- *   #sidebar-user-email   — the muted email pill above Settings
- *   #sidebar-auth-portal  — Sign Out button (logged in)
- *                           OR Sign In + Sign Up links (logged out)
- *
- * INVARIANT: nothing is written outside #sidebar-auth-portal.
- * Called by shInjectSidebar() and shOpenSidebar() automatically.
- * auth.js should also call this from its onAuthStateChange handler.
- */
-window.shRenderSidebarAuth = function () {
-  const emailSpan = document.getElementById('sidebar-user-email');
-  const portal    = document.getElementById('sidebar-auth-portal');
-  if (!portal) return; // sidebar not on this page
-
-  // ── Resolve the current user ──
-  let user = window.__nodingUser || null;
-  if (!user) {
-    try {
-      user = JSON.parse(localStorage.getItem('rl-auth-user') || 'null');
-    } catch (_) {}
-  }
-
-  // Inline SVGs for auth buttons (self-contained — no dependency on ICON above)
-  const SVG_SIGNOUT = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
-  const SVG_SIGNIN  = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>';
-  const SVG_SIGNUP  = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>';
-
-  if (user) {
-    // ── LOGGED IN ──────────────────────────────────────────────────────────
-    const email = user.email || user.name || 'Signed in';
-
-    if (emailSpan) {
-      emailSpan.textContent = email;
-      // Tooltip reveals the full address when the pill truncates
-      emailSpan.parentElement && (emailSpan.parentElement.title = email);
-    }
-
-    // Sign Out is the absolute last element in the sidebar.
-    portal.innerHTML = `
-      <button class="sh-sb-item sh-sb-signout"
-              onclick="window.shSidebarSignOut()"
-              aria-label="Sign out of Noding">
-        ${SVG_SIGNOUT}
-        Sign Out
-      </button>
-    `;
-  } else {
-    // ── LOGGED OUT ─────────────────────────────────────────────────────────
-    if (emailSpan) {
-      emailSpan.textContent = 'Not signed in';
-      emailSpan.parentElement && emailSpan.parentElement.removeAttribute('title');
-    }
-
-    // Sign In + Sign Up are the absolute last elements in the sidebar.
-    portal.innerHTML = `
-      <a class="sh-sb-item" href="login.html">
-        ${SVG_SIGNIN}
-        Sign In
-      </a>
-      <a class="sh-sb-item sh-sb-signup" href="login.html?mode=signup">
-        ${SVG_SIGNUP}
         Sign Up
       </a>
     `;
