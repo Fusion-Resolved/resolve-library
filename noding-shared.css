@@ -1114,3 +1114,770 @@ button:active   { transition: transform 80ms ease; }
   .card-sdks             { grid-column: 2 / 3; grid-row: 5 / 6; }
   .bento-card { padding: 18px; }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   SECTION: ADVANCED MODAL & SHEET SYSTEM
+   Consolidated from Effect Wizard (5 - noding-add-new-effect_V2.html)
+   and Settings Sheet (6 - noding-edit-settings.html)
+   Provides: wizards, settings sheets, confirmation dialogs, dirty state UI
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. CORE DESIGN VARIABLES (Glassmorphism tokens)
+   ───────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Glass tokens */
+  --glass-bg: rgba(18, 20, 28, 0.75);
+  --glass-blur: 24px;
+  --glass-shine: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  
+  /* Accent colors */
+  --primary-500: #6366F1;
+  --primary-400: #818CF8;
+  --success-500: #10B981;
+  --danger-500: #EF4444;
+  --warning-500: #F59E0B;
+  
+  /* Typography */
+  --font-display: 'Playfair Display', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  /* Animation timing */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. SHELL ARCHITECTURE
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Universal overlay (used by wizards, sheets, confirmations) */
+.sheet-ov,
+.confirm-ov {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base);
+}
+
+.sheet-ov.active,
+.confirm-ov.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Wizard container (centered modal with max-width) */
+.wizard {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4),
+              inset 0 1px 0 var(--glass-shine);
+  width: min(720px, 90vw);
+  max-height: min(840px, 90vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.95) translateY(20px);
+  transition: transform var(--transition-slow);
+}
+
+.sheet-ov.active .wizard {
+  transform: scale(1) translateY(0);
+}
+
+/* Settings sheet (right-side panel) */
+.sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(520px, 100vw);
+  height: 100vh;
+  background: var(--glass-bg);
+  border-left: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: -16px 0 48px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 var(--glass-shine);
+  display: flex;
+  flex-direction: column;
+  z-index: 1001;
+  transform: translateX(100%);
+  transition: transform var(--transition-slow);
+}
+
+.sheet.active {
+  transform: translateX(0);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. HEADER COMPONENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Wizard header */
+.wiz-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.wiz-hd-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.wiz-hd-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Settings sheet header */
+.sh-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.sh-hd-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Close button (shared) */
+.wiz-close,
+.sh-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.wiz-close:hover,
+.sh-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   4. NAVIGATION COMPONENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Wizard step indicator */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  gap: 8px;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.step-seg {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.step-seg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--primary-500);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--transition-base);
+}
+
+.step-seg.active::after,
+.step-seg.done::after {
+  transform: scaleX(1);
+}
+
+.step-seg.active {
+  background: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+
+.step-seg.done {
+  background: var(--success-500);
+}
+
+/* Settings sheet sidebar navigation */
+.sh-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 4px;
+  border-right: 1px solid var(--glass-border);
+  width: 180px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.sh-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+
+.sh-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.sh-nav-item.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary-400);
+}
+
+.sh-nav-item .icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.sh-nav-item.active .icon {
+  opacity: 1;
+}
+
+/* Tab bar (alternative to sidebar) */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  margin: 16px 20px 0;
+  width: fit-content;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tab-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. CONTENT PANELS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Wizard panel container */
+.wiz-panels {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.wiz-panel {
+  position: absolute;
+  inset: 0;
+  padding: 24px;
+  overflow-y: auto;
+  opacity: 0;
+  transform: translateX(20px);
+  pointer-events: none;
+  transition: all var(--transition-base);
+}
+
+.wiz-panel.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* Settings content area */
+.sh-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.sh-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.sh-tab-panel {
+  display: none;
+}
+
+.sh-tab-panel.active {
+  display: block;
+  animation: fadeIn 200ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   6. FOOTER COMPONENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Wizard footer */
+.wiz-ft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-top: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.15);
+  gap: 16px;
+}
+
+.wiz-ft-left,
+.wiz-ft-right {
+  display: flex;
+  gap: 10px;
+}
+
+/* Progress bar in footer */
+.wiz-progress {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0 16px;
+}
+
+.wiz-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-500), var(--primary-400));
+  border-radius: 2px;
+  transition: width var(--transition-base);
+}
+
+/* Settings sheet footer */
+.sh-ft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-top: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.2);
+  gap: 12px;
+}
+
+.sh-ft-left {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.sh-ft-right {
+  display: flex;
+  gap: 10px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   7. ACTION BUTTONS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Base button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+  white-space: nowrap;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary {
+  background: var(--primary-500);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:hover {
+  background: var(--primary-400);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+}
+
+.btn-danger {
+  background: var(--danger-500);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+  background: #F87171;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+}
+
+.btn-success {
+  background: var(--success-500);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-success:hover {
+  background: #34D399;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   8. DANGER ZONE & CONFIRMATION DIALOGS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Delete/danger overlay */
+.ov-del {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.ov-del .confirm-box {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(25, 20, 20, 0.9);
+}
+
+.ov-del .confirm-box::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), transparent);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Confirmation box */
+.confirm-box {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  backdrop-filter: blur(var(--glass-blur));
+  padding: 24px;
+  width: min(400px, 90vw);
+  text-align: center;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+}
+
+.confirm-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 20px;
+}
+
+.confirm-box.warning .confirm-icon {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning-500);
+}
+
+.confirm-box.danger .confirm-icon {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger-500);
+}
+
+.confirm-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.confirm-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.confirm-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 20px;
+  transition: border-color var(--transition-fast);
+}
+
+.confirm-input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+}
+
+.confirm-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* Danger zone card (within settings) */
+.dz-card {
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  background: rgba(239, 68, 68, 0.05);
+  margin-top: 24px;
+}
+
+.dz-card-hd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--danger-500);
+  margin-bottom: 8px;
+}
+
+.dz-card-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 16px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   9. UTILITY COMPONENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Unsaved changes banner */
+.unsaved-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: rgba(245, 158, 11, 0.95);
+  color: #000;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  transition: transform var(--transition-slow);
+}
+
+.unsaved-banner.visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+.unsaved-banner button {
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
+  color: #000;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.unsaved-banner button:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Success screen (wizard final step) */
+.wiz-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+  height: 100%;
+}
+
+.wiz-success-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  margin-bottom: 24px;
+  animation: scaleIn 400ms ease;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+.wiz-success-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.wiz-success-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+/* Dirty indicator (dot on tabs/navigation) */
+.dirty-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning-500);
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.sh-nav-item {
+  position: relative;
+}
+
+/* Form group styling */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.form-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 6px;
+}
+
+/* End of Advanced Modal & Sheet System */

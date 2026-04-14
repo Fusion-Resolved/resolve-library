@@ -39,10 +39,10 @@ a{color:inherit;text-decoration:none;}
     linear-gradient(to bottom, rgba(6,6,13,0.5) 0%, transparent 20%, transparent 80%, rgba(6,6,13,0.5) 100%);}
 
 /* page */
-.page{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;padding-bottom:32px;}
+.page{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;padding-bottom:60px;}
 
 /* card */
-.card{width:100%;max-width:460px;max-height:calc(100vh - 100px);background:rgba(15,15,22,0.82);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.15),0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(0,0,0,0.3);overflow:hidden;display:flex;flex-direction:column;}
+.card{width:100%;max-width:460px;max-height:85vh;background:rgba(15,15,22,0.82);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border:1px solid rgba(255,255,255,0.08);border-radius:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.15),0 32px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(0,0,0,0.3);overflow:hidden;display:flex;flex-direction:column;}
 
 /* card header */
 .card-top{padding:1.75rem 2rem 0;display:flex;flex-direction:column;align-items:center;gap:1rem;flex-shrink:0;}
@@ -235,7 +235,7 @@ a{color:inherit;text-decoration:none;}
         </label>
         <span class="forgot-link" onclick="setView('forgot')">Forgot password?</span>
       </div>
-      <button class="btn-submit" id="btnSignin" onclick="doSignin()">
+      <button type="button" class="btn-submit" id="btnSignin" onclick="doSignin(event)">
         <span class="btn-txt">Sign in</span>
         <div class="btn-spinner"></div>
       </button>
@@ -289,7 +289,7 @@ a{color:inherit;text-decoration:none;}
         <div class="check-box"></div>
         <span class="check-lbl">I agree to the <a href="terms-privacy.html">Terms of Service</a> and <a href="terms-privacy.html">Privacy Policy</a></span>
       </label>
-      <button class="btn-submit" id="btnSignup" onclick="doSignup()">
+      <button type="button" class="btn-submit" id="btnSignup" onclick="doSignup(event)">
         <span class="btn-txt">Create account</span>
         <div class="btn-spinner"></div>
       </button>
@@ -538,15 +538,17 @@ a{color:inherit;text-decoration:none;}
         window._supabase.auth.onAuthStateChange(function (event, session) {
           if (event === 'SIGNED_IN' && session) {
             // Redirect for OAuth/Social logins
-            console.log("OAuth login success, redirecting...");
-            window.location.assign('index.html');
+            console.log("OAuth login success, redirecting in 1.5s...");
+            setTimeout(function () {
+              window.location.replace("index.html");
+            }, 1500);
           }
         });
         
         // Check if already signed in
         window._supabase.auth.getSession().then(function (res) {
           if (res.data && res.data.session) {
-            window.location.assign('index.html');
+            window.location.replace("index.html");
           }
         });
       }
@@ -691,12 +693,15 @@ a{color:inherit;text-decoration:none;}
     if (on) { btn.classList.add('loading'); } else { btn.classList.remove('loading'); }
   }
 
-  window.doSignin = async function () {
+  window.doSignin = async function (e) {
+    e.preventDefault();
     clearErr('siEmailErr'); clearErr('siPwErr');
     var email = document.getElementById('siEmail').value.trim();
     var pw    = document.getElementById('siPassword').value;
     var ok = true;
-    if (!email || !/.+@.+\..+/.test(email)) { showErr('siEmailErr', 'Please enter a valid email address.'); ok = false; }
+    if (!email || !/.+@.+
+.+
+.+/.test(email)) { showErr('siEmailErr', 'Please enter a valid email address.'); ok = false; }
     if (!pw || pw.length < 6)               { showErr('siPwErr', 'Password must be at least 6 characters.'); ok = false; }
     if (!ok) return;
 
@@ -707,15 +712,14 @@ a{color:inherit;text-decoration:none;}
       
       if (!error) {
         // Success: Extract user name and show personalized welcome toast
-        var user = res.data && res.data.user;
-        var userName = user && (user.user_metadata.display_name || user.user_metadata.full_name);
-        var welcomeMsg = userName ? 'Welcome back, ' + userName + '!' : 'Welcome back!';
+        var data = res.data;
+        var name = data.user.user_metadata.display_name || data.user.user_metadata.username || 'there';
         
-        showToast(welcomeMsg, 'success');
-        console.log("Login success, redirecting...");
+        showToast("Welcome back, " + name + "!", "success");
+        console.log("Redirecting to index.html...");
         setTimeout(function () {
-          window.location.assign('index.html');
-        }, 1000);
+          window.location.assign("index.html");
+        }, 1500);
       } else {
         throw error;
       }
@@ -728,7 +732,8 @@ a{color:inherit;text-decoration:none;}
     }
   };
 
-  window.doSignup = async function () {
+  window.doSignup = async function (e) {
+    e.preventDefault();
     clearErr('suUsernameErr'); clearErr('suEmailErr');
     var un    = document.getElementById('suUsername').value.trim();
     var email = document.getElementById('suEmail').value.trim();
@@ -736,7 +741,9 @@ a{color:inherit;text-decoration:none;}
     var terms = document.getElementById('termsCheck').checked;
     var ok = true;
     if (!un || un.length < 3)               { showErr('suUsernameErr', 'Username must be at least 3 characters.'); ok = false; }
-    if (!email || !/.+@.+\..+/.test(email)) { showErr('suEmailErr', 'Please enter a valid email address.'); ok = false; }
+    if (!email || !/.+@.+
+.+
+.+/.test(email)) { showErr('suEmailErr', 'Please enter a valid email address.'); ok = false; }
     if (checkPwStrength(pw) < 2)            { document.getElementById('pwLbl').textContent = 'Password is too weak'; ok = false; }
     if (!terms)                             { showToast('Please accept the Terms of Service to continue.'); ok = false; }
     if (!ok) return;
@@ -751,6 +758,7 @@ a{color:inherit;text-decoration:none;}
       if (res.error) throw res.error;
       document.getElementById('verifyEmailDisplay').textContent = email;
       loading('btnSignup', false);
+      showToast("Welcome to Noding.app!", "success");
       setView('verify');
     } catch (err) {
       loading('btnSignup', false);
@@ -800,9 +808,12 @@ a{color:inherit;text-decoration:none;}
       var res = await window._supabase.auth.verifyOtp({ email: email, token: code, type: 'signup' });
       if (res.error) throw res.error;
       
-      // Success: Show welcome toast for new users
-      showToast('Welcome to Noding.app!', 'success');
-      setView('success');
+      // Success: Show welcome toast for new users and redirect
+      showToast("Welcome to Noding.app!", "success");
+      console.log("Redirecting to index.html in 1.5s...");
+      setTimeout(function () {
+        window.location.replace("index.html");
+      }, 1500);
     } catch (err) {
       showToast(err.message || 'Invalid code. Please try again.');
     }

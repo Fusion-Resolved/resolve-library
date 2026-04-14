@@ -207,3 +207,367 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+/** ═════════════════════════════════════════════════════════════════════════════
+    SECTION: GLOBAL MODAL & NAVIGATION LOGIC
+    Consolidated from Effect Wizard (5 - noding-add-new-effect_V2.html)
+    and Settings Sheet (6 - noding-edit-settings.html)
+    Provides: universal modal controls, wizard navigation, tab navigation,
+    dirty state management, confirmation dialogs
+    ═════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Global dirty state flag - tracks if user has unsaved changes
+ * Used by shCheckDirty() to prevent accidental navigation
+ */
+window.isDirty = false;
+
+/**
+ * Set the global dirty state and update UI indicators
+ * @param {boolean} value - true if there are unsaved changes
+ */
+function shSetDirty(value) {
+  window.isDirty = value;
+  
+  // Update dirty indicators on tabs/nav items
+  document.querySelectorAll('.dirty-dot').forEach(function(dot) {
+    dot.style.display = value ? 'block' : 'none';
+  });
+  
+  // Show/hide unsaved banner if it exists
+  const banner = document.getElementById('unsavedBanner');
+  if (banner) {
+    banner.classList.toggle('visible', value);
+  }
+  
+  console.log('[Noding] Dirty state:', value);
+}
+
+/**
+ * Check if there are unsaved changes - call before closing/navigation
+ * Returns true if safe to proceed, false if user cancelled
+ */
+function shCheckDirty() {
+  if (!window.isDirty) return true;
+  
+  const proceed = confirm('You have unsaved changes. Are you sure you want to leave?');
+  if (proceed) {
+    shSetDirty(false);
+  }
+  return proceed;
+}
+
+/**
+ * Open a modal by ID - works for wizards, sheets, confirmations
+ * @param {string} id - ID of the overlay element to open
+ */
+function shOpen(id) {
+  const el = document.getElementById(id);
+  if (!el) {
+    console.error('[Noding] shOpen: Element not found:', id);
+    return;
+  }
+  
+  el.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  
+  // Auto-focus first input if it's a wizard/sheet with form
+  setTimeout(function() {
+    const firstInput = el.querySelector('input:not([type="hidden"]), textarea, select');
+    if (firstInput) firstInput.focus();
+  }, 100);
+  
+  console.log('[Noding] Opened:', id);
+}
+
+/**
+ * Close a modal by ID
+ * @param {string} id - ID of the overlay element to close
+ */
+function shClose(id) {
+  const el = document.getElementById(id);
+  if (!el) {
+    console.error('[Noding] shClose: Element not found:', id);
+    return;
+  }
+  
+  // Check for unsaved changes first
+  if (window.isDirty && !shCheckDirty()) {
+    return; // User cancelled
+  }
+  
+  el.classList.remove('active');
+  document.body.style.overflow = '';
+  console.log('[Noding] Closed:', id);
+}
+
+/**
+ * Navigate to a specific step in a wizard
+ * @param {string} containerId - ID of the wizard panel container
+ * @param {number} index - Step index (0-based)
+ */
+function shGoStep(containerId, index) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.error('[Noding] shGoStep: Container not found:', containerId);
+    return;
+  }
+  
+  const panels = container.querySelectorAll('.wiz-panel');
+  const indicators = container.querySelectorAll('.step-seg');
+  const progressBar = container.querySelector('.wiz-progress-bar');
+  
+  // Validate index
+  if (index < 0 || index >= panels.length) {
+    console.error('[Noding] shGoStep: Invalid step index:', index);
+    return;
+  }
+  
+  // Update panels
+  panels.forEach(function(panel, i) {
+    panel.classList.toggle('active', i === index);
+  });
+  
+  // Update step indicators
+  indicators.forEach(function(ind, i) {
+    ind.classList.remove('active', 'done');
+    if (i < index) ind.classList.add('done');
+    if (i === index) ind.classList.add('active');
+  });
+  
+  // Update progress bar
+  if (progressBar) {
+    const progress = ((index + 1) / panels.length * 100).toFixed(1) + '%';
+    progressBar.style.width = progress;
+  }
+  
+  // Update buttons visibility
+  const btnBack = container.querySelector('.btn-back');
+  const btnNext = container.querySelector('.btn-next');
+  const btnPublish = container.querySelector('.btn-publish');
+  
+  if (btnBack) btnBack.style.visibility = index === 0 ? 'hidden' : 'visible';
+  if (btnNext) btnNext.style.display = index === panels.length - 1 ? 'none' : 'inline-flex';
+  if (btnPublish) btnPublish.style.display = index === panels.length - 1 ? 'inline-flex' : 'none';
+  
+  console.log('[Noding] Wizard step:', containerId, '→', index);
+}
+
+/**
+ * Navigate to next step in wizard
+ * @param {string} containerId - ID of the wizard panel container
+ */
+function shNextStep(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  const panels = container.querySelectorAll('.wiz-panel');
+  let currentIndex = 0;
+  
+  panels.forEach(function(panel, i) {
+    if (panel.classList.contains('active')) currentIndex = i;
+  });
+  
+  if (currentIndex < panels.length - 1) {
+    shGoStep(containerId, currentIndex + 1);
+  }
+}
+
+/**
+ * Navigate to previous step in wizard
+ * @param {string} containerId - ID of the wizard panel container
+ */
+function shPrevStep(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  const panels = container.querySelectorAll('.wiz-panel');
+  let currentIndex = 0;
+  
+  panels.forEach(function(panel, i) {
+    if (panel.classList.contains('active')) currentIndex = i;
+  });
+  
+  if (currentIndex > 0) {
+    shGoStep(containerId, currentIndex - 1);
+  }
+}
+
+/**
+ * Switch to a specific tab in a settings sheet
+ * @param {string} containerId - ID of the settings sheet container
+ * @param {string} tabId - ID of the tab panel to activate
+ */
+function shGoTab(containerId, tabId) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.error('[Noding] shGoTab: Container not found:', containerId);
+    return;
+  }
+  
+  // Update sidebar nav items
+  const navItems = container.querySelectorAll('.sh-nav-item');
+  navItems.forEach(function(item) {
+    item.classList.toggle('active', item.dataset.tab === tabId);
+  });
+  
+  // Update tab buttons
+  const tabBtns = container.querySelectorAll('.tab-btn');
+  tabBtns.forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+  
+  // Update tab panels
+  const panels = container.querySelectorAll('.sh-tab-panel');
+  panels.forEach(function(panel) {
+    panel.classList.toggle('active', panel.id === tabId);
+  });
+  
+  console.log('[Noding] Tab switch:', containerId, '→', tabId);
+}
+
+/**
+ * Initialize navigation click handlers for a settings sheet
+ * Call this once on DOMContentLoaded for each sheet
+ * @param {string} containerId - ID of the settings sheet container
+ */
+function shInitTabs(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  // Sidebar nav items
+  container.querySelectorAll('.sh-nav-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+      if (window.isDirty && !shCheckDirty()) return;
+      shGoTab(containerId, this.dataset.tab);
+    });
+  });
+  
+  // Tab buttons
+  container.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (window.isDirty && !shCheckDirty()) return;
+      shGoTab(containerId, this.dataset.tab);
+    });
+  });
+}
+
+/**
+ * Show a confirmation dialog
+ * @param {Object} options - Confirmation options
+ * @param {string} options.title - Dialog title
+ * @param {string} options.text - Dialog body text
+ * @param {string} options.type - 'warning' or 'danger'
+ * @param {string} options.confirmText - Text for confirm button
+ * @param {Function} options.onConfirm - Callback when confirmed
+ * @param {Function} options.onCancel - Callback when cancelled
+ */
+function shConfirm(options) {
+  const ov = document.getElementById('confirmOverlay') || createConfirmOverlay();
+  const box = ov.querySelector('.confirm-box');
+  
+  // Set content
+  box.querySelector('.confirm-title').textContent = options.title || 'Confirm';
+  box.querySelector('.confirm-text').textContent = options.text || 'Are you sure?';
+  
+  // Set type (warning/danger)
+  box.className = 'confirm-box ' + (options.type || 'warning');
+  
+  // Set button text
+  const btnConfirm = box.querySelector('.btn-confirm');
+  if (btnConfirm) btnConfirm.textContent = options.confirmText || 'Confirm';
+  
+  // Store callbacks
+  ov._onConfirm = options.onConfirm || function() {};
+  ov._onCancel = options.onCancel || function() {};
+  
+  shOpen('confirmOverlay');
+}
+
+/**
+ * Create default confirm overlay if it doesn't exist
+ */
+function createConfirmOverlay() {
+  const ov = document.createElement('div');
+  ov.id = 'confirmOverlay';
+  ov.className = 'confirm-ov';
+  ov.innerHTML = `
+    <div class="confirm-box">
+      <div class="confirm-icon">!</div>
+      <div class="confirm-title">Confirm</div>
+      <div class="confirm-text">Are you sure?</div>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary btn-cancel">Cancel</button>
+        <button class="btn btn-danger btn-confirm">Confirm</button>
+      </div>
+    </div>
+  `;
+  
+  // Add click handlers
+  ov.querySelector('.btn-cancel').addEventListener('click', function() {
+    shClose('confirmOverlay');
+    if (ov._onCancel) ov._onCancel();
+  });
+  
+  ov.querySelector('.btn-confirm').addEventListener('click', function() {
+    shClose('confirmOverlay');
+    if (ov._onConfirm) ov._onConfirm();
+  });
+  
+  // Close on overlay click
+  ov.addEventListener('click', function(e) {
+    if (e.target === ov) {
+      shClose('confirmOverlay');
+      if (ov._onCancel) ov._onCancel();
+    }
+  });
+  
+  document.body.appendChild(ov);
+  return ov;
+}
+
+/**
+ * Auto-initialize common patterns on DOMContentLoaded
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  
+  // Close overlays on backdrop click
+  document.querySelectorAll('.sheet-ov, .confirm-ov').forEach(function(ov) {
+    ov.addEventListener('click', function(e) {
+      if (e.target === ov) {
+        const id = ov.id;
+        if (id && !ov.classList.contains('ov-del')) {
+          shClose(id);
+        }
+      }
+    });
+  });
+  
+  // Escape key to close
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const activeOv = document.querySelector('.sheet-ov.active, .confirm-ov.active');
+      if (activeOv && !activeOv.classList.contains('ov-del')) {
+        shClose(activeOv.id);
+      }
+    }
+  });
+  
+  // Form input tracking for dirty state
+  document.querySelectorAll('input, textarea, select').forEach(function(input) {
+    input.addEventListener('change', function() {
+      shSetDirty(true);
+    });
+    input.addEventListener('input', function() {
+      // Debounced dirty flag for typing
+      clearTimeout(input._dirtyTimer);
+      input._dirtyTimer = setTimeout(function() {
+        shSetDirty(true);
+      }, 500);
+    });
+  });
+  
+  console.log('[Noding] Modal & Navigation system initialized');
+});
+
+/** End of Global Modal & Navigation Logic */
