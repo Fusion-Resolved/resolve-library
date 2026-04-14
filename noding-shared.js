@@ -21,6 +21,196 @@ window.shCloseSidebar = function() {
   document.body.style.overflow = '';
 };
 
+/** ── 1a. NAVIGATION MAP & SIDEBAR INJECTION ── **/
+
+/**
+ * Global navigation map for all Noding pages
+ * Used by shSetActiveNav to determine active state
+ */
+window.navMap = {
+  'index.html': { name: 'Home', icon: 'home' },
+  'home.html': { name: 'Home', icon: 'home' },
+  'effects.html': { name: 'Effects', icon: 'grid' },
+  'nodegraph.html': { name: 'Node Graph', icon: 'git-branch' },
+  'library.html': { name: 'Library', icon: 'layers' },
+  'community.html': { name: 'Community', icon: 'users' },
+  'source-of-truth.html': { name: 'Docs', icon: 'book-open' },
+  'settings.html': { name: 'Settings', icon: 'settings' },
+  '6 - noding-edit-settings.html': { name: 'Settings', icon: 'settings', alias: 'settings.html' }
+};
+
+/**
+ * SVG icon collection for navigation
+ */
+window.navIcons = {
+  home: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  grid: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+  'git-branch': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
+  layers: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+  users: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  'book-open': '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+  settings: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 4 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
+};
+
+/**
+ * Inject sidebar navigation HTML into the page
+ * Call this from DOMContentLoaded to populate sidebar structure
+ * @param {string} currentPage - Filename of current page (e.g., 'index.html')
+ */
+window.shInjectSidebar = function(currentPage) {
+  const sidebar = document.getElementById('sh-sidebar');
+  if (!sidebar) {
+    console.warn('[Noding] shInjectSidebar: Sidebar element not found');
+    return;
+  }
+
+  // Get current page name for highlighting
+  const pageName = currentPage || window.location.pathname.split('/').pop() || 'index.html';
+  
+  // Main navigation items
+  const mainNav = [
+    { href: 'index.html', name: 'Home', icon: 'home' },
+    { href: 'effects.html', name: 'Effects', icon: 'grid' },
+    { href: 'nodegraph.html', name: 'Node Graph', icon: 'git-branch' },
+    { href: 'library.html', name: 'Library', icon: 'layers' },
+    { href: 'community.html', name: 'Community', icon: 'users' }
+  ];
+
+  // Secondary/Utility navigation
+  const utilityNav = [
+    { href: 'source-of-truth.html', name: 'Docs', icon: 'book-open' }
+  ];
+
+  // Account section (always includes Settings)
+  const accountNav = [
+    { href: 'settings.html', name: 'Settings', icon: 'settings' }
+  ];
+
+  // Build main nav HTML
+  let mainNavHtml = mainNav.map(item => {
+    const isActive = pageName === item.href || pageName.endsWith('/' + item.href);
+    const iconSvg = window.navIcons[item.icon] || '';
+    return `
+      <a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-page="${item.href}">
+        ${iconSvg}
+        <span>${item.name}</span>
+      </a>
+    `;
+  }).join('');
+
+  // Build utility nav HTML
+  let utilityNavHtml = utilityNav.map(item => {
+    const isActive = pageName === item.href || pageName.endsWith('/' + item.href);
+    const iconSvg = window.navIcons[item.icon] || '';
+    return `
+      <a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-page="${item.href}">
+        ${iconSvg}
+        <span>${item.name}</span>
+      </a>
+    `;
+  }).join('');
+
+  // Build account nav HTML (Settings link)
+  let accountNavHtml = accountNav.map(item => {
+    const isActive = pageName === item.href || 
+                     pageName.endsWith('/' + item.href) ||
+                     pageName.includes('settings') ||
+                     pageName.includes('6 - noding-edit-settings');
+    const iconSvg = window.navIcons[item.icon] || '';
+    return `
+      <a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-page="${item.href}">
+        ${iconSvg}
+        <span>${item.name}</span>
+      </a>
+    `;
+  }).join('');
+
+  // Sidebar sections structure
+  const sidebarContent = `
+    <!-- Main Navigation -->
+    <div class="sh-sb-section" style="padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+      ${mainNavHtml}
+    </div>
+    
+    <!-- Utility Navigation -->
+    <div class="sh-sb-section" style="padding:16px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+      ${utilityNavHtml}
+    </div>
+    
+    <!-- Account Section (Settings + Auth) -->
+    <div class="sh-sb-section sh-sb-account" style="padding:16px 0;margin-top:auto;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(143,143,168,0.6);padding:0 20px 8px;">Account</div>
+      ${accountNavHtml}
+      <div id="sidebar-auth-portal"></div>
+    </div>
+  `;
+
+  // Insert content (preserving existing structure if any)
+  const existingContent = sidebar.querySelector('.sh-sb-content');
+  if (existingContent) {
+    existingContent.innerHTML = sidebarContent;
+  } else {
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'sh-sb-content';
+    contentDiv.style.cssText = 'display:flex;flex-direction:column;height:100%;';
+    contentDiv.innerHTML = sidebarContent;
+    sidebar.appendChild(contentDiv);
+  }
+
+  console.log('[Noding] Sidebar injected for page:', pageName);
+};
+
+/**
+ * Set active navigation state for any page
+ * Call this after sidebar injection to highlight current page
+ * @param {string} pageName - Current page filename (e.g., 'settings.html')
+ */
+window.shSetActiveNav = function(pageName) {
+  const currentPage = pageName || window.location.pathname.split('/').pop() || 'index.html';
+  
+  // Update all nav-item links
+  document.querySelectorAll('.nav-item').forEach(item => {
+    const itemPage = item.getAttribute('data-page');
+    const href = item.getAttribute('href');
+    
+    // Check for exact match or alias match
+    let isActive = false;
+    if (itemPage === currentPage || href === currentPage) {
+      isActive = true;
+    }
+    // Check settings aliases
+    if (currentPage.includes('settings') || currentPage.includes('6 - noding-edit-settings')) {
+      if (itemPage === 'settings.html' || href === 'settings.html') {
+        isActive = true;
+      }
+    }
+    
+    item.classList.toggle('active', isActive);
+  });
+
+  // Also check navMap for any special aliases
+  if (window.navMap[currentPage]) {
+    const navInfo = window.navMap[currentPage];
+    if (navInfo.alias) {
+      document.querySelectorAll(`[data-page="${navInfo.alias}"]`).forEach(item => {
+        item.classList.add('active');
+      });
+    }
+  }
+};
+
+/**
+ * Check if Settings link should be visible
+ * Settings is always visible, but auth.js may add auth-specific items
+ */
+window.shCheckSettingsVisibility = function() {
+  const settingsLinks = document.querySelectorAll('[data-page="settings.html"], a[href="settings.html"]');
+  settingsLinks.forEach(link => {
+    // Ensure Settings link is always visible
+    link.style.display = 'flex';
+  });
+};
+
 /** ── 2. QUICK NOTES SYSTEM ── **/
 
 window.shOpenNote = function() {
@@ -568,6 +758,33 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   console.log('[Noding] Modal & Navigation system initialized');
+});
+
+/**
+ * Auto-initialize sidebar navigation on DOMContentLoaded
+ * Injects sidebar content and sets active nav state automatically
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  // Small delay to ensure auth.js has initialized first
+  setTimeout(function() {
+    // Get current page from URL
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    
+    // Check if sidebar exists on this page
+    const sidebar = document.getElementById('sh-sidebar');
+    if (sidebar) {
+      // Inject sidebar navigation
+      window.shInjectSidebar(currentPage);
+      
+      // Set active navigation state
+      window.shSetActiveNav(currentPage);
+      
+      // Ensure Settings link visibility
+      window.shCheckSettingsVisibility();
+      
+      console.log('[Noding] Sidebar navigation initialized for:', currentPage);
+    }
+  }, 50);
 });
 
 /** End of Global Modal & Navigation Logic */
