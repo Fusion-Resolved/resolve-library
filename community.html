@@ -17,22 +17,6 @@
 
   <!-- Noding Shared Resources -->
   <link rel="stylesheet" href="noding-shared.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="auth.js"></script>
-  <script src="noding-shared.js"></script>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      if (typeof window.shInjectHeader === 'function') {
-        window.shInjectHeader({
-          actionText: "+ Submit Effect",
-          actionFunc: "openSubmitModal()",
-          activeId: "nav-community"
-        });
-      }
-    });
-  </script>
-  
 <style>
 /* ══════════════════════════════════════════════════
    BRAND TOKENS — Noding v2
@@ -203,6 +187,35 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 .live-dot { width:6px; height:6px; border-radius:50%; background:var(--node-teal); animation:pulse-teal 2s ease infinite; }
 .live-badge span { font-family:var(--font-mono); font-size:0.6875rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--node-teal); }
 @keyframes pulse-teal { 0%,100%{box-shadow:0 0 0 0 rgba(15,168,136,0.5)} 50%{box-shadow:0 0 0 5px rgba(15,168,136,0)} }
+
+/* ══ STATS STRIP ══ */
+.stats-strip {
+  position:relative; z-index:2;
+  background:var(--bg-surface); border-bottom:1px solid var(--border-surface);
+  padding:0 24px;
+}
+.stats-inner {
+  max-width:1100px; margin:0 auto;
+  display:flex; align-items:stretch; justify-content:space-around;
+  flex-wrap:wrap;
+}
+.stat-cell {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px; padding:20px 16px; flex:1; min-width:120px;
+  border-right:1px solid var(--border-surface);
+}
+.stat-cell:last-child { border-right:none; }
+.stat-num {
+  font-family:var(--font-display); font-weight:800;
+  font-size:clamp(1.4rem,2.4vw,1.9rem); letter-spacing:-0.03em;
+  color:var(--text-primary); line-height:1;
+}
+.stat-num.violet { color:var(--violet-light); }
+.stat-num.teal   { color:var(--node-teal); }
+.stat-lbl {
+  font-family:var(--font-mono); font-size:0.6rem;
+  letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted);
+}
 
 /* ══ ACTIVITY TICKER ══ */
 .ticker-wrap {
@@ -582,40 +595,40 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 </style>
 </head>
 <body>
-
+    <div id="master-header"></div>
+      <div id="sh-sb"></div>
+      
+<!-- GLOWING BACKGROUND -->
 <div class="ambient">
   <div class="amb-blob amb-1"></div>
   <div class="amb-blob amb-2"></div>
   <div class="amb-blob amb-3"></div>
 </div>
 
-<div id="master-header"></div>
-  <aside id="sh-sb"></aside>
-
 <main class="page-main">
-  
+
 <!-- HERO -->
 <section class="hero">
-      <canvas id="community-canvas"></canvas>
-      <div class="hero-content">
-        <h1 class="hero-title">
-          <span class="title-line">The <span class="accent-violet">Community</span></span>
-          <span class="title-line sm">Node Library</span>
-        </h1>
-        <p class="hero-sub">Discover, share, and vote on the best custom effects and macro node trees built by the Resolve community.</p>
-        <div class="hero-actions">
-          <button class="btn-primary" onclick="openSubmitModal()">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Submit an Effect
-          </button>
-          <button class="btn-ghost" onclick="document.getElementById('browse').scrollIntoView({behavior:'smooth'})">Browse All</button>
-        </div>
-      </div>
-      <div class="live-badge">
-        <div class="live-dot"></div>
-        <span>24 Nodes uploaded today</span>
-      </div>
-    </section>
+  <canvas id="community-canvas"></canvas>
+  <div class="hero-content">
+    <h1 class="hero-title">
+      <span class="title-line">The <span class="accent-violet">Community</span></span>
+      <span class="title-line sm">Node Library</span>
+    </h1>
+    <p class="hero-sub">Discover, share, and vote on the best custom effects and macro node trees built by the Resolve community.</p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="openSubmitModal()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Submit an Effect
+      </button>
+      <button class="btn-ghost" onclick="document.getElementById('browse').scrollIntoView({behavior:'smooth'})">Browse All</button>
+    </div>
+  </div>
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    <span id="live-count">24 Nodes uploaded today</span>
+  </div>
+</section>
 
 <!-- STATS STRIP -->
 <div class="stats-strip">
@@ -707,7 +720,8 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
         </button>
       </div>
     </div>
-    <aside class="sidebar">
+    <!-- RIGHT COLUMN: changed from <aside> to <div> to avoid conflict with global drawer -->
+    <div class="sidebar">
       <!-- LEADERBOARD -->
       <div class="sidebar-card reveal">
         <div class="sidebar-head">
@@ -724,7 +738,7 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
         </div>
         <div class="activity-list" id="activityFeed"></div>
       </div>
-    </aside>
+    </div>
   </div>
 </section>
 
@@ -745,6 +759,8 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
     </div>
   </div>
 </section>
+
+</main>
 
 <!-- BOTTOM NAV (mobile) -->
 <nav class="sh-bottom-nav">
@@ -1366,6 +1382,7 @@ function countUp(){
 /* ══ MODAL ══ */
 function openModal(){ document.getElementById('submitModal').classList.add('open'); }
 function closeModal(){ document.getElementById('submitModal').classList.remove('open'); }
+function openSubmitModal(){ openModal(); }
 function handleModalOverlayClick(e){ if(e.target===e.currentTarget) closeModal(); }
 function toggleTag(btn){ btn.classList.toggle('active'); }
 function submitEffect(){
@@ -1403,6 +1420,7 @@ document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 /* ══ LIVE COUNT FLICKER ══ */
 function flickerLive(){
   const el = document.getElementById('live-count');
+  if(!el) return;
   const base = 12 + Math.floor(Math.random()*6);
   el.textContent = `${base} online now`;
   setTimeout(flickerLive, 8000+Math.random()*12000);
@@ -1437,5 +1455,21 @@ setTimeout(flickerLive, 12000);
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script src="noding-shared.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Inject the header with Community-specific settings
+    if (typeof window.shInjectHeader === 'function') {
+      window.shInjectHeader({
+        actionText: "+ Submit Effect",
+        actionFunc: "openSubmitModal()",
+        activeId: "nav-community" // Lights up the 'Community' pill
+      });
+    }
+  });
+</script>
 </body>
 </html>
