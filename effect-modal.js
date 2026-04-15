@@ -193,20 +193,16 @@
   function showModal() {
     const modal = document.getElementById('effect-modal-overlay');
     if (modal) {
-      modal.classList.add('open', 'active');
-      modal.style.display = 'flex'; // Directly set inline style
-      modal.style.visibility = 'visible';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;display:flex;opacity:1;pointer-events:auto;visibility:visible;';
       document.body.style.overflow = 'hidden';
-      console.log('[Effect Modal] Modal opened');
+      console.log('[Effect Modal] Modal opened with full inline styles');
     }
   }
 
   window.closeEffectModal = function() {
     const modal = document.getElementById('effect-modal-overlay');
     if (modal) {
-      modal.classList.remove('open', 'active');
-      modal.style.display = 'none'; // Directly hide
-      modal.style.visibility = 'hidden';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;display:none;opacity:0;pointer-events:none;visibility:hidden;';
       document.body.style.overflow = '';
     }
     closeNodePop();
