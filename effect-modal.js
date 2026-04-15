@@ -114,6 +114,9 @@
     // Description
     document.getElementById('modal-desc').textContent = effect.desc || effect.explanation || '';
 
+    // Media (GIF/Video)
+    populateMedia(effect);
+
     // Software/version info
     document.getElementById('modal-software').textContent = effect.tool || 'DaVinci Resolve';
     document.getElementById('modal-render-weight').textContent = effect.render_weight || 'Medium';
@@ -206,6 +209,102 @@
       document.body.style.overflow = '';
     }
     closeNodePop();
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
+     MEDIA HANDLING (GIF/Video)
+     ═══════════════════════════════════════════════════════════════ */
+  let currentEffectMedia = null;
+
+  function populateMedia(effect) {
+    currentEffectMedia = effect;
+    const mediaContent = document.getElementById('modal-media-content');
+    const noMedia = document.getElementById('modal-no-media');
+    const toggleBtns = document.querySelector('.media-toggle');
+    const gifBtn = document.getElementById('mtb-gif');
+    const videoBtn = document.getElementById('mtb-video');
+
+    // Check what media is available
+    const hasGif = effect.gif_url || effect.gifUrl;
+    const hasVideo = effect.video_url || effect.videoUrl;
+
+    if (!hasGif && !hasVideo) {
+      // No media available
+      mediaContent.style.display = 'none';
+      if (toggleBtns) toggleBtns.style.display = 'none';
+      if (noMedia) noMedia.style.display = 'flex';
+      return;
+    }
+
+    // Show toggle if both available
+    if (toggleBtns) {
+      toggleBtns.style.display = (hasGif && hasVideo) ? 'flex' : 'none';
+    }
+
+    // Default to GIF if available, otherwise video
+    if (hasGif) {
+      showGif(effect.gif_url || effect.gifUrl);
+      if (gifBtn) gifBtn.classList.add('active');
+      if (videoBtn) videoBtn.classList.remove('active');
+    } else if (hasVideo) {
+      showVideo(effect.video_url || effect.videoUrl);
+      if (gifBtn) gifBtn.classList.remove('active');
+      if (videoBtn) videoBtn.classList.add('active');
+    }
+
+    if (noMedia) noMedia.style.display = 'none';
+  }
+
+  function showGif(url) {
+    const mediaContent = document.getElementById('modal-media-content');
+    if (mediaContent) {
+      mediaContent.innerHTML = `<img src="${escapeHtml(url)}" alt="Effect preview" style="width:100%;height:100%;object-fit:cover;display:block">`;
+      mediaContent.style.display = 'block';
+    }
+  }
+
+  function showVideo(url) {
+    const mediaContent = document.getElementById('modal-media-content');
+    if (mediaContent) {
+      // Convert various video URL formats to embeddable format
+      let embedUrl = url;
+      if (url.includes('youtube.com/watch?v=')) {
+        embedUrl = url.replace('watch?v=', 'embed/');
+      } else if (url.includes('youtu.be/')) {
+        embedUrl = url.replace('youtu.be/', 'youtube.com/embed/');
+      }
+      mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" allow="autoplay; fullscreen" style="width:100%;height:100%;border:none;display:block" allowfullscreen></iframe>`;
+      mediaContent.style.display = 'block';
+    }
+  }
+
+  window.switchMedia = function(type) {
+    if (!currentEffectMedia) return;
+
+    const gifBtn = document.getElementById('mtb-gif');
+    const videoBtn = document.getElementById('mtb-video');
+
+    if (type === 'gif') {
+      showGif(currentEffectMedia.gif_url || currentEffectMedia.gifUrl);
+      if (gifBtn) {
+        gifBtn.classList.add('active');
+        gifBtn.style.cssText = 'font-size:10px;font-family:var(--font-mono);padding:3px 11px;border-radius:var(--radius-pill);border:1px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;transition:var(--tr);';
+      }
+      if (videoBtn) {
+        videoBtn.classList.remove('active');
+        videoBtn.style.cssText = 'font-size:10px;font-family:var(--font-mono);padding:3px 11px;border-radius:var(--radius-pill);border:1px solid rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.55);cursor:pointer;transition:var(--tr);';
+      }
+    } else {
+      showVideo(currentEffectMedia.video_url || currentEffectMedia.videoUrl);
+      if (gifBtn) {
+        gifBtn.classList.remove('active');
+        gifBtn.style.cssText = 'font-size:10px;font-family:var(--font-mono);padding:3px 11px;border-radius:var(--radius-pill);border:1px solid rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.55);cursor:pointer;transition:var(--tr);';
+      }
+      if (videoBtn) {
+        videoBtn.classList.add('active');
+        videoBtn.style.cssText = 'font-size:10px;font-family:var(--font-mono);padding:3px 11px;border-radius:var(--radius-pill);border:1px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;transition:var(--tr);';
+      }
+    }
   };
 
   /* ═══════════════════════════════════════════════════════════════
