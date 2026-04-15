@@ -314,11 +314,11 @@
         
         // Build proper embed URL with parameters
         if (videoId) {
-          embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+          embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
         }
       }
       
-      mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" style="width:100%;height:100%;border:none;display:block" allowfullscreen sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>`;
+      mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="width:100%;height:100%;border:none;display:block"></iframe>`;
       mediaContent.style.display = 'block';
     }
   }
