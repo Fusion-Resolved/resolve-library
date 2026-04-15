@@ -500,9 +500,9 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 .effect-card:hover { border-color:rgba(255,255,255,0.12); transform:translateY(-2px); box-shadow:var(--shadow); }
 
 /* Effect Modal */
-#effect-modal-overlay { display:none !important; }
+#effect-modal-overlay { display:none; }
 #effect-modal-overlay.open,
-#effect-modal-overlay.active { display:flex !important; }
+#effect-modal-overlay.active { display:flex; }
 @media(min-width:600px){ #effect-modal-overlay.open, #effect-modal-overlay.active { align-items:center; padding:1.5rem; } }
 @keyframes sheetUp { from{transform:translateY(32px);opacity:0} to{transform:translateY(0);opacity:1} }
 @media(min-width:600px){ .eds-sheet { border-radius:var(--radius-lg) !important; max-height:78vh !important; } }

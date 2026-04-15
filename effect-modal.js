@@ -192,15 +192,12 @@
      ═══════════════════════════════════════════════════════════════ */
   function showModal() {
     const modal = document.getElementById('effect-modal-overlay');
-    const sheet = modal?.querySelector('.eds-sheet');
-    console.log('[Effect Modal] showModal called, modal element:', modal);
     if (modal) {
-      modal.classList.add('open', 'active'); // Add both classes for compatibility
-      modal.style.display = 'flex';
+      modal.classList.add('open', 'active');
+      modal.style.display = 'flex'; // Directly set inline style
+      modal.style.visibility = 'visible';
       document.body.style.overflow = 'hidden';
-      console.log('[Effect Modal] Modal classes:', modal.className);
-    } else {
-      console.error('[Effect Modal] Modal element not found!');
+      console.log('[Effect Modal] Modal opened');
     }
   }
 
@@ -208,7 +205,8 @@
     const modal = document.getElementById('effect-modal-overlay');
     if (modal) {
       modal.classList.remove('open', 'active');
-      modal.style.display = '';
+      modal.style.display = 'none'; // Directly hide
+      modal.style.visibility = 'hidden';
       document.body.style.overflow = '';
     }
     closeNodePop();
