@@ -1470,15 +1470,11 @@ function closeGlobalAdd(e) {
     <div class="eds-bd" style="overflow-y:auto;flex:1;padding:1.25rem;display:flex;flex-direction:column;gap:1rem;scrollbar-width:thin;scrollbar-color:var(--border-color) transparent;">
       <div class="det-media" style="width:calc(100% + 2.5rem);margin:-1.25rem -1.25rem 0;aspect-ratio:16/9;background:var(--ink);overflow:hidden;position:relative;flex-shrink:0;">
         <div id="modal-media-content" style="width:100%;height:100%;"></div>
-        <div class="no-video" id="modal-no-media" style="width:100%;height:100%;display:none;align-items:center;justify-content:center;font-size:11px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;position:absolute;inset:0;">No showcase media</div>
-      </div>
-
-      <!-- GIF/Video toggle below media -->
-      <div class="media-toggle-row" style="display:flex;justify-content:flex-end;margin-top:8px;margin-right:-1.25rem;padding-right:1.25rem;">
-        <div class="media-toggle" style="display:flex;gap:4px;padding:4px 8px;background:rgba(9,9,14,0.72);backdrop-filter:blur(8px);border-radius:var(--radius-pill);">
+        <div class="media-toggle" style="display:flex;gap:4px;padding:4px 8px;background:rgba(9,9,14,0.72);backdrop-filter:blur(8px);border-radius:var(--radius-pill);position:absolute;bottom:10px;right:10px;z-index:10;">
           <button class="mtb active" id="mtb-gif" onclick="switchMedia('gif')" style="font-size:10px;font-family:var(--font-mono);padding:3px 11px;border-radius:var(--radius-pill);border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.45);color:#fff;cursor:pointer;transition:var(--tr);">GIF</button>
           <button class="mtb" id="mtb-video" onclick="switchMedia('video')" style="font-size:10px;font-family:var(--font-mono);padding:3px 11px;border-radius:var(--radius-pill);border:1px solid rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.55);cursor:pointer;transition:var(--tr);">Video</button>
         </div>
+        <div class="no-video" id="modal-no-media" style="width:100%;height:100%;display:none;align-items:center;justify-content:center;font-size:11px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;position:absolute;inset:0;">No showcase media</div>
       </div>
 
       <div class="det-info" style="display:flex;flex-direction:column;gap:12px;">
