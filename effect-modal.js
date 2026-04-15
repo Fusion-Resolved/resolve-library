@@ -171,16 +171,16 @@
     
     if (isOwner) {
       footer.innerHTML = `
-        <button class="btn-glass" onclick="editEffect('${effect.id}')">Edit Settings</button>
-        <button class="btn-share" onclick="shareEffect('${effect.id}')">Share link</button>
-        <button class="btn-glass btn-danger" onclick="deleteEffect('${effect.id}')">Delete</button>
-        <a href="effect-full-page.html?id=${effect.id}" class="btn-primary">View full</a>
+        <button class="btn-glass" onclick="editEffect('${effect.id}')" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:9px 14px;font-size:13px;font-weight:500;font-family:var(--font-body);color:var(--text-secondary);cursor:pointer;transition:var(--tr);white-space:nowrap;flex:1;">Edit Settings</button>
+        <button class="btn-share" onclick="shareEffect('${effect.id}')" style="display:inline-flex;align-items:center;gap:6px;background:var(--glass-bg);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid var(--border-subtle);color:var(--text-secondary);border-radius:var(--radius-sm);padding:9px 14px;font-size:13px;font-family:var(--font-body);cursor:pointer;transition:var(--tr);">Share link</button>
+        <button class="btn-glass btn-danger" onclick="deleteEffect('${effect.id}')" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:9px 14px;font-size:13px;font-weight:500;font-family:var(--font-body);color:var(--danger,#f06060);cursor:pointer;transition:var(--tr);white-space:nowrap;">Delete</button>
+        <a href="effect-full-page.html?id=${effect.id}" class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius);padding:9px 16px;font-size:13px;font-weight:600;font-family:var(--font-body);cursor:pointer;transition:var(--tr);white-space:nowrap;text-decoration:none;">View full</a>
       `;
     } else {
       footer.innerHTML = `
-        <button class="btn-glass" onclick="pinEffect('${effect.id}')">Pin</button>
-        <button class="btn-share" onclick="shareEffect('${effect.id}')">Share link</button>
-        <a href="effect-full-page.html?id=${effect.id}" class="btn-primary">View full</a>
+        <button class="btn-glass" onclick="pinEffect('${effect.id}')" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:9px 14px;font-size:13px;font-weight:500;font-family:var(--font-body);color:var(--text-secondary);cursor:pointer;transition:var(--tr);white-space:nowrap;flex:1;">Pin</button>
+        <button class="btn-share" onclick="shareEffect('${effect.id}')" style="display:inline-flex;align-items:center;gap:6px;background:var(--glass-bg);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid var(--border-subtle);color:var(--text-secondary);border-radius:var(--radius-sm);padding:9px 14px;font-size:13px;font-family:var(--font-body);cursor:pointer;transition:var(--tr);">Share link</button>
+        <a href="effect-full-page.html?id=${effect.id}" class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius);padding:9px 16px;font-size:13px;font-weight:600;font-family:var(--font-body);cursor:pointer;transition:var(--tr);white-space:nowrap;text-decoration:none;">View full</a>
       `;
     }
 

@@ -627,6 +627,35 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
   #effect-modal-overlay .eds-sheet { border-radius: var(--radius-lg) !important; max-height: 78vh !important; }
 }
 
+/* Modal Footer Buttons */
+.btn-glass {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  background:var(--glass-bg); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shine),var(--glass-shadow);
+  border:1px solid var(--border-subtle); border-radius:var(--radius);
+  padding:9px 14px; font-size:13px; font-weight:500; font-family:var(--font-body);
+  color:var(--text-secondary); cursor:pointer; transition:var(--tr); white-space:nowrap; flex:1;
+}
+.btn-glass:hover { background:var(--glass-bg-2); border-color:var(--border-color); color:var(--text-primary); }
+
+.btn-share {
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--glass-bg); box-shadow:var(--glass-shine),var(--glass-shadow);
+  border:1px solid var(--border-subtle); color:var(--text-secondary);
+  border-radius:var(--radius-sm); padding:9px 14px; font-size:13px;
+  font-family:var(--font-body); cursor:pointer; transition:var(--tr);
+}
+.btn-share:hover { color:var(--violet-light); border-color:rgba(108,123,255,0.45); background:rgba(108,123,255,0.10); }
+
+.btn-glass.btn-danger {
+  color:var(--danger, #f06060);
+}
+.btn-glass.btn-danger:hover {
+  background:rgba(240,96,96,0.10);
+  border-color:rgba(240,96,96,0.45);
+  color:#ff8080;
+}
+
 @keyframes sheetUp { from{transform:translateY(32px);opacity:0} to{transform:translateY(0);opacity:1} }
 </style>
 </head>
