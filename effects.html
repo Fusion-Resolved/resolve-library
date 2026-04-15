@@ -2018,7 +2018,18 @@ header { z-index: 100 !important; }
 
 /* Effect Modal - Controlled entirely by JavaScript inline styles */
 #effect-modal-overlay { }
-#effect-modal-overlay .eds-sheet { animation:sheetUp var(--duration-base) var(--ease-out-expo); }
+#effect-modal-overlay .eds-sheet { 
+  animation:sheetUp var(--duration-base) var(--ease-out-expo);
+  position: relative !important;
+  transform: none !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  max-width: 640px !important;
+  z-index: 301 !important;
+}
 @keyframes sheetUp { from{transform:translateY(32px);opacity:0} to{transform:translateY(0);opacity:1} }
 
 </style>
