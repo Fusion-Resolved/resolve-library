@@ -805,7 +805,7 @@ header {
 }
 .sh-note-ta:focus { border-color: var(--violet); }
 
-.sh-modal-ov {
+.sh-icon-btn {
   background:              var(--glass-bg);
   backdrop-filter:         var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
