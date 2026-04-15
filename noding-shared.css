@@ -404,10 +404,19 @@ header {
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: var(--transition);
+  box-shadow: var(--glass-shadow), var(--glass-shine);
 }
 .sh-icon-btn:hover { color: var(--text-primary); background: var(--glass-bg-2); }
 .sh-icon-btn:active { transform: scale(0.94); }
 .sh-icon-btn svg { display: block; }
+
+.sh-icon-btn {
+  background:              var(--glass-bg);
+  backdrop-filter:         var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border:                  1px solid var(--border-surface);
+  box-shadow:              var(--glass-shadow), var(--glass-shine);
+}
 
 /* + Action button (violet-tinted glass) */
 .sh-add-btn {
@@ -804,14 +813,6 @@ header {
   transition: border-color var(--duration-fast) ease;
 }
 .sh-note-ta:focus { border-color: var(--violet); }
-
-.sh-icon-btn {
-  background:              var(--glass-bg);
-  backdrop-filter:         var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border:                  1px solid var(--border-surface);
-  box-shadow:              var(--glass-shadow), var(--glass-shine);
-}
 
 /* ── 09 · TOAST ─────────────────────────────────────────────── */
 .noding-toast {
