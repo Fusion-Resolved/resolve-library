@@ -473,7 +473,7 @@ body {
    ────────────────────────────────────────────────────────────────────── */
 .sh-sidebar-ov {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.55); z-index: 60;
+  background: rgba(0,0,0,0.55); z-index: 10000;
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
 }
 .sh-sidebar-ov.open { display: block; }
@@ -485,7 +485,7 @@ body {
   -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-shine), -4px 0 32px rgba(0,0,0,0.4);
   border-left: 1px solid var(--border-subtle);
-  z-index: 61;
+  z-index: 10001;
   transform: translateX(100%);
   transition: transform var(--duration-base) var(--ease-out-expo);
   display: flex; flex-direction: column; overflow-y: auto;
