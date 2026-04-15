@@ -877,13 +877,8 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
   <div class="section-eyebrow" style="animation:none;opacity:1;">04 · Recently added</div>
   <h2 class="section-title" style="margin-bottom:8px">Fresh from the database.</h2>
   <p class="section-sub" style="margin-bottom:32px">The latest effects submitted by the Noding community.</p>
-  <div class="effects-scroll">
-    <div class="effect-card"><div class="effect-thumb" style="background:linear-gradient(135deg,#1a1d4a,#0f0f16)"><svg width="48" height="48" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="12" stroke="rgba(108,123,255,0.4)" stroke-width="1" fill="rgba(108,123,255,0.06)"/><circle cx="18" cy="18" r="4" fill="#6c7bff" opacity="0.7"/></svg></div><div class="effect-info"><div class="effect-name">Chromatic Aberration</div><div class="effect-meta">Colour · 8 nodes</div></div></div>
-    <div class="effect-card"><div class="effect-thumb" style="background:linear-gradient(135deg,#051a14,#0f0f16)"><svg width="48" height="48" viewBox="0 0 36 36" fill="none"><rect x="8" y="8" width="8" height="8" rx="1" fill="rgba(15,168,136,0.2)" stroke="#0fa888" stroke-width="1"/><rect x="20" y="12" width="8" height="8" rx="1" fill="rgba(15,168,136,0.1)" stroke="rgba(15,168,136,0.5)" stroke-width="1"/><line x1="16" y1="12" x2="20" y2="16" stroke="#0fa888" stroke-width="1" opacity="0.5"/></svg></div><div class="effect-info"><div class="effect-name">Lens Distortion</div><div class="effect-meta">Compositing · 12 nodes</div></div></div>
-    <div class="effect-card"><div class="effect-thumb" style="background:linear-gradient(135deg,#1a0c09,#0f0f16)"><svg width="48" height="48" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="14" r="5" fill="rgba(201,82,56,0.2)" stroke="#c95238" stroke-width="1"/><circle cx="12" cy="24" r="5" fill="rgba(201,82,56,0.15)" stroke="rgba(201,82,56,0.5)" stroke-width="1"/></svg></div><div class="effect-info"><div class="effect-name">Glow Bloom</div><div class="effect-meta">Lighting · 6 nodes</div></div></div>
-    <div class="effect-card"><div class="effect-thumb" style="background:linear-gradient(135deg,#120f02,#0f0f16)"><svg width="48" height="48" viewBox="0 0 36 36" fill="none"><rect x="4" y="15" width="10" height="6" rx="1" fill="rgba(176,113,24,0.2)" stroke="#b07118" stroke-width="1"/><rect x="22" y="10" width="10" height="6" rx="1" fill="rgba(176,113,24,0.1)" stroke="rgba(176,113,24,0.5)" stroke-width="1"/><line x1="14" y1="18" x2="22" y2="13" stroke="#b07118" stroke-width="1" opacity="0.5"/></svg></div><div class="effect-info"><div class="effect-name">Particle Trail</div><div class="effect-meta">Particles · 16 nodes</div></div></div>
-    <div class="effect-card"><div class="effect-thumb" style="background:linear-gradient(135deg,#0b0f1a,#0f0f16)"><svg width="48" height="48" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="8" stroke="rgba(156,168,255,0.4)" stroke-width="1" fill="none" stroke-dasharray="3 2"/><circle cx="18" cy="18" r="3" fill="#9ca8ff" opacity="0.8"/></svg></div><div class="effect-info"><div class="effect-name">Film Grain</div><div class="effect-meta">Texture · 4 nodes</div></div></div>
-    <div class="effect-card"><div class="effect-thumb" style="background:linear-gradient(135deg,#0a140f,#0f0f16)"><svg width="48" height="48" viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="18" rx="12" ry="6" stroke="rgba(15,168,136,0.4)" stroke-width="1" fill="none"/><ellipse cx="18" cy="18" rx="6" ry="12" stroke="rgba(15,168,136,0.3)" stroke-width="1" fill="none"/><circle cx="18" cy="18" r="3" fill="rgba(15,168,136,0.6)"/></svg></div><div class="effect-info"><div class="effect-name">Depth of Field</div><div class="effect-meta">Blur · 9 nodes</div></div></div>
+  <div class="effects-scroll" id="recent-effects-container">
+    <!-- Effects loaded dynamically from Supabase -->
   </div>
 </div>
 
@@ -1258,6 +1253,135 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
   }});},{threshold:0.3});
   
   var strip=document.querySelector('.stats-strip');if(strip)io.observe(strip);
+})();
+</script>
+
+<!-- LOAD RECENT EFFECTS FROM SUPABASE -->
+<script>
+(function(){
+  // Category to color mapping for thumbnails
+  const catColors = {
+    'Colour':      { bg1: '#1a1d4a', bg2: '#0f0f16', stroke: 'rgba(108,123,255,0.4)', fill: 'rgba(108,123,255,0.06)', accent: '#6c7bff' },
+    'Compositing': { bg1: '#051a14', bg2: '#0f0f16', stroke: 'rgba(15,168,136,0.4)',  fill: 'rgba(15,168,136,0.2)',  accent: '#0fa888' },
+    'Lighting':    { bg1: '#1a0c09', bg2: '#0f0f16', stroke: 'rgba(201,82,56,0.4)',   fill: 'rgba(201,82,56,0.2)',   accent: '#c95238' },
+    'Particles':   { bg1: '#120f02', bg2: '#0f0f16', stroke: 'rgba(176,113,24,0.4)',  fill: 'rgba(176,113,24,0.2)',  accent: '#b07118' },
+    'Texture':     { bg1: '#0b0f1a', bg2: '#0f0f16', stroke: 'rgba(156,168,255,0.4)', fill: 'rgba(156,168,255,0.1)', accent: '#9ca8ff' },
+    'Blur':        { bg1: '#0a140f', bg2: '#0f0f16', stroke: 'rgba(15,168,136,0.4)',  fill: 'rgba(15,168,136,0.15)', accent: '#0fa888' },
+    'Transform':   { bg1: '#1a1d4a', bg2: '#0f0f16', stroke: 'rgba(108,123,255,0.4)', fill: 'rgba(108,123,255,0.1)', accent: '#6c7bff' },
+    'Masking':     { bg1: '#14051a', bg2: '#0f0f16', stroke: 'rgba(156,120,255,0.4)', fill: 'rgba(156,120,255,0.1)', accent: '#9c78ff' },
+    'Distort':     { bg1: '#051214', bg2: '#0f0f16', stroke: 'rgba(15,168,136,0.4)',  fill: 'rgba(15,168,136,0.1)', accent: '#0fa888' },
+    'Stylize':     { bg1: '#1a0c1a', bg2: '#0f0f16', stroke: 'rgba(201,82,156,0.4)',  fill: 'rgba(201,82,156,0.1)', accent: '#c9529c' },
+    'default':     { bg1: '#1a1d4a', bg2: '#0f0f16', stroke: 'rgba(108,123,255,0.4)', fill: 'rgba(108,123,255,0.06)', accent: '#6c7bff' }
+  };
+  
+  // SVG templates for each category
+  const svgTemplates = {
+    'Colour': `<circle cx="18" cy="18" r="12" stroke="{{stroke}}" stroke-width="1" fill="{{fill}}"/><circle cx="18" cy="18" r="4" fill="{{accent}}" opacity="0.7"/>`,
+    'Compositing': `<rect x="8" y="8" width="8" height="8" rx="1" fill="{{fill}}" stroke="{{accent}}" stroke-width="1"/><rect x="20" y="12" width="8" height="8" rx="1" fill="{{fill}}" opacity="0.5" stroke="{{stroke}}" stroke-width="1"/><line x1="16" y1="12" x2="20" y2="16" stroke="{{accent}}" stroke-width="1" opacity="0.5"/>`,
+    'Lighting': `<circle cx="18" cy="14" r="5" fill="{{fill}}" stroke="{{accent}}" stroke-width="1"/><circle cx="12" cy="24" r="5" fill="{{fill}}" opacity="0.7" stroke="{{stroke}}" stroke-width="1"/>`,
+    'Particles': `<rect x="4" y="15" width="10" height="6" rx="1" fill="{{fill}}" stroke="{{accent}}" stroke-width="1"/><rect x="22" y="10" width="10" height="6" rx="1" fill="{{fill}}" opacity="0.5" stroke="{{stroke}}" stroke-width="1"/><line x1="14" y1="18" x2="22" y2="13" stroke="{{accent}}" stroke-width="1" opacity="0.5"/>`,
+    'Texture': `<circle cx="18" cy="18" r="8" stroke="{{stroke}}" stroke-width="1" fill="none" stroke-dasharray="3 2"/><circle cx="18" cy="18" r="3" fill="{{accent}}" opacity="0.8"/>`,
+    'Blur': `<ellipse cx="18" cy="18" rx="12" ry="6" stroke="{{stroke}}" stroke-width="1" fill="none"/><ellipse cx="18" cy="18" rx="6" ry="12" stroke="{{stroke}}" opacity="0.7" stroke-width="1" fill="none"/><circle cx="18" cy="18" r="3" fill="{{accent}}" opacity="0.6"/>`,
+    'Transform': `<rect x="8" y="10" width="12" height="12" rx="2" stroke="{{stroke}}" stroke-width="1" fill="{{fill}}" transform="rotate(15 14 16)"/><circle cx="24" cy="24" r="4" fill="{{accent}}" opacity="0.6"/>`,
+    'Masking': `<path d="M18 6 L30 18 L18 30 L6 18 Z" stroke="{{stroke}}" stroke-width="1" fill="{{fill}}"/><circle cx="18" cy="18" r="5" fill="{{accent}}" opacity="0.7"/>`,
+    'Distort': `<path d="M6 12 Q18 6 30 12 Q18 18 6 12" stroke="{{stroke}}" stroke-width="1" fill="{{fill}}"/><path d="M6 24 Q18 18 30 24 Q18 30 6 24" stroke="{{stroke}}" stroke-width="1" fill="{{fill}}" opacity="0.5"/><circle cx="18" cy="18" r="3" fill="{{accent}}"/>`,
+    'Stylize': `<polygon points="18,6 24,14 30,18 24,22 18,30 12,22 6,18 12,14" stroke="{{stroke}}" stroke-width="1" fill="{{fill}}"/><circle cx="18" cy="18" r="3" fill="{{accent}}"/>`,
+    'default': `<circle cx="18" cy="18" r="12" stroke="{{stroke}}" stroke-width="1" fill="{{fill}}"/><circle cx="18" cy="18" r="4" fill="{{accent}}" opacity="0.7"/>`
+  };
+  
+  async function loadRecentEffects() {
+    if (!window._supabase) {
+      console.log('[Recent Effects] Supabase not initialized');
+      showFallbackEffects();
+      return;
+    }
+    
+    try {
+      const { data: effects, error } = await window._supabase
+        .from('effects')
+        .select('id, name, cat, nodes, created_at')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(6);
+      
+      if (error) {
+        console.log('[Recent Effects] Supabase error:', error);
+        showFallbackEffects();
+        return;
+      }
+      
+      if (!effects || effects.length === 0) {
+        console.log('[Recent Effects] No effects found');
+        showFallbackEffects();
+        return;
+      }
+      
+      renderEffects(effects);
+      console.log('[Recent Effects] Loaded', effects.length, 'effects');
+      
+    } catch (err) {
+      console.log('[Recent Effects] Error:', err);
+      showFallbackEffects();
+    }
+  }
+  
+  function renderEffects(effects) {
+    const container = document.getElementById('recent-effects-container');
+    if (!container) return;
+    
+    container.innerHTML = effects.map(effect => {
+      const colors = catColors[effect.cat] || catColors['default'];
+      const svgTemplate = svgTemplates[effect.cat] || svgTemplates['default'];
+      const svg = svgTemplate
+        .replace(/\{\{stroke\}\}/g, colors.stroke)
+        .replace(/\{\{fill\}\}/g, colors.fill)
+        .replace(/\{\{accent\}\}/g, colors.accent);
+      
+      return `
+        <div class="effect-card" data-effect-id="${effect.id}">
+          <div class="effect-thumb" style="background:linear-gradient(135deg,${colors.bg1},${colors.bg2})">
+            <svg width="48" height="48" viewBox="0 0 36 36" fill="none">${svg}</svg>
+          </div>
+          <div class="effect-info">
+            <div class="effect-name">${escapeHtml(effect.name)}</div>
+            <div class="effect-meta">${escapeHtml(effect.cat)} · ${effect.nodes || '?'} nodes</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  function showFallbackEffects() {
+    // Static fallback effects if Supabase fails
+    const fallbackEffects = [
+      { id: 1, name: 'Chromatic Aberration', cat: 'Colour', nodes: 8 },
+      { id: 2, name: 'Lens Distortion', cat: 'Compositing', nodes: 12 },
+      { id: 3, name: 'Glow Bloom', cat: 'Lighting', nodes: 6 },
+      { id: 4, name: 'Particle Trail', cat: 'Particles', nodes: 16 },
+      { id: 5, name: 'Film Grain', cat: 'Texture', nodes: 4 },
+      { id: 6, name: 'Depth of Field', cat: 'Blur', nodes: 9 }
+    ];
+    renderEffects(fallbackEffects);
+  }
+  
+  function escapeHtml(text) {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+  
+  // Load effects when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(loadRecentEffects, 500); // Wait for auth.js to initialize
+    });
+  } else {
+    setTimeout(loadRecentEffects, 500);
+  }
 })();
 </script>
 
