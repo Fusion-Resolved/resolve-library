@@ -61,15 +61,14 @@
   --tag-bg:    rgba(108,123,255,0.08);
   --tag-color: #9ca8ff;
 
-  /* Glass morphism */
-  --glass-bg:        rgba(15,15,22,0.78);
-  --glass-bg-2:      rgba(22,22,31,0.78);
-  --glass-bg-active: rgba(108,123,255,0.82);
-  --glass-blur:      blur(18px) saturate(1.6);
-  --glass-shine:     inset 0 1px 0 rgba(255,255,255,0.07),
-                     inset 0 -1px 0 rgba(0,0,0,0.12);
-  --glass-shadow:    0 2px 12px rgba(0,0,0,0.22),
-                     0 1px 3px  rgba(0,0,0,0.16);
+  /* ── Glass tokens ─────────────────────────────── */
+    --glass-bg:        rgba(14,14,20,0.72);
+    --glass-bg-2:      rgba(22,22,31,0.80);
+    --glass-bg-active: rgba(108,123,255,0.16);
+    --glass-blur:      blur(18px) saturate(180%);
+    --glass-shadow:    0 8px 32px rgba(0,0,0,0.42);
+    --glass-shine:     inset 0 1px 0 rgba(255,255,255,0.055);
+  }
 
   /* Typography */
   --font-display: 'Syne', sans-serif;
