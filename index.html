@@ -306,13 +306,14 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 }
 .card-community,.card-library,.card-spline,.card-submit,.card-learn,.card-discord { padding:20px; }
 
-/* Internal glow — left-edge gradient on hover */
-.bento-card::before {
-  content:''; position:absolute; inset:0; border-radius:inherit;
-  background:radial-gradient(ellipse 120% 100% at 0% 50%, var(--card-glow,rgba(108,123,255,0.08)) 0%, transparent 70%);
-  opacity:0; transition:opacity 0.28s ease; pointer-events:none; z-index:0;
+/* Cursor-following spotlight glow inside card */
+.card-spotlight {
+  position:absolute; inset:0; border-radius:inherit;
+  pointer-events:none; z-index:0;
+  background:radial-gradient(circle at var(--x,50%) var(--y,50%), var(--spot-color,rgba(108,123,255,0.15)) 0%, transparent 50%);
+  opacity:0; transition:opacity 0.15s ease;
 }
-.bento-card:hover::before { opacity:1; }
+.bento-card:hover .card-spotlight { opacity:1; }
 
 /* Top-edge glint */
 .bento-card::after {
@@ -322,15 +323,15 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 }
 .bento-card:hover { transform:translateY(-5px); transition:transform 0.32s var(--ease-out-expo), border-color 0.28s ease, box-shadow 0.28s ease; }
 
-/* Per-card CSS variables for internal glow color */
-.card-effects   { --card-glow:rgba(108,123,255,0.10); }
-.card-graph     { --card-glow:rgba(15,168,136,0.10);  }
-.card-community { --card-glow:rgba(176,113,24,0.10);  }
-.card-library   { --card-glow:rgba(201,82,56,0.10);   }
-.card-spline    { --card-glow:rgba(68,81,212,0.10);   }
-.card-submit    { --card-glow:rgba(108,123,255,0.10); }
-.card-learn     { --card-glow:rgba(15,168,136,0.10);  }
-.card-discord   { --card-glow:rgba(240,96,96,0.10);   }
+/* Per-card spotlight colors */
+.card-effects   { --spot-color:rgba(108,123,255,0.20); }
+.card-graph     { --spot-color:rgba(15,168,136,0.18);  }
+.card-community { --spot-color:rgba(176,113,24,0.18);  }
+.card-library   { --spot-color:rgba(201,82,56,0.18);   }
+.card-spline    { --spot-color:rgba(68,81,212,0.18);   }
+.card-submit    { --spot-color:rgba(108,123,255,0.18); }
+.card-learn     { --spot-color:rgba(15,168,136,0.18);  }
+.card-discord   { --spot-color:rgba(240,96,96,0.18);   }
 
 /* Per-card hover border + external glow */
 .card-effects:hover   { border-color:rgba(108,123,255,0.30); box-shadow:var(--glass-shine),0 0 40px rgba(108,123,255,0.10); }
@@ -713,6 +714,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 
     <!-- 1. Effects Library — flagship -->
     <a href="effects.html" class="bento-card card-effects" data-delay="0">
+      <div class="card-spotlight"></div>
       <div class="card-blob"></div>
       <div class="code-deco" aria-hidden="true">
         <div class="code-deco-inner">
@@ -744,6 +746,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 
     <!-- 2. Node Graph -->
     <a href="nodegraph.html" class="bento-card card-graph" data-delay="1">
+      <div class="card-spotlight"></div>
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -764,6 +767,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 
     <!-- 3. Community -->
     <a href="community.html" class="bento-card card-community" data-delay="2">
+      <div class="card-spotlight"></div>
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -779,6 +783,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 
     <!-- 4. Node Reference Library -->
     <a href="library.html" class="bento-card card-library" data-delay="3">
+      <div class="card-spotlight"></div>
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -794,6 +799,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 
     <!-- 5. Spline Editor -->
     <a href="spline.html" class="bento-card card-spline" data-delay="4">
+      <div class="card-spotlight"></div>
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -809,6 +815,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 
     <!-- 6. Submit an Effect -->
     <a href="community.html" class="bento-card card-submit" data-delay="5">
+      <div class="card-spotlight"></div>
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -824,6 +831,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 
     <!-- 7. Learn -->
     <a href="library.html" class="bento-card card-learn" data-delay="6">
+      <div class="card-spotlight"></div>
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -839,6 +847,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 
     <!-- 8. Discord -->
     <a href="#" class="bento-card card-discord" data-delay="7">
+      <div class="card-spotlight"></div>
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -1190,12 +1199,33 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 })();
 </script>
 
-<!-- BENTO REVEAL + PRESS FEEDBACK -->
+<!-- BENTO REVEAL + PRESS FEEDBACK + CURSOR SPOTLIGHT -->
 <script>
 (function(){
   var io=new IntersectionObserver(function(entries){for(var i=0;i<entries.length;i++){if(entries[i].isIntersecting){var card=entries[i].target;card.style.animationDelay=(parseInt(card.getAttribute('data-delay')||'0',10)*110)+'ms';card.classList.add('revealed');io.unobserve(card);}}},{threshold:0.06});
   var cards=document.querySelectorAll('.bento-card');
   for(var i=0;i<cards.length;i++){io.observe(cards[i]);(function(c){c.addEventListener('mousedown',function(){c.style.transform='translateY(-2px) scale(0.985)';c.style.transition='transform 0.08s ease-out';});c.addEventListener('mouseup',function(){c.style.transform='';c.style.transition='transform 0.32s cubic-bezier(0.16,1,0.3,1),border-color 0.28s ease,box-shadow 0.28s ease';});c.addEventListener('mouseleave',function(){c.style.transform='';});})(cards[i]);}
+})();
+
+// Cursor-following spotlight inside bento cards
+(function(){
+  document.querySelectorAll('.bento-card').forEach(function(card){
+    var spotlight = card.querySelector('.card-spotlight');
+    if(!spotlight) return;
+    
+    card.addEventListener('mousemove', function(e){
+      var rect = card.getBoundingClientRect();
+      var x = ((e.clientX - rect.left) / rect.width) * 100;
+      var y = ((e.clientY - rect.top) / rect.height) * 100;
+      spotlight.style.setProperty('--x', x + '%');
+      spotlight.style.setProperty('--y', y + '%');
+    });
+    
+    card.addEventListener('mouseleave', function(){
+      spotlight.style.setProperty('--x', '50%');
+      spotlight.style.setProperty('--y', '50%');
+    });
+  });
 })();
 </script>
 
