@@ -316,6 +316,22 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 .card-learn:hover     { border-color:rgba(15,168,136,0.26);  box-shadow:var(--glass-shine),0 0 40px rgba(15,168,136,0.08); }
 .card-discord:hover   { border-color:rgba(240,96,96,0.26);   box-shadow:var(--glass-shine),0 0 40px rgba(240,96,96,0.08); }
 
+/* Cursor spotlight - uses --mouse-x/--mouse-y set by JS */
+.bento-card::before {
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:radial-gradient(circle at var(--mouse-x,50%) var(--mouse-y,50%), var(--accent,rgba(108,123,255,0.12)) 0%, transparent 60%);
+  opacity:0; transition:opacity 0.38s ease;
+  pointer-events:none; z-index:2;
+}
+.bento-card:hover::before { opacity:1; }
+
+/* Top-edge glint */
+.bento-card::after {
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:radial-gradient(ellipse 80% 35% at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 60%);
+  pointer-events:none; z-index:2;
+}
+
 /* Card reveal animation */
 @keyframes cardReveal { from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
 .bento-card.revealed { animation:cardReveal 0.58s var(--ease-out-expo) both; }
