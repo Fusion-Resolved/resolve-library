@@ -192,9 +192,16 @@
      ═══════════════════════════════════════════════════════════════ */
   function showModal() {
     const modal = document.getElementById('effect-modal-overlay');
+    console.log('[Effect Modal] showModal called, modal element:', modal);
     if (modal) {
       modal.classList.add('open');
+      modal.style.display = 'flex'; // Force display
       document.body.style.overflow = 'hidden';
+      console.log('[Effect Modal] Modal classes:', modal.className);
+      console.log('[Effect Modal] Modal display style:', modal.style.display);
+      console.log('[Effect Modal] Modal computed display:', getComputedStyle(modal).display);
+    } else {
+      console.error('[Effect Modal] Modal element not found!');
     }
   }
 
