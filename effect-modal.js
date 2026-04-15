@@ -325,27 +325,6 @@
       mediaContent.style.display = 'block';
     }
   }
-        
-        // Build proper embed URL (include original query params for session/share IDs)
-        if (videoId) {
-          // Extract any existing params from original URL
-          const urlObj = new URL(url);
-          const existingParams = urlObj.searchParams;
-          const si = existingParams.get('si'); // session/share ID
-          
-          embedUrl = `https://www.youtube.com/embed/${videoId}`;
-          if (si) {
-            embedUrl += `?si=${si}`;
-          }
-          console.log('[Effect Modal] YouTube embed URL:', embedUrl);
-        }
-      }
-      
-      console.log('[Effect Modal] Loading video iframe with URL:', embedUrl);
-      mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width:100%;height:100%;border:none;display:block"></iframe>`;
-      mediaContent.style.display = 'block';
-    }
-  }
 
   window.switchMedia = function(type) {
     if (!currentEffectMedia) return;
