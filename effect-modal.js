@@ -192,14 +192,13 @@
      ═══════════════════════════════════════════════════════════════ */
   function showModal() {
     const modal = document.getElementById('effect-modal-overlay');
+    const sheet = modal?.querySelector('.eds-sheet');
     console.log('[Effect Modal] showModal called, modal element:', modal);
     if (modal) {
-      modal.classList.add('open');
-      modal.style.display = 'flex'; // Force display
+      modal.classList.add('open', 'active'); // Add both classes for compatibility
+      modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
       console.log('[Effect Modal] Modal classes:', modal.className);
-      console.log('[Effect Modal] Modal display style:', modal.style.display);
-      console.log('[Effect Modal] Modal computed display:', getComputedStyle(modal).display);
     } else {
       console.error('[Effect Modal] Modal element not found!');
     }
@@ -208,7 +207,8 @@
   window.closeEffectModal = function() {
     const modal = document.getElementById('effect-modal-overlay');
     if (modal) {
-      modal.classList.remove('open');
+      modal.classList.remove('open', 'active');
+      modal.style.display = '';
       document.body.style.overflow = '';
     }
     closeNodePop();
