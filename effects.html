@@ -2016,12 +2016,10 @@ body.bulk-mode .card-select-check { display: flex; }
     behaviour by keeping the header below the sidebar overlay. */
 header { z-index: 100 !important; }
 
-/* Effect Modal */
-#effect-modal-overlay { display:none !important; }
-#effect-modal-overlay.open { display:flex !important; }
-@media(min-width:600px){ #effect-modal-overlay.open { align-items:center; padding:1.5rem; } }
+/* Effect Modal - Controlled entirely by JavaScript inline styles */
+#effect-modal-overlay { }
+#effect-modal-overlay .eds-sheet { animation:sheetUp var(--duration-base) var(--ease-out-expo); }
 @keyframes sheetUp { from{transform:translateY(32px);opacity:0} to{transform:translateY(0);opacity:1} }
-@media(min-width:600px){ .eds-sheet { border-radius:var(--radius-lg) !important; max-height:78vh !important; } }
 
 </style>
 
@@ -9579,7 +9577,7 @@ if (typeof window._shToast !== 'function') {
 </script>
 
 <!-- EFFECT MODAL -->
-<div id="effect-modal-overlay" class="sheet-ov" style="display:none;position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;">
+<div id="effect-modal-overlay" style="position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;display:none;opacity:0;pointer-events:none;visibility:hidden;">
   <div class="eds-sheet" style="background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),0 -4px 48px rgba(0,0,0,0.55);border:1px solid var(--border-subtle);border-radius:20px 20px 0 0;width:100%;max-width:640px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;animation:sheetUp var(--duration-base) var(--ease-out-expo);">
     <div class="eds-hd" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border-surface);display:flex;align-items:center;gap:10px;flex-shrink:0;position:sticky;top:0;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);z-index:2;">
       <span class="eds-dot" style="width:10px;height:10px;border-radius:50%;background:var(--violet);flex-shrink:0;"></span>
