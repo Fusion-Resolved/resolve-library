@@ -1023,14 +1023,14 @@ button:active   { transition: transform 80ms ease; }
   );
   opacity: 0;
   transition: opacity 0.38s ease;
-  pointer-events: none; z-index: 0;
+  pointer-events: none; z-index: 2;
 }
 /* Top-edge glint */
 .bento-card::after {
   content: '';
   position: absolute; inset: 0; border-radius: inherit;
   background: radial-gradient(ellipse 80% 35% at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 60%);
-  pointer-events: none; z-index: 0;
+  pointer-events: none; z-index: 2;
 }
 .bento-card:hover::before { opacity: 1; }
 .bento-card:hover {
