@@ -312,13 +312,15 @@
           videoId = match ? match[1] : '';
         }
         
-        // Build proper embed URL with parameters
+        // Build proper embed URL
         if (videoId) {
-          embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
+          embedUrl = `https://www.youtube.com/embed/${videoId}`;
+          console.log('[Effect Modal] YouTube embed URL:', embedUrl);
         }
       }
       
-      mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="width:100%;height:100%;border:none;display:block"></iframe>`;
+      console.log('[Effect Modal] Loading video iframe with URL:', embedUrl);
+      mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%;height:100%;border:none;display:block"></iframe>`;
       mediaContent.style.display = 'block';
     }
   }
