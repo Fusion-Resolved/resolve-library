@@ -1557,7 +1557,17 @@ function closeGlobalAdd(e) {
   Nodes copied
 </div>
 
-<script src="effect-modal.js"></script>
+<script src="./effect-modal.js" onerror="console.error('[Effect Modal] Failed to load effect-modal.js - check that file is uploaded!');"></script>
+
+<script>
+// Check if modal loaded after 2 seconds
+setTimeout(function() {
+  if (typeof openEffectModal !== 'function') {
+    console.error('[Effect Modal] openEffectModal not defined - script failed to load');
+    alert('Error: effect-modal.js not found. Please check that the file is uploaded to the same folder as index.html');
+  }
+}, 2000);
+</script>
 
 </body>
 </html>
