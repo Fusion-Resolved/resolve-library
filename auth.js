@@ -48,6 +48,10 @@ function startAuthSystem() {
     const user = session ? session.user : null;
     currentUser = user;
 
+    // Set global user ID for other scripts
+    window.CURRENT_USER_ID = user ? user.id : null;
+    window.CURRENT_USER = user;
+
     // Dispatch custom event for all pages
     window.dispatchEvent(new CustomEvent('authStateChanged', {
       detail: { event: event, session: session, user: user }
@@ -59,6 +63,8 @@ function startAuthSystem() {
     // Handle specific events
     if (event === 'SIGNED_OUT') {
       currentUser = null;
+      window.CURRENT_USER_ID = null;
+      window.CURRENT_USER = null;
     }
   });
 
@@ -70,9 +76,16 @@ async function checkInitialSession() {
   try {
     const { data: { session } } = await window._supabase.auth.getSession();
     currentUser = session ? session.user : null;
+    
+    // Set global user ID immediately on init
+    window.CURRENT_USER_ID = currentUser ? currentUser.id : null;
+    window.CURRENT_USER = currentUser;
+    
     await updateSidebarUserEmail(currentUser);
   } catch (err) {
     console.error("[auth.js] Failed to get initial session:", err);
+    window.CURRENT_USER_ID = null;
+    window.CURRENT_USER = null;
     await updateSidebarUserEmail(null);
   }
 }
