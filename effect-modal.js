@@ -224,24 +224,51 @@
     const toggleBtns = document.querySelector('.media-toggle');
     const gifBtn = document.getElementById('mtb-gif');
     const videoBtn = document.getElementById('mtb-video');
-    const watchYoutube = document.getElementById('modal-watch-youtube');
 
     // Check what media is available
     const hasGif = effect.gif_url || effect.gifUrl;
     const hasVideo = effect.video_url || effect.videoUrl;
     
-    // Store original YouTube URL for the "Watch on YouTube" button
+    // Store current video URL
     currentYouTubeUrl = effect.video_url || effect.videoUrl || '';
-    const isYouTube = currentYouTubeUrl.includes('youtube.com') || currentYouTubeUrl.includes('youtu.be');
 
     if (!hasGif && !hasVideo) {
       // No media available
       mediaContent.style.display = 'none';
       if (toggleBtns) toggleBtns.style.display = 'none';
       if (noMedia) noMedia.style.display = 'flex';
-      if (watchYoutube) watchYoutube.style.display = 'none';
       return;
     }
+
+    // Show toggle if either media is available
+    if (toggleBtns) {
+      toggleBtns.style.display = (hasGif || hasVideo) ? 'flex' : 'none';
+      // Disable button for missing media
+      if (gifBtn) {
+        gifBtn.style.opacity = hasGif ? '1' : '0.3';
+        gifBtn.style.cursor = hasGif ? 'pointer' : 'not-allowed';
+        gifBtn.disabled = !hasGif;
+      }
+      if (videoBtn) {
+        videoBtn.style.opacity = hasVideo ? '1' : '0.3';
+        videoBtn.style.cursor = hasVideo ? 'pointer' : 'not-allowed';
+        videoBtn.disabled = !hasVideo;
+      }
+    }
+
+    // Default to GIF if available, otherwise video
+    if (hasGif) {
+      showGif(effect.gif_url || effect.gifUrl);
+      if (gifBtn) gifBtn.classList.add('active');
+      if (videoBtn) videoBtn.classList.remove('active');
+    } else if (hasVideo) {
+      showVideo(effect.video_url || effect.videoUrl);
+      if (gifBtn) gifBtn.classList.remove('active');
+      if (videoBtn) videoBtn.classList.add('active');
+    }
+
+    if (noMedia) noMedia.style.display = 'none';
+  }
 
     // Show toggle if either media is available
     if (toggleBtns) {
@@ -312,15 +339,23 @@
           videoId = match ? match[1] : '';
         }
         
-        // Build proper embed URL
+        // Build proper embed URL (include original query params for session/share IDs)
         if (videoId) {
+          // Extract any existing params from original URL
+          const urlObj = new URL(url);
+          const existingParams = urlObj.searchParams;
+          const si = existingParams.get('si'); // session/share ID
+          
           embedUrl = `https://www.youtube.com/embed/${videoId}`;
+          if (si) {
+            embedUrl += `?si=${si}`;
+          }
           console.log('[Effect Modal] YouTube embed URL:', embedUrl);
         }
       }
       
       console.log('[Effect Modal] Loading video iframe with URL:', embedUrl);
-      mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%;height:100%;border:none;display:block"></iframe>`;
+      mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width:100%;height:100%;border:none;display:block"></iframe>`;
       mediaContent.style.display = 'block';
     }
   }
