@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noding — Section 04 · Effect Detail Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#09090e;--ink-soft:#0f0f16;--ink-lift:#1e1e2a;
+  --violet:#6c7bff;--violet-light:#9ca8ff;
+  --node-teal:#0fa888;--signal-amber:#b07118;
+  --danger:#f06060;--danger-dim:rgba(240,96,96,0.08);
+  --white:#f4f4fb;--white-pure:#ffffff;
+  --font-display:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+  --radius-xs:4px;--radius-sm:7px;--radius:14px;--radius-lg:18px;--radius-pill:999px;
+  --duration-fast:150ms;--duration-base:240ms;
+  --ease-out-expo:cubic-bezier(0.16,1,0.3,1);--tr:all 150ms ease-out;
+}
+:root {
+  --bg-page:#09090e;
+  --text-primary:#f4f4fb;--text-secondary:#8f8fa8;--text-muted:#585870;
+  --border-surface:rgba(255,255,255,0.06);--border-subtle:#16161f;--border-color:#1e1e2a;
+  --tag-bg:rgba(108,123,255,0.08);--tag-color:#9ca8ff;
+  --gb:rgba(15,15,22,0.78);--gb2:rgba(22,22,31,0.78);
+  --gblur:blur(18px) saturate(1.6);
+  --gshine:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.12);
+  --gshadow:0 2px 12px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.16);
+}
+[data-theme="light"] {
+  --bg-page:#ffffff;
+  --text-primary:#09090e;--text-secondary:#3b3d6e;--text-muted:#7577a8;
+  --border-surface:rgba(108,123,255,0.12);--border-subtle:rgba(108,123,255,0.18);--border-color:rgba(108,123,255,0.35);
+  --tag-bg:rgba(108,123,255,0.10);--tag-color:#4451d4;
+  --gb:rgba(236,239,254,0.78);--gb2:rgba(226,230,253,0.78);
+  --gblur:blur(18px) saturate(1.8);
+  --gshine:inset 0 1px 0 rgba(255,255,255,0.75),inset 0 -1px 0 rgba(108,123,255,0.08);
+  --gshadow:0 2px 10px rgba(108,123,255,0.10),0 1px 3px rgba(108,123,255,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-body);font-size:15px;font-weight:300;line-height:1.65;-webkit-font-smoothing:antialiased;transition:background var(--duration-base),color var(--duration-base);min-height:100vh;}
+.ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.ab{position:absolute;border-radius:50%;mix-blend-mode:screen;animation-timing-function:ease-in-out;animation-iteration-count:infinite;}
+[data-theme="light"] .ab{mix-blend-mode:multiply;}
+.a1{width:600px;height:600px;top:-15%;left:-10%;background:radial-gradient(circle,rgba(108,123,255,0.07) 0%,transparent 70%);animation:d1 28s infinite;}
+.a2{width:500px;height:500px;top:10%;right:-8%;background:radial-gradient(circle,rgba(108,123,255,0.06) 0%,transparent 70%);animation:d2 34s infinite;}
+.a3{width:700px;height:700px;bottom:-20%;left:20%;background:radial-gradient(circle,rgba(108,123,255,0.05) 0%,transparent 70%);animation:d3 40s infinite;}
+@keyframes d1{0%{transform:translate(0,0)}25%{transform:translate(18vw,12vh)}50%{transform:translate(8vw,30vh)}75%{transform:translate(-5vw,15vh)}100%{transform:translate(0,0)}}
+@keyframes d2{0%{transform:translate(0,0)}25%{transform:translate(-20vw,15vh)}50%{transform:translate(-8vw,35vh)}75%{transform:translate(-15vw,8vh)}100%{transform:translate(0,0)}}
+@keyframes d3{0%{transform:translate(0,0)}25%{transform:translate(15vw,-20vh)}50%{transform:translate(30vw,-10vh)}75%{transform:translate(10vw,-25vh)}100%{transform:translate(0,0)}}
+
+/* preview chrome */
+.preview-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;position:relative;z-index:10;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);border-bottom:1px solid var(--border-subtle);box-shadow:var(--gshine);font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;}
+.preview-trigger-row{display:flex;gap:10px;align-items:center;padding:20px 24px;position:relative;z-index:2;border-bottom:1px solid var(--border-surface);}
+.preview-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);}
+.trigger-card{display:inline-flex;align-items:center;gap:10px;padding:10px 16px;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine),var(--gshadow);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);cursor:pointer;transition:var(--tr);font-family:var(--font-display);font-weight:600;font-size:13px;color:var(--text-primary);}
+.trigger-card:hover{background:var(--gb2);border-color:var(--border-color);}
+.cat-badge{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.06em;padding:2px 7px;border-radius:var(--radius-xs);border:1px solid rgba(108,123,255,0.25);color:var(--violet);background:rgba(108,123,255,0.08);}
+.tt-btn{display:flex;align-items:center;gap:8px;background:var(--gb2);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);border:1px solid var(--border-subtle);box-shadow:var(--gshine);border-radius:var(--radius-pill);padding:5px 12px 5px 7px;cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);transition:var(--tr);letter-spacing:0.06em;}
+.tt-track{width:28px;height:16px;border-radius:var(--radius-pill);background:var(--border-color);position:relative;transition:background var(--duration-base);flex-shrink:0;}
+.tt-track.on{background:var(--violet);}
+.tt-thumb{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--white-pure);transition:transform var(--duration-base) var(--ease-out-expo);}
+.tt-track.on .tt-thumb{transform:translateX(12px);}
+
+/* sheet */
+.sheet-ov{display:none;position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;}
+.sheet-ov.open{display:flex;}
+@media(min-width:600px){.sheet-ov{align-items:center;padding:1.5rem;}}
+@keyframes sheetUp{from{transform:translateY(32px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes modalIn{from{transform:scale(0.97) translateY(8px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.eds-sheet{background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine),0 -4px 48px rgba(0,0,0,0.55);border:1px solid var(--border-subtle);border-radius:20px 20px 0 0;width:100%;max-width:640px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;animation:sheetUp var(--duration-base) var(--ease-out-expo);}
+@media(min-width:600px){.eds-sheet{border-radius:var(--radius-lg);max-height:78vh;}}
+.eds-hd{padding:1rem 1.25rem;border-bottom:1px solid var(--border-surface);display:flex;align-items:center;gap:10px;flex-shrink:0;position:sticky;top:0;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);z-index:2;}
+.eds-dot{width:10px;height:10px;border-radius:50%;background:var(--violet);flex-shrink:0;}
+.eds-title{font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:-0.02em;color:var(--text-primary);margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.eds-x{background:var(--gb2);box-shadow:var(--gshine);border:1px solid var(--border-subtle);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;color:var(--text-secondary);flex-shrink:0;transition:var(--tr);}
+.eds-x:hover{color:var(--text-primary);border-color:var(--border-color);}
+.eds-bd{overflow-y:auto;flex:1;padding:1.25rem;display:flex;flex-direction:column;gap:1rem;scrollbar-width:thin;scrollbar-color:var(--border-color) transparent;}
+.eds-bd::-webkit-scrollbar{width:4px;}
+.eds-bd::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:var(--radius-pill);}
+
+/* media */
+.det-media{width:calc(100% + 2.5rem);margin:-1.25rem -1.25rem 0;aspect-ratio:16/9;background:var(--ink);overflow:hidden;position:relative;flex-shrink:0;}
+.no-video{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;}
+.media-toggle{display:flex;gap:4px;padding:4px 8px;background:rgba(9,9,14,0.72);backdrop-filter:blur(8px);border-radius:var(--radius-pill);position:absolute;bottom:10px;right:10px;}
+.mtb{font-size:10px;font-family:var(--font-mono);padding:3px 11px;border-radius:var(--radius-pill);border:1px solid rgba(255,255,255,0.18);background:transparent;color:rgba(255,255,255,0.55);cursor:pointer;transition:var(--tr);}
+.mtb.active{background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.45);color:#fff;}
+
+/* content sections */
+.det-info{display:flex;flex-direction:column;gap:12px;}
+.det-title{font-family:var(--font-display);font-size:1.2rem;font-weight:700;letter-spacing:-0.025em;line-height:1.2;color:var(--text-primary);margin:0;}
+.det-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.det-date{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);}
+.det-desc{font-size:13px;color:var(--text-secondary);line-height:1.7;}
+.sec{display:flex;flex-direction:column;gap:8px;padding-top:6px;border-top:1px solid var(--border-surface);}
+.sec-lbl{font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);}
+.steps{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.steps li{display:flex;gap:12px;font-size:13px;color:var(--text-secondary);line-height:1.55;}
+.sn{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);min-width:22px;padding-top:1px;flex-shrink:0;}
+.code-wrap{position:relative;}
+.node-code{display:block;background:#0f0f16;border:1px solid var(--border-surface);border-radius:var(--radius);padding:1rem;font-family:var(--font-mono);font-size:11.5px;color:var(--node-teal);white-space:pre-wrap;word-break:break-all;line-height:1.6;}
+.copy-btn{position:absolute;top:8px;right:8px;background:var(--gb2);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:3px 9px;font-size:11px;font-family:var(--font-mono);color:var(--text-secondary);cursor:pointer;transition:var(--tr);}
+.copy-btn:hover{color:var(--text-primary);border-color:var(--border-color);}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.info-item{display:flex;flex-direction:column;gap:5px;}
+.info-val{font-size:13px;color:var(--text-secondary);}
+.related-effects{display:flex;gap:6px;flex-wrap:wrap;}
+.rel-chip{font-size:12px;font-family:var(--font-body);padding:5px 13px;border-radius:var(--radius-pill);border:1px solid var(--border-subtle);background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine);color:var(--text-secondary);cursor:pointer;transition:var(--tr);white-space:nowrap;}
+.rel-chip:hover{border-color:rgba(108,123,255,0.45);color:var(--violet-light);background:rgba(108,123,255,0.10);}
+
+/* ═══════════════════════════════════
+   NODE GRAPH CANVAS
+   ═══════════════════════════════════ */
+.graph-canvas-wrap{position:relative;height:320px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border-surface);user-select:none;-webkit-user-select:none;}
+/* Always dark regardless of theme — graph editors are always dark */
+.graph-viewport{position:absolute;inset:0;overflow:hidden;cursor:grab;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.13) 1px,transparent 1px);background-size:22px 22px;}
+.graph-viewport.panning{cursor:grabbing;}
+.graph-world{position:absolute;top:0;left:0;transform-origin:0 0;}
+.graph-svg{position:absolute;top:0;left:0;pointer-events:none;overflow:visible;}
+
+/* graph node cards */
+.gn-card{position:absolute;display:flex;align-items:center;gap:7px;border-radius:6px;border:1px solid;cursor:pointer;padding:0 10px 0 10px;transition:filter 0.12s,box-shadow 0.12s;}
+.gn-card:hover{filter:brightness(1.25);z-index:5;}
+.gn-card.g-active{z-index:6;box-shadow:0 0 0 2px rgba(255,255,255,0.3),0 0 18px rgba(108,123,255,0.35);}
+.gn-typedot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.gn-labels{min-width:0;flex:1;}
+.gn-type{font-family:var(--font-mono);font-size:7.5px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.38);line-height:1;margin-bottom:3px;}
+.gn-name{font-family:var(--font-display);font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1;}
+/* ports */
+.gn-port{position:absolute;width:9px;height:9px;border-radius:50%;border:1.5px solid;background:#06060d;}
+.gn-port-in{left:-5px;}
+.gn-port-out{right:-5px;}
+
+/* graph controls */
+.graph-controls{position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;}
+.gc-btn{background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;line-height:1;}
+.gc-btn:hover{background:rgba(108,123,255,0.22);border-color:rgba(108,123,255,0.45);color:#fff;}
+.gc-fit{font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;}
+.graph-zoom-lbl{position:absolute;bottom:10px;left:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.07em;pointer-events:none;z-index:10;}
+.graph-hint{position:absolute;bottom:10px;right:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.18);letter-spacing:0.05em;pointer-events:none;z-index:10;}
+
+/* similar */
+.sim-sec{border-top:1px solid var(--border-surface);padding:1.25rem;margin:0 -1.25rem;}
+.sim-lbl{font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);margin-bottom:12px;}
+.sim-grid{display:flex;flex-direction:column;gap:7px;}
+.sim-card{display:flex;align-items:center;gap:12px;padding:9px 12px;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine);border:1px solid var(--border-surface);border-radius:var(--radius);cursor:pointer;transition:var(--tr);}
+.sim-card:hover{border-color:var(--border-subtle);background:var(--gb2);}
+.sim-thumb{width:56px;height:32px;border-radius:var(--radius-xs);background:#1e1e2a;flex-shrink:0;}
+.sim-info{flex:1;min-width:0;}
+.sim-name{font-size:12px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.sim-score{font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin-left:auto;flex-shrink:0;}
+
+/* footer buttons */
+.eds-ft{padding:0.9rem 1.25rem;border-top:1px solid var(--border-surface);display:flex;gap:8px;align-items:center;flex-shrink:0;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine);position:sticky;bottom:0;z-index:2;}
+.btn-glass{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine),var(--gshadow);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:9px 14px;font-size:13px;font-weight:500;font-family:var(--font-body);color:var(--text-secondary);cursor:pointer;transition:var(--tr);white-space:nowrap;flex:1;}
+.btn-glass:hover{background:var(--gb2);border-color:var(--border-color);color:var(--text-primary);}
+.btn-danger{border-color:rgba(240,96,96,0.25);color:var(--danger);background:var(--danger-dim);}
+.btn-danger:hover{background:rgba(240,96,96,0.14);border-color:var(--danger);}
+.btn-share{display:inline-flex;align-items:center;gap:6px;background:var(--gb);box-shadow:var(--gshine),var(--gshadow);border:1px solid var(--border-subtle);color:var(--text-secondary);border-radius:var(--radius-sm);padding:9px 14px;font-size:13px;font-family:var(--font-body);cursor:pointer;transition:var(--tr);}
+.btn-share:hover{color:var(--violet-light);border-color:rgba(108,123,255,0.45);background:rgba(108,123,255,0.10);}
+.btn-primary{display:inline-flex;align-items:center;gap:6px;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius);padding:9px 16px;font-size:13px;font-weight:600;font-family:var(--font-body);cursor:pointer;transition:var(--tr);white-space:nowrap;}
+.btn-primary:hover{filter:brightness(1.15);transform:translateY(-1px);box-shadow:0 4px 18px rgba(108,123,255,0.45);}
+
+/* node param popover */
+.nql-pop{position:fixed;background:var(--gb2);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine),0 8px 32px rgba(0,0,0,0.55);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);width:320px;max-width:92vw;overflow:hidden;z-index:500;display:none;}
+.nql-pop.open{display:block;animation:modalIn 0.16s var(--ease-out-expo);}
+.nql-hd{display:flex;align-items:flex-start;gap:10px;padding:11px 13px 9px;border-bottom:1px solid var(--border-surface);}
+.nql-ico{width:28px;height:28px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-family:var(--font-mono);font-weight:500;color:rgba(255,255,255,0.9);}
+.nql-nm{font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--text-primary);line-height:1.2;}
+.nql-ct{font-size:9px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;}
+.nql-x{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;padding:2px 5px;margin-left:auto;flex-shrink:0;transition:color var(--duration-fast);}
+.nql-x:hover{color:var(--text-primary);}
+.nql-bd{padding:11px 13px 13px;display:flex;flex-direction:column;gap:10px;max-height:360px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border-color) transparent;}
+.nql-desc{font-size:12px;color:var(--text-secondary);line-height:1.6;}
+.nql-slbl{font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:4px;}
+.nql-row{display:flex;align-items:baseline;gap:7px;padding:4px 0;border-bottom:1px solid var(--border-surface);font-size:11px;}
+.nql-row:last-child{border-bottom:none;}
+.nql-pname{font-family:var(--font-mono);font-size:10.5px;color:var(--violet-light);min-width:90px;flex-shrink:0;}
+.nql-pval{font-family:var(--font-mono);font-size:10px;color:var(--node-teal);padding:1px 6px;border-radius:3px;background:rgba(15,168,136,0.08);border:1px solid rgba(15,168,136,0.2);white-space:nowrap;flex-shrink:0;}
+.nql-pdesc{color:var(--text-secondary);flex:1;font-size:11px;}
+.nql-port{font-family:var(--font-mono);font-size:10px;padding:1px 7px;border-radius:3px;border:1px solid;white-space:nowrap;flex-shrink:0;min-width:64px;text-align:center;}
+.nql-port.in{color:var(--node-teal);border-color:rgba(15,168,136,0.30);background:rgba(15,168,136,0.08);}
+.nql-port.out{color:var(--violet-light);border-color:rgba(108,123,255,0.25);background:rgba(108,123,255,0.08);}
+.nql-tip{font-size:11px;color:var(--violet-light);background:rgba(108,123,255,0.08);border:1px solid rgba(108,123,255,0.20);border-radius:var(--radius-sm);padding:7px 10px;line-height:1.55;}
+
+/* toast */
+.toast{position:fixed;top:72px;right:1.5rem;background:var(--gb2);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine),var(--gshadow);border:1px solid var(--border-subtle);color:var(--text-primary);padding:10px 18px;border-radius:var(--radius-lg);font-size:13px;opacity:0;transform:translateY(-6px);transition:all var(--duration-base) var(--ease-out-expo);pointer-events:none;z-index:999;display:flex;align-items:center;gap:8px;}
+.toast.show{opacity:1;transform:translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="ambient" aria-hidden="true">
+  <div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div>
+</div>
+
+<div class="preview-bar">
+  <span>Section 04 / 08 &middot; Effect Detail Sheet &middot; Noding</span>
+  <button class="tt-btn" id="themeBtn">
+    <div class="tt-track on" id="ttTrack"><div class="tt-thumb"></div></div>
+    <span id="ttLabel">Night</span>
+  </button>
+</div>
+
+<div class="preview-trigger-row">
+  <span class="preview-lbl">Click to open &rarr;</span>
+  <div class="trigger-card" id="btnOpen1">
+    <span class="cat-badge">Fusion Effect</span>Optical Flow Warp
+  </div>
+  <div class="trigger-card" id="btnOpen2">
+    <span class="cat-badge">Grade</span>Bleach Bypass
+    <small style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);">(owner)</small>
+  </div>
+</div>
+
+<!-- ── Sheet ── -->
+<div id="theSheet" class="sheet-ov">
+  <div class="eds-sheet">
+    <div class="eds-hd">
+      <span class="eds-dot"></span>
+      <h3 class="eds-title" id="sheetTitle">Optical Flow Warp</h3>
+      <button class="eds-x" id="btnClose">&#x2715;</button>
+    </div>
+
+    <div class="eds-bd">
+      <div class="det-media">
+        <div class="no-video">No showcase media</div>
+        <div class="media-toggle">
+          <button class="mtb active">GIF</button>
+          <button class="mtb">Video</button>
+        </div>
+      </div>
+
+      <div class="det-info">
+        <div>
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+            <h2 class="det-title">Optical Flow Warp</h2>
+            <span class="cat-badge">Fusion Effect</span>
+          </div>
+          <div class="det-meta">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--signal-amber);">&#x25cf; Intermediate</span>
+            <span class="det-date">12 Mar 2025</span>
+          </div>
+        </div>
+
+        <p class="det-desc">Uses optical flow vectors to warp a source clip, creating a liquid smear without third-party plugins. Works best on clips with strong directional motion. Chain two passes for a more pronounced effect.</p>
+
+        <!-- ── NODE GRAPH CANVAS ── -->
+        <div class="sec">
+          <div class="sec-lbl">
+            Node graph &nbsp;
+            <span style="color:var(--violet-light);font-size:9px;text-transform:none;letter-spacing:0;opacity:0.8;">click node to inspect &middot; drag to pan &middot; scroll to zoom</span>
+          </div>
+          <div class="graph-canvas-wrap">
+            <div class="graph-viewport" id="graphViewport">
+              <div class="graph-world" id="graphWorld">
+                <svg class="graph-svg" id="graphSvg"></svg>
+              </div>
+            </div>
+            <!-- Controls -->
+            <div class="graph-controls">
+              <button class="gc-btn" id="gcZoomIn" title="Zoom in">+</button>
+              <button class="gc-btn" id="gcZoomOut" title="Zoom out">&minus;</button>
+              <button class="gc-btn gc-fit" id="gcFit">FIT</button>
+            </div>
+            <div class="graph-zoom-lbl" id="graphZoomLbl">100%</div>
+            <div class="graph-hint">drag to pan &middot; ctrl+scroll to zoom</div>
+          </div>
+        </div>
+
+        <!-- Steps -->
+        <div class="sec">
+          <div class="sec-lbl">Step-by-step</div>
+          <ol class="steps">
+            <li><span class="sn">01</span><span>Add an OpticalFlow node after your source clip and set Quality to High.</span></li>
+            <li><span class="sn">02</span><span>Pipe the flow output into DisplaceDistort. Set Channel to Luminance.</span></li>
+            <li><span class="sn">03</span><span>Adjust X/Y Scale parameters — 0.3 to 0.8 is a good starting range.</span></li>
+            <li><span class="sn">04</span><span>Add a TimeSpeed node upstream, offset the flow by 1-2 frames for a ghosting look.</span></li>
+          </ol>
+        </div>
+
+        <!-- Code -->
+        <div class="sec">
+          <div class="sec-lbl">Node tree code</div>
+          <div class="code-wrap">
+            <code class="node-code" id="nodeCode">OpticalFlow &#x2192; DisplaceDistort &#x2192; TimeSpeed &#x2192; Merge</code>
+            <button class="copy-btn" id="btnCopy">copy</button>
+          </div>
+        </div>
+
+        <!-- Details -->
+        <div class="sec">
+          <div class="sec-lbl">Details</div>
+          <div class="info-grid">
+            <div class="info-item"><div class="sec-lbl">Software</div><div class="info-val">DaVinci Resolve 19</div></div>
+            <div class="info-item"><div class="sec-lbl">Render weight</div><div class="info-val">Heavy</div></div>
+            <div class="info-item"><div class="sec-lbl">Self-contained?</div><div class="info-val">Needs media input</div></div>
+            <div class="info-item"><div class="sec-lbl">Dependencies</div><div class="info-val">None</div></div>
+          </div>
+        </div>
+
+        <!-- Tags -->
+        <div class="sec">
+          <div class="sec-lbl">Tags</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <span style="font-size:10px;padding:2px 8px;border-radius:var(--radius-xs);background:var(--tag-bg);color:var(--tag-color);font-family:var(--font-mono);">optical-flow</span>
+            <span style="font-size:10px;padding:2px 8px;border-radius:var(--radius-xs);background:var(--tag-bg);color:var(--tag-color);font-family:var(--font-mono);">warp</span>
+            <span style="font-size:10px;padding:2px 8px;border-radius:var(--radius-xs);background:var(--tag-bg);color:var(--tag-color);font-family:var(--font-mono);">fusion</span>
+          </div>
+        </div>
+
+        <!-- Related -->
+        <div class="sec">
+          <div class="sec-lbl">Related effects</div>
+          <div class="related-effects">
+            <button class="rel-chip">Motion Blur Stack</button>
+            <button class="rel-chip">Smear Frame Hold</button>
+            <button class="rel-chip">Displace Warp</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Similar -->
+      <div class="sim-sec">
+        <div class="sim-lbl">Similar effects</div>
+        <div class="sim-grid">
+          <div class="sim-card">
+            <div class="sim-thumb"></div>
+            <div class="sim-info"><div class="sim-name">Smear Frame Hold</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--violet);">Fusion Effect</div></div>
+            <span class="sim-score">92% match</span>
+          </div>
+          <div class="sim-card">
+            <div class="sim-thumb"></div>
+            <div class="sim-info"><div class="sim-name">Displace Warp</div><div style="font-size:10px;font-family:var(--font-mono);color:var(--violet);">Fusion Effect</div></div>
+            <span class="sim-score">87% match</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="eds-ft" id="sheetFooter"></div>
+  </div>
+</div>
+
+<!-- Node param popover -->
+<div id="nodePop" class="nql-pop">
+  <div class="nql-hd">
+    <div class="nql-ico" id="popIco"></div>
+    <div><div class="nql-nm" id="popName"></div><div class="nql-ct" id="popCat"></div></div>
+    <button class="nql-x" id="btnClosePop">&#x2715;</button>
+  </div>
+  <div class="nql-bd">
+    <div class="nql-desc" id="popDesc"></div>
+    <div id="popParamsWrap"><div class="nql-slbl">Parameters</div><div id="popParams"></div></div>
+    <div id="popIOWrap"><div class="nql-slbl">Inputs / Outputs</div><div id="popIO"></div></div>
+    <div class="nql-tip" id="popTip"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span style="color:var(--node-teal);font-family:var(--font-mono);font-weight:700;">&#x2713;</span>
+  Nodes copied
+</div>
+
+<script>
+(function () {
+
+  /* ════════════════════════════════
+     NODE TYPE COLOURS (always dark — graph is always dark)
+     ════════════════════════════════ */
+  var TC = {
+    'Source':    { border:'#0fa888', bg:'rgba(15,168,136,0.13)',  dot:'#0fa888' },
+    'Analysis':  { border:'#6c7bff', bg:'rgba(108,123,255,0.13)', dot:'#6c7bff' },
+    'Distort':   { border:'#a855f7', bg:'rgba(168,85,247,0.13)',  dot:'#a855f7' },
+    'Time':      { border:'#f59e0b', bg:'rgba(245,158,11,0.13)',  dot:'#f59e0b' },
+    'Color':     { border:'#eab308', bg:'rgba(234,179,8,0.13)',   dot:'#eab308' },
+    'Filter':    { border:'#ef4444', bg:'rgba(239,68,68,0.13)',   dot:'#ef4444' },
+    'Composite': { border:'#94a3b8', bg:'rgba(148,163,184,0.13)', dot:'#94a3b8' },
+    'Mask':      { border:'#fb923c', bg:'rgba(251,146,60,0.13)',  dot:'#fb923c' },
+    'Transform': { border:'#22d3ee', bg:'rgba(34,211,238,0.13)',  dot:'#22d3ee' },
+    'Output':    { border:'#4ade80', bg:'rgba(74,222,128,0.13)',  dot:'#4ade80' }
+  };
+  function tc(type) { return TC[type] || TC['Composite']; }
+
+  /* ════════════════════════════════
+     GRAPH DATA  (ins / outs = port counts)
+     ════════════════════════════════ */
+  var NW = 132, NH = 50;
+
+  var GNODES = [
+    {
+      id:'mediaIn1', name:'MediaIn 1', type:'Source', x:10, y:135, ins:0, outs:1,
+      desc:'Primary source clip feeding the optical flow analysis and timing chain.',
+      params:[
+        { name:'Filename', val:'clip_01.mov', desc:'Source media path.' },
+        { name:'Loop',     val:'Off',         desc:'Loop at end of clip.' }
+      ],
+      io:[{ dir:'out', label:'Output', desc:'Raw video clip' }],
+      tip:'Use ProRes or uncompressed for best optical flow accuracy.'
+    },
+    {
+      id:'optFlow', name:'OpticalFlow', type:'Analysis', x:190, y:45, ins:1, outs:1,
+      desc:'Generates a per-pixel velocity vector map from frame-to-frame motion.',
+      params:[
+        { name:'Quality',    val:'High', desc:'Analysis fidelity. Better = slower render.' },
+        { name:'Smoothness', val:'0.5',  desc:'Temporal smoothing of vectors.' },
+        { name:'Falloff',    val:'1.0',  desc:'Edge feathering on the vector field.' }
+      ],
+      io:[
+        { dir:'in',  label:'Input',    desc:'Source video clip' },
+        { dir:'out', label:'Flow Out', desc:'Motion vector map' }
+      ],
+      tip:'Use Best quality only on final render — Fast during build.'
+    },
+    {
+      id:'timeSpeed', name:'TimeSpeed', type:'Time', x:190, y:225, ins:1, outs:1,
+      desc:'Retimes the input clip. Small offsets (0.95-1.05) shift the source by a frame or two.',
+      params:[
+        { name:'Speed',  val:'0.97',         desc:'Playback rate.' },
+        { name:'Interp', val:'Optical Flow', desc:'Frame blending method.' },
+        { name:'Reverse',val:'Off',          desc:'Flip playback direction.' }
+      ],
+      io:[
+        { dir:'in',  label:'Input',  desc:'Clip to retime' },
+        { dir:'out', label:'Output', desc:'Retimed clip' }
+      ],
+      tip:'Feed retimed output into DisplaceDistort for a compound warp pass.'
+    },
+    {
+      id:'displace', name:'DisplaceDistort', type:'Distort', x:380, y:135, ins:2, outs:1,
+      desc:'Warps each pixel by the vector encoded in the displacement map input.',
+      params:[
+        { name:'X Scale',   val:'0.5',       desc:'Horizontal displacement magnitude.' },
+        { name:'Y Scale',   val:'0.5',       desc:'Vertical displacement magnitude.' },
+        { name:'Channel',   val:'Luminance', desc:'Channel to read as displacement.' },
+        { name:'Wrap Mode', val:'Smear',     desc:'Edge pixel behaviour.' }
+      ],
+      io:[
+        { dir:'in',  label:'Image',    desc:'Source to be displaced' },
+        { dir:'in',  label:'Disp Map', desc:'Flow or texture displacement map' },
+        { dir:'out', label:'Output',   desc:'Displaced result' }
+      ],
+      tip:'Scale 0.3-0.8 for subtle warp. Above 1.5 creates heavy tearing artifacts.'
+    },
+    {
+      id:'colorCorr', name:'ColorCorrector', type:'Color', x:560, y:45, ins:1, outs:1,
+      desc:'Primary colour correction pass on the warped output: lift, gamma, gain, saturation.',
+      params:[
+        { name:'Lift',       val:'0.0', desc:'Shadow level offset.' },
+        { name:'Gamma',      val:'1.0', desc:'Midtone response.' },
+        { name:'Gain',       val:'1.0', desc:'Highlight multiplier.' },
+        { name:'Saturation', val:'1.1', desc:'Colour intensity.' }
+      ],
+      io:[
+        { dir:'in',  label:'Input',  desc:'Source image' },
+        { dir:'out', label:'Output', desc:'Colour-corrected image' }
+      ],
+      tip:'Apply colour work after warp — grading a distorted image is cleaner.'
+    },
+    {
+      id:'blur', name:'Blur', type:'Filter', x:560, y:225, ins:1, outs:1,
+      desc:'Gaussian blur on the warped layer for a secondary soft-focus pass.',
+      params:[
+        { name:'X Blur',  val:'2.0', desc:'Horizontal blur radius.' },
+        { name:'Y Blur',  val:'2.0', desc:'Vertical blur radius.' },
+        { name:'Blend',   val:'0.4', desc:'Mix with source (0=off, 1=full blur).' }
+      ],
+      io:[
+        { dir:'in',  label:'Input',  desc:'Image to blur' },
+        { dir:'out', label:'Output', desc:'Blurred image' }
+      ],
+      tip:'Low values (1-3) produce a subtle halo around the warp edges.'
+    },
+    {
+      id:'merge1', name:'Merge 1', type:'Composite', x:740, y:130, ins:2, outs:1,
+      desc:'Composites the colour-corrected layer over the blurred warp layer.',
+      params:[
+        { name:'Blend Mode', val:'Normal', desc:'Compositing operator.' },
+        { name:'Opacity',    val:'1.0',    desc:'Foreground layer opacity.' },
+        { name:'Apply Mode', val:'Normal', desc:'Second blend level.' }
+      ],
+      io:[
+        { dir:'in',  label:'Fg',     desc:'Foreground / colour-corrected layer' },
+        { dir:'in',  label:'Bg',     desc:'Background / blurred layer' },
+        { dir:'out', label:'Output', desc:'Composited result' }
+      ],
+      tip:'Try Screen blend at 0.6 opacity for a glowing double-exposure look.'
+    },
+    {
+      id:'mediaIn2', name:'MediaIn 2', type:'Source', x:10, y:345, ins:0, outs:1,
+      desc:'Secondary source — background plate, texture, or title layer.',
+      params:[
+        { name:'Filename', val:'bg_plate.mov', desc:'Source media path.' },
+        { name:'Loop',     val:'On',           desc:'Loop at end of clip.' }
+      ],
+      io:[{ dir:'out', label:'Output', desc:'Raw video clip' }],
+      tip:'Can be a still image or looping texture — PNG sequences work well.'
+    },
+    {
+      id:'transform', name:'Transform', type:'Transform', x:190, y:345, ins:1, outs:1,
+      desc:'Repositions, scales, or rotates the secondary layer before compositing.',
+      params:[
+        { name:'X Offset', val:'0.0', desc:'Horizontal position shift.' },
+        { name:'Y Offset', val:'0.0', desc:'Vertical position shift.' },
+        { name:'Size',     val:'1.0', desc:'Uniform scale factor.' },
+        { name:'Angle',    val:'0.0', desc:'Rotation in degrees.' }
+      ],
+      io:[
+        { dir:'in',  label:'Input',  desc:'Image to transform' },
+        { dir:'out', label:'Output', desc:'Transformed image' }
+      ],
+      tip:'Animate X/Y Offset with a gentle drift to add parallax to the background.'
+    },
+    {
+      id:'polyMask', name:'PolyMask', type:'Mask', x:380, y:345, ins:1, outs:1,
+      desc:'Polygon mask isolating the area of the secondary layer used in the final comp.',
+      params:[
+        { name:'Softness',     val:'0.05', desc:'Edge feather amount.' },
+        { name:'Invert',       val:'Off',  desc:'Flip mask polarity.' },
+        { name:'Border Width', val:'0.0',  desc:'Visible outline thickness.' }
+      ],
+      io:[
+        { dir:'in',  label:'Input',  desc:'Image to mask' },
+        { dir:'out', label:'Output', desc:'Masked image' }
+      ],
+      tip:'Animate mask shape keyframes to follow a moving subject through the frame.'
+    },
+    {
+      id:'merge2', name:'Merge 2', type:'Composite', x:740, y:295, ins:2, outs:1,
+      desc:'Final composite — combines the masked background layer with the warp composite.',
+      params:[
+        { name:'Blend Mode', val:'Over',  desc:'Compositing operator.' },
+        { name:'Opacity',    val:'0.85',  desc:'Foreground layer opacity.' },
+        { name:'Apply Mode', val:'Normal',desc:'Second blend level.' }
+      ],
+      io:[
+        { dir:'in',  label:'Fg',     desc:'Foreground / masked layer' },
+        { dir:'in',  label:'Bg',     desc:'Background / warp composite' },
+        { dir:'out', label:'Output', desc:'Final composite' }
+      ],
+      tip:'Reduce opacity here rather than on individual input layers for cleaner control.'
+    },
+    {
+      id:'mediaOut', name:'MediaOut', type:'Output', x:930, y:205, ins:1, outs:0,
+      desc:'Output node — routes the final composite to the render pipeline or viewer.',
+      params:[
+        { name:'Filename', val:'output.mov',  desc:'Render destination path.' },
+        { name:'Format',   val:'ProRes 4444', desc:'Output codec and container.' }
+      ],
+      io:[{ dir:'in', label:'Input', desc:'Final composite to render' }],
+      tip:'Always connect to a MediaOut before initiating a render queue job.'
+    }
+  ];
+
+  var GEDGES = [
+    { from:'mediaIn1',  fp:0, to:'optFlow',   tp:0 },
+    { from:'mediaIn1',  fp:0, to:'timeSpeed', tp:0 },
+    { from:'optFlow',   fp:0, to:'displace',  tp:1 },
+    { from:'timeSpeed', fp:0, to:'displace',  tp:0 },
+    { from:'displace',  fp:0, to:'colorCorr', tp:0 },
+    { from:'displace',  fp:0, to:'blur',      tp:0 },
+    { from:'colorCorr', fp:0, to:'merge1',    tp:0 },
+    { from:'blur',      fp:0, to:'merge1',    tp:1 },
+    { from:'mediaIn2',  fp:0, to:'transform', tp:0 },
+    { from:'transform', fp:0, to:'polyMask',  tp:0 },
+    { from:'polyMask',  fp:0, to:'merge2',    tp:0 },
+    { from:'merge1',    fp:0, to:'merge2',    tp:1 },
+    { from:'merge2',    fp:0, to:'mediaOut',  tp:0 }
+  ];
+
+  /* ════════════════════════════════
+     PORT MATHS
+     ════════════════════════════════ */
+  function portRelY(idx, total) {
+    return total === 1 ? NH / 2 : (NH / (total + 1)) * (idx + 1);
+  }
+  function outPos(n)      { return { x: n.x + NW, y: n.y + NH / 2 }; }
+  function inPos(n, idx)  { return { x: n.x, y: n.y + portRelY(idx, n.ins) }; }
+  function findNode(id) {
+    for (var i = 0; i < GNODES.length; i++) { if (GNODES[i].id === id) { return GNODES[i]; } }
+    return null;
+  }
+
+  /* ════════════════════════════════
+     PAN / ZOOM STATE
+     ════════════════════════════════ */
+  var tx = 0, ty = 0, sc = 1;
+  var dragging = false, dragX = 0, dragY = 0;
+  var lastTouches = null;
+  var activeGnEl = null;
+  var viewport, world, svgEl, zoomLbl;
+
+  function applyXform() {
+    if (!world) { return; }
+    world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
+    if (zoomLbl) { zoomLbl.textContent = Math.round(sc * 100) + '%'; }
+  }
+
+  function clampScale(s) { return Math.max(0.15, Math.min(3, s)); }
+
+  function zoomAt(cx, cy, factor) {
+    var ns = clampScale(sc * factor);
+    var wx = (cx - tx) / sc;
+    var wy = (cy - ty) / sc;
+    sc = ns;
+    tx = cx - wx * sc;
+    ty = cy - wy * sc;
+    applyXform();
+  }
+
+  function fitGraph() {
+    if (!viewport) { return; }
+    var vr = viewport.getBoundingClientRect();
+    var pad = 36;
+    var vw = vr.width  - pad * 2;
+    var vh = vr.height - pad * 2;
+    var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
+    for (var i = 0; i < GNODES.length; i++) {
+      var n = GNODES[i];
+      if (n.x < mnX) { mnX = n.x; }
+      if (n.y < mnY) { mnY = n.y; }
+      if (n.x + NW > mxX) { mxX = n.x + NW; }
+      if (n.y + NH > mxY) { mxY = n.y + NH; }
+    }
+    var gw = mxX - mnX;
+    var gh = mxY - mnY;
+    sc = clampScale(Math.min(vw / gw, vh / gh));
+    tx = (vr.width  - gw * sc) / 2 - mnX * sc;
+    ty = (vr.height - gh * sc) / 2 - mnY * sc;
+    applyXform();
+  }
+
+  /* ════════════════════════════════
+     BUILD GRAPH UI
+     ════════════════════════════════ */
+  function buildGraph() {
+    viewport = document.getElementById('graphViewport');
+    world    = document.getElementById('graphWorld');
+    svgEl    = document.getElementById('graphSvg');
+    zoomLbl  = document.getElementById('graphZoomLbl');
+    if (!viewport || !world || !svgEl) { return; }
+
+    /* clear previous nodes (keep svg) */
+    var kids = world.childNodes;
+    for (var k = kids.length - 1; k >= 0; k--) {
+      if (kids[k] !== svgEl) { world.removeChild(kids[k]); }
+    }
+    svgEl.innerHTML = '';
+    activeGnEl = null;
+
+    /* world size */
+    var wW = 0, wH = 0;
+    for (var i = 0; i < GNODES.length; i++) {
+      if (GNODES[i].x + NW + 50 > wW) { wW = GNODES[i].x + NW + 50; }
+      if (GNODES[i].y + NH + 50 > wH) { wH = GNODES[i].y + NH + 50; }
+    }
+    world.style.width  = wW + 'px';
+    world.style.height = wH + 'px';
+    svgEl.setAttribute('width',  wW);
+    svgEl.setAttribute('height', wH);
+
+    /* edges */
+    for (var e = 0; e < GEDGES.length; e++) {
+      var edge = GEDGES[e];
+      var fn = findNode(edge.from);
+      var tn = findNode(edge.to);
+      if (!fn || !tn) { continue; }
+      var fp = outPos(fn);
+      var tp = inPos(tn, edge.tp);
+      var pull = Math.max(55, Math.abs(tp.x - fp.x) * 0.45);
+      var d = 'M ' + fp.x + ' ' + fp.y +
+              ' C ' + (fp.x + pull) + ' ' + fp.y +
+              ' '  + (tp.x - pull) + ' ' + tp.y +
+              ' '  + tp.x          + ' ' + tp.y;
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'rgba(108,123,255,0.38)');
+      path.setAttribute('stroke-width', '1.5');
+      path.setAttribute('stroke-linecap', 'round');
+      svgEl.appendChild(path);
+    }
+
+    /* node cards */
+    for (var ni = 0; ni < GNODES.length; ni++) {
+      var n = GNODES[ni];
+      var col = tc(n.type);
+      var card = document.createElement('div');
+      card.className = 'gn-card';
+      card.style.left        = n.x + 'px';
+      card.style.top         = n.y + 'px';
+      card.style.width       = NW + 'px';
+      card.style.height      = NH + 'px';
+      card.style.borderColor = col.border;
+      card.style.background  = col.bg;
+
+      /* type dot */
+      var dot = document.createElement('div');
+      dot.className = 'gn-typedot';
+      dot.style.background = col.dot;
+      card.appendChild(dot);
+
+      /* labels */
+      var lw = document.createElement('div');
+      lw.className = 'gn-labels';
+      var tl = document.createElement('div');
+      tl.className = 'gn-type';
+      tl.textContent = n.type;
+      var nl = document.createElement('div');
+      nl.className = 'gn-name';
+      nl.textContent = n.name;
+      lw.appendChild(tl);
+      lw.appendChild(nl);
+      card.appendChild(lw);
+
+      /* input ports */
+      for (var pi = 0; pi < n.ins; pi++) {
+        var port = document.createElement('div');
+        port.className = 'gn-port gn-port-in';
+        port.style.top         = (portRelY(pi, n.ins) - 4.5) + 'px';
+        port.style.borderColor = col.border;
+        card.appendChild(port);
+      }
+      /* output port */
+      if (n.outs > 0) {
+        var op = document.createElement('div');
+        op.className = 'gn-port gn-port-out';
+        op.style.top         = (NH / 2 - 4.5) + 'px';
+        op.style.borderColor = col.border;
+        card.appendChild(op);
+      }
+
+      /* click to inspect */
+      (function (node, el) {
+        el.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          openPop(node, el);
+        });
+      }(n, card));
+
+      world.appendChild(card);
+    }
+
+    /* wire viewport pan/zoom events once */
+    if (!viewport._eventsWired) {
+      viewport._eventsWired = true;
+      viewport.addEventListener('mousedown', onMouseDown);
+      viewport.addEventListener('wheel', onWheel, { passive: false });
+      viewport.addEventListener('touchstart', onTouchStart, { passive: true });
+      viewport.addEventListener('touchmove', onTouchMove, { passive: false });
+      viewport.addEventListener('touchend', function () { lastTouches = null; dragging = false; });
+      document.getElementById('gcZoomIn').addEventListener('click', function () {
+        var vr = viewport.getBoundingClientRect();
+        zoomAt(vr.width / 2, vr.height / 2, 1.25);
+      });
+      document.getElementById('gcZoomOut').addEventListener('click', function () {
+        var vr = viewport.getBoundingClientRect();
+        zoomAt(vr.width / 2, vr.height / 2, 0.8);
+      });
+      document.getElementById('gcFit').addEventListener('click', fitGraph);
+    }
+
+    fitGraph();
+  }
+
+  /* ── mouse pan ── */
+  function onMouseDown(e) {
+    if (e.target.classList.contains('gn-card') || e.target.closest('.gn-card')) { return; }
+    dragging = true;
+    dragX = e.clientX - tx;
+    dragY = e.clientY - ty;
+    viewport.classList.add('panning');
+  }
+  document.addEventListener('mousemove', function (e) {
+    if (!dragging) { return; }
+    tx = e.clientX - dragX;
+    ty = e.clientY - dragY;
+    applyXform();
+  });
+  document.addEventListener('mouseup', function () {
+    dragging = false;
+    if (viewport) { viewport.classList.remove('panning'); }
+  });
+
+  /* ── scroll zoom (ctrl/cmd + scroll only, so page scroll isn't blocked) ── */
+  function onWheel(e) {
+    if (!e.ctrlKey && !e.metaKey) { return; }
+    e.preventDefault();
+    var vr = viewport.getBoundingClientRect();
+    zoomAt(e.clientX - vr.left, e.clientY - vr.top, e.deltaY < 0 ? 1.1 : 0.9);
+  }
+
+  /* ── touch pan + pinch zoom ── */
+  function onTouchStart(e) { lastTouches = e.touches; }
+  function onTouchMove(e) {
+    e.preventDefault();
+    if (!lastTouches) { return; }
+    var vr = viewport.getBoundingClientRect();
+    if (e.touches.length === 1 && lastTouches.length >= 1) {
+      tx += e.touches[0].clientX - lastTouches[0].clientX;
+      ty += e.touches[0].clientY - lastTouches[0].clientY;
+      applyXform();
+    } else if (e.touches.length === 2 && lastTouches.length === 2) {
+      var d1 = Math.sqrt(
+        Math.pow(e.touches[0].clientX - e.touches[1].clientX, 2) +
+        Math.pow(e.touches[0].clientY - e.touches[1].clientY, 2)
+      );
+      var d0 = Math.sqrt(
+        Math.pow(lastTouches[0].clientX - lastTouches[1].clientX, 2) +
+        Math.pow(lastTouches[0].clientY - lastTouches[1].clientY, 2)
+      );
+      if (d0 > 0) {
+        var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - vr.left;
+        var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - vr.top;
+        zoomAt(cx, cy, d1 / d0);
+      }
+    }
+    lastTouches = e.touches;
+  }
+
+  /* ════════════════════════════════
+     PARAM POPOVER
+     ════════════════════════════════ */
+  function openPop(node, el) {
+    var pop = document.getElementById('nodePop');
+    if (!pop) { return; }
+    if (activeGnEl) { activeGnEl.classList.remove('g-active'); }
+    activeGnEl = el;
+    el.classList.add('g-active');
+
+    var col = tc(node.type);
+    var ico = document.getElementById('popIco');
+    ico.textContent = node.type.slice(0, 2).toUpperCase();
+    ico.style.background  = col.bg;
+    ico.style.border      = '1px solid ' + col.border;
+    ico.style.color       = col.dot;
+
+    document.getElementById('popName').textContent = node.name;
+    document.getElementById('popCat').textContent  = node.type + ' Node';
+    document.getElementById('popDesc').textContent = node.desc;
+    document.getElementById('popTip').textContent  = 'Tip: ' + node.tip;
+
+    var ph = '';
+    for (var i = 0; i < node.params.length; i++) {
+      var p = node.params[i];
+      ph += '<div class="nql-row">' +
+            '<span class="nql-pname">' + p.name + '</span>' +
+            '<span class="nql-pval">'  + p.val  + '</span>' +
+            '<span class="nql-pdesc">' + p.desc + '</span>' +
+            '</div>';
+    }
+    document.getElementById('popParams').innerHTML = ph;
+
+    var ih = '';
+    for (var k = 0; k < node.io.length; k++) {
+      var io = node.io[k];
+      ih += '<div class="nql-row">' +
+            '<span class="nql-port ' + io.dir + '">' + io.label + '</span>' +
+            '<span class="nql-pdesc">' + io.desc + '</span>' +
+            '</div>';
+    }
+    document.getElementById('popIO').innerHTML = ih;
+
+    pop.classList.add('open');
+
+    /* position near clicked card, accounting for viewport transform */
+    var rect = el.getBoundingClientRect();
+    var pw = pop.offsetWidth  || 320;
+    var ph2= pop.offsetHeight || 280;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var top  = rect.bottom + 8;
+    var left = rect.left;
+    if (left + pw > vw - 12) { left = vw - pw - 12; }
+    if (left < 12)            { left = 12; }
+    if (top + ph2 > vh - 12)  { top = rect.top - ph2 - 8; }
+    if (top < 12)             { top = 12; }
+    pop.style.top  = top  + 'px';
+    pop.style.left = left + 'px';
+  }
+
+  function closePop() {
+    var pop = document.getElementById('nodePop');
+    if (pop) { pop.classList.remove('open'); }
+    if (activeGnEl) { activeGnEl.classList.remove('g-active'); activeGnEl = null; }
+  }
+
+  /* ════════════════════════════════
+     FOOTERS
+     ════════════════════════════════ */
+  function mkBtn(cls, txt) {
+    var b = document.createElement('button');
+    b.className = cls;
+    b.textContent = txt;
+    return b;
+  }
+  function setVisitorFooter() {
+    var ft = document.getElementById('sheetFooter');
+    ft.innerHTML = '';
+    ft.appendChild(mkBtn('btn-glass', 'Pin'));
+    ft.appendChild(mkBtn('btn-share', 'Share link'));
+    ft.appendChild(mkBtn('btn-primary', 'View full'));
+  }
+  function setOwnerFooter() {
+    var ft = document.getElementById('sheetFooter');
+    ft.innerHTML = '';
+    ft.appendChild(mkBtn('btn-glass', 'Edit Settings'));
+    ft.appendChild(mkBtn('btn-share', 'Share link'));
+    ft.appendChild(mkBtn('btn-glass btn-danger', 'Delete'));
+    ft.appendChild(mkBtn('btn-primary', 'View full'));
+  }
+
+  /* ════════════════════════════════
+     SHEET OPEN / CLOSE
+     ════════════════════════════════ */
+  function openSheet(owner) {
+    document.getElementById('sheetTitle').textContent = owner ? 'Bleach Bypass' : 'Optical Flow Warp';
+    if (owner) { setOwnerFooter(); } else { setVisitorFooter(); }
+    document.getElementById('theSheet').classList.add('open');
+    buildGraph();
+  }
+  function closeSheet() {
+    closePop();
+    document.getElementById('theSheet').classList.remove('open');
+  }
+
+  /* ════════════════════════════════
+     COPY + TOAST
+     ════════════════════════════════ */
+  function copyNodes() {
+    var el = document.getElementById('nodeCode');
+    try { navigator.clipboard.writeText(el ? el.textContent : ''); } catch (e) {}
+    var t = document.getElementById('toast');
+    t.classList.add('show');
+    clearTimeout(t._tid);
+    t._tid = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  /* ════════════════════════════════
+     THEME TOGGLE
+     ════════════════════════════════ */
+  function toggleTheme() {
+    var html = document.documentElement;
+    var track = document.getElementById('ttTrack');
+    var label = document.getElementById('ttLabel');
+    if (html.getAttribute('data-theme') === 'light') {
+      html.removeAttribute('data-theme');
+      track.classList.add('on');
+      label.textContent = 'Night';
+    } else {
+      html.setAttribute('data-theme', 'light');
+      track.classList.remove('on');
+      label.textContent = 'Day';
+    }
+  }
+
+  /* ════════════════════════════════
+     WIRE EVENTS
+     ════════════════════════════════ */
+  document.getElementById('btnOpen1').addEventListener('click', function () { openSheet(false); });
+  document.getElementById('btnOpen2').addEventListener('click', function () { openSheet(true); });
+  document.getElementById('btnClose').addEventListener('click', closeSheet);
+  document.getElementById('btnClosePop').addEventListener('click', closePop);
+  document.getElementById('btnCopy').addEventListener('click', copyNodes);
+  document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+
+  document.getElementById('theSheet').addEventListener('click', function (e) {
+    if (e.target === this) { closeSheet(); }
+  });
+  document.addEventListener('click', function (e) {
+    var pop = document.getElementById('nodePop');
+    if (!pop || !pop.classList.contains('open')) { return; }
+    if (!pop.contains(e.target) && !e.target.closest('.gn-card')) { closePop(); }
+  });
+
+}());
+</script>
+</body>
+</html>
