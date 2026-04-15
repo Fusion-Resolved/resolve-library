@@ -805,6 +805,14 @@ header {
 }
 .sh-note-ta:focus { border-color: var(--violet); }
 
+.sh-modal-ov {
+  background:              var(--glass-bg);
+  backdrop-filter:         var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border:                  1px solid var(--border-surface);
+  box-shadow:              var(--glass-shadow), var(--glass-shine);
+}
+
 /* ── 09 · TOAST ─────────────────────────────────────────────── */
 .noding-toast {
   position: fixed; top: 76px; right: 1.5rem;
