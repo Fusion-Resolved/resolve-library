@@ -236,9 +236,20 @@
       return;
     }
 
-    // Show toggle if both available
+    // Show toggle if either media is available
     if (toggleBtns) {
-      toggleBtns.style.display = (hasGif && hasVideo) ? 'flex' : 'none';
+      toggleBtns.style.display = (hasGif || hasVideo) ? 'flex' : 'none';
+      // Disable button for missing media
+      if (gifBtn) {
+        gifBtn.style.opacity = hasGif ? '1' : '0.3';
+        gifBtn.style.cursor = hasGif ? 'pointer' : 'not-allowed';
+        gifBtn.disabled = !hasGif;
+      }
+      if (videoBtn) {
+        videoBtn.style.opacity = hasVideo ? '1' : '0.3';
+        videoBtn.style.cursor = hasVideo ? 'pointer' : 'not-allowed';
+        videoBtn.disabled = !hasVideo;
+      }
     }
 
     // Default to GIF if available, otherwise video
