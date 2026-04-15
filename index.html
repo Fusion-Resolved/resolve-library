@@ -306,32 +306,24 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 }
 .card-community,.card-library,.card-spline,.card-submit,.card-learn,.card-discord { padding:20px; }
 
-/* Cursor-following spotlight glow inside card */
+/* Cursor-following spotlight glow inside card — matches library.html subtlety */
 .card-spotlight {
   position:absolute; inset:0; border-radius:inherit;
   pointer-events:none; z-index:0;
-  background:radial-gradient(circle at var(--x,50%) var(--y,50%), var(--spot-color,rgba(108,123,255,0.15)) 0%, transparent 50%);
-  opacity:0; transition:opacity 0.15s ease;
+  background:radial-gradient(circle at var(--x,50%) var(--y,50%), var(--spot-color,rgba(108,123,255,0.12)) 0%, transparent 60%);
+  opacity:0; transition:opacity 0.38s ease;
 }
 .bento-card:hover .card-spotlight { opacity:1; }
 
-/* Top-edge glint */
-.bento-card::after {
-  content:''; position:absolute; inset:0; border-radius:inherit;
-  background:radial-gradient(ellipse 80% 35% at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 60%);
-  pointer-events:none; z-index:0;
-}
-.bento-card:hover { transform:translateY(-5px); transition:transform 0.32s var(--ease-out-expo), border-color 0.28s ease, box-shadow 0.28s ease; }
-
-/* Per-card spotlight colors */
-.card-effects   { --spot-color:rgba(108,123,255,0.20); }
-.card-graph     { --spot-color:rgba(15,168,136,0.18);  }
-.card-community { --spot-color:rgba(176,113,24,0.18);  }
-.card-library   { --spot-color:rgba(201,82,56,0.18);   }
-.card-spline    { --spot-color:rgba(68,81,212,0.18);   }
-.card-submit    { --spot-color:rgba(108,123,255,0.18); }
-.card-learn     { --spot-color:rgba(15,168,136,0.18);  }
-.card-discord   { --spot-color:rgba(240,96,96,0.18);   }
+/* Per-card spotlight colors — subtle 12% opacity to match library.html */
+.card-effects   { --spot-color:rgba(108,123,255,0.12); }
+.card-graph     { --spot-color:rgba(15,168,136,0.12);  }
+.card-community { --spot-color:rgba(176,113,24,0.12);  }
+.card-library   { --spot-color:rgba(201,82,56,0.12);   }
+.card-spline    { --spot-color:rgba(68,81,212,0.12);   }
+.card-submit    { --spot-color:rgba(108,123,255,0.12); }
+.card-learn     { --spot-color:rgba(15,168,136,0.12);  }
+.card-discord   { --spot-color:rgba(240,96,96,0.12);   }
 
 /* Per-card hover border + external glow */
 .card-effects:hover   { border-color:rgba(108,123,255,0.30); box-shadow:var(--glass-shine),0 0 40px rgba(108,123,255,0.10); }
