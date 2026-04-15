@@ -1166,6 +1166,25 @@ button:active   { transition: transform 80ms ease; }
   .bento-card { padding: 18px; }
 }
 
+/* ── Universal Span Classes ───────────────────────────────────── */
+/* Flexible column spanning for bento-grid (6-column foundation) */
+.span-1 { grid-column: span 1; }
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: span 3; }
+.span-4 { grid-column: span 4; }
+.span-5 { grid-column: span 5; }
+.span-6 { grid-column: span 6; }
+
+/* Responsive: spans collapse to full width on mobile */
+@media (max-width: 600px) {
+  .span-1,
+  .span-2,
+  .span-3,
+  .span-4,
+  .span-5,
+  .span-6 { grid-column: 1 / -1; }
+}
+
 /* ═════════════════════════════════════════════════════════════════════════════
    SECTION: ADVANCED MODAL & SHEET SYSTEM
    Consolidated from Effect Wizard (5 - noding-add-new-effect_V2.html)
