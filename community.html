@@ -1369,7 +1369,51 @@ function buildTicker(){
   });
 }
 
-/* ══ STATS COUNT-UP ══ */
+/* ══ LIVE STATS FROM SUPABASE + COUNT-UP ══ */
+async function loadCommunityStats(){
+  if(!window._supabase) return false;
+  
+  try{
+    // 1. Count public effects (is_public = true)
+    const { count: effectsCount, error: effectsError } = await window._supabase
+      .from('effects')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_public', true);
+    
+    // 2. Count unique contributors (distinct user_id from public effects)
+    const { data: contributors, error: contribError } = await window._supabase
+      .from('effects')
+      .select('user_id')
+      .eq('is_public', true);
+    
+    if(effectsError || contribError){
+      console.log('[Stats] Supabase query error, using fallback values');
+      return false;
+    }
+    
+    // Calculate unique contributors
+    const uniqueContributors = new Set(contributors?.map(e => e.user_id).filter(id => id) || []).size;
+    
+    // Update DOM elements
+    const effectsEl = document.querySelector('.stat-num.violet');
+    const contribEl = document.querySelector('.stat-cell:nth-child(2) .stat-num');
+    
+    if(effectsEl && effectsCount !== null){
+      effectsEl.dataset.count = effectsCount;
+    }
+    if(contribEl){
+      contribEl.dataset.count = uniqueContributors;
+    }
+    
+    console.log('[Stats] Live counts - Effects:', effectsCount, 'Contributors:', uniqueContributors);
+    return true;
+    
+  }catch(err){
+    console.log('[Stats] Error fetching from Supabase:', err);
+    return false;
+  }
+}
+
 function countUp(){
   document.querySelectorAll('.stat-num[data-count]').forEach(el=>{
     const target = parseInt(el.dataset.count);
@@ -1439,7 +1483,14 @@ buildLeaderboard();
 buildActivity();
 buildTicker();
 renderCards();
-setTimeout(countUp, 600);
+
+// Load live stats then animate
+setTimeout(async function(){
+  const loaded = await loadCommunityStats();
+  if(!loaded){ console.log('[Stats] Using fallback values'); }
+  countUp();
+}, 600);
+
 setTimeout(flickerLive, 12000);
 </script>
 
