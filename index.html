@@ -1181,11 +1181,67 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
 })();
 </script>
 
-<!-- STATS COUNT-UP -->
+<!-- LIVE STATS FROM SUPABASE + COUNT-UP -->
 <script>
 (function(){
+  // Fetch live community stats from Supabase
+  async function loadCommunityStats() {
+    if (!window._supabase) return false;
+    
+    try {
+      // 1. Count public effects (is_public = true)
+      const { count: effectsCount, error: effectsError } = await window._supabase
+        .from('effects')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_public', true);
+      
+      // 2. Count unique contributors (distinct user_id from public effects)
+      const { data: contributors, error: contribError } = await window._supabase
+        .from('effects')
+        .select('user_id')
+        .eq('is_public', true);
+      
+      if (effectsError || contribError) {
+        console.log('[Stats] Supabase query error, using fallback values');
+        return false;
+      }
+      
+      // Calculate unique contributors
+      const uniqueContributors = new Set(contributors?.map(e => e.user_id).filter(id => id) || []).size;
+      
+      // Update DOM elements
+      const effectsEl = document.querySelector('.stat-num.violet');
+      const contribEl = document.querySelector('.stat-num.amber');
+      
+      if (effectsEl && effectsCount !== null) {
+        effectsEl.setAttribute('data-count', effectsCount);
+      }
+      if (contribEl) {
+        contribEl.setAttribute('data-count', uniqueContributors);
+      }
+      
+      console.log('[Stats] Live counts - Effects:', effectsCount, 'Contributors:', uniqueContributors);
+      return true;
+      
+    } catch (err) {
+      console.log('[Stats] Error fetching from Supabase:', err);
+      return false;
+    }
+  }
+  
+  // Count-up animation
   function countUp(){document.querySelectorAll('.stat-num[data-count]').forEach(function(el){var target=parseInt(el.getAttribute('data-count')),suffix=el.getAttribute('data-suffix')||'',dur=1800,start=performance.now();(function step(now){var t=Math.min((now-start)/dur,1),ease=1-Math.pow(1-t,3);el.textContent=Math.round(target*ease).toLocaleString()+suffix;if(t<1)requestAnimationFrame(step);})(start);});}
-  var io=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){countUp();io.disconnect();}});},{threshold:0.3});
+  
+  // Initialize when stats strip is visible
+  var io=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){
+    // Try to load live stats first, then animate
+    loadCommunityStats().then(function(loaded){
+      if(!loaded){console.log('[Stats] Using fallback values');}
+      countUp();
+    });
+    io.disconnect();
+  }});},{threshold:0.3});
+  
   var strip=document.querySelector('.stats-strip');if(strip)io.observe(strip);
 })();
 </script>
