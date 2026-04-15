@@ -11,16 +11,12 @@
   <meta name="description" content="Noding Library — The complete resource hub for DaVinci Resolve Fusion.">
   <title>Noding — Library</title>
 
-  <!-- Shared Noding System Resources -->
-  <link rel="stylesheet" href="noding-shared.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="auth.js"></script>
-  <script src="noding-shared.js"></script>
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
 
+  <!-- Noding Shared Resources -->
+  <link rel="stylesheet" href="noding-shared.css">
 <style>
 /* ══════════════════════════════════════════════════
    BRAND TOKENS — Noding
@@ -69,7 +65,7 @@
 
   --safe-b: env(safe-area-inset-bottom, 0px);
 
-  /* semantic dark */
+  /* semantic */
   --bg-page:      #09090e;
   --bg-surface:   #0f0f16;
   --bg-surface-2: #16161f;
@@ -80,9 +76,17 @@
   --border-surface: rgba(255,255,255,0.06);
   --border-subtle:  #16161f;
   --border-color:   #1e1e2a;
-  --tag-bg:    rgba(108,123,255,0.08);
-  --tag-color: #9ca8ff;
-  --node-teal-dim: rgba(15,168,136,0.08);
+  --tag-bg:         rgba(108,123,255,0.08);
+  --tag-color:      #9ca8ff;
+  --node-teal-dim:  rgba(15,168,136,0.08);
+  /* ── Glass tokens ─────────────────────────────── */
+   --glass-bg:        rgba(14,14,20,0.72);
+   --glass-bg-2:      rgba(22,22,31,0.80);
+   --glass-bg-active: rgba(108,123,255,0.16);
+   --glass-blur:      blur(18px) saturate(180%);
+   --glass-shadow:    0 8px 32px rgba(0,0,0,0.42);
+   --glass-shine:     inset 0 1px 0 rgba(255,255,255,0.055);
+ }
 
   /* auth.js compat tokens */
   --border2:  rgba(255,255,255,0.10);
@@ -1143,5 +1147,17 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 })();
 </script>
 
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Inject the header with Community-specific settings
+    if (typeof window.shInjectHeader === 'function') {
+      window.shInjectHeader({
+        actionText: "+ Submit Effect",
+        actionFunc: "openSubmitModal()",
+        activeId: "nav-community" // Lights up the 'Community' pill
+      });
+    }
+  });
+</script>
 </body>
 </html>
