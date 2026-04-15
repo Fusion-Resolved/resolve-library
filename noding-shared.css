@@ -1025,6 +1025,15 @@ button:active   { transition: transform 80ms ease; }
   transition: opacity 0.38s ease;
   pointer-events: none; z-index: 2;
 }
+/* Cards with --accent use full color, opacity applied separately */
+.bento-card[style*="--accent"]::before {
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    var(--accent) 0%,
+    transparent 60%
+  );
+}
+.bento-card[style*="--accent"]:hover::before { opacity: 0.12; }
 /* Top-edge glint */
 .bento-card::after {
   content: '';

@@ -316,22 +316,6 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 .card-learn:hover     { border-color:rgba(15,168,136,0.26);  box-shadow:var(--glass-shine),0 0 40px rgba(15,168,136,0.08); }
 .card-discord:hover   { border-color:rgba(240,96,96,0.26);   box-shadow:var(--glass-shine),0 0 40px rgba(240,96,96,0.08); }
 
-/* Cursor spotlight - uses --mouse-x/--mouse-y set by JS */
-.bento-card::before {
-  content:''; position:absolute; inset:0; border-radius:inherit;
-  background:radial-gradient(circle at var(--mouse-x,50%) var(--mouse-y,50%), var(--accent,rgba(108,123,255,0.12)) 0%, transparent 60%);
-  opacity:0; transition:opacity 0.38s ease;
-  pointer-events:none; z-index:2;
-}
-.bento-card:hover::before { opacity:1; }
-
-/* Top-edge glint */
-.bento-card::after {
-  content:''; position:absolute; inset:0; border-radius:inherit;
-  background:radial-gradient(ellipse 80% 35% at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 60%);
-  pointer-events:none; z-index:2;
-}
-
 /* Card reveal animation */
 @keyframes cardReveal { from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
 .bento-card.revealed { animation:cardReveal 0.58s var(--ease-out-expo) both; }
@@ -702,7 +686,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
   <div class="bento-grid">
 
     <!-- 1. Effects Library — flagship -->
-    <a href="effects.html" class="bento-card card-effects" style="--accent: rgba(108,123,255,0.12);" data-delay="0">
+    <a href="effects.html" class="bento-card card-effects" style="--accent: var(--violet);" data-delay="0">
       <div class="card-blob"></div>
       <div class="code-deco" aria-hidden="true">
         <div class="code-deco-inner">
@@ -733,7 +717,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
     </a>
 
     <!-- 2. Node Graph -->
-    <a href="nodegraph.html" class="bento-card card-graph" style="--accent: rgba(15,168,136,0.12);" data-delay="1">
+    <a href="nodegraph.html" class="bento-card card-graph" style="--accent: var(--node-teal);" data-delay="1">
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -753,7 +737,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
     </a>
 
     <!-- 3. Community -->
-    <a href="community.html" class="bento-card card-community" style="--accent: rgba(176,113,24,0.12);" data-delay="2">
+    <a href="community.html" class="bento-card card-community" style="--accent: var(--signal-amber);" data-delay="2">
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -768,7 +752,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
     </a>
 
     <!-- 4. Node Reference Library -->
-    <a href="library.html" class="bento-card card-library" style="--accent: rgba(201,82,56,0.12);" data-delay="3">
+    <a href="library.html" class="bento-card card-library" style="--accent: var(--spline-coral);" data-delay="3">
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -783,7 +767,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
     </a>
 
     <!-- 5. Spline Editor -->
-    <a href="spline.html" class="bento-card card-spline" style="--accent: rgba(68,81,212,0.12);" data-delay="4">
+    <a href="spline.html" class="bento-card card-spline" style="--accent: var(--violet-light);" data-delay="4">
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -798,7 +782,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
     </a>
 
     <!-- 6. Submit an Effect -->
-    <a href="community.html" class="bento-card card-submit" style="--accent: rgba(108,123,255,0.12);" data-delay="5">
+    <a href="community.html" class="bento-card card-submit" style="--accent: var(--violet);" data-delay="5">
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -813,7 +797,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
     </a>
 
     <!-- 7. Learn -->
-    <a href="library.html" class="bento-card card-learn" style="--accent: rgba(15,168,136,0.12);" data-delay="6">
+    <a href="library.html" class="bento-card card-learn" style="--accent: var(--node-teal);" data-delay="6">
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
@@ -828,7 +812,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
     </a>
 
     <!-- 8. Discord -->
-    <a href="#" class="bento-card card-discord" style="--accent: rgba(240,96,96,0.12);" data-delay="7">
+    <a href="#" class="bento-card card-discord" style="--accent: var(--danger);" data-delay="7">
       <div class="card-blob"></div>
       <div class="bento-card-header">
         <div class="bento-icon">
