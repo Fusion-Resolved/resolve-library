@@ -2008,6 +2008,12 @@ body.bulk-mode .card-select-check { display: flex; }
 }
 #node-ql-pop.open { display: block; animation: modalIn 0.15s var(--ease-out-expo); }
 
+/* ── Header z-index override ───────────────────────────────
+   noding-shared.css sets header to z-index:9999 which would
+   punch through the sidebar (z-index:151). Match community.html
+   behaviour by keeping the header below the sidebar overlay. */
+header { z-index: 100 !important; }
+
 </style>
 
 </head>
