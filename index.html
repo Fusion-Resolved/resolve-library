@@ -499,9 +499,34 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 .effect-card { flex-shrink:0; width:220px; background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius); overflow:hidden; cursor:pointer; transition:var(--transition); }
 .effect-card:hover { border-color:rgba(255,255,255,0.12); transform:translateY(-2px); box-shadow:var(--shadow); }
 
-/* Effect Modal - Controlled entirely by JavaScript inline styles */
+/* Effect Modal - Centered on desktop, bottom sheet on mobile */
 #effect-modal-overlay { }
-#effect-modal-overlay .eds-sheet { animation:sheetUp var(--duration-base) var(--ease-out-expo); }
+#effect-modal-overlay .eds-sheet { 
+  animation:sheetUp var(--duration-base) var(--ease-out-expo);
+  position: relative !important;
+  transform: none !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  max-width: 640px !important;
+  z-index: 301 !important;
+  margin: auto !important;
+}
+
+/* Mobile: bottom sheet */
+@media (max-width: 599px) {
+  #effect-modal-overlay { align-items: flex-end !important; }
+  #effect-modal-overlay .eds-sheet { margin: 0 !important; border-radius: 20px 20px 0 0 !important; }
+}
+
+/* Desktop: centered modal */
+@media (min-width: 600px) {
+  #effect-modal-overlay { align-items: center !important; padding: 1.5rem !important; }
+  #effect-modal-overlay .eds-sheet { border-radius: var(--radius-lg) !important; max-height: 78vh !important; }
+}
+
 @keyframes sheetUp { from{transform:translateY(32px);opacity:0} to{transform:translateY(0);opacity:1} }
 @keyframes sheetUp { from{transform:translateY(32px);opacity:0} to{transform:translateY(0);opacity:1} }
 @media(min-width:600px){ .eds-sheet { border-radius:var(--radius-lg) !important; max-height:78vh !important; } }

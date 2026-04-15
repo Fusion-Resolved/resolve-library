@@ -2016,7 +2016,7 @@ body.bulk-mode .card-select-check { display: flex; }
     behaviour by keeping the header below the sidebar overlay. */
 header { z-index: 100 !important; }
 
-/* Effect Modal - Controlled entirely by JavaScript inline styles */
+/* Effect Modal - Centered on desktop, bottom sheet on mobile */
 #effect-modal-overlay { }
 #effect-modal-overlay .eds-sheet { 
   animation:sheetUp var(--duration-base) var(--ease-out-expo);
@@ -2029,7 +2029,21 @@ header { z-index: 100 !important; }
   width: 100% !important;
   max-width: 640px !important;
   z-index: 301 !important;
+  margin: auto !important;
 }
+
+/* Mobile: bottom sheet */
+@media (max-width: 599px) {
+  #effect-modal-overlay { align-items: flex-end !important; }
+  #effect-modal-overlay .eds-sheet { margin: 0 !important; border-radius: 20px 20px 0 0 !important; }
+}
+
+/* Desktop: centered modal */
+@media (min-width: 600px) {
+  #effect-modal-overlay { align-items: center !important; padding: 1.5rem !important; }
+  #effect-modal-overlay .eds-sheet { border-radius: var(--radius-lg) !important; max-height: 78vh !important; }
+}
+
 @keyframes sheetUp { from{transform:translateY(32px);opacity:0} to{transform:translateY(0);opacity:1} }
 
 </style>

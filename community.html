@@ -599,12 +599,35 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 .toast-dot.v { background:var(--violet); }
 .toast-dot.t { background:var(--node-teal); }
 
-/* Effect Modal */
-#effect-modal-overlay { display:none !important; }
-#effect-modal-overlay.open { display:flex !important; }
-@media(min-width:600px){ #effect-modal-overlay.open { align-items:center; padding:1.5rem; } }
+/* Effect Modal - Centered on desktop, bottom sheet on mobile */
+#effect-modal-overlay { }
+#effect-modal-overlay .eds-sheet { 
+  animation:sheetUp var(--duration-base) var(--ease-out-expo);
+  position: relative !important;
+  transform: none !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  max-width: 640px !important;
+  z-index: 301 !important;
+  margin: auto !important;
+}
+
+/* Mobile: bottom sheet */
+@media (max-width: 599px) {
+  #effect-modal-overlay { align-items: flex-end !important; }
+  #effect-modal-overlay .eds-sheet { margin: 0 !important; border-radius: 20px 20px 0 0 !important; }
+}
+
+/* Desktop: centered modal */
+@media (min-width: 600px) {
+  #effect-modal-overlay { align-items: center !important; padding: 1.5rem !important; }
+  #effect-modal-overlay .eds-sheet { border-radius: var(--radius-lg) !important; max-height: 78vh !important; }
+}
+
 @keyframes sheetUp { from{transform:translateY(32px);opacity:0} to{transform:translateY(0);opacity:1} }
-@media(min-width:600px){ .eds-sheet { border-radius:var(--radius-lg) !important; max-height:78vh !important; } }
 </style>
 </head>
 <body>
