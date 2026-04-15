@@ -306,6 +306,14 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 }
 .card-community,.card-library,.card-spline,.card-submit,.card-learn,.card-discord { padding:20px; }
 
+/* Internal glow — left-edge gradient on hover */
+.bento-card::before {
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:radial-gradient(ellipse 120% 100% at 0% 50%, var(--card-glow,rgba(108,123,255,0.08)) 0%, transparent 70%);
+  opacity:0; transition:opacity 0.28s ease; pointer-events:none; z-index:0;
+}
+.bento-card:hover::before { opacity:1; }
+
 /* Top-edge glint */
 .bento-card::after {
   content:''; position:absolute; inset:0; border-radius:inherit;
@@ -314,15 +322,25 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 }
 .bento-card:hover { transform:translateY(-5px); transition:transform 0.32s var(--ease-out-expo), border-color 0.28s ease, box-shadow 0.28s ease; }
 
-/* Per-card hover border + glow */
+/* Per-card CSS variables for internal glow color */
+.card-effects   { --card-glow:rgba(108,123,255,0.10); }
+.card-graph     { --card-glow:rgba(15,168,136,0.10);  }
+.card-community { --card-glow:rgba(176,113,24,0.10);  }
+.card-library   { --card-glow:rgba(201,82,56,0.10);   }
+.card-spline    { --card-glow:rgba(68,81,212,0.10);   }
+.card-submit    { --card-glow:rgba(108,123,255,0.10); }
+.card-learn     { --card-glow:rgba(15,168,136,0.10);  }
+.card-discord   { --card-glow:rgba(240,96,96,0.10);   }
+
+/* Per-card hover border + external glow */
 .card-effects:hover   { border-color:rgba(108,123,255,0.30); box-shadow:var(--glass-shine),0 0 40px rgba(108,123,255,0.10); }
 .card-graph:hover     { border-color:rgba(15,168,136,0.28);  box-shadow:var(--glass-shine),0 0 40px rgba(15,168,136,0.08); }
 .card-community:hover { border-color:rgba(176,113,24,0.28);  box-shadow:var(--glass-shine),0 0 40px rgba(176,113,24,0.08); }
 .card-library:hover   { border-color:rgba(201,82,56,0.28);   box-shadow:var(--glass-shine),0 0 40px rgba(201,82,56,0.08); }
 .card-spline:hover    { border-color:rgba(68,81,212,0.32);   box-shadow:var(--glass-shine),0 0 40px rgba(68,81,212,0.10); }
-.card-submit:hover    { border-color:rgba(108,123,255,0.26); }
-.card-learn:hover     { border-color:rgba(15,168,136,0.26); }
-.card-discord:hover   { border-color:rgba(240,96,96,0.26); }
+.card-submit:hover    { border-color:rgba(108,123,255,0.26); box-shadow:var(--glass-shine),0 0 40px rgba(108,123,255,0.08); }
+.card-learn:hover     { border-color:rgba(15,168,136,0.26);  box-shadow:var(--glass-shine),0 0 40px rgba(15,168,136,0.08); }
+.card-discord:hover   { border-color:rgba(240,96,96,0.26);   box-shadow:var(--glass-shine),0 0 40px rgba(240,96,96,0.08); }
 
 /* Card reveal animation */
 @keyframes cardReveal { from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
