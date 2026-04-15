@@ -313,6 +313,14 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 .card-inspiration .stat-pip { background: var(--spline-coral); }
 .card-modifiers .stat-pip   { background: var(--violet-dark); }
 
+/* Card title hover colors — match category accent */
+.bento-card[style*="--accent: var(--violet)"]:hover      .card-title { color: var(--violet-light); }
+.bento-card[style*="--accent: var(--node-teal)"]:hover   .card-title { color: var(--node-teal); }
+.bento-card[style*="--accent: var(--signal-amber)"]:hover .card-title { color: var(--signal-amber); }
+.bento-card[style*="--accent: var(--spline-coral)"]:hover .card-title { color: var(--spline-coral); }
+.bento-card[style*="--accent: var(--violet-dark)"]:hover .card-title { color: var(--violet-light); }
+.bento-card[style*="--accent: var(--gray-400)"]:hover     .card-title { color: var(--gray-400); }
+
 /* ─ FLAGSHIP DECORATIVE NODE GRAPH ─ */
 .node-graph-deco {
   position: absolute; right: 0; top: 0; bottom: 0;
