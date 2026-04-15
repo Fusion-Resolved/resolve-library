@@ -270,46 +270,6 @@
     if (noMedia) noMedia.style.display = 'none';
   }
 
-    // Show toggle if either media is available
-    if (toggleBtns) {
-      toggleBtns.style.display = (hasGif || hasVideo) ? 'flex' : 'none';
-      // Disable button for missing media
-      if (gifBtn) {
-        gifBtn.style.opacity = hasGif ? '1' : '0.3';
-        gifBtn.style.cursor = hasGif ? 'pointer' : 'not-allowed';
-        gifBtn.disabled = !hasGif;
-      }
-      if (videoBtn) {
-        videoBtn.style.opacity = hasVideo ? '1' : '0.3';
-        videoBtn.style.cursor = hasVideo ? 'pointer' : 'not-allowed';
-        videoBtn.disabled = !hasVideo;
-      }
-    }
-
-    // Show "Watch on YouTube" button if YouTube video exists
-    if (watchYoutube) {
-      if (isYouTube && currentYouTubeUrl) {
-        watchYoutube.href = currentYouTubeUrl;
-        watchYoutube.style.display = 'inline-flex';
-      } else {
-        watchYoutube.style.display = 'none';
-      }
-    }
-
-    // Default to GIF if available, otherwise video
-    if (hasGif) {
-      showGif(effect.gif_url || effect.gifUrl);
-      if (gifBtn) gifBtn.classList.add('active');
-      if (videoBtn) videoBtn.classList.remove('active');
-    } else if (hasVideo) {
-      showVideo(effect.video_url || effect.videoUrl);
-      if (gifBtn) gifBtn.classList.remove('active');
-      if (videoBtn) videoBtn.classList.add('active');
-    }
-
-    if (noMedia) noMedia.style.display = 'none';
-  }
-
   function showGif(url) {
     const mediaContent = document.getElementById('modal-media-content');
     if (mediaContent) {
