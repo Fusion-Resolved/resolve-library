@@ -61,14 +61,15 @@
   --tag-bg:    rgba(108,123,255,0.08);
   --tag-color: #9ca8ff;
 
-  /* ── Glass tokens ─────────────────────────────── */
-    --glass-bg:        rgba(14,14,20,0.72);
-    --glass-bg-2:      rgba(22,22,31,0.80);
-    --glass-bg-active: rgba(108,123,255,0.16);
-    --glass-blur:      blur(18px) saturate(180%);
-    --glass-shadow:    0 8px 32px rgba(0,0,0,0.42);
-    --glass-shine:     inset 0 1px 0 rgba(255,255,255,0.055);
-  }
+  /* Glass morphism */
+  --glass-bg:        rgba(15,15,22,0.78);
+  --glass-bg-2:      rgba(22,22,31,0.78);
+  --glass-bg-active: rgba(108,123,255,0.82);
+  --glass-blur:      blur(18px) saturate(1.6);
+  --glass-shine:     inset 0 1px 0 rgba(255,255,255,0.07),
+                     inset 0 -1px 0 rgba(0,0,0,0.12);
+  --glass-shadow:    0 2px 12px rgba(0,0,0,0.22),
+                     0 1px 3px  rgba(0,0,0,0.16);
 
   /* Typography */
   --font-display: 'Syne', sans-serif;
@@ -125,22 +126,11 @@
 html {
   overflow-y: scroll;
   scrollbar-gutter: stable;
-}
-
-html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
-body {
-  font-family: var(--font-body);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  overflow-x: hidden;
-  margin: 0;
-  padding: 0;
-}
-html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
 body {
   font-family: var(--font-body);
   background: var(--bg-page);
@@ -237,7 +227,7 @@ header {
   top: 0; 
   left: 0; 
   right: 0; 
-  z-index: 100; 
+  z-index: 9999; 
   display: flex; 
   align-items: center; 
   justify-content: space-between;
@@ -286,10 +276,10 @@ header {
   align-items: center; 
   gap: 2px; 
   padding: 5px 6px; 
-  background: var(--glass-bg); 
+  background: rgba(255,255,255,0.06);
   backdrop-filter: var(--glass-blur); 
   -webkit-backdrop-filter: var(--glass-blur); 
-  border: 1px solid var(--border-surface); 
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: var(--radius-pill); 
   box-shadow: var(--glass-shadow), var(--glass-shine); 
 }
@@ -314,35 +304,6 @@ header {
 .nav-item.active { 
   color: var(--white); 
   background: var(--glass-bg-active); 
-}
-
-.hdr-right { 
-  display: flex; 
-  align-items: center; 
-  gap: 6px; 
-  flex-shrink: 0; 
-  pointer-events: all; 
-  margin-left: auto;
-}
-
-.sh-btn-plus { 
-  height: 36px; 
-  padding: 0 14px; 
-  border-radius: var(--radius-sm); 
-  border: 1px solid var(--border-surface); 
-  background: var(--glass-bg); 
-  backdrop-filter: var(--glass-blur); 
-  color: var(--text-secondary); 
-  cursor: pointer; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  transition: var(--transition); 
-}
-
-.sh-btn-plus:hover { 
-  color: var(--text-primary); 
-  background: var(--glass-bg-2); 
 }
 
 /* Library sub-nav pill */
@@ -371,6 +332,7 @@ header {
 .sh-hdr-right {
   display: flex; align-items: center; gap: 6px;
   flex-shrink: 0; pointer-events: all;
+  margin-left: auto;
 }
 
 /* Menu / Plus button (neutral glass) */
@@ -396,27 +358,18 @@ header {
 .sh-icon-btn {
   width: 36px; height: 36px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255,255,255,0.10); /* brighter border */
-  background: rgba(255,255,255,0.06);       /* lighter surface */
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   color: var(--text-secondary);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: var(--transition);
-  box-shadow: var(--glass-shadow), var(--glass-shine);
 }
 .sh-icon-btn:hover { color: var(--text-primary); background: var(--glass-bg-2); }
 .sh-icon-btn:active { transform: scale(0.94); }
 .sh-icon-btn svg { display: block; }
-
-.sh-icon-btn {
-  background:              var(--glass-bg);
-  backdrop-filter:         var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border:                  1px solid var(--border-surface);
-  box-shadow:              var(--glass-shadow), var(--glass-shine);
-}
 
 /* + Action button (violet-tinted glass) */
 .sh-add-btn {
@@ -501,7 +454,7 @@ header {
 .sh-sidebar-ov {
   display: none; position: fixed; inset: 0;
   background: rgba(0,0,0,0.6);
-  z-index: 10000;
+  z-index: 150;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -515,7 +468,7 @@ header {
   -webkit-backdrop-filter: var(--glass-blur);
   border-left: 1px solid var(--border-surface);
   box-shadow: -4px 0 32px rgba(0,0,0,0.4);
-  z-index: 10001;
+  z-index: 151;
   display: flex; flex-direction: column;
   transform: translateX(100%);
   transition: transform var(--duration-base) var(--ease-out-expo);
