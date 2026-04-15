@@ -283,21 +283,48 @@
     if (mediaContent) {
       let embedUrl = url;
       
-      // YouTube URL handling
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      // If URL contains iframe HTML, extract the src attribute
+      if (url.includes('<iframe') && url.includes('src=')) {
+        const srcMatch = url.match(/src=["']([^"']+)["']/);
+        if (srcMatch) {
+          embedUrl = srcMatch[1];
+        }
+      }
+      
+      // If it's already an embed URL, use it directly
+      if (embedUrl.includes('youtube.com/embed/') || embedUrl.includes('youtube-nocookie.com/embed/')) {
+        // Already an embed URL, use as-is
+        mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width:100%;height:100%;border:none;display:block"></iframe>`;
+        mediaContent.style.display = 'block';
+        return;
+      }
+      
+      // YouTube URL handling for watch URLs
+      if (embedUrl.includes('youtube.com') || embedUrl.includes('youtu.be')) {
         let videoId = '';
         
         // Extract video ID from various YouTube URL formats
-        if (url.includes('youtube.com/watch?v=')) {
-          const match = url.match(/[?&]v=([^&]+)/);
+        if (embedUrl.includes('youtube.com/watch?v=')) {
+          const match = embedUrl.match(/[?&]v=([^&]+)/);
           videoId = match ? match[1] : '';
-        } else if (url.includes('youtu.be/')) {
-          const match = url.match(/youtu\.be\/([^?&]+)/);
+        } else if (embedUrl.includes('youtu.be/')) {
+          const match = embedUrl.match(/youtu\.be\/([^?&]+)/);
           videoId = match ? match[1] : '';
-        } else if (url.includes('youtube.com/embed/')) {
-          const match = url.match(/embed\/([^?&]+)/);
+        } else if (embedUrl.includes('youtube.com/embed/')) {
+          const match = embedUrl.match(/embed\/([^?&]+)/);
           videoId = match ? match[1] : '';
         }
+        
+        // Build proper embed URL
+        if (videoId) {
+          embedUrl = `https://www.youtube.com/embed/${videoId}`;
+        }
+      }
+      
+      mediaContent.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width:100%;height:100%;border:none;display:block"></iframe>`;
+      mediaContent.style.display = 'block';
+    }
+  }
         
         // Build proper embed URL (include original query params for session/share IDs)
         if (videoId) {
