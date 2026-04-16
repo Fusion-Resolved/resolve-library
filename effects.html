@@ -6265,25 +6265,24 @@ async function renderSavedEffects() {
   if (!savedEffects.length) {
     savedCont.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><strong>No saved effects yet.</strong> Click the bookmark icon on any effect to save it here.</div>`;
   } else {
-    // Build cards from saved effect data
+    // Build cards using same structure as buildCard
     savedCont.innerHTML = savedEffects.map(e => {
-      const catColor = getCatColor(e.cat) || '#6c7bff';
-      const catBg = catColor + '20';
-      return `
-      <div class="card" onclick="openEffectModal('${e.id}')" style="cursor:pointer;">
-        <div class="card-thumbnail" style="background:linear-gradient(135deg, var(--ink-lift), var(--ink-soft));"></div>
-        <div class="card-content">
-          <div class="card-title-row">
-            <h3 class="card-title">${escapeHtml(e.name)}</h3>
-            <span class="cat-badge" style="background:${catBg};color:${catColor};border:1px solid ${catColor}40;">${escapeHtml(e.cat || 'Other')}</span>
-          </div>
-          <div class="card-meta">
-            <span>${escapeHtml(e.difficulty || 'Beginner')}</span>
-            <span>Saved ${new Date(e.saved_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>
-          </div>
+      const cat = CATS[e.cat] || { label: e.cat || 'Effect', cls: 'cat-default' };
+      const diff = DIFF[e.difficulty?.toLowerCase()] || { label: e.difficulty || 'Beginner', cls: 'diff-beginner' };
+      const dateStr = e.saved_at ? new Date(e.saved_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '';
+      
+      return `<div class="card" data-id="${e.id}" data-cat="${e.cat||''}" onclick="openEffectModal('${e.id}')">
+        <div class="card-top">
+          <div class="card-title">${escapeHtml(e.name)}</div>
+          ${renderCatBadge(cat)}
+          <button class="card-share-icon-btn" title="Copy share link" onclick="copyShareLink('${e.id}',event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
         </div>
-      </div>
-    `}).join('');
+        <div class="diff-badge ${diff.cls}">● ${diff.label}</div>
+        <div class="card-meta">
+          <span>Saved ${dateStr}</span>
+        </div>
+      </div>`;
+    }).join('');
   }
 }
 
