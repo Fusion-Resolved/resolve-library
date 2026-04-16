@@ -120,7 +120,8 @@
     // Software/version info
     document.getElementById('modal-software').textContent = effect.tool || 'DaVinci Resolve';
     document.getElementById('modal-render-weight').textContent = effect.render_weight || 'Medium';
-    document.getElementById('modal-self-contained').textContent = effect.compatability || 'Needs media input';
+    document.getElementById('modal-self-contained').textContent = effect.self_contained || 'Needs media input';
+    console.log('[effect-modal] self_contained value:', effect.self_contained);
     document.getElementById('modal-dependencies').textContent = effect.fusion_env || 'None';
 
     // Node code
