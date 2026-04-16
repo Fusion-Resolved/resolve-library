@@ -64,7 +64,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 .tt-track.on .tt-thumb{transform:translateX(12px);}
 
 /* overlay */
-.ov{display:none;position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem;}
+.ov{display:none;position:fixed;inset:0;background:transparent;z-index:300;align-items:center;justify-content:center;padding:1rem;}
 .ov.open{display:flex;}
 @keyframes shIn{from{transform:translateY(22px) scale(0.98);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
 @keyframes panIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
@@ -301,10 +301,6 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 .toast.show{opacity:1;transform:translateY(0);}
 </style>
 <body>
-
-<div class="ambient">
-  <div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div>
-</div>
 
 <!-- SHEET -->
 <div id="theSheet" class="ov open">
