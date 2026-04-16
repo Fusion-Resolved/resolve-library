@@ -2601,9 +2601,9 @@ window.nodingBlobsEnabled = function () {
   <div class="edit-panel" id="edit-panel"></div>
 </div>
 
-<!-- Edit Effect iframe modal — loads edit-effect-owner.html -->
+<!-- Edit Effect modal — embeds edit-effect-owner.html content directly -->
 <div class="edit-iframe-overlay" id="edit-iframe-overlay" onclick="closeEditIframe(event)" style="display:none;position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;padding:20px 20px 0;">
-  <iframe id="edit-effect-iframe" src="" style="width:100%;max-width:720px;height:90vh;border:none;background:transparent;border-radius:18px 18px 0 0;"></iframe>
+  <div id="edit-effect-container" style="width:100%;max-width:720px;height:90vh;border-radius:18px 18px 0 0;overflow:hidden;background:var(--bg-page);"></div>
 </div>
 
 <!-- Backup / restore modal -->
@@ -7855,29 +7855,60 @@ function switchMedia(effectId, mode) {
   if (gBtn) gBtn.classList.toggle('active', mode === 'gif');
 }
 
-// ── Edit Effect iframe modal ────────────────────────────────────────────────
-function openEditIframe(effectId) {
+// ── Edit Effect modal (direct embed, no iframe) ────────────────────────────
+async function openEditIframe(effectId) {
   console.log('[openEditIframe] Opening for effect:', effectId);
   const overlay = document.getElementById('edit-iframe-overlay');
-  const iframe = document.getElementById('edit-effect-iframe');
-  if (!overlay || !iframe) {
-    console.log('[openEditIframe] Elements not found, aborting');
+  const container = document.getElementById('edit-effect-container');
+  if (!overlay || !container) {
+    console.log('[openEditIframe] Elements not found, falling back to navigation');
+    window.location.href = `edit-effect-owner.html?id=${effectId}`;
     return;
   }
   
-  // Load edit-effect-owner.html with the effect ID
-  const url = `edit-effect-owner.html?id=${effectId}`;
-  console.log('[openEditIframe] Loading URL:', url);
-  iframe.src = url;
+  // Show overlay with loading state
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">Loading...</div>';
   overlay.style.display = 'flex';
   document.body.style.overflow = 'hidden';
-  console.log('[openEditIframe] Modal opened');
+  
+  try {
+    // Fetch edit-effect-owner.html content
+    const response = await fetch(`edit-effect-owner.html?id=${effectId}`);
+    if (!response.ok) throw new Error('Failed to load');
+    
+    const html = await response.text();
+    
+    // Extract the body content
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    if (bodyMatch) {
+      container.innerHTML = bodyMatch[1];
+      
+      // Execute any scripts in the content
+      const scripts = container.querySelectorAll('script');
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        if (oldScript.src) {
+          newScript.src = oldScript.src;
+        } else {
+          newScript.textContent = oldScript.textContent;
+        }
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+      });
+      
+      console.log('[openEditIframe] Content loaded and injected');
+    } else {
+      throw new Error('Could not parse content');
+    }
+  } catch (err) {
+    console.error('[openEditIframe] Error loading content:', err);
+    // Fallback to navigation
+    window.location.href = `edit-effect-owner.html?id=${effectId}`;
+  }
 }
 
 function closeEditIframe(event) {
   console.log('[closeEditIframe] Closing, event:', event);
   
-  // If called with no event (from message listener), just close
   // If called with event, only close if clicking overlay background
   if (event && event.target && event.target !== document.getElementById('edit-iframe-overlay')) {
     console.log('[closeEditIframe] Clicked inside container, not closing');
@@ -7885,9 +7916,9 @@ function closeEditIframe(event) {
   }
   
   const overlay = document.getElementById('edit-iframe-overlay');
-  const iframe = document.getElementById('edit-effect-iframe');
+  const container = document.getElementById('edit-effect-container');
   if (overlay) overlay.style.display = 'none';
-  if (iframe) iframe.src = ''; // Clear iframe to stop any background processes
+  if (container) container.innerHTML = ''; // Clear content
   document.body.style.overflow = '';
   console.log('[closeEditIframe] Modal closed');
 }
@@ -7895,13 +7926,6 @@ function closeEditIframe(event) {
 // Expose globally for effect-modal.js
 window.openEditIframe = openEditIframe;
 window.closeEditIframe = closeEditIframe;
-
-// Listen for messages from edit-effect-owner.html iframe
-window.addEventListener('message', function(event) {
-  if (event.data && event.data.action === 'close-edit-modal') {
-    closeEditIframe();
-  }
-});
 
 // ── Split add dropdown ────────────────────────────────────────────────────
 function toggleAddDropdown(e) {
