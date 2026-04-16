@@ -64,8 +64,6 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 .tt-track.on .tt-thumb{transform:translateX(12px);}
 
 /* overlay */
-.ov{display:none;position:fixed;inset:0;background:transparent;z-index:300;align-items:center;justify-content:center;padding:1rem;}
-.ov.open{display:flex;}
 @keyframes shIn{from{transform:translateY(22px) scale(0.98);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
 @keyframes panIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 @keyframes panBack{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
@@ -303,8 +301,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 <body>
 
 <!-- SHEET -->
-<div id="theSheet" class="ov open">
-<div class="sheet">
+<div class="sheet" id="theSheet">
 
   <!-- header -->
   <div class="sh-hd">
@@ -633,7 +630,6 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   </div>
 
 </div><!-- /sheet -->
-</div><!-- /overlay -->
 
 <!-- Confirm delete dialog -->
 <div class="confirm-ov" id="deleteOv">
@@ -1127,12 +1123,6 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       }
       closeSheet();
     });
-    document.getElementById('theSheet').addEventListener('click', function (e) {
-      if (e.target === this) {
-        if (isDirty) { if (!confirm('You have unsaved changes. Close anyway?')) { return; } }
-        closeSheet();
-      }
-    });
 
     /* save */
     document.getElementById('btnSave').addEventListener('click', doSave);
@@ -1262,13 +1252,11 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   }
 
   function openSheet () {
-    document.getElementById('theSheet').classList.add('open');
     clearDirty();
     goTab(0);
     setTimeout(function () { resizeEd(); }, 80);
   }
   function closeSheet () {
-    document.getElementById('theSheet').classList.remove('open');
     isDirty = false;
   }
 
