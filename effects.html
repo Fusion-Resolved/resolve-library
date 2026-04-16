@@ -4583,6 +4583,17 @@ let activeDetail = null;
 // Supabase client (window._supabase) is initialised above via the JS SDK.
 function _clean(v) { try { return JSON.parse(JSON.stringify(v)); } catch(e) { return v; } }
 
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 async function _sbFetch(table, options = {}) {
   // Accepts old path-style: _sbFetch('effects?id=eq.xxx', {method:'PATCH',...})
   // OR new table-style:     _sbFetch('effects', {id:'xxx', method:'PATCH',...})
