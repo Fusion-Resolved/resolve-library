@@ -177,9 +177,18 @@
         <a href="effect-full-page.html?id=${effect.id}" class="btn-primary" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius);padding:9px 16px;font-size:13px;font-weight:600;font-family:var(--font-body);cursor:pointer;transition:var(--tr);white-space:nowrap;flex:1;text-decoration:none;">View full</a>
       `;
     } else {
+      const isPinned = isEffectPinned(effect.id);
+      const pinStyle = isPinned ? 
+        'box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:rgba(108,123,255,0.25);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid rgba(108,123,255,0.6);border-radius:var(--radius);padding:0;width:40px;height:38px;font-family:var(--font-body);color:var(--violet-light,#9ca8ff);cursor:pointer;transition:var(--tr);flex-shrink:0;' :
+        'box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:0;width:40px;height:38px;font-family:var(--font-body);color:var(--text-secondary);cursor:pointer;transition:var(--tr);flex-shrink:0;';
+      const pinSvg = isPinned ? 
+        '<svg width="16" height="16" fill="currentColor" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' :
+        '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+      const pinTitle = isPinned ? 'Remove from library' : 'Save to library';
+      
       footer.innerHTML = `
         <a href="effect-full-page.html?id=${effect.id}" class="btn-primary" style="box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius);padding:9px 16px;font-size:13px;font-weight:600;font-family:var(--font-body);cursor:pointer;transition:var(--tr);white-space:nowrap;flex:1;text-decoration:none;">View full</a>
-        <button class="btn-glass" onclick="pinEffect('${effect.id}')" style="box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:0;width:40px;height:38px;font-family:var(--font-body);color:var(--text-secondary);cursor:pointer;transition:var(--tr);flex-shrink:0;"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>
+        <button class="btn-glass" onclick="pinEffect('${effect.id}')" title="${pinTitle}" style="${pinStyle}">${pinSvg}</button>
         <button class="btn-share" onclick="shareEffect('${effect.id}')" style="box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--glass-bg);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid var(--border-subtle);color:var(--text-secondary);border-radius:var(--radius-sm);padding:0;width:40px;height:38px;font-family:var(--font-body);cursor:pointer;transition:var(--tr);flex-shrink:0;"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
       `;
     }
@@ -772,23 +781,80 @@
     }
   };
 
+  // Check if effect is pinned
+  function isEffectPinned(effectId) {
+    const pinned = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+    return pinned.some(e => e.id === effectId);
+  }
+
+  // Get all pinned effects
+  function getPinnedEffects() {
+    return JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+  }
+
   // Pin effect function
-  window.pinEffect = function(effectId) {
-    // Get current pinned effects from localStorage
+  window.pinEffect = async function(effectId) {
     let pinned = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+    const isPinned = pinned.some(e => e.id === effectId);
     
-    if (pinned.includes(effectId)) {
-      // Unpin
-      pinned = pinned.filter(id => id !== effectId);
+    if (isPinned) {
+      // Unpin - remove from saved list
+      pinned = pinned.filter(e => e.id !== effectId);
       localStorage.setItem('pinnedEffects', JSON.stringify(pinned));
-      showToast('Effect unpinned');
+      showToast('Removed from your library');
+      updatePinButtonUI(effectId, false);
     } else {
-      // Pin
-      pinned.push(effectId);
-      localStorage.setItem('pinnedEffects', JSON.stringify(pinned));
-      showToast('Effect pinned');
+      // Pin - fetch full effect data and save
+      if (window._supabase) {
+        const { data: effect } = await window._supabase
+          .from('effects')
+          .select('*')
+          .eq('id', effectId)
+          .single();
+        
+        if (effect) {
+          // Store minimal data needed for display
+          pinned.push({
+            id: effect.id,
+            name: effect.name,
+            cat: effect.cat,
+            difficulty: effect.difficulty,
+            date: effect.date || effect.created_at,
+            saved_at: new Date().toISOString()
+          });
+          localStorage.setItem('pinnedEffects', JSON.stringify(pinned));
+          showToast('Saved to your library');
+          updatePinButtonUI(effectId, true);
+        }
+      }
     }
   };
+
+  // Update pin button appearance
+  function updatePinButtonUI(effectId, isPinned) {
+    const btn = document.querySelector(`button[onclick="pinEffect('${effectId}')"]`);
+    if (btn) {
+      if (isPinned) {
+        btn.style.background = 'rgba(108,123,255,0.25)';
+        btn.style.borderColor = 'rgba(108,123,255,0.6)';
+        btn.style.color = 'var(--violet-light,#9ca8ff)';
+        btn.innerHTML = '<svg width="16" height="16" fill="currentColor" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+        btn.title = 'Remove from library';
+      } else {
+        btn.style.background = 'var(--glass-bg)';
+        btn.style.borderColor = 'var(--border-subtle)';
+        btn.style.color = 'var(--text-secondary)';
+        btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+        btn.title = 'Save to library';
+      }
+    }
+  }
+
+  // Expose utility to get saved effects for other pages
+  window.getSavedEffects = getPinnedEffects;
+  
+  // Expose utility to check if effect is saved
+  window.isEffectSaved = isEffectPinned;
 
   console.log('[Effect Modal] Module loaded successfully. openEffectModal is ready.');
 

@@ -2532,6 +2532,7 @@ window.nodingBlobsEnabled = function () {
     <div class="tabs-container">
       <button class="tab-btn active" onclick="switchTab('system')">Community Effects</button>
       <button class="tab-btn"        onclick="switchTab('mine')">My Effects</button>
+      <button class="tab-btn"        onclick="switchTab('saved')" id="saved-tab-btn">Saved <span id="saved-count" style="font-size:10px;background:rgba(108,123,255,0.2);padding:2px 6px;border-radius:999px;margin-left:4px;display:none;">0</span></button>
     </div>
 
     <!-- ── CARD GRIDS — populated by render() ──────────────────── -->
@@ -2540,6 +2541,9 @@ window.nodingBlobsEnabled = function () {
     </div>
     <div id="mine-content" class="tab-content" style="display:none;">
       <div id="my-effects-container" class="effects-grid grid"></div>
+    </div>
+    <div id="saved-content" class="tab-content" style="display:none;">
+      <div id="saved-effects-container" class="effects-grid grid"></div>
     </div>
 
 
@@ -6171,6 +6175,38 @@ function render() {
       myCont.innerHTML = myList.map(buildCard).join('');
     }
   }
+
+  // ── Render Saved Effects container ──────────────────────────────────────
+  const savedCont = document.getElementById('saved-effects-container');
+  if (savedCont) {
+    const savedEffects = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+    // Update badge count
+    const badge = document.getElementById('saved-count');
+    if (badge) {
+      badge.textContent = savedEffects.length;
+      badge.style.display = savedEffects.length > 0 ? 'inline' : 'none';
+    }
+    if (!savedEffects.length) {
+      savedCont.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><strong>No saved effects yet.</strong> Click the bookmark icon on any effect to save it here.</div>`;
+    } else {
+      // Build cards from saved effect data
+      savedCont.innerHTML = savedEffects.map(e => `
+        <div class="card" onclick="openDetail('${e.id}')" style="cursor:pointer;">
+          <div class="card-thumbnail" style="background:linear-gradient(135deg, var(--ink-lift), var(--ink-soft));"></div>
+          <div class="card-content">
+            <div class="card-title-row">
+              <h3 class="card-title">${escapeHtml(e.name)}</h3>
+              <span class="cat-badge" style="background:${getCatColor(e.cat).bg};color:${getCatColor(e.cat).primary};">${escapeHtml(e.cat)}</span>
+            </div>
+            <div class="card-meta">
+              <span>${escapeHtml(e.difficulty || 'Beginner')}</span>
+              <span>Saved ${new Date(e.saved_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
 }
 
 function setFilter(k) { activeFilter = k; render(); }
@@ -6183,6 +6219,8 @@ function switchTab(tabId) {
   if (activeBtn) activeBtn.classList.add('active');
   var activeContent = document.getElementById(tabId + '-content');
   if (activeContent) activeContent.style.display = 'block';
+  // Refresh saved effects when switching to saved tab
+  if (tabId === 'saved') render();
 }
 
 // Global handler for "Open in Node Graph" buttons injected into card HTML.
