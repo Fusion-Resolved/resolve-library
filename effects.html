@@ -7693,7 +7693,8 @@ function openDetail(id) {
 }
 
 function closeDetail() {
-  document.getElementById('overlay').classList.remove('open');
+  const overlay = document.getElementById('overlay');
+  if (overlay) overlay.classList.remove('open');
   document.body.style.overflow = '';
   activeDetail = null;
 }
@@ -7788,74 +7789,35 @@ function openEdit(id) {
             </div>
             <div class="node-dropdown" id="e-node-dropdown"></div>
           </div>
+          <div id="e-node-tags"></div>
         </div>
       </div>
 
       <div class="ep-section">
-        <div class="ep-section-label">Technical details</div>
+        <div class="ep-section-label">Additional</div>
+        <div class="edit-field" style="margin-bottom:1rem"><label>Related effects (comma-separated)</label><input id="e-related" type="text" value="${escAttr((e.related||[]).join(', ')}"/></div>
+        <div class="edit-field" style="margin-bottom:1rem"><label>Tags (comma-separated)</label><input id="e-tags" type="text" value="${escAttr((e.tags||[]).join(', ')}"/></div>
+        <div class="edit-field" style="margin-bottom:1rem"><label>Collections (comma-separated)</label><input id="e-collections" type="text" value="${escAttr((e.collections||[]).join(', ')}"/></div>
+      </div>
+
+      <div class="ep-section">
+        <div class="ep-section-label">Share settings</div>
         <div class="edit-row" style="margin-bottom:1rem">
-          <div class="edit-field"><label>Render weight</label>
-            <select id="e-render">
-              <option value="">— select —</option>
-              ${['Light','Medium','Heavy'].map(w=>`<option value="${w}" ${e.renderWeight===w?'selected':''}>${w}</option>`).join('')}
-            </select>
-          </div>
-          <div class="edit-field"><label>Self-contained?</label>
-            <select id="e-self">
-              <option value="">— select —</option>
-              <option value="true" ${e.selfContained===true?'selected':''}>Yes — no media needed</option>
-              <option value="false" ${e.selfContained===false?'selected':''}>No — needs media input</option>
-            </select>
-          </div>
+          <div class="edit-field"><label>Share limit (optional)</label><input id="e-share-limit" type="number" min="0" value="${e.share_limit!=null?e.share_limit:''}"/></div>
+          <div class="edit-field"><label>Share password (optional)</label><input id="e-share-password" type="text" value="${escAttr(e.share_password||'')}" placeholder="Leave blank for no password"/></div>
         </div>
-        <div class="edit-field" style="margin-bottom:1rem"><label>Dependencies</label><input id="e-deps" type="text" value="${escAttr(e.dependencies||'')}"/></div>
-        <div class="edit-field" style="margin-bottom:1rem"><label>Expressions / scripts</label><textarea id="e-expressions">${escHtml(e.expressions||'')}</textarea></div>
-        <div class="edit-field" style="margin-bottom:1rem"><label>Common mistakes</label><textarea id="e-mistakes">${escHtml(e.mistakes||'')}</textarea></div>
-        <div class="edit-field" style="margin-bottom:1rem"><label>Variations &amp; extensions</label><textarea id="e-variations">${escHtml(e.variations||'')}</textarea></div>
-        <div class="edit-field" style="margin-bottom:1rem"><label>Reuse notes</label><textarea id="e-notes">${escHtml(e.notes||'')}</textarea></div>
       </div>
-
-      <div class="ep-section">
-        <div class="ep-section-label">Metadata</div>
-        <div class="edit-field" style="margin-bottom:1rem"><label>Related effects (comma separated)</label><input id="e-related" type="text" value="${escAttr(e.related||'')}"/></div>
-        <div class="edit-field" style="margin-bottom:1rem"><label>Tags (comma separated)</label><input id="e-tags" type="text" value="${escAttr((e.tags||[]).join(', '))}"/></div>
-        <div class="edit-field"><label>Software / tool</label><input id="e-tool" type="text" value="${escAttr(e.tool||'')}"/></div>
-      </div>
-
-      <div class="ep-section">
-        <div class="ep-section-label">Sharing &amp; Privacy</div>
-        <div class="edit-row" style="margin-bottom:.5rem">
-          <div class="edit-field"><label>Max uses <span style="opacity:.5;font-size:10px">(optional)</span></label><input id="e-share-limit" type="number" min="0" placeholder="e.g. 10 — leave blank for unlimited" value="${e.share_limit != null ? escAttr(String(e.share_limit)) : ''}"/></div>
-          <div class="edit-field"><label>Password <span style="opacity:.5;font-size:10px">(optional)</span></label><input id="e-share-password" type="text" autocomplete="off" placeholder="Leave blank for no password" value="${escAttr(e.share_password||'')}"/></div>
-        </div>
-        <div style="font-size:11px;color:var(--muted);line-height:1.5">Max Uses restricts how many times a share link can be opened. Password gates access to the effect. Both are optional.</div>
-      </div>
-
-      ${window.CURRENT_USER_ROLE === 'admin' ? `
-      <div class="ep-section">
-        <div class="ep-section-label">Admin</div>
-        <div style="padding-top:10px;border-top:1px solid var(--border);">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <label class="af-toggle">
-              <input type="checkbox" id="e-is-public" ${e.is_public ? 'checked' : ''}>
-              <span class="af-toggle-sl"></span>
-            </label>
-            <div>
-              <div style="font-size:13px;color:var(--accent);font-weight:600">Make Official (Global)</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5">Admin only — promotes this effect to the global system library visible to all users.</div>
-            </div>
-          </div>
-        </div>
-      </div>` : ''}
-
     </div>
     <div class="ep-footer">
       <button class="btn-edit" onclick="closeEdit()">Cancel</button>
       <button class="btn-edit" style="background:var(--accent);color:#0a0a0b;border-color:transparent;font-weight:500" onclick="saveEdit('${e.id}')">Save changes</button>
     </div>
   `;
-  document.getElementById('edit-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  const editOverlay = document.getElementById('edit-overlay');
+  if (editOverlay) {
+    editOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
   // Init node picker
   editSelectedNodes = (e.nodes||[]).map(n => ({ name: n, custom: !FUSION_NODES_FLAT.has(n) }));
   renderEditNodeTags();
@@ -7899,7 +7861,8 @@ document.addEventListener('click', () => {
 });
 
 function closeEdit() {
-  document.getElementById('edit-overlay').classList.remove('open');
+  const editOverlay = document.getElementById('edit-overlay');
+  if (editOverlay) editOverlay.classList.remove('open');
   document.body.style.overflow = '';
 }
 function handleEditOverlayClick(e) { if (e.target === document.getElementById('edit-overlay')) closeEdit(); }
@@ -9983,7 +9946,7 @@ if (typeof window._shToast !== 'function') {
   }
 </script>
 
-<script src="effect-modal.js"></script>
+<script src="effect-modal.js?v=2"></script>
 
 </body>
 </html>
