@@ -1163,22 +1163,29 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 
   /* ── LOAD EFFECT DATA ── */
   async function loadEffectData() {
+    console.log('[loadEffectData] ========== START ==========');
+    
     // Get effect ID from URL
     const params = new URLSearchParams(window.location.search);
     const effectId = params.get('id');
+    console.log('[loadEffectData] Effect ID from URL:', effectId);
+    
     if (!effectId) {
-      // No ID - open sheet with empty state
+      console.error('[loadEffectData] NO EFFECT ID FOUND IN URL');
+      alert('Error: No effect ID found in URL');
       openSheet();
       return;
     }
     
     // Wait for Supabase to be initialized (with timeout)
+    console.log('[loadEffectData] Waiting for Supabase...');
     let attempts = 0;
     const maxAttempts = 50; // 5 seconds total
     while (!window._supabase && attempts < maxAttempts) {
       await new Promise(r => setTimeout(r, 100));
       attempts++;
     }
+    console.log('[loadEffectData] Supabase wait complete. Available:', !!window._supabase, 'Attempts:', attempts);
     
     // Fetch from Supabase if available
     if (window._supabase) {
@@ -1190,41 +1197,76 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           .eq('id', effectId)
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('[loadEffectData] Supabase error:', error);
+          alert('Database error: ' + error.message);
+          throw error;
+        }
+        
         console.log('[loadEffectData] Received data:', data);
         console.log('[loadEffectData] Data keys:', Object.keys(data || {}));
+        
         if (data) {
+          console.log('[loadEffectData] Calling populateForm...');
           populateForm(data);
+          console.log('[loadEffectData] populateForm completed');
         } else {
-          // No data found - still open sheet
+          console.error('[loadEffectData] NO DATA RETURNED');
+          alert('Error: Effect not found');
           openSheet();
         }
       } catch (err) {
-        console.error('Error loading effect:', err);
-        // Error loading - still open sheet so user sees something
+        console.error('[loadEffectData] CATCH BLOCK ERROR:', err);
+        alert('Error loading effect: ' + (err.message || 'Unknown error'));
         openSheet();
       }
     } else {
-      // No Supabase after timeout - open sheet anyway
-      console.warn('[Edit Effect] Supabase not available after timeout');
+      console.error('[loadEffectData] SUPABASE NOT AVAILABLE');
+      alert('Error: Database not connected');
       openSheet();
     }
+    
+    console.log('[loadEffectData] ========== END ==========');
   }
   
   /* ── POPULATE FORM ── */
   function populateForm(effect) {
+    console.log('[populateForm] ========== START ==========');
     console.log('[populateForm] Populating with effect:', effect);
     
-    // Set name
+    if (!effect) {
+      console.error('[populateForm] NO EFFECT DATA PROVIDED');
+      alert('Error: No effect data to populate');
+      openSheet();
+      return;
+    }
+    
+    // Debug: Check if form elements exist
     const nameEl = document.getElementById('fName');
+    const descEl = document.getElementById('fDesc');
+    const catEl = document.getElementById('fCat');
+    const verEl = document.getElementById('fVer');
+    const weightEl = document.getElementById('fWeight');
+    
+    console.log('[populateForm] Form elements found:', {
+      fName: !!nameEl,
+      fDesc: !!descEl,
+      fCat: !!catEl,
+      fVer: !!verEl,
+      fWeight: !!weightEl
+    });
+    
+    // Set name
     if (nameEl && effect.name) {
+      console.log('[populateForm] Setting name to:', effect.name);
       nameEl.value = effect.name;
-      // Update character count
       const nameCC = document.getElementById('nameCC');
       if (nameCC) {
         nameCC.textContent = effect.name.length + ' / 60';
         nameCC.className = 'cc' + (effect.name.length > 50 ? ' warn' : '');
       }
+    } else {
+      console.warn('[populateForm] Name not set. Element:', !!nameEl, 'Value:', effect.name);
     }
     
     // Set description
@@ -1350,6 +1392,13 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       });
       shMeta.innerHTML = (effect.cat || 'Effect') + ' &nbsp;&middot;&nbsp; Version ' + (effect.version || '1.0') + ' &nbsp;&middot;&nbsp; Last edited ' + dateStr;
     }
+    
+    console.log('[populateForm] ========== COMPLETE ==========');
+    alert('Form populated successfully!');
+    
+    // Open the sheet after populating
+    openSheet();
+  }
     
     // Open the sheet after populating
     openSheet();
