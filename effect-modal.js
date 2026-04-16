@@ -762,11 +762,11 @@
 
   // Edit effect function
   // Edit effect function - opens edit modal if available, otherwise navigates to edit page
-  // Edit effect function - opens inline edit modal for owner
+  // Edit effect function - opens edit-effect.html in iframe modal
   window.editEffect = function(effectId) {
-    // Check if inline edit modal is available (effects.html)
-    if (typeof window.openEdit === 'function') {
-      window.openEdit(effectId);
+    // Check if iframe modal is available (effects.html)
+    if (typeof window.openEditIframe === 'function') {
+      window.openEditIframe(effectId);
       closeEffectModal();
     } else {
       // Fallback: navigate to edit-effect.html

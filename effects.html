@@ -2601,6 +2601,20 @@ window.nodingBlobsEnabled = function () {
   <div class="edit-panel" id="edit-panel"></div>
 </div>
 
+<!-- Edit Effect iframe modal — loads edit-effect.html -->
+<div class="edit-iframe-overlay" id="edit-iframe-overlay" onclick="closeEditIframe(event)" style="display:none;position:fixed;inset:0;background:rgba(9,9,14,0.85);z-index:400;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;">
+  <div class="edit-iframe-container" style="background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),0 24px 80px rgba(0,0,0,0.65);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);width:100%;max-width:900px;height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div class="edit-iframe-header" style="padding:1rem 1.5rem;border-bottom:1px solid var(--border-surface);display:flex;align-items:center;gap:12px;flex-shrink:0;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);">
+      <span style="width:10px;height:10px;border-radius:50%;background:var(--violet);flex-shrink:0;"></span>
+      <div style="flex:1;min-width:0;">
+        <h3 style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:-0.02em;color:var(--text-primary);margin:0;">Edit Effect Settings</h3>
+      </div>
+      <button onclick="closeEditIframe()" style="background:var(--glass-bg-2);box-shadow:var(--glass-shine);border:1px solid var(--border-subtle);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;color:var(--text-secondary);transition:var(--transition);">&#x2715;</button>
+    </div>
+    <iframe id="edit-effect-iframe" src="" style="flex:1;width:100%;border:none;background:var(--bg-page);"></iframe>
+  </div>
+</div>
+
 <!-- Backup / restore modal -->
 <div class="backup-overlay" id="backup-overlay">
   <div class="backup-box">
@@ -7850,6 +7864,33 @@ function switchMedia(effectId, mode) {
   if (gBtn) gBtn.classList.toggle('active', mode === 'gif');
 }
 
+// ── Edit Effect iframe modal ────────────────────────────────────────────────
+function openEditIframe(effectId) {
+  const overlay = document.getElementById('edit-iframe-overlay');
+  const iframe = document.getElementById('edit-effect-iframe');
+  if (!overlay || !iframe) return;
+  
+  // Load edit-effect.html with the effect ID
+  iframe.src = `edit-effect.html?id=${effectId}`;
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEditIframe(event) {
+  // Only close if clicking the overlay background (not the container) or the X button
+  if (event && event.target !== document.getElementById('edit-iframe-overlay')) return;
+  
+  const overlay = document.getElementById('edit-iframe-overlay');
+  const iframe = document.getElementById('edit-effect-iframe');
+  if (overlay) overlay.style.display = 'none';
+  if (iframe) iframe.src = ''; // Clear iframe to stop any background processes
+  document.body.style.overflow = '';
+}
+
+// Expose globally for effect-modal.js
+window.openEditIframe = openEditIframe;
+window.closeEditIframe = closeEditIframe;
+
 // ── Split add dropdown ────────────────────────────────────────────────────
 function toggleAddDropdown(e) {
   e.stopPropagation();
@@ -8211,7 +8252,7 @@ async function doRestore(mode) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeDetail(); closeEdit(); closeConfirm(); closeBackup(); closeLinkPicker(); }
+  if (e.key === 'Escape') { closeDetail(); closeEdit(); closeConfirm(); closeBackup(); closeLinkPicker(); closeEditIframe(); }
 });
 render();
 
