@@ -1096,11 +1096,21 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       return;
     }
     
+    console.log('[doSave] ========== SAVE START ==========');
+    console.log('[doSave] Effect ID:', effectId);
+    
     // Gather form data
     const nameEl = document.getElementById('fName');
     const descEl = document.getElementById('fDesc');
     const catEl = document.getElementById('fCat');
     const verEl = document.getElementById('fVer');
+    
+    console.log('[doSave] Form elements:', {
+      name: nameEl ? nameEl.value : 'NOT FOUND',
+      desc: descEl ? descEl.value.substring(0, 50) + '...' : 'NOT FOUND',
+      cat: catEl ? catEl.value : 'NOT FOUND',
+      ver: verEl ? verEl.value : 'NOT FOUND'
+    });
     
     // Get selected difficulty
     let difficulty = '';
@@ -1109,6 +1119,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         difficulty = btn.dataset.d || btn.textContent;
       }
     });
+    console.log('[doSave] Selected difficulty:', difficulty);
     
     // Get selected tags
     const tags = [];
@@ -1143,9 +1154,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       
       if (error) throw error;
       
-      console.log('[doSave] Save successful:', data);
+      console.log('[doSave] Save successful. Returned data:', data);
+      console.log('[doSave] Saved name:', data && data[0] ? data[0].name : 'N/A');
+      console.log('[doSave] Saved cat:', data && data[0] ? data[0].cat : 'N/A');
       clearDirty();
       showToast('Changes saved');
+      console.log('[doSave] ========== SAVE COMPLETE ==========');
       
       // Update version display in header
       const ftEl = document.getElementById('ftVer');

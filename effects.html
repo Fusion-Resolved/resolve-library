@@ -7906,8 +7906,12 @@ window.addEventListener('message', function(e) {
   }
   if (e.data && e.data.action === 'effect-updated') {
     // Refresh effects to show updated data
-    console.log('[effects] Effect updated, refreshing...');
-    loadEffectsFromSupabase();
+    console.log('[effects] Effect updated, refreshing... ID:', e.data.id);
+    loadEffectsFromSupabase().then(function() {
+      console.log('[effects] Effects refreshed after save');
+    }).catch(function(err) {
+      console.error('[effects] Failed to refresh effects:', err);
+    });
   }
 });
 
