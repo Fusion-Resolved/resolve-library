@@ -5,7 +5,7 @@
  */
 
 (function() {
-  console.log('[Effect Modal] Module loading...');
+  alert('[Effect Modal] Module loading! openEditSheet=' + typeof window.openEditSheet);
   
   // Category to color mapping (matches index.html recent effects)
   const catColors = {
