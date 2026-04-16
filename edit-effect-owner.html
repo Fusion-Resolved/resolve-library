@@ -675,16 +675,20 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js"></script>
+<script src="/auth.js"></script>
 
 <script>
 (function () {
+  console.log('[Edit Effect] Script starting...');
 
   // Detect if running in iframe and add class for styling
   if (window.self !== window.top) {
     document.body.classList.add('in-iframe');
     console.log('[Edit Effect] Running in iframe mode');
   }
+  
+  console.log('[Edit Effect] URL:', window.location.href);
+  console.log('[Edit Effect] Supabase available:', !!window._supabase);
 
   /* ══════════════════════════════
      NODE TYPE DATA
@@ -1069,11 +1073,78 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   }
 
   /* ── SAVE ── */
-  function doSave () {
-    clearDirty();
-    var vbtn = document.getElementById('ftVer');
-    if (vbtn) { vbtn.textContent = 'Version 1.4'; }
-    showToast('Changes saved');
+  async function doSave () {
+    const params = new URLSearchParams(window.location.search);
+    const effectId = params.get('id');
+    if (!effectId) {
+      showToast('Error: No effect ID found');
+      return;
+    }
+    
+    if (!window._supabase) {
+      showToast('Error: Database not connected');
+      return;
+    }
+    
+    // Gather form data
+    const nameEl = document.getElementById('fName');
+    const descEl = document.getElementById('fDesc');
+    const catEl = document.getElementById('fCat');
+    const verEl = document.getElementById('fVer');
+    
+    // Get selected difficulty
+    let difficulty = '';
+    document.querySelectorAll('.db').forEach(btn => {
+      if (btn.classList.contains('on')) {
+        difficulty = btn.dataset.d || btn.textContent;
+      }
+    });
+    
+    // Get selected tags
+    const tags = [];
+    document.querySelectorAll('.ttog').forEach(btn => {
+      if (btn.classList.contains('on')) {
+        tags.push(btn.dataset.tag);
+      }
+    });
+    
+    const updates = {
+      name: nameEl ? nameEl.value : '',
+      desc: descEl ? descEl.value : '',
+      cat: catEl ? catEl.value : '',
+      version: verEl ? verEl.value : '',
+      difficulty: difficulty,
+      tags: tags,
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log('[doSave] Saving updates:', updates);
+    
+    try {
+      const { data, error } = await window._supabase
+        .from('effects')
+        .update(updates)
+        .eq('id', effectId)
+        .select();
+      
+      if (error) throw error;
+      
+      console.log('[doSave] Save successful:', data);
+      clearDirty();
+      showToast('Changes saved');
+      
+      // Update version display in header
+      const ftEl = document.getElementById('ftVer');
+      if (ftEl) ftEl.textContent = updates.version || 'Version 1.0';
+      
+      // Refresh the effect in parent window if possible
+      if (window.parent && window.parent !== window && window.parent.postMessage) {
+        window.parent.postMessage({ action: 'effect-updated', id: effectId }, '*');
+      }
+    } catch (err) {
+      console.error('[doSave] Save failed:', err);
+      showToast('Save failed: ' + (err.message || 'Unknown error'));
+    }
   }
 
   /* ── LOAD EFFECT DATA ── */
