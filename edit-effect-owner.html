@@ -1270,6 +1270,11 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   function closeSheet () {
     document.getElementById('theSheet').classList.remove('open');
     isDirty = false;
+    
+    // Signal parent window to close iframe modal (if in iframe)
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ action: 'close-edit-modal' }, '*');
+    }
   }
 
   function showToast (msg) {

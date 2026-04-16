@@ -7885,8 +7885,10 @@ function openEditIframe(effectId) {
 
 function closeEditIframe(event) {
   console.log('[closeEditIframe] Closing, event:', event);
-  // Only close if clicking the overlay background (not the container) or the X button
-  if (event && event.target !== document.getElementById('edit-iframe-overlay')) {
+  
+  // If called with no event (from message listener), just close
+  // If called with event, only close if clicking overlay background
+  if (event && event.target && event.target !== document.getElementById('edit-iframe-overlay')) {
     console.log('[closeEditIframe] Clicked inside container, not closing');
     return;
   }
@@ -7896,12 +7898,19 @@ function closeEditIframe(event) {
   if (overlay) overlay.style.display = 'none';
   if (iframe) iframe.src = ''; // Clear iframe to stop any background processes
   document.body.style.overflow = '';
-  console.log('[closeEditIframe] Modal closed, returned to effects page');
+  console.log('[closeEditIframe] Modal closed');
 }
 
 // Expose globally for effect-modal.js
 window.openEditIframe = openEditIframe;
 window.closeEditIframe = closeEditIframe;
+
+// Listen for messages from edit-effect-owner.html iframe
+window.addEventListener('message', function(event) {
+  if (event.data && event.data.action === 'close-edit-modal') {
+    closeEditIframe();
+  }
+});
 
 // ── Split add dropdown ────────────────────────────────────────────────────
 function toggleAddDropdown(e) {
