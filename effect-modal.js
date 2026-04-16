@@ -762,21 +762,28 @@
 
   // Edit effect function
   // Edit effect function - opens edit modal if available, otherwise navigates to edit page
-  // Edit effect function - opens edit-effect-owner.html in iframe modal
+  // Edit effect function - opens portable EditModal component
   window.editEffect = function(effectId) {
-    console.log('[editEffect] Starting for effect:', effectId);
-    
     // Close the effect detail modal first
     closeEffectModal();
-    console.log('[editEffect] Effect modal closed');
     
-    // Check if iframe modal is available (effects.html)
-    console.log('[editEffect] openEditIframe available:', typeof window.openEditIframe);
-    if (typeof window.openEditIframe === 'function') {
-      console.log('[editEffect] Opening iframe modal');
-      window.openEditIframe(effectId);
+    // Use portable EditModal component (works on all pages)
+    if (typeof window.EditModal === 'object' && window.EditModal.open) {
+      window.EditModal.open(effectId, {
+        mode: 'owner',
+        onSave: (data) => {
+          console.log('[editEffect] Saved:', data);
+          // Refresh effects list if on effects page
+          if (typeof window.render === 'function') window.render();
+        },
+        onClose: () => console.log('[editEffect] Modal closed'),
+        onDelete: (id) => {
+          console.log('[editEffect] Deleted:', id);
+          if (typeof window.render === 'function') window.render();
+        }
+      });
     } else {
-      console.log('[editEffect] Fallback to navigation');
+      // Fallback: navigate to standalone page
       window.location.href = `edit-effect-owner.html?id=${effectId}`;
     }
   };
