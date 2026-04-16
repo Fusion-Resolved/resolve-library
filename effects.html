@@ -6237,7 +6237,7 @@ async function renderSavedEffects() {
     if (window._supabase && userId) {
       const { data, error } = await window._supabase
         .from('saved_effects')
-        .select('effect_id, created_at, effects(id, name, cat, difficulty, gifUrl, created_at)')
+        .select('effect_id, created_at, effects(*)')
         .eq('user_id', userId);
       
       if (error) {
@@ -6246,12 +6246,8 @@ async function renderSavedEffects() {
         console.log('[Saved Tab] Raw Supabase data:', data);
         savedEffects = data.map(d => ({
           id: d.effect_id,
-          name: d.effects?.name || 'Unknown',
-          cat: d.effects?.cat || 'Other',
-          difficulty: d.effects?.difficulty || 'Beginner',
-          gifUrl: d.effects?.gifUrl || '',
-          date: d.effects?.created_at || d.created_at,
-          saved_at: d.created_at
+          saved_at: d.created_at,
+          ...(d.effects || {})
         }));
       }
     }
@@ -9563,6 +9559,36 @@ document.addEventListener('DOMContentLoaded', function() {
       savedTab.style.display = '';
       console.log('[Effects] Initial state: Showing Saved tab');
     }
+  }
+
+  // ── Realtime subscription for saved effects ───────────────────────────────
+  // Auto-refresh saved effects when new saves happen (from this device or others)
+  if (window._supabase && typeof window._supabase.channel === 'function') {
+    const savedEffectsChannel = window._supabase
+      .channel('saved-effects-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'saved_effects' },
+        (payload) => {
+          console.log('[Realtime] Saved effects changed:', payload);
+          // Only refresh if we're on the saved tab
+          if (document.getElementById('saved-content')?.style.display === 'block') {
+            renderSavedEffects();
+          }
+          // Always update the badge count
+          if (typeof getSavedEffects === 'function' && window.CURRENT_USER_ID) {
+            getSavedEffects().then(effects => {
+              const badge = document.getElementById('saved-count');
+              if (badge) {
+                badge.textContent = effects.length;
+                badge.style.display = effects.length > 0 ? 'inline' : 'none';
+              }
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Saved effects subscription status:', status);
+      });
   }
 
   // NOTE: We do NOT call loadEffectsFromSupabase() unconditionally here.

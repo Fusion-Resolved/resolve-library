@@ -799,63 +799,35 @@
     console.log('[Effect Modal] getPinnedEffects called, CURRENT_USER_ID:', window.CURRENT_USER_ID);
     if (!window._supabase || !window.CURRENT_USER_ID) return [];
     
-    // First get saved effect IDs
-    const { data: savedData, error: savedError } = await window._supabase
+    // Query saved_effects with effects data using foreign key relationship
+    const { data, error } = await window._supabase
       .from('saved_effects')
-      .select('effect_id, created_at')
+      .select('effect_id, created_at, effects(*)')
       .eq('user_id', window.CURRENT_USER_ID);
     
-    if (savedError) {
-      console.error('[Effect Modal] Error fetching saved effects:', savedError);
+    if (error) {
+      console.error('[Effect Modal] Error fetching saved effects:', error.message || error);
       return [];
     }
     
-    if (!savedData || !savedData.length) {
+    console.log('[Effect Modal] Raw saved_effects data:', data);
+    
+    if (!data || !data.length) {
       console.log('[Effect Modal] No saved effects found');
       return [];
     }
     
-    console.log('[Effect Modal] Found saved effect IDs:', savedData.length);
+    // Map the data - effects(*) returns an array, take first item
+    const result = data.map(d => {
+      const effect = d.effects?.[0] || d.effects || {};
+      return {
+        id: d.effect_id,
+        saved_at: d.created_at,
+        ...effect
+      };
+    }).filter(e => e.id); // Filter out any empty entries
     
-    // Get full effect data for each saved effect
-    const effectIds = savedData.map(s => s.effect_id);
-    const { data: effectsData, error: effectsError } = await window._supabase
-      .from('effects')
-      .select('id, name, cat, difficulty, gifUrl, created_at')
-      .in('id', effectIds);
-    
-    if (effectsError) {
-      console.error('[Effect Modal] Error fetching effect details:', effectsError);
-      // Return basic data even if full details fail
-      return savedData.map(s => ({
-        id: s.effect_id,
-        name: 'Unknown',
-        cat: 'Other',
-        difficulty: 'Beginner',
-        saved_at: s.created_at
-      }));
-    }
-    
-    // Create lookup map
-    const effectsMap = {};
-    if (effectsData) {
-      effectsData.forEach(e => {
-        effectsMap[e.id] = e;
-      });
-    }
-    
-    // Merge data
-    const result = savedData.map(s => ({
-      id: s.effect_id,
-      name: effectsMap[s.effect_id]?.name || 'Unknown',
-      cat: effectsMap[s.effect_id]?.cat || 'Other',
-      difficulty: effectsMap[s.effect_id]?.difficulty || 'Beginner',
-      gifUrl: effectsMap[s.effect_id]?.gifUrl || '',
-      date: effectsMap[s.effect_id]?.created_at || s.created_at,
-      saved_at: s.created_at
-    }));
-    
-    console.log('[Effect Modal] Fetched saved effects:', result.length);
+    console.log('[Effect Modal] Processed saved effects:', result.length);
     return result;
   }
 
