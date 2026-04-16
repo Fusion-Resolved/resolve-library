@@ -1364,7 +1364,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
     try {
       const { data: effects, error } = await window._supabase
         .from('effects')
-        .select('id, name, cat, nodes, created_at')
+        .select('id, name, cat, nodes, difficulty, gifUrl, created_at')
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(6);
@@ -1403,17 +1403,25 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
         .replace(/\{\{accent\}\}/g, colors.accent);
       
       return `
-        <div class="effect-card" data-effect-id="${effect.id}" onclick="openEffectModal('${effect.id}')" style="cursor:pointer;">
-          <div class="effect-thumb" style="background:linear-gradient(135deg,${colors.bg1},${colors.bg2})">
-            <svg width="48" height="48" viewBox="0 0 36 36" fill="none">${svg}</svg>
+        <div class="effect-card" data-effect-id="${effect.id}" style="position:relative;">
+          <div onclick="openEffectModal('${effect.id}')" style="cursor:pointer;">
+            <div class="effect-thumb" style="background:linear-gradient(135deg,${colors.bg1},${colors.bg2})">
+              <svg width="48" height="48" viewBox="0 0 36 36" fill="none">${svg}</svg>
+            </div>
+            <div class="effect-info">
+              <div class="effect-name">${escapeHtml(effect.name)}</div>
+              <div class="effect-meta">${escapeHtml(effect.cat)} · ${effect.nodes || '?'} nodes</div>
+            </div>
           </div>
-          <div class="effect-info">
-            <div class="effect-name">${escapeHtml(effect.name)}</div>
-            <div class="effect-meta">${escapeHtml(effect.cat)} · ${effect.nodes || '?'} nodes</div>
-          </div>
+          <button class="pin-btn" data-effect-id="${effect.id}" onclick="handlePinClick('${effect.id}', event)" title="Save to library" style="position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:var(--radius-sm);border:1px solid var(--border-surface);background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition);z-index:10;box-shadow:var(--glass-shadow);">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </button>
         </div>
       `;
     }).join('');
+    
+    // Update pin button states after rendering
+    updatePinButtons();
   }
   
   function showFallbackEffects() {
@@ -1427,6 +1435,128 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
       { id: 6, name: 'Depth of Field', cat: 'Blur', nodes: 9 }
     ];
     renderEffects(fallbackEffects);
+  }
+  
+  // Handle pin button click - uses effect-modal.js pinEffect if available
+  window.handlePinClick = async function(effectId, event) {
+    event.stopPropagation();
+    
+    if (typeof pinEffect === 'function') {
+      // Use the effect-modal.js pinEffect function
+      await pinEffect(effectId);
+      updatePinButtons();
+    } else {
+      // Fallback: show login prompt or basic save
+      if (!window.CURRENT_USER_ID) {
+        alert('Please sign in to save effects to your library.');
+        window.location.href = 'login.html';
+        return;
+      }
+      // Try to use Supabase directly
+      if (window._supabase) {
+        const { data: existing } = await window._supabase
+          .from('saved_effects')
+          .select('id')
+          .eq('user_id', window.CURRENT_USER_ID)
+          .eq('effect_id', effectId)
+          .single();
+        
+        if (existing) {
+          // Unsave
+          await window._supabase
+            .from('saved_effects')
+            .delete()
+            .eq('user_id', window.CURRENT_USER_ID)
+            .eq('effect_id', effectId);
+        } else {
+          // Save
+          await window._supabase.from('saved_effects').insert({
+            user_id: window.CURRENT_USER_ID,
+            effect_id: effectId
+          });
+        }
+        updatePinButtons();
+      }
+    }
+  };
+  
+  // Update all pin buttons to show correct state
+  async function updatePinButtons() {
+    if (!window.CURRENT_USER_ID) return;
+    
+    // Try to use effect-modal.js isEffectSaved if available
+    let savedIds = [];
+    if (typeof isEffectSaved === 'function') {
+      // Check each effect card
+      const cards = document.querySelectorAll('.effect-card[data-effect-id]');
+      for (const card of cards) {
+        const effectId = card.getAttribute('data-effect-id');
+        const isSaved = await isEffectSaved(effectId);
+        updatePinButtonStyle(card.querySelector('.pin-btn'), isSaved);
+      }
+      return;
+    }
+    
+    // Fallback: query Supabase directly
+    if (window._supabase) {
+      const { data } = await window._supabase
+        .from('saved_effects')
+        .select('effect_id')
+        .eq('user_id', window.CURRENT_USER_ID);
+      
+      savedIds = (data || []).map(d => d.effect_id);
+    }
+    
+    // Update button styles
+    document.querySelectorAll('.effect-card[data-effect-id]').forEach(card => {
+      const effectId = card.getAttribute('data-effect-id');
+      const btn = card.querySelector('.pin-btn');
+      if (btn) {
+        updatePinButtonStyle(btn, savedIds.includes(effectId));
+      }
+    });
+  }
+  
+  // Update a single pin button's style
+  function updatePinButtonStyle(btn, isSaved) {
+    if (!btn) return;
+    
+    if (isSaved) {
+      btn.style.background = 'rgba(108,123,255,0.25)';
+      btn.style.borderColor = 'rgba(108,123,255,0.6)';
+      btn.style.color = 'var(--violet-light,#9ca8ff)';
+      btn.innerHTML = '<svg width="14" height="14" fill="currentColor" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+      btn.title = 'Remove from library';
+    } else {
+      btn.style.background = 'var(--glass-bg)';
+      btn.style.borderColor = 'var(--border-surface)';
+      btn.style.color = 'var(--text-secondary)';
+      btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+      btn.title = 'Save to library';
+    }
+  }
+  
+  // Listen for auth changes to update pin buttons
+  window.addEventListener('authStateChanged', function(e) {
+    if (e.detail.user) {
+      setTimeout(updatePinButtons, 500);
+    }
+  });
+  
+  // Realtime subscription for saved effects changes
+  if (window._supabase && typeof window._supabase.channel === 'function') {
+    const savedChannel = window._supabase
+      .channel('idx-saved-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'saved_effects' },
+        (payload) => {
+          console.log('[Realtime Index] Saved effects changed:', payload);
+          updatePinButtons();
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime Index] Subscription status:', status);
+      });
   }
   
   function escapeHtml(text) {
