@@ -762,9 +762,16 @@
 
   // Edit effect function
   // Edit effect function - opens edit modal if available, otherwise navigates to edit page
-  // Edit effect function
+  // Edit effect function - opens inline edit modal for owner
   window.editEffect = function(effectId) {
-    window.location.href = `edit-effect.html?id=${effectId}`;
+    // Check if inline edit modal is available (effects.html)
+    if (typeof window.openEdit === 'function') {
+      window.openEdit(effectId);
+      closeEffectModal();
+    } else {
+      // Fallback: navigate to edit-effect.html
+      window.location.href = `edit-effect.html?id=${effectId}`;
+    }
   };
   window.deleteEffect = function(effectId) {
     if (confirm('Are you sure you want to delete this effect?')) {
