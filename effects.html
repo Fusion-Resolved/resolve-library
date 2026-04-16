@@ -6241,13 +6241,16 @@ async function renderSavedEffects() {
     savedCont.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><strong>No saved effects yet.</strong> Click the bookmark icon on any effect to save it here.</div>`;
   } else {
     // Build cards from saved effect data
-    savedCont.innerHTML = savedEffects.map(e => `
+    savedCont.innerHTML = savedEffects.map(e => {
+      const catColor = getCatColor(e.cat) || '#6c7bff';
+      const catBg = catColor + '20'; // 20 = ~12% opacity in hex
+      return `
       <div class="card" onclick="openDetail('${e.id}')" style="cursor:pointer;">
         <div class="card-thumbnail" style="background:linear-gradient(135deg, var(--ink-lift), var(--ink-soft));"></div>
         <div class="card-content">
           <div class="card-title-row">
             <h3 class="card-title">${escapeHtml(e.name)}</h3>
-            <span class="cat-badge" style="background:${getCatColor(e.cat).bg};color:${getCatColor(e.cat).primary};">${escapeHtml(e.cat)}</span>
+            <span class="cat-badge" style="background:${catBg};color:${catColor};border:1px solid ${catColor}40;">${escapeHtml(e.cat || 'Other')}</span>
           </div>
           <div class="card-meta">
             <span>${escapeHtml(e.difficulty || 'Beginner')}</span>
@@ -6255,7 +6258,7 @@ async function renderSavedEffects() {
           </div>
         </div>
       </div>
-    `).join('');
+    `}).join('');
   }
 }
 
