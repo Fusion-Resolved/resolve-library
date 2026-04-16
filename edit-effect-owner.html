@@ -363,19 +363,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           <select class="fs" id="fCat">
             <option value="fusion-effect" selected>Fusion Effect</option>
             <option value="fusion-3d">Fusion 3D</option>
-            <option value="colour-grading">Colour Grading</option>
-            <option value="compositing">Compositing</option>
-            <option value="motion-graphics">Motion Graphics</option>
-            <option value="distortion">Distortion</option>
-            <option value="masks-shapes">Masks &amp; Shapes</option>
-            <option value="blur-sharpen">Blur &amp; Sharpen</option>
-            <option value="3d-compositing">3D Compositing</option>
-            <option value="transform">Transform</option>
-            <option value="lighting-glow">Lighting &amp; Glow</option>
-            <option value="text-titles">Text &amp; Titles</option>
-            <option value="keying-matte">Keying &amp; Matte</option>
-            <option value="noise-texture">Noise &amp; Texture</option>
-            <option value="other">Other</option>
+            <option value="macro">Macro</option>
+            <option value="script">Script</option>
+            <option value="utility">Utility</option>
           </select>
         </div>
       </div>
@@ -698,6 +688,14 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 (function () {
   console.log('[Edit Effect] Script starting...');
 
+  // ── STEP 1: Inherit the parent window's authenticated Supabase client.
+  // Running inside an iframe loses the session cookie / localStorage token,
+  // so RLS silently blocks every write.  By reusing the parent's already-
+  // authenticated client we carry the correct auth.uid() into every query.
+  const supabase = window.parent._supabase || window._supabase;
+  console.log('[Edit Effect] Supabase client resolved:', !!supabase,
+    '| source:', window.parent._supabase ? 'parent' : (window._supabase ? 'self' : 'NONE'));
+
   // Detect if running in iframe and add class for styling
   if (window.self !== window.top) {
     document.body.classList.add('in-iframe');
@@ -705,17 +703,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   }
   
   console.log('[Edit Effect] URL:', window.location.href);
-  console.log('[Edit Effect] Supabase available at startup:', !!window._supabase);
-  
-  // Watch for auth.js to initialize Supabase
-  let authCheckInterval = setInterval(function() {
-    if (window._supabase) {
-      console.log('[Edit Effect] Supabase initialized!');
-      clearInterval(authCheckInterval);
-    }
-  }, 100);
-  // Clear after 10 seconds to avoid infinite checking
-  setTimeout(function() { clearInterval(authCheckInterval); }, 10000);
 
   /* ══════════════════════════════
      NODE TYPE DATA
@@ -1108,7 +1095,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       return;
     }
     
-    if (!window._supabase) {
+    if (!supabase) {
       showToast('Error: Database not connected');
       return;
     }
@@ -1164,9 +1151,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     
     // Get current user for RLS
     let userId = null;
-    if (window._supabase && window._supabase.auth) {
+    if (supabase && supabase.auth) {
       try {
-        const { data: { user } } = await window._supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         userId = user ? user.id : null;
       } catch (e) {
         console.warn('[doSave] Could not get user:', e);
@@ -1176,7 +1163,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     
     try {
       // Use .select() to get returned data, but handle case where RLS prevents returning
-      const { data, error } = await window._supabase
+      const { data, error } = await supabase
         .from('effects')
         .update(updates)
         .eq('id', effectId)
@@ -1188,7 +1175,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       
       // VERIFY: Re-fetch to confirm save actually worked
       console.log('[doSave] Verifying save by re-fetching...');
-      const { data: verifyData, error: verifyError } = await window._supabase
+      const { data: verifyData, error: verifyError } = await supabase
         .from('effects')
         .select('name, cat, desc, version, difficulty, tags, render_weight')
         .eq('id', effectId)
@@ -1210,15 +1197,21 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       }
       
       clearDirty();
+      console.log('[doSave] Save successful for effect:', effectId, '| updates:', updates);
       showToast('Changes saved');
       
       // Update version display in header
       const ftEl = document.getElementById('ftVer');
       if (ftEl) ftEl.textContent = updates.version || 'Version 1.0';
       
-      // Refresh the effect in parent window if possible
-      if (window.parent && window.parent !== window && window.parent.postMessage) {
-        window.parent.postMessage({ action: 'effect-updated', id: effectId }, '*');
+      // Notify parent of update and close the modal
+      if (window.parent && window.parent !== window) {
+        if (typeof window.parent.closeEditModal === 'function') {
+          window.parent.closeEditModal();
+        }
+        if (window.parent.postMessage) {
+          window.parent.postMessage({ action: 'effect-updated', id: effectId }, '*');
+        }
       }
       console.log('[doSave] ========== SAVE COMPLETE ==========');
     } catch (err) {
@@ -1246,17 +1239,17 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     console.log('[loadEffectData] Waiting for Supabase...');
     let attempts = 0;
     const maxAttempts = 50; // 5 seconds total
-    while (!window._supabase && attempts < maxAttempts) {
+    while (!supabase && attempts < maxAttempts) {
       await new Promise(r => setTimeout(r, 100));
       attempts++;
     }
-    console.log('[loadEffectData] Supabase wait complete. Available:', !!window._supabase, 'Attempts:', attempts);
+    console.log('[loadEffectData] Supabase wait complete. Available:', !!supabase, 'Attempts:', attempts);
     
     // Get current user AFTER Supabase is ready
     let currentUserId = null;
-    if (window._supabase) {
+    if (supabase) {
       try {
-        const { data: { user } } = await window._supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         currentUserId = user ? user.id : null;
         console.log('[loadEffectData] Current user ID:', currentUserId);
       } catch (e) {
@@ -1265,10 +1258,10 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
     
     // Fetch from Supabase if available
-    if (window._supabase) {
+    if (supabase) {
       try {
         console.log('[loadEffectData] Fetching effect:', effectId);
-        const { data, error } = await window._supabase
+        const { data, error } = await supabase
           .from('effects')
           .select('id, name, cat, desc, version, difficulty, tags, render_weight, user_id')
           .eq('id', effectId)
