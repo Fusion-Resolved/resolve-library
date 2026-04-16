@@ -361,10 +361,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         <div class="fg">
           <label class="fl">Category</label>
           <select class="fs" id="fCat">
+            <option value="fusion-effect" selected>Fusion Effect</option>
+            <option value="fusion-3d">Fusion 3D</option>
             <option value="colour-grading">Colour Grading</option>
             <option value="compositing">Compositing</option>
             <option value="motion-graphics">Motion Graphics</option>
-            <option value="distortion" selected>Distortion</option>
+            <option value="distortion">Distortion</option>
             <option value="masks-shapes">Masks &amp; Shapes</option>
             <option value="blur-sharpen">Blur &amp; Sharpen</option>
             <option value="3d-compositing">3D Compositing</option>
@@ -1234,18 +1236,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     const effectId = params.get('id');
     console.log('[loadEffectData] Effect ID from URL:', effectId);
     
-    // Get current user
-    let currentUserId = null;
-    if (window._supabase) {
-      try {
-        const { data: { user } } = await window._supabase.auth.getUser();
-        currentUserId = user ? user.id : null;
-        console.log('[loadEffectData] Current user ID:', currentUserId);
-      } catch (e) {
-        console.warn('[loadEffectData] Could not get current user:', e);
-      }
-    }
-    
     if (!effectId) {
       console.error('[loadEffectData] NO EFFECT ID FOUND IN URL');
       openSheet();
@@ -1261,6 +1251,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       attempts++;
     }
     console.log('[loadEffectData] Supabase wait complete. Available:', !!window._supabase, 'Attempts:', attempts);
+    
+    // Get current user AFTER Supabase is ready
+    let currentUserId = null;
+    if (window._supabase) {
+      try {
+        const { data: { user } } = await window._supabase.auth.getUser();
+        currentUserId = user ? user.id : null;
+        console.log('[loadEffectData] Current user ID:', currentUserId);
+      } catch (e) {
+        console.warn('[loadEffectData] Could not get current user:', e);
+      }
+    }
     
     // Fetch from Supabase if available
     if (window._supabase) {
@@ -1359,15 +1361,17 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       console.log('[populateForm] Category value set. Selected:', catEl.value, 'Match success:', catEl.value === effect.cat);
     }
     
-    // Set difficulty - clear all first, then set matching
-    const diff = effect.difficulty;
+    // Set difficulty - clear ALL first, then set matching
+    const diff = effect.difficulty || '';
     console.log('[populateForm] Setting difficulty to:', diff);
-    if (diff) {
+    // Clear all first
+    document.querySelectorAll('.db').forEach(btn => btn.classList.remove('on'));
+    // Then set matching
+    if (diff && diff.trim()) {
+      const matchDiff = diff.toLowerCase().trim();
       document.querySelectorAll('.db').forEach((btn, idx) => {
-        btn.classList.remove('on');
-        const btnDiff = (btn.dataset.d || '').toLowerCase();
-        const btnText = btn.textContent.toLowerCase();
-        const matchDiff = diff.toLowerCase();
+        const btnDiff = (btn.dataset.d || '').toLowerCase().trim();
+        const btnText = btn.textContent.toLowerCase().trim();
         console.log(`[populateForm] Difficulty btn ${idx}: dataset.d="${btn.dataset.d}" text="${btn.textContent}"`);
         if (btnDiff === matchDiff || btnText === matchDiff) {
           btn.classList.add('on');
@@ -1383,12 +1387,14 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       console.log('[populateForm] Version value set:', verEl.value);
     }
     
-    // Set tags - clear all first, then set matching
+    // Set tags - clear ALL first, then set matching
     console.log('[populateForm] Setting tags:', effect.tags);
-    if (effect.tags && Array.isArray(effect.tags)) {
-      const effectTagsLower = effect.tags.map(t => t.toLowerCase());
+    // Clear all first
+    document.querySelectorAll('.ttog').forEach(btn => btn.classList.remove('on'));
+    // Then set matching if we have tags
+    if (effect.tags && Array.isArray(effect.tags) && effect.tags.length > 0) {
+      const effectTagsLower = effect.tags.map(t => (t || '').toLowerCase());
       document.querySelectorAll('.ttog').forEach((btn, idx) => {
-        btn.classList.remove('on');
         const tag = (btn.dataset.tag || '').toLowerCase();
         console.log(`[populateForm] Tag btn ${idx}: dataset.tag="${btn.dataset.tag}"`);
         if (effectTagsLower.includes(tag)) {
