@@ -821,7 +821,7 @@
     const effectIds = savedData.map(s => s.effect_id);
     const { data: effectsData, error: effectsError } = await window._supabase
       .from('effects')
-      .select('id, name, cat, difficulty')
+      .select('id, name, cat, difficulty, gifUrl')
       .in('id', effectIds);
     
     if (effectsError) {
@@ -850,6 +850,7 @@
       name: effectsMap[s.effect_id]?.name || 'Unknown',
       cat: effectsMap[s.effect_id]?.cat || 'Other',
       difficulty: effectsMap[s.effect_id]?.difficulty || 'Beginner',
+      gifUrl: effectsMap[s.effect_id]?.gifUrl || '',
       saved_at: s.created_at
     }));
     

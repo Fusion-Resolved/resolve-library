@@ -6237,7 +6237,7 @@ async function renderSavedEffects() {
     if (window._supabase && userId) {
       const { data, error } = await window._supabase
         .from('saved_effects')
-        .select('effect_id, created_at, effects(name, cat, difficulty)')
+        .select('effect_id, created_at, effects(name, cat, difficulty, gifUrl)')
         .eq('user_id', userId);
       
       if (error) {
@@ -6249,6 +6249,7 @@ async function renderSavedEffects() {
           name: d.effects?.name || 'Unknown',
           cat: d.effects?.cat || 'Other',
           difficulty: d.effects?.difficulty || 'Beginner',
+          gifUrl: d.effects?.gifUrl || '',
           saved_at: d.created_at
         }));
       }
@@ -6271,7 +6272,19 @@ async function renderSavedEffects() {
       const diff = DIFF[e.difficulty?.toLowerCase()] || { label: e.difficulty || 'Beginner', cls: 'diff-beginner' };
       const dateStr = e.saved_at ? new Date(e.saved_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '';
       
+      // Build GIF thumbnail if available
+      const gifUrl = e.gifUrl ? e.gifUrl.trim() : '';
+      const thumbHtml = gifUrl
+        ? `<div class="card-thumb">
+            <div class="card-thumb-placeholder">GIF</div>
+            <img class="card-thumb-gif" src="${escapeHtml(gifUrl)}" alt="" loading="lazy" decoding="async" aria-hidden="true">
+            <img class="card-thumb-img" src="${escapeHtml(gifUrl)}" alt="${escapeHtml(e.name)}" loading="lazy" decoding="async">
+            <div class="card-thumb-badge">GIF</div>
+          </div>`
+        : '';
+      
       return `<div class="card" data-id="${e.id}" data-cat="${e.cat||''}" onclick="openEffectModal('${e.id}')">
+        ${thumbHtml}
         <div class="card-top">
           <div class="card-title">${escapeHtml(e.name)}</div>
           ${renderCatBadge(cat)}
