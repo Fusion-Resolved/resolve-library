@@ -761,8 +761,22 @@
   };
 
   // Edit effect function
+  // Edit effect function - opens edit modal if available, otherwise navigates to edit page
   window.editEffect = function(effectId) {
-    window.location.href = `edit-effect.html?id=${effectId}`;
+    // Check if we're on effects.html and openEditSheet is available
+    if (typeof openEditSheet === 'function') {
+      openEditSheet(effectId);
+      closeEffectModal();
+    } else if (typeof openEditModal === 'function') {
+      openEditModal(effectId);
+      closeEffectModal();
+    } else if (typeof openEdit === 'function') {
+      openEdit(effectId);
+      closeEffectModal();
+    } else {
+      // Fallback: navigate to edit-effect.html
+      window.location.href = `edit-effect.html?id=${effectId}`;
+    }
   };
 
   // Delete effect function
