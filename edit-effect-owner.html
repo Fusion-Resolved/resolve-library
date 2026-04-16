@@ -361,10 +361,19 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         <div class="fg">
           <label class="fl">Category</label>
           <select class="fs" id="fCat">
-            <option>Colour Grading</option><option>Compositing</option><option>Motion Graphics</option>
-            <option selected>Distortion</option><option>Masks &amp; Shapes</option><option>Blur &amp; Sharpen</option>
-            <option>3D Compositing</option><option>Transform</option><option>Lighting &amp; Glow</option>
-            <option>Text &amp; Titles</option><option>Keying &amp; Matte</option><option>Noise &amp; Texture</option><option>Other</option>
+            <option value="colour-grading">Colour Grading</option>
+            <option value="compositing">Compositing</option>
+            <option value="motion-graphics">Motion Graphics</option>
+            <option value="distortion" selected>Distortion</option>
+            <option value="masks-shapes">Masks &amp; Shapes</option>
+            <option value="blur-sharpen">Blur &amp; Sharpen</option>
+            <option value="3d-compositing">3D Compositing</option>
+            <option value="transform">Transform</option>
+            <option value="lighting-glow">Lighting &amp; Glow</option>
+            <option value="text-titles">Text &amp; Titles</option>
+            <option value="keying-matte">Keying &amp; Matte</option>
+            <option value="noise-texture">Noise &amp; Texture</option>
+            <option value="other">Other</option>
           </select>
         </div>
       </div>
@@ -398,13 +407,19 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         <div class="fg">
           <label class="fl">Software Version</label>
           <select class="fs" id="fVer">
-            <option selected>DaVinci Resolve 19</option><option>DaVinci Resolve 18.6</option>
-            <option>DaVinci Resolve 18</option><option>DaVinci Resolve 17</option>
+            <option value="DaVinci Resolve 19" selected>DaVinci Resolve 19</option>
+            <option value="DaVinci Resolve 18.6">DaVinci Resolve 18.6</option>
+            <option value="DaVinci Resolve 18">DaVinci Resolve 18</option>
+            <option value="DaVinci Resolve 17">DaVinci Resolve 17</option>
           </select>
         </div>
         <div class="fg">
           <label class="fl">Render Weight</label>
-          <select class="fs" id="fWeight"><option>Light</option><option>Medium</option><option selected>Heavy</option></select>
+          <select class="fs" id="fWeight">
+            <option value="Light">Light</option>
+            <option value="Medium">Medium</option>
+            <option value="Heavy" selected>Heavy</option>
+          </select>
         </div>
       </div>
       <div class="fg">
@@ -1145,7 +1160,20 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     
     console.log('[doSave] Saving updates:', updates);
     
+    // Get current user for RLS
+    let userId = null;
+    if (window._supabase && window._supabase.auth) {
+      try {
+        const { data: { user } } = await window._supabase.auth.getUser();
+        userId = user ? user.id : null;
+      } catch (e) {
+        console.warn('[doSave] Could not get user:', e);
+      }
+    }
+    console.log('[doSave] Current user:', userId);
+    
     try {
+      // Use .select() to get returned data, but handle case where RLS prevents returning
       const { data, error } = await window._supabase
         .from('effects')
         .update(updates)
@@ -1155,11 +1183,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       if (error) throw error;
       
       console.log('[doSave] Save successful. Returned data:', data);
-      console.log('[doSave] Saved name:', data && data[0] ? data[0].name : 'N/A');
-      console.log('[doSave] Saved cat:', data && data[0] ? data[0].cat : 'N/A');
+      // If data is empty (RLS), the update might still have succeeded
+      const savedName = data && data[0] ? data[0].name : updates.name;
+      const savedCat = data && data[0] ? data[0].cat : updates.cat;
+      console.log('[doSave] Saved values - name:', savedName, 'cat:', savedCat);
       clearDirty();
       showToast('Changes saved');
-      console.log('[doSave] ========== SAVE COMPLETE ==========');
       
       // Update version display in header
       const ftEl = document.getElementById('ftVer');
@@ -1169,6 +1198,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       if (window.parent && window.parent !== window && window.parent.postMessage) {
         window.parent.postMessage({ action: 'effect-updated', id: effectId }, '*');
       }
+      console.log('[doSave] ========== SAVE COMPLETE ==========');
     } catch (err) {
       console.error('[doSave] Save failed:', err);
       showToast('Save failed: ' + (err.message || 'Unknown error'));
@@ -1287,27 +1317,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       }
     }
     
-    // Set category - clear all selections first, then set matching option
+    // Set category - direct value assignment (options have proper value attributes now)
     if (catEl && effect.cat) {
       console.log('[populateForm] Setting category to:', effect.cat);
-      console.log('[populateForm] Available options:', Array.from(catEl.options).map(o => o.textContent || o.value));
-      // Try to find matching option by text content or value
-      let matched = false;
-      for (let i = 0; i < catEl.options.length; i++) {
-        const opt = catEl.options[i];
-        if ((opt.textContent || '').toLowerCase() === effect.cat.toLowerCase() ||
-            (opt.value || '').toLowerCase() === effect.cat.toLowerCase()) {
-          catEl.selectedIndex = i;
-          matched = true;
-          console.log('[populateForm] Matched category at index:', i);
-          break;
-        }
-      }
-      if (!matched) {
-        // If no match, try direct value assignment as fallback
-        catEl.value = effect.cat;
-        console.log('[populateForm] Category fallback, value set to:', catEl.value);
-      }
+      catEl.value = effect.cat;
+      console.log('[populateForm] Category value set. Selected:', catEl.value, 'Match success:', catEl.value === effect.cat);
     }
     
     // Set difficulty - clear all first, then set matching
@@ -1327,25 +1341,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       });
     }
     
-    // Set version - try to match option text/value
+    // Set version - direct value assignment
     if (verEl && effect.version) {
       console.log('[populateForm] Setting version to:', effect.version);
-      console.log('[populateForm] Available version options:', Array.from(verEl.options).map(o => o.textContent || o.value));
-      let matched = false;
-      for (let i = 0; i < verEl.options.length; i++) {
-        const opt = verEl.options[i];
-        if ((opt.textContent || '').toLowerCase() === effect.version.toLowerCase() ||
-            (opt.value || '').toLowerCase() === effect.version.toLowerCase()) {
-          verEl.selectedIndex = i;
-          matched = true;
-          console.log('[populateForm] Matched version at index:', i);
-          break;
-        }
-      }
-      if (!matched) {
-        verEl.value = effect.version;
-        console.log('[populateForm] Version fallback, value set to:', verEl.value);
-      }
+      verEl.value = effect.version;
+      console.log('[populateForm] Version value set:', verEl.value);
     }
     
     // Set tags - clear all first, then set matching
@@ -1363,25 +1363,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       });
     }
     
-    // Set render weight (handle both snake_case and camelCase from different data sources)
+    // Set render weight - direct value assignment
     let renderWeightValue = effect.render_weight || effect.renderWeight;
     if (weightEl && renderWeightValue) {
       console.log('[populateForm] Setting render weight to:', renderWeightValue);
-      // Try to match by text content (Light, Medium, Heavy)
-      const weightVal = renderWeightValue.charAt(0).toUpperCase() + renderWeightValue.slice(1).toLowerCase();
-      let matched = false;
-      for (let i = 0; i < weightEl.options.length; i++) {
-        const opt = weightEl.options[i];
-        if ((opt.textContent || '').toLowerCase() === weightVal.toLowerCase()) {
-          weightEl.selectedIndex = i;
-          matched = true;
-          console.log('[populateForm] Matched render weight at index:', i);
-          break;
-        }
-      }
-      if (!matched) {
-        weightEl.value = renderWeightValue;
-      }
+      weightEl.value = renderWeightValue;
+      console.log('[populateForm] Render weight value set:', weightEl.value);
     }
     
     // Update title and meta
