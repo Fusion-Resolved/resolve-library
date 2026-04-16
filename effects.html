@@ -2602,8 +2602,8 @@ window.nodingBlobsEnabled = function () {
 </div>
 
 <!-- Edit Effect iframe modal — loads edit-effect-owner.html -->
-<div class="edit-iframe-overlay" id="edit-iframe-overlay" onclick="closeEditIframe(event)" style="display:none;position:fixed;inset:0;background:transparent;z-index:400;align-items:center;justify-content:center;padding:20px;">
-  <iframe id="edit-effect-iframe" src="" style="width:100%;max-width:720px;height:90vh;border:none;background:transparent;border-radius:18px;"></iframe>
+<div class="edit-iframe-overlay" id="edit-iframe-overlay" onclick="closeEditIframe(event)" style="display:none;position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;padding:20px 20px 0;">
+  <iframe id="edit-effect-iframe" src="" style="width:100%;max-width:720px;height:90vh;border:none;background:transparent;border-radius:18px 18px 0 0;"></iframe>
 </div>
 
 <!-- Backup / restore modal -->
