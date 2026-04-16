@@ -6237,7 +6237,7 @@ async function renderSavedEffects() {
     if (window._supabase && userId) {
       const { data, error } = await window._supabase
         .from('saved_effects')
-        .select('effect_id, created_at, effects(id, name, cat, difficulty, gifUrl, compatibility, fusionEnv, status, desc, version, renderWeight, tags, date)')
+        .select('effect_id, created_at, effects(id, name, cat, difficulty, gifUrl, created_at)')
         .eq('user_id', userId);
       
       if (error) {
@@ -6250,14 +6250,7 @@ async function renderSavedEffects() {
           cat: d.effects?.cat || 'Other',
           difficulty: d.effects?.difficulty || 'Beginner',
           gifUrl: d.effects?.gifUrl || '',
-          compatibility: d.effects?.compatibility || '',
-          fusionEnv: d.effects?.fusionEnv || '',
-          status: d.effects?.status || '',
-          desc: d.effects?.desc || '',
-          version: d.effects?.version || '',
-          renderWeight: d.effects?.renderWeight || '',
-          tags: d.effects?.tags || [],
-          date: d.effects?.date || d.created_at,
+          date: d.effects?.created_at || d.created_at,
           saved_at: d.created_at
         }));
       }
@@ -6279,8 +6272,6 @@ async function renderSavedEffects() {
       const cat = CATS[e.cat] || { label: e.cat || 'Effect', cls: 'cat-default' };
       const diff = DIFF[e.difficulty?.toLowerCase()];
       const dateStr = e.date ? new Date(e.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
-      const tags = (e.tags||[]).slice(0,4).map(t=>`<span class="tag">${t}</span>`).join('');
-      const extra = (e.tags||[]).length > 4 ? `<span class="tag">+${e.tags.length-4}</span>` : '';
       const gifUrl = e.gifUrl ? e.gifUrl.trim() : '';
       const thumbHtml = gifUrl
         ? `<div class="card-thumb">
@@ -6299,15 +6290,9 @@ async function renderSavedEffects() {
           <button class="card-share-icon-btn" title="Copy share link" onclick="copyShareLink('${e.id}',event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
         </div>
         ${diff ? `<div class="diff-badge ${diff.cls}">● ${diff.label}</div>` : ''}
-        ${renderCompatBadges(e.compatibility, e.fusionEnv)}
-        ${e.status ? `<span class="status-badge status-${e.status}" style="display:inline-flex;margin-bottom:2px">${e.status.replace('-',' ')}</span>` : ''}
-        ${e.desc ? `<div class="card-desc">${escHtml(e.desc)}</div>` : ''}
         <div class="card-meta">
-          ${e.version ? `<span>DR ${e.version}</span><span class="card-meta-dot">·</span>` : ''}
           ${dateStr ? `<span>${dateStr}</span>` : ''}
-          ${e.renderWeight ? `<span class="card-meta-dot">·</span><span>${e.renderWeight}</span>` : ''}
         </div>
-        ${tags || extra ? `<div class="card-tags">${tags}${extra}</div>` : ''}
       </div>`;
     }).join('');
   }

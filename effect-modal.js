@@ -821,7 +821,7 @@
     const effectIds = savedData.map(s => s.effect_id);
     const { data: effectsData, error: effectsError } = await window._supabase
       .from('effects')
-      .select('id, name, cat, difficulty, gifUrl, compatibility, fusionEnv, status, desc, version, renderWeight, tags, date')
+      .select('id, name, cat, difficulty, gifUrl, created_at')
       .in('id', effectIds);
     
     if (effectsError) {
@@ -851,14 +851,7 @@
       cat: effectsMap[s.effect_id]?.cat || 'Other',
       difficulty: effectsMap[s.effect_id]?.difficulty || 'Beginner',
       gifUrl: effectsMap[s.effect_id]?.gifUrl || '',
-      compatibility: effectsMap[s.effect_id]?.compatibility || '',
-      fusionEnv: effectsMap[s.effect_id]?.fusionEnv || '',
-      status: effectsMap[s.effect_id]?.status || '',
-      desc: effectsMap[s.effect_id]?.desc || '',
-      version: effectsMap[s.effect_id]?.version || '',
-      renderWeight: effectsMap[s.effect_id]?.renderWeight || '',
-      tags: effectsMap[s.effect_id]?.tags || [],
-      date: effectsMap[s.effect_id]?.date || s.created_at,
+      date: effectsMap[s.effect_id]?.created_at || s.created_at,
       saved_at: s.created_at
     }));
     
