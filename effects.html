@@ -7899,6 +7899,13 @@ function closeEditIframe(event) {
 window.openEditIframe = openEditIframe;
 window.closeEditIframe = closeEditIframe;
 
+// Listen for messages from the edit iframe (close modal)
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.action === 'close-edit-modal') {
+    closeEditIframe();
+  }
+});
+
 // ── Split add dropdown ────────────────────────────────────────────────────
 function toggleAddDropdown(e) {
   e.stopPropagation();

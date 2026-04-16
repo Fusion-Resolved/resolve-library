@@ -674,6 +674,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   <span id="toastMsg">Saved</span>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+
 <script>
 (function () {
 
@@ -1073,6 +1076,128 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     showToast('Changes saved');
   }
 
+  /* ── LOAD EFFECT DATA ── */
+  async function loadEffectData() {
+    // Get effect ID from URL
+    const params = new URLSearchParams(window.location.search);
+    const effectId = params.get('id');
+    if (!effectId) {
+      // No ID - open sheet with empty state
+      openSheet();
+      return;
+    }
+    
+    // Wait for Supabase to be initialized (with timeout)
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds total
+    while (!window._supabase && attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 100));
+      attempts++;
+    }
+    
+    // Fetch from Supabase if available
+    if (window._supabase) {
+      try {
+        const { data, error } = await window._supabase
+          .from('effects')
+          .select('*')
+          .eq('id', effectId)
+          .single();
+        
+        if (error) throw error;
+        if (data) {
+          populateForm(data);
+        } else {
+          // No data found - still open sheet
+          openSheet();
+        }
+      } catch (err) {
+        console.error('Error loading effect:', err);
+        // Error loading - still open sheet so user sees something
+        openSheet();
+      }
+    } else {
+      // No Supabase after timeout - open sheet anyway
+      console.warn('[Edit Effect] Supabase not available after timeout');
+      openSheet();
+    }
+  }
+  
+  /* ── POPULATE FORM ── */
+  function populateForm(effect) {
+    // Set name
+    const nameEl = document.getElementById('fName');
+    if (nameEl && effect.name) {
+      nameEl.value = effect.name;
+      // Update character count
+      const nameCC = document.getElementById('nameCC');
+      if (nameCC) {
+        nameCC.textContent = effect.name.length + ' / 60';
+        nameCC.className = 'cc' + (effect.name.length > 50 ? ' warn' : '');
+      }
+    }
+    
+    // Set description
+    const descEl = document.getElementById('fDesc');
+    if (descEl && effect.desc) {
+      descEl.value = effect.desc;
+      const descCC = document.getElementById('descCC');
+      if (descCC) {
+        descCC.textContent = effect.desc.length + ' / 400';
+        descCC.className = 'cc' + (effect.desc.length > 360 ? ' warn' : '');
+      }
+    }
+    
+    // Set category
+    const catEl = document.getElementById('fCat');
+    if (catEl && effect.cat) {
+      catEl.value = effect.cat;
+    }
+    
+    // Set difficulty
+    const diff = effect.difficulty;
+    if (diff) {
+      document.querySelectorAll('.db').forEach(btn => {
+        btn.classList.remove('on');
+        if (btn.dataset.d === diff || btn.textContent.toLowerCase() === diff.toLowerCase()) {
+          btn.classList.add('on');
+        }
+      });
+    }
+    
+    // Set version
+    const verEl = document.getElementById('fVer');
+    if (verEl && effect.version) {
+      verEl.value = effect.version;
+    }
+    
+    // Set tags
+    if (effect.tags && Array.isArray(effect.tags)) {
+      document.querySelectorAll('.ttog').forEach(btn => {
+        const tag = btn.dataset.tag;
+        if (effect.tags.includes(tag)) {
+          btn.classList.add('on');
+        }
+      });
+    }
+    
+    // Update title and meta
+    const shTitle = document.querySelector('.sh-title');
+    if (shTitle && effect.name) shTitle.textContent = effect.name;
+    
+    const shMeta = document.getElementById('shMeta');
+    if (shMeta) {
+      const date = effect.updated_at || effect.created_at || new Date().toISOString();
+      const dateStr = new Date(date).toLocaleDateString('en-GB', { 
+        day: 'numeric', month: 'short', year: 'numeric' 
+      });
+      shMeta.innerHTML = (effect.cat || 'Effect') + ' &nbsp;&middot;&nbsp; Version ' + (effect.version || '1.0') + ' &nbsp;&middot;&nbsp; Last edited ' + dateStr;
+    }
+    
+    // Open the sheet after populating
+    openSheet();
+  }
+
   /* ── INIT ── */
   function init () {
     edCanvas  = document.getElementById('edCanvas');
@@ -1260,8 +1385,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 
     window.addEventListener('resize', function () { resizeEd(); resizeLua(); });
     preloadGraph();
-    document.getElementById('shMeta').textContent = 'Optical Flow Warp · Version 1.3 · Last edited Mar 15, 2025';
-    openSheet();
+    // Load actual effect data from Supabase (replaces hardcoded metadata)
+    loadEffectData();
   }
 
   function openSheet () {
