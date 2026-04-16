@@ -437,6 +437,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
     var detVersion = document.getElementById('detVersion');
     var detWeight  = document.getElementById('detWeight');
     var detSelf    = document.getElementById('detSelfContained');
+    console.log('[effect-modal] self_contained value:', effect.self_contained, 'Type:', typeof effect.self_contained);
     if (detVersion) detVersion.textContent = effect.version      || '—';
     if (detWeight)  detWeight.textContent  = effect.render_weight || '—';
     if (detSelf)    detSelf.textContent    = effect.self_contained || '—';
@@ -479,6 +480,8 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 
     if (error) { console.error('[effect-modal] Fetch error:', error); return; }
 
+    console.log('[effect-modal] Fetched data:', data);
+    console.log('[effect-modal] Data keys:', Object.keys(data || {}));
     populateModal(data);
 
     // Show owner footer if current user owns this effect
