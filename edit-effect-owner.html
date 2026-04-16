@@ -1118,13 +1118,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       }
     });
     
+    // Get render weight
+    const weightEl = document.getElementById('fWeight');
+    const renderWeight = weightEl ? weightEl.value : '';
+    
     const updates = {
       name: nameEl ? nameEl.value : '',
       desc: descEl ? descEl.value : '',
       cat: catEl ? catEl.value : '',
       version: verEl ? verEl.value : '',
       difficulty: difficulty,
-      tags: tags
+      tags: tags,
+      render_weight: renderWeight
     };
     
     console.log('[doSave] Saving updates:', updates);
@@ -1309,6 +1314,28 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           console.log('[populateForm] Matched tag:', btn.dataset.tag);
         }
       });
+    }
+    
+    // Set render weight (handle both snake_case and camelCase from different data sources)
+    const weightEl = document.getElementById('fWeight');
+    const renderWeightValue = effect.render_weight || effect.renderWeight;
+    if (weightEl && renderWeightValue) {
+      console.log('[populateForm] Setting render weight to:', renderWeightValue);
+      // Try to match by text content (Light, Medium, Heavy)
+      const weightVal = renderWeightValue.charAt(0).toUpperCase() + renderWeightValue.slice(1).toLowerCase();
+      let matched = false;
+      for (let i = 0; i < weightEl.options.length; i++) {
+        const opt = weightEl.options[i];
+        if ((opt.textContent || '').toLowerCase() === weightVal.toLowerCase()) {
+          weightEl.selectedIndex = i;
+          matched = true;
+          console.log('[populateForm] Matched render weight at index:', i);
+          break;
+        }
+      }
+      if (!matched) {
+        weightEl.value = renderWeightValue;
+      }
     }
     
     // Update title and meta
