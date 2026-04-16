@@ -6243,9 +6243,9 @@ async function renderSavedEffects() {
     // Build cards from saved effect data
     savedCont.innerHTML = savedEffects.map(e => {
       const catColor = getCatColor(e.cat) || '#6c7bff';
-      const catBg = catColor + '20'; // 20 = ~12% opacity in hex
+      const catBg = catColor + '20';
       return `
-      <div class="card" onclick="openDetail('${e.id}')" style="cursor:pointer;">
+      <div class="card" onclick="openEffectModal('${e.id}')" style="cursor:pointer;">
         <div class="card-thumbnail" style="background:linear-gradient(135deg, var(--ink-lift), var(--ink-soft));"></div>
         <div class="card-content">
           <div class="card-title-row">
@@ -7548,7 +7548,9 @@ function openDetail(id) {
   if (sheet) sheet.style.transform = 'translateX(0%)';
 
   // ── Also populate the legacy overlay panel so both UIs stay in sync ────────
-  document.getElementById('panel').innerHTML = `
+  const panel = document.getElementById('panel');
+  if (panel) {
+    panel.innerHTML = `
     <div class="panel-header">
       <div>
         <div class="panel-title">${e.name}</div>
@@ -7634,12 +7636,14 @@ function openDetail(id) {
     ${renderVersionHistory(e)}
     ${renderSimilarEffects(e.id)}
   `;
-  document.getElementById('overlay').classList.add('open');
+  }
+  const overlay = document.getElementById('overlay');
+  if (overlay) overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
   // Init any inline spline canvases injected by buildNprefBody
   requestAnimationFrame(() => {
-    if (typeof _idxInitSplineCanvases === 'function') {
-      _idxInitSplineCanvases(document.getElementById('panel'));
+    if (typeof _idxInitSplineCanvases === 'function' && panel) {
+      _idxInitSplineCanvases(panel);
     }
   });
 }
