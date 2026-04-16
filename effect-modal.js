@@ -962,6 +962,11 @@
   // Expose utility to check if effect is saved
   window.isEffectSaved = isEffectPinned;
 
-  console.log('[Effect Modal] Module loaded successfully. openEffectModal is ready. CURRENT_USER_ID:', window.CURRENT_USER_ID);
+  // Log available functions for debugging
+  console.log('[Effect Modal] Module loaded. Checking edit functions:');
+  console.log('[Effect Modal] window.openEditSheet:', typeof window.openEditSheet);
+  console.log('[Effect Modal] window.openEditModal:', typeof window.openEditModal);
+  console.log('[Effect Modal] window.editEffect:', typeof window.editEffect);
+  console.log('[Effect Modal] CURRENT_USER_ID:', window.CURRENT_USER_ID);
 
 })();

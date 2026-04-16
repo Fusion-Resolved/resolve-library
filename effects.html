@@ -4027,6 +4027,8 @@ function openEditModal(effectId) {
 window.openEditSheet = openEditSheet;
 window.openEditModal = openEditModal;
 
+console.log("[Effects] Assigned to window:", typeof window.openEditSheet, typeof window.openEditModal);
+
 function aeToggleCompat(k) {
   var b = document.getElementById('ae-compat-'+k);
   if (b) b.classList.toggle('on');
@@ -9277,6 +9279,8 @@ function openEditModal(effectId) {
 // Explicitly assign to window for cross-script access
 window.openEditSheet = openEditSheet;
 window.openEditModal = openEditModal;
+
+console.log("[Effects] Assigned to window:", typeof window.openEditSheet, typeof window.openEditModal);
 
 function aeToggleCompat(k) {
   var b = document.getElementById('ae-compat-'+k);
