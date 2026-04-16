@@ -1098,6 +1098,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     // Fetch from Supabase if available
     if (window._supabase) {
       try {
+        console.log('[loadEffectData] Fetching effect:', effectId);
         const { data, error } = await window._supabase
           .from('effects')
           .select('*')
@@ -1105,6 +1106,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           .single();
         
         if (error) throw error;
+        console.log('[loadEffectData] Received data:', data);
+        console.log('[loadEffectData] Data keys:', Object.keys(data || {}));
         if (data) {
           populateForm(data);
         } else {
@@ -1125,6 +1128,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   
   /* ── POPULATE FORM ── */
   function populateForm(effect) {
+    console.log('[populateForm] Populating with effect:', effect);
+    
     // Set name
     const nameEl = document.getElementById('fName');
     if (nameEl && effect.name) {
@@ -1148,35 +1153,80 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       }
     }
     
-    // Set category
+    // Set category - clear all selections first, then set matching option
     const catEl = document.getElementById('fCat');
     if (catEl && effect.cat) {
-      catEl.value = effect.cat;
+      console.log('[populateForm] Setting category to:', effect.cat);
+      console.log('[populateForm] Available options:', Array.from(catEl.options).map(o => o.textContent || o.value));
+      // Try to find matching option by text content or value
+      let matched = false;
+      for (let i = 0; i < catEl.options.length; i++) {
+        const opt = catEl.options[i];
+        if ((opt.textContent || '').toLowerCase() === effect.cat.toLowerCase() ||
+            (opt.value || '').toLowerCase() === effect.cat.toLowerCase()) {
+          catEl.selectedIndex = i;
+          matched = true;
+          console.log('[populateForm] Matched category at index:', i);
+          break;
+        }
+      }
+      if (!matched) {
+        // If no match, try direct value assignment as fallback
+        catEl.value = effect.cat;
+        console.log('[populateForm] Category fallback, value set to:', catEl.value);
+      }
     }
     
-    // Set difficulty
+    // Set difficulty - clear all first, then set matching
     const diff = effect.difficulty;
+    console.log('[populateForm] Setting difficulty to:', diff);
     if (diff) {
-      document.querySelectorAll('.db').forEach(btn => {
+      document.querySelectorAll('.db').forEach((btn, idx) => {
         btn.classList.remove('on');
-        if (btn.dataset.d === diff || btn.textContent.toLowerCase() === diff.toLowerCase()) {
+        const btnDiff = (btn.dataset.d || '').toLowerCase();
+        const btnText = btn.textContent.toLowerCase();
+        const matchDiff = diff.toLowerCase();
+        console.log(`[populateForm] Difficulty btn ${idx}: dataset.d="${btn.dataset.d}" text="${btn.textContent}"`);
+        if (btnDiff === matchDiff || btnText === matchDiff) {
           btn.classList.add('on');
+          console.log('[populateForm] Matched difficulty button:', btn.textContent);
         }
       });
     }
     
-    // Set version
+    // Set version - try to match option text/value
     const verEl = document.getElementById('fVer');
     if (verEl && effect.version) {
-      verEl.value = effect.version;
+      console.log('[populateForm] Setting version to:', effect.version);
+      console.log('[populateForm] Available version options:', Array.from(verEl.options).map(o => o.textContent || o.value));
+      let matched = false;
+      for (let i = 0; i < verEl.options.length; i++) {
+        const opt = verEl.options[i];
+        if ((opt.textContent || '').toLowerCase() === effect.version.toLowerCase() ||
+            (opt.value || '').toLowerCase() === effect.version.toLowerCase()) {
+          verEl.selectedIndex = i;
+          matched = true;
+          console.log('[populateForm] Matched version at index:', i);
+          break;
+        }
+      }
+      if (!matched) {
+        verEl.value = effect.version;
+        console.log('[populateForm] Version fallback, value set to:', verEl.value);
+      }
     }
     
-    // Set tags
+    // Set tags - clear all first, then set matching
+    console.log('[populateForm] Setting tags:', effect.tags);
     if (effect.tags && Array.isArray(effect.tags)) {
-      document.querySelectorAll('.ttog').forEach(btn => {
-        const tag = btn.dataset.tag;
-        if (effect.tags.includes(tag)) {
+      const effectTagsLower = effect.tags.map(t => t.toLowerCase());
+      document.querySelectorAll('.ttog').forEach((btn, idx) => {
+        btn.classList.remove('on');
+        const tag = (btn.dataset.tag || '').toLowerCase();
+        console.log(`[populateForm] Tag btn ${idx}: dataset.tag="${btn.dataset.tag}"`);
+        if (effectTagsLower.includes(tag)) {
           btn.classList.add('on');
+          console.log('[populateForm] Matched tag:', btn.dataset.tag);
         }
       });
     }
@@ -1187,7 +1237,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     
     const shMeta = document.getElementById('shMeta');
     if (shMeta) {
-      const date = effect.updated_at || effect.created_at || new Date().toISOString();
+      const date = effect.date || effect.created_at || new Date().toISOString();
       const dateStr = new Date(date).toLocaleDateString('en-GB', { 
         day: 'numeric', month: 'short', year: 'numeric' 
       });
