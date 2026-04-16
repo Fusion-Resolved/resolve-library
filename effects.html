@@ -6244,11 +6244,16 @@ async function renderSavedEffects() {
         console.error('[Saved Tab] Supabase error:', error);
       } else if (data) {
         console.log('[Saved Tab] Raw Supabase data:', data);
-        savedEffects = data.map(d => ({
-          id: d.effect_id,
-          saved_at: d.created_at,
-          ...(d.effects || {})
-        }));
+        savedEffects = data.map(d => {
+          const effect = d.effects?.[0] || d.effects || {};
+          return {
+            id: d.effect_id,
+            saved_at: d.created_at,
+            ...effect,
+            gifUrl: effect.gifUrl || effect.gif_url || effect.gifurl || ''
+          };
+        });
+        console.log('[Saved Tab] Processed effects with gifUrl:', savedEffects.map(e => ({id: e.id, name: e.name, gifUrl: e.gifUrl})));
       }
     }
   }
@@ -6269,6 +6274,7 @@ async function renderSavedEffects() {
       const diff = DIFF[e.difficulty?.toLowerCase()];
       const dateStr = e.date ? new Date(e.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
       const gifUrl = e.gifUrl ? e.gifUrl.trim() : '';
+      console.log('[Saved Tab] Building card for:', e.name, 'gifUrl:', gifUrl ? 'YES' : 'NO');
       const thumbHtml = gifUrl
         ? `<div class="card-thumb">
             <div class="card-thumb-placeholder">GIF</div>

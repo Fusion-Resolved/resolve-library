@@ -819,15 +819,18 @@
     
     // Map the data - effects(*) returns an array, take first item
     const result = data.map(d => {
+      console.log('[Effect Modal] Raw effect data:', d.effects);
       const effect = d.effects?.[0] || d.effects || {};
+      // Handle possible field name variations
       return {
         id: d.effect_id,
         saved_at: d.created_at,
-        ...effect
+        ...effect,
+        gifUrl: effect.gifUrl || effect.gif_url || effect.gifurl || ''
       };
     }).filter(e => e.id); // Filter out any empty entries
     
-    console.log('[Effect Modal] Processed saved effects:', result.length);
+    console.log('[Effect Modal] Processed saved effects:', result.length, result.map(e => ({id: e.id, name: e.name, gifUrl: e.gifUrl})));
     return result;
   }
 
