@@ -796,12 +796,20 @@
 
   // Get all pinned effects (Supabase only - requires login)
   async function getPinnedEffects() {
+    console.log('[Effect Modal] getPinnedEffects called, CURRENT_USER_ID:', window.CURRENT_USER_ID);
     if (!window._supabase || !window.CURRENT_USER_ID) return [];
     
-    const { data } = await window._supabase
+    const { data, error } = await window._supabase
       .from('saved_effects')
       .select('effect_id, effects(*)')
       .eq('user_id', window.CURRENT_USER_ID);
+    
+    if (error) {
+      console.error('[Effect Modal] Error fetching saved effects:', error);
+      return [];
+    }
+    
+    console.log('[Effect Modal] Fetched saved effects:', data?.length || 0);
     
     if (data) {
       return data.map(d => ({
@@ -899,6 +907,6 @@
   // Expose utility to check if effect is saved
   window.isEffectSaved = isEffectPinned;
 
-  console.log('[Effect Modal] Module loaded successfully. openEffectModal is ready.');
+  console.log('[Effect Modal] Module loaded successfully. openEffectModal is ready. CURRENT_USER_ID:', window.CURRENT_USER_ID);
 
 })();

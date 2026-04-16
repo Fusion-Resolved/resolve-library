@@ -6188,8 +6188,26 @@ async function renderSavedEffects() {
   const savedCont = document.getElementById('saved-effects-container');
   if (!savedCont) return;
   
-  // Require login
-  if (!window.CURRENT_USER_ID) {
+  console.log('[Saved Tab] Checking auth state, CURRENT_USER_ID:', window.CURRENT_USER_ID);
+  
+  // Require login - check both the global var and try to get from Supabase directly
+  if (!window.CURRENT_USER_ID && !window._supabase?.auth?.getUser) {
+    savedCont.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><strong>Sign in to see your saved effects.</strong><br><button onclick="window.location.href='login.html'" style="margin-top:1rem;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius);padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;">Sign In</button></div>`;
+    return;
+  }
+  
+  // Try to get current user directly from Supabase if global var isn't set
+  let userId = window.CURRENT_USER_ID;
+  if (!userId && window._supabase) {
+    const { data: { user } } = await window._supabase.auth.getUser();
+    if (user) {
+      userId = user.id;
+      window.CURRENT_USER_ID = user.id; // Set it for future use
+      console.log('[Saved Tab] Got user ID from Supabase:', userId);
+    }
+  }
+  
+  if (!userId) {
     savedCont.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><strong>Sign in to see your saved effects.</strong><br><button onclick="window.location.href='login.html'" style="margin-top:1rem;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius);padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;">Sign In</button></div>`;
     return;
   }
@@ -9450,7 +9468,15 @@ document.addEventListener('DOMContentLoaded', function() {
   // auth.js fires 'authStateChanged' after its own DOMContentLoaded handler
   // resolves the session, so we just listen for that event to trigger the
   // first render. This avoids a race between auth state and the data load.
-  window.addEventListener('authStateChanged', function(e) {
+  window.addEventListener('authStateChanged', async function(e) {
+    console.log('[Effects] Auth state changed:', e.detail.event, 'User:', e.detail.user?.id);
+    
+    // Ensure CURRENT_USER_ID is set
+    if (e.detail.user) {
+      window.CURRENT_USER_ID = e.detail.user.id;
+      window.CURRENT_USER = e.detail.user;
+    }
+    
     // Re-render cards so the Delete button visibility reflects login state.
     if (typeof effects !== 'undefined' && effects.length > 0) {
       render();
@@ -9463,8 +9489,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedTab) {
       if (e.detail.user) {
         savedTab.style.display = '';
+        console.log('[Effects] Showing Saved tab');
       } else {
         savedTab.style.display = 'none';
+        console.log('[Effects] Hiding Saved tab');
         // If currently on saved tab, switch to system tab
         if (document.getElementById('saved-content')?.style.display === 'block') {
           switchTab('system');
@@ -9473,10 +9501,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Also check initial auth state
+  // Also check initial auth state immediately
+  console.log('[Effects] Initial CURRENT_USER_ID:', window.CURRENT_USER_ID);
   if (window.CURRENT_USER_ID) {
     const savedTab = document.getElementById('saved-tab-btn');
-    if (savedTab) savedTab.style.display = '';
+    if (savedTab) {
+      savedTab.style.display = '';
+      console.log('[Effects] Initial state: Showing Saved tab');
+    }
   }
 
   // NOTE: We do NOT call loadEffectsFromSupabase() unconditionally here.
