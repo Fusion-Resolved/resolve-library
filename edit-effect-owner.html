@@ -1270,7 +1270,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
     
     // Set description
-    const descEl = document.getElementById('fDesc');
     if (descEl && effect.desc) {
       descEl.value = effect.desc;
       const descCC = document.getElementById('descCC');
@@ -1281,7 +1280,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
     
     // Set category - clear all selections first, then set matching option
-    const catEl = document.getElementById('fCat');
     if (catEl && effect.cat) {
       console.log('[populateForm] Setting category to:', effect.cat);
       console.log('[populateForm] Available options:', Array.from(catEl.options).map(o => o.textContent || o.value));
@@ -1322,7 +1320,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
     
     // Set version - try to match option text/value
-    const verEl = document.getElementById('fVer');
     if (verEl && effect.version) {
       console.log('[populateForm] Setting version to:', effect.version);
       console.log('[populateForm] Available version options:', Array.from(verEl.options).map(o => o.textContent || o.value));
@@ -1359,8 +1356,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
     
     // Set render weight (handle both snake_case and camelCase from different data sources)
-    const weightEl = document.getElementById('fWeight');
-    const renderWeightValue = effect.render_weight || effect.renderWeight;
+    let renderWeightValue = effect.render_weight || effect.renderWeight;
     if (weightEl && renderWeightValue) {
       console.log('[populateForm] Setting render weight to:', renderWeightValue);
       // Try to match by text content (Light, Medium, Heavy)
