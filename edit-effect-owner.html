@@ -1265,7 +1265,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[loadEffectData] Fetching effect:', effectId);
         const { data, error } = await supabase
           .from('effects')
-          .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, user_id')
+          .select('id, name, cat, desc, version, difficulty, tags, render_weight, user_id')
           .eq('id', effectId)
           .single();
         

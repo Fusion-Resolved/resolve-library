@@ -236,16 +236,16 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
       <div class="det-info">
         <div>
           <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
-            <h2 class="det-title">Optical Flow Warp</h2>
-            <span class="cat-badge">Fusion Effect</span>
+            <h2 class="det-title" id="detTitle">Optical Flow Warp</h2>
+            <span class="cat-badge" id="detCat">Fusion Effect</span>
           </div>
           <div class="det-meta">
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--signal-amber);">&#x25cf; Intermediate</span>
-            <span class="det-date">12 Mar 2025</span>
+            <span id="detDifficulty" style="font-family:var(--font-mono);font-size:11px;color:var(--signal-amber);">&#x25cf; Intermediate</span>
+            <span class="det-date" id="detDate">12 Mar 2025</span>
           </div>
         </div>
 
-        <p class="det-desc">Uses optical flow vectors to warp a source clip, creating a liquid smear without third-party plugins. Works best on clips with strong directional motion. Chain two passes for a more pronounced effect.</p>
+        <p class="det-desc" id="detDesc">Uses optical flow vectors to warp a source clip, creating a liquid smear without third-party plugins. Works best on clips with strong directional motion. Chain two passes for a more pronounced effect.</p>
 
         <!-- ── NODE GRAPH CANVAS ── -->
         <div class="sec">
@@ -294,9 +294,9 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
         <div class="sec">
           <div class="sec-lbl">Details</div>
           <div class="info-grid">
-            <div class="info-item"><div class="sec-lbl">Software</div><div class="info-val">DaVinci Resolve 19</div></div>
-            <div class="info-item"><div class="sec-lbl">Render weight</div><div class="info-val">Heavy</div></div>
-            <div class="info-item"><div class="sec-lbl">Self-contained?</div><div class="info-val">Needs media input</div></div>
+            <div class="info-item"><div class="sec-lbl">Software</div><div class="info-val" id="detVersion">DaVinci Resolve 19</div></div>
+            <div class="info-item"><div class="sec-lbl">Render weight</div><div class="info-val" id="detWeight">Heavy</div></div>
+            <div class="info-item"><div class="sec-lbl">Self-contained?</div><div class="info-val" id="detSelfContained">Needs media input</div></div>
             <div class="info-item"><div class="sec-lbl">Dependencies</div><div class="info-val">None</div></div>
           </div>
         </div>
@@ -304,7 +304,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
         <!-- Tags -->
         <div class="sec">
           <div class="sec-lbl">Tags</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;" id="detTags">
             <span style="font-size:10px;padding:2px 8px;border-radius:var(--radius-xs);background:var(--tag-bg);color:var(--tag-color);font-family:var(--font-mono);">optical-flow</span>
             <span style="font-size:10px;padding:2px 8px;border-radius:var(--radius-xs);background:var(--tag-bg);color:var(--tag-color);font-family:var(--font-mono);">warp</span>
             <span style="font-size:10px;padding:2px 8px;border-radius:var(--radius-xs);background:var(--tag-bg);color:var(--tag-color);font-family:var(--font-mono);">fusion</span>
@@ -365,8 +365,147 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
   Nodes copied
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+
 <script>
 (function () {
+
+  /* ════════════════════════════════
+     SUPABASE — inherit parent client or self
+     ════════════════════════════════ */
+  function getSupabase() {
+    return (window.parent && window.parent._supabase) || window._supabase || null;
+  }
+
+  /* ════════════════════════════════
+     DIFFICULTY COLOUR MAP
+     ════════════════════════════════ */
+  var DIFF_COLOR = {
+    'beginner':     'var(--node-teal)',
+    'intermediate': 'var(--signal-amber)',
+    'advanced':     'var(--danger)'
+  };
+
+  /* ════════════════════════════════
+     CATEGORY LABEL MAP
+     ════════════════════════════════ */
+  var CAT_LABELS = {
+    'fusion-effect': 'Fusion Effect',
+    'fusion-3d':     'Fusion 3D',
+    'macro':         'Macro',
+    'script':        'Script',
+    'utility':       'Utility'
+  };
+
+  /* ════════════════════════════════
+     POPULATE MODAL FROM EFFECT DATA
+     ════════════════════════════════ */
+  function populateModal(effect) {
+    if (!effect) return;
+
+    // Title (header + body)
+    var sheetTitle = document.getElementById('sheetTitle');
+    var detTitle   = document.getElementById('detTitle');
+    if (sheetTitle) sheetTitle.textContent = effect.name || '';
+    if (detTitle)   detTitle.textContent   = effect.name || '';
+
+    // Category badge
+    var detCat = document.getElementById('detCat');
+    if (detCat) detCat.textContent = CAT_LABELS[effect.cat] || effect.cat || '';
+
+    // Difficulty
+    var detDiff = document.getElementById('detDifficulty');
+    if (detDiff && effect.difficulty) {
+      var col = DIFF_COLOR[(effect.difficulty || '').toLowerCase()] || 'var(--text-secondary)';
+      detDiff.innerHTML = '&#x25cf; ' + effect.difficulty;
+      detDiff.style.color = col;
+    }
+
+    // Date
+    var detDate = document.getElementById('detDate');
+    if (detDate && (effect.created_at || effect.date)) {
+      var d = new Date(effect.created_at || effect.date);
+      detDate.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    // Description
+    var detDesc = document.getElementById('detDesc');
+    if (detDesc) detDesc.textContent = effect.desc || '';
+
+    // Details grid
+    var detVersion = document.getElementById('detVersion');
+    var detWeight  = document.getElementById('detWeight');
+    var detSelf    = document.getElementById('detSelfContained');
+    if (detVersion) detVersion.textContent = effect.version      || '—';
+    if (detWeight)  detWeight.textContent  = effect.render_weight || '—';
+    if (detSelf)    detSelf.textContent    = effect.self_contained || '—';
+
+    // Tags
+    var detTags = document.getElementById('detTags');
+    if (detTags && Array.isArray(effect.tags) && effect.tags.length > 0) {
+      detTags.innerHTML = effect.tags.map(function(tag) {
+        return '<span style="font-size:10px;padding:2px 8px;border-radius:var(--radius-xs);' +
+               'background:var(--tag-bg);color:var(--tag-color);font-family:var(--font-mono);">' +
+               tag + '</span>';
+      }).join('');
+    }
+  }
+
+  /* ════════════════════════════════
+     FETCH EFFECT FROM SUPABASE
+     ════════════════════════════════ */
+  var _currentEffectId = null;
+
+  async function loadEffect(effectId) {
+    if (!effectId) return;
+    _currentEffectId = effectId;
+
+    // Wait up to 3s for the Supabase client
+    var sb = null;
+    for (var i = 0; i < 30; i++) {
+      sb = getSupabase();
+      if (sb) break;
+      await new Promise(function(r) { setTimeout(r, 100); });
+    }
+    if (!sb) { console.error('[effect-modal] Supabase client not available'); return; }
+
+    var _a = await sb
+      .from('effects')
+      .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, created_at, user_id')
+      .eq('id', effectId)
+      .single();
+    var data = _a.data, error = _a.error;
+
+    if (error) { console.error('[effect-modal] Fetch error:', error); return; }
+
+    populateModal(data);
+
+    // Show owner footer if current user owns this effect
+    try {
+      var _b = await sb.auth.getUser();
+      var user = _b.data && _b.data.user;
+      if (user && data.user_id === user.id) {
+        setOwnerFooter();
+      } else {
+        setVisitorFooter();
+      }
+    } catch(e) {
+      setVisitorFooter();
+    }
+  }
+
+  /* ════════════════════════════════
+     LISTEN FOR LIVE UPDATES FROM EDITOR
+     ════════════════════════════════ */
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.action === 'effect-updated' && e.data.id) {
+      console.log('[effect-modal] Received effect-updated for:', e.data.id);
+      loadEffect(e.data.id);
+    }
+  });
+
+
 
   /* ════════════════════════════════
      NODE TYPE COLOURS (always dark — graph is always dark)
@@ -916,9 +1055,18 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
   /* ════════════════════════════════
      SHEET OPEN / CLOSE
      ════════════════════════════════ */
-  function openSheet(owner) {
-    document.getElementById('sheetTitle').textContent = owner ? 'Bleach Bypass' : 'Optical Flow Warp';
-    if (owner) { setOwnerFooter(); } else { setVisitorFooter(); }
+  function openSheet(effectIdOrOwner) {
+    // Support legacy boolean call (owner) as well as new effectId string call
+    var isLegacyBool = (typeof effectIdOrOwner === 'boolean');
+    if (!isLegacyBool && effectIdOrOwner) {
+      // Real effect ID — fetch from Supabase
+      loadEffect(effectIdOrOwner);
+    } else {
+      // Fallback: legacy demo mode
+      var owner = !!effectIdOrOwner;
+      document.getElementById('sheetTitle').textContent = owner ? 'Bleach Bypass' : 'Optical Flow Warp';
+      if (owner) { setOwnerFooter(); } else { setVisitorFooter(); }
+    }
     document.getElementById('theSheet').classList.add('open');
     buildGraph();
   }
@@ -966,6 +1114,13 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
   document.getElementById('btnClosePop').addEventListener('click', closePop);
   document.getElementById('btnCopy').addEventListener('click', copyNodes);
   document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+
+  // Auto-open if an effect ID is present in the URL
+  var _urlParams = new URLSearchParams(window.location.search);
+  var _urlEffectId = _urlParams.get('id');
+  if (_urlEffectId) {
+    openSheet(_urlEffectId);
+  }
 
   document.getElementById('theSheet').addEventListener('click', function (e) {
     if (e.target === this) { closeSheet(); }
