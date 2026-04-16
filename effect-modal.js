@@ -762,18 +762,10 @@
 
   // Edit effect function
   // Edit effect function - opens edit modal if available, otherwise navigates to edit page
-  // Edit effect function - opens edit-effect-owner.html in iframe modal
+  // Edit effect function - navigate to edit-effect-owner.html (full page modal)
   window.editEffect = function(effectId) {
-    // Close the effect detail modal first
-    closeEffectModal();
-    
-    // Open iframe modal with edit-effect-owner.html
-    if (typeof window.openEditIframe === 'function') {
-      window.openEditIframe(effectId);
-    } else {
-      // Fallback: navigate to standalone page
-      window.location.href = `edit-effect-owner.html?id=${effectId}`;
-    }
+    // Navigate directly to edit-effect-owner.html
+    window.location.href = `edit-effect-owner.html?id=${effectId}`;
   };
   window.deleteEffect = function(effectId) {
     if (confirm('Are you sure you want to delete this effect?')) {
