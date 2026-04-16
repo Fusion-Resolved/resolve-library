@@ -1182,11 +1182,31 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       
       if (error) throw error;
       
-      console.log('[doSave] Save successful. Returned data:', data);
-      // If data is empty (RLS), the update might still have succeeded
-      const savedName = data && data[0] ? data[0].name : updates.name;
-      const savedCat = data && data[0] ? data[0].cat : updates.cat;
-      console.log('[doSave] Saved values - name:', savedName, 'cat:', savedCat);
+      console.log('[doSave] Save API call completed. Returned data:', data);
+      
+      // VERIFY: Re-fetch to confirm save actually worked
+      console.log('[doSave] Verifying save by re-fetching...');
+      const { data: verifyData, error: verifyError } = await window._supabase
+        .from('effects')
+        .select('name, cat, desc, version, difficulty, tags, render_weight')
+        .eq('id', effectId)
+        .single();
+      
+      if (verifyError) {
+        console.error('[doSave] Verification fetch failed:', verifyError);
+      } else {
+        console.log('[doSave] Verification data:', verifyData);
+        // Check if values match what we sent
+        const nameMatch = verifyData.name === updates.name;
+        const catMatch = verifyData.cat === updates.cat;
+        console.log('[doSave] Name match:', nameMatch, 'Expected:', updates.name, 'Got:', verifyData.name);
+        console.log('[doSave] Category match:', catMatch, 'Expected:', updates.cat, 'Got:', verifyData.cat);
+        
+        if (!nameMatch || !catMatch) {
+          showToast('Warning: Save may not have persisted');
+        }
+      }
+      
       clearDirty();
       showToast('Changes saved');
       
@@ -1214,6 +1234,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     const effectId = params.get('id');
     console.log('[loadEffectData] Effect ID from URL:', effectId);
     
+    // Get current user
+    let currentUserId = null;
+    if (window._supabase) {
+      try {
+        const { data: { user } } = await window._supabase.auth.getUser();
+        currentUserId = user ? user.id : null;
+        console.log('[loadEffectData] Current user ID:', currentUserId);
+      } catch (e) {
+        console.warn('[loadEffectData] Could not get current user:', e);
+      }
+    }
+    
     if (!effectId) {
       console.error('[loadEffectData] NO EFFECT ID FOUND IN URL');
       openSheet();
@@ -1236,7 +1268,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[loadEffectData] Fetching effect:', effectId);
         const { data, error } = await window._supabase
           .from('effects')
-          .select('*')
+          .select('id, name, cat, desc, version, difficulty, tags, render_weight, user_id')
           .eq('id', effectId)
           .single();
         
@@ -1246,6 +1278,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         }
         
         console.log('[loadEffectData] Received data:', data);
+        console.log('[loadEffectData] Effect owner (user_id):', data ? data.user_id : 'N/A');
+        console.log('[loadEffectData] Current user:', currentUserId);
+        console.log('[loadEffectData] Ownership match:', data && data.user_id === currentUserId);
         console.log('[loadEffectData] Data keys:', Object.keys(data || {}));
         
         if (data) {
