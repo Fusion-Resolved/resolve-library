@@ -1137,6 +1137,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     const weightEl = document.getElementById('fWeight');
     const renderWeight = weightEl ? weightEl.value : '';
     
+    const selfEl = document.getElementById('fSelf');
     const updates = {
       name: nameEl ? nameEl.value : '',
       desc: descEl ? descEl.value : '',
@@ -1144,7 +1145,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       version: verEl ? verEl.value : '',
       difficulty: difficulty,
       tags: tags,
-      render_weight: renderWeight
+      render_weight: renderWeight,
+      self_contained: selfEl ? selfEl.value : ''
     };
     
     console.log('[doSave] Saving updates:', updates);
@@ -1177,7 +1179,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       console.log('[doSave] Verifying save by re-fetching...');
       const { data: verifyData, error: verifyError } = await supabase
         .from('effects')
-        .select('name, cat, desc, version, difficulty, tags, render_weight')
+        .select('name, cat, desc, version, difficulty, tags, render_weight, self_contained')
         .eq('id', effectId)
         .single();
       
@@ -1348,6 +1350,10 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
     
     // Set category - direct value assignment (options have proper value attributes now)
+    const selfEl = document.getElementById('fSelf');
+    if (selfEl && effect.self_contained) {
+      selfEl.value = effect.self_contained;
+    }
     if (catEl && effect.cat) {
       console.log('[populateForm] Setting category to:', effect.cat);
       catEl.value = effect.cat;
