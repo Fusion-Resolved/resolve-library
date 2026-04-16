@@ -431,6 +431,8 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
   transition:var(--transition);
 }
 .action-btn:hover { color:var(--text-secondary); background:var(--bg-surface-3); }
+.action-btn.saved { background:rgba(108,123,255,0.22); border-color:var(--violet); color:var(--violet-light); }
+.action-btn.saved svg { fill:var(--violet-light); }
 
 /* ══ SIDEBAR — Leaderboard ══ */
 .sidebar { display:flex; flex-direction:column; gap:16px; }
@@ -1142,20 +1144,138 @@ header { position: fixed; top:0; left:0; right:0; z-index:100; display:flex; ali
 const TAGS_ALL = ['Fusion','Color','Motion Blur','Glow','Distort','Mask','Text','Particle','3D','LUT'];
 const CATS = ['all','motion','color','text','blur','distort','particle'];
 
-const EFFECTS_DATA = [
-  {id:1,title:'Chromatic Aberration',author:'fxNode_kai',avatar:'K',category:'distort',tags:['Fusion','Distort'],desc:'Realistic lens CA effect with customizable RGB offset and falloff curves. Perfect for analog film looks.',votes:428,saved:182,isNew:false,official:false,featured:true,previewColor:'#1a0d2e',previewAccent:'#c95238'},
-  {id:2,title:'Neon Text Glow',author:'resolve_alice',avatar:'A',category:'text',tags:['Text','Glow'],desc:'Multi-layer neon glow with bloom and flicker controls. Adjustable hue via spline.',votes:391,saved:143,isNew:false,official:true,featured:false,previewColor:'#0a1a2a',previewAccent:'#6c7bff'},
-  {id:3,title:'Particle Dust Field',author:'motioncraft',avatar:'M',category:'particle',tags:['Particle','3D'],desc:'Floating dust particle system built entirely in Fusion. Motion follows camera parallax.',votes:355,saved:201,isNew:true,official:false,featured:false,previewColor:'#0d150d',previewAccent:'#0fa888'},
-  {id:4,title:'Film Grain Stack',author:'cinegrade_tom',avatar:'T',category:'color',tags:['Fusion','Color','LUT'],desc:'Authentic 16mm grain with per-channel luminance response and temperature shift.',votes:312,saved:167,isNew:false,official:false,featured:false,previewColor:'#1a1108',previewAccent:'#b07118'},
-  {id:5,title:'Velocity Motion Blur',author:'fxNode_kai',avatar:'K',category:'motion',tags:['Motion Blur','Fusion'],desc:'Object-space motion blur using vector fields. Works with masked moving subjects.',votes:289,saved:95,isNew:false,official:true,featured:false,previewColor:'#0d0d1a',previewAccent:'#9ca8ff'},
-  {id:6,title:'Lens Flare System',author:'lenscraft_r',avatar:'L',category:'distort',tags:['Distort','Glow','Fusion'],desc:'Procedural lens flares with 12 element types. Driven by light source position.',votes:267,saved:134,isNew:true,official:false,featured:false,previewColor:'#1a1200',previewAccent:'#f0b040'},
-  {id:7,title:'Text Kinetic Reveal',author:'type_motion',avatar:'TM',category:'text',tags:['Text','Motion Blur'],desc:'Letter-by-letter kinetic typography reveal with easing spline controls per character.',votes:241,saved:88,isNew:false,official:false,featured:false,previewColor:'#0a0a1e',previewAccent:'#6c7bff'},
-  {id:8,title:'Halftone Dissolve',author:'resolve_alice',avatar:'A',category:'color',tags:['Color','Mask'],desc:'CMYK halftone pattern that transitions between two layers. Fully customisable dot size.',votes:218,saved:79,isNew:true,official:false,featured:false,previewColor:'#1a0808',previewAccent:'#c95238'},
-  {id:9,title:'Atmospheric Haze',author:'enviro_vfx',avatar:'EV',category:'blur',tags:['Blur','Fusion','Color'],desc:'Depth-based atmospheric haze with colour temperature matching. Mimics real aerial perspective.',votes:196,saved:112,isNew:false,official:false,featured:false,previewColor:'#081318',previewAccent:'#0fa888'},
-  {id:10,title:'Glitch Datamosh',author:'glitch_core',avatar:'GC',category:'distort',tags:['Distort','Mask'],desc:'Frame-bleeding datamosh glitch effect with RGB shift and block corruption sliders.',votes:184,saved:67,isNew:true,official:false,featured:false,previewColor:'#0e0e0e',previewAccent:'#f06060'},
-  {id:11,title:'Bokeh Shape Mask',author:'motioncraft',avatar:'M',category:'blur',tags:['Blur','Mask','3D'],desc:'Custom polygon bokeh shapes rendered on out-of-focus highlights. Supports SVG paths.',votes:172,saved:93,isNew:false,official:false,featured:false,previewColor:'#0d0d1a',previewAccent:'#9ca8ff'},
-  {id:12,title:'Teal & Orange LUT',author:'cinegrade_tom',avatar:'T',category:'color',tags:['Color','LUT'],desc:'Cinematic teal-and-orange grade with adjustable intensity. Built for natural skin tones.',votes:161,saved:204,isNew:false,official:false,featured:false,previewColor:'#081210',previewAccent:'#0fa888'},
-];
+// Fallback static data - will be replaced by Supabase data
+let EFFECTS_DATA = [];
+
+// Load real effects from Supabase
+async function loadCommunityEffects() {
+  if (!window._supabase) {
+    console.log('[Community] Supabase not ready, using fallback data');
+    useFallbackData();
+    return;
+  }
+  
+  try {
+    const { data: effects, error } = await window._supabase
+      .from('effects')
+      .select('id, name, cat, tags, desc, difficulty, gifUrl, created_at, user_id, is_public')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    if (error) {
+      console.error('[Community] Error loading effects:', error);
+      useFallbackData();
+      return;
+    }
+    
+    if (!effects || effects.length === 0) {
+      console.log('[Community] No public effects found');
+      useFallbackData();
+      return;
+    }
+    
+    // Map database fields to the format expected by renderCards
+    EFFECTS_DATA = effects.map((e, idx) => ({
+      id: e.id,
+      title: e.name || 'Untitled',
+      author: e.user_id ? e.user_id.slice(0, 8) : 'unknown',
+      avatar: (e.name || 'U').charAt(0).toUpperCase(),
+      category: (e.cat || 'other').toLowerCase(),
+      tags: e.tags || [],
+      desc: e.desc || '',
+      votes: 0, // Could be fetched from a votes table
+      saved: 0,  // Could be fetched from saved_effects count
+      isNew: isEffectNew(e.created_at),
+      official: false,
+      featured: idx < 3, // First 3 are featured
+      previewColor: generatePreviewColor(e.cat),
+      previewAccent: getCatColor(e.cat),
+      // Keep original data for reference
+      _original: e
+    }));
+    
+    console.log('[Community] Loaded', EFFECTS_DATA.length, 'public effects');
+    
+    // Re-render with real data
+    updateFilteredCount();
+    renderCards();
+    renderSpotlight();
+    
+    // Update save button states
+    setTimeout(updateCommunitySaveButtons, 500);
+    
+  } catch (err) {
+    console.error('[Community] Error:', err);
+    useFallbackData();
+  }
+}
+
+function useFallbackData() {
+  // Static fallback if Supabase fails
+  EFFECTS_DATA = [
+    {id:1,title:'Chromatic Aberration',author:'fxNode_kai',avatar:'K',category:'distort',tags:['Fusion','Distort'],desc:'Realistic lens CA effect with customizable RGB offset and falloff curves. Perfect for analog film looks.',votes:428,saved:182,isNew:false,official:false,featured:true,previewColor:'#1a0d2e',previewAccent:'#c95238'},
+    {id:2,title:'Neon Text Glow',author:'resolve_alice',avatar:'A',category:'text',tags:['Text','Glow'],desc:'Multi-layer neon glow with bloom and flicker controls. Adjustable hue via spline.',votes:391,saved:143,isNew:false,official:true,featured:false,previewColor:'#0a1a2a',previewAccent:'#6c7bff'},
+    {id:3,title:'Particle Dust Field',author:'motioncraft',avatar:'M',category:'particle',tags:['Particle','3D'],desc:'Floating dust particle system built entirely in Fusion. Motion follows camera parallax.',votes:355,saved:201,isNew:true,official:false,featured:false,previewColor:'#0d150d',previewAccent:'#0fa888'},
+    {id:4,title:'Film Grain Stack',author:'cinegrade_tom',avatar:'T',category:'color',tags:['Fusion','Color','LUT'],desc:'Authentic 16mm grain with per-channel luminance response and temperature shift.',votes:312,saved:167,isNew:false,official:false,featured:false,previewColor:'#1a1108',previewAccent:'#b07118'},
+    {id:5,title:'Velocity Motion Blur',author:'fxNode_kai',avatar:'K',category:'motion',tags:['Motion Blur','Fusion'],desc:'Object-space motion blur using vector fields. Works with masked moving subjects.',votes:289,saved:95,isNew:false,official:true,featured:false,previewColor:'#0d0d1a',previewAccent:'#9ca8ff'},
+    {id:6,title:'Lens Flare System',author:'lenscraft_r',avatar:'L',category:'distort',tags:['Distort','Glow','Fusion'],desc:'Procedural lens flares with 12 element types. Driven by light source position.',votes:267,saved:134,isNew:true,official:false,featured:false,previewColor:'#1a1200',previewAccent:'#f0b040'},
+    {id:7,title:'Text Kinetic Reveal',author:'type_motion',avatar:'TM',category:'text',tags:['Text','Motion Blur'],desc:'Letter-by-letter kinetic typography reveal with easing spline controls per character.',votes:241,saved:88,isNew:false,official:false,featured:false,previewColor:'#0a0a1e',previewAccent:'#6c7bff'},
+    {id:8,title:'Halftone Dissolve',author:'resolve_alice',avatar:'A',category:'color',tags:['Color','Mask'],desc:'CMYK halftone pattern that transitions between two layers. Fully customisable dot size.',votes:218,saved:79,isNew:true,official:false,featured:false,previewColor:'#1a0808',previewAccent:'#c95238'},
+    {id:9,title:'Atmospheric Haze',author:'enviro_vfx',avatar:'EV',category:'blur',tags:['Blur','Fusion','Color'],desc:'Depth-based atmospheric haze with colour temperature matching. Mimics real aerial perspective.',votes:196,saved:112,isNew:false,official:false,featured:false,previewColor:'#081318',previewAccent:'#0fa888'},
+    {id:10,title:'Glitch Datamosh',author:'glitch_core',avatar:'GC',category:'distort',tags:['Distort','Mask'],desc:'Frame-bleeding datamosh glitch effect with RGB shift and block corruption sliders.',votes:184,saved:67,isNew:true,official:false,featured:false,previewColor:'#0e0e0e',previewAccent:'#f06060'},
+    {id:11,title:'Bokeh Shape Mask',author:'motioncraft',avatar:'M',category:'blur',tags:['Blur','Mask','3D'],desc:'Custom polygon bokeh shapes rendered on out-of-focus highlights. Supports SVG paths.',votes:172,saved:93,isNew:false,official:false,featured:false,previewColor:'#0d0d1a',previewAccent:'#9ca8ff'},
+    {id:12,title:'Teal & Orange LUT',author:'cinegrade_tom',avatar:'T',category:'color',tags:['Fusion','Color','LUT'],desc:'Cinematic teal-and-orange grade with adjustable intensity. Built for natural skin tones.',votes:161,saved:204,isNew:false,official:false,featured:false,previewColor:'#081210',previewAccent:'#0fa888'},
+  ];
+  updateFilteredCount();
+  renderCards();
+  renderSpotlight();
+  
+  // Update save button states
+  setTimeout(updateCommunitySaveButtons, 500);
+}
+
+function isEffectNew(createdAt) {
+  if (!createdAt) return false;
+  const created = new Date(createdAt);
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  return created > weekAgo;
+}
+
+function generatePreviewColor(cat) {
+  const colors = {
+    'Colour': '#1a0d2e',
+    'Compositing': '#0a1a2a',
+    'Lighting': '#0d150d',
+    'Particles': '#1a1108',
+    'Texture': '#0d0d1a',
+    'Blur': '#081318',
+    'Transform': '#0a0a1e',
+    'Masking': '#1a0808',
+    'Distort': '#1a1200',
+    'Stylize': '#0e0e0e',
+    'other': '#16161f'
+  };
+  return colors[cat] || colors['other'];
+}
+
+function getCatColor(cat) {
+  const colors = {
+    'Colour': '#c95238',
+    'Compositing': '#6c7bff',
+    'Lighting': '#0fa888',
+    'Particles': '#b07118',
+    'Texture': '#9ca8ff',
+    'Blur': '#22d3ee',
+    'Transform': '#0fa888',
+    'Masking': '#9c78ff',
+    'Distort': '#f0b040',
+    'Stylize': '#f06060',
+    'other': '#6c7bff'
+  };
+  return colors[cat] || colors['other'];
+}
 
 const LEADERBOARD_DATA = [
   {rank:1,name:'fxNode_kai',avatar:'K',color:'#4451d4',submissions:42,pts:3847},
@@ -1289,8 +1409,8 @@ function renderCards(){
             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.53L12 21.35z"/></svg>
             <span id="vote-count-${e.id}">${e.votes}</span>
           </button>
-          <button class="action-btn" onclick="showToast('Effect saved!','t')" title="Save">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          <button class="action-btn ${e.isSaved?'saved':''}" id="save-${e.id}" onclick="handleCommunitySave('${e.id}',event)" title="${e.isSaved?'Remove from library':'Save to library'}">
+            <svg width="13" height="13" fill="${e.isSaved?'currentColor':'none'}" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           </button>
           <button class="action-btn" onclick="showToast('Link copied!','v')" title="Share">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -1321,6 +1441,55 @@ function toggleVote(id, e){
   // Animate count
   cnt.style.transform='scale(1.3)'; cnt.style.transition='transform 0.15s';
   setTimeout(()=>{ cnt.style.transform=''; },200);
+}
+
+// Handle save/pin from community cards
+async function handleCommunitySave(effectId, event) {
+  event.stopPropagation();
+  
+  // Use effect-modal.js pinEffect if available
+  if (typeof pinEffect === 'function') {
+    await pinEffect(effectId);
+    // Update button appearance after pinEffect completes
+    updateCommunitySaveButtons();
+  } else {
+    // Fallback: basic save without full integration
+    if (!window.CURRENT_USER_ID) {
+      alert('Please sign in to save effects to your library.');
+      window.location.href = 'login.html';
+      return;
+    }
+    showToast('Saving...', 'v');
+  }
+}
+
+// Update all save button appearances based on saved state
+async function updateCommunitySaveButtons() {
+  if (!window.CURRENT_USER_ID) return;
+  
+  // Use isEffectSaved from effect-modal.js if available
+  if (typeof isEffectSaved === 'function') {
+    for (const effect of EFFECTS_DATA) {
+      const isSaved = await isEffectSaved(effect.id);
+      const btn = document.getElementById(`save-${effect.id}`);
+      if (btn) {
+        updateSaveButtonStyle(btn, isSaved);
+      }
+    }
+  }
+}
+
+function updateSaveButtonStyle(btn, isSaved) {
+  if (!btn) return;
+  if (isSaved) {
+    btn.classList.add('saved');
+    btn.title = 'Remove from library';
+    btn.innerHTML = '<svg width="13" height="13" fill="currentColor" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+  } else {
+    btn.classList.remove('saved');
+    btn.title = 'Save to library';
+    btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+  }
 }
 
 function filterCards(){
@@ -1542,6 +1711,11 @@ buildActivity();
 buildTicker();
 renderCards();
 
+// Load live effects from Supabase then stats
+setTimeout(async function(){
+  await loadCommunityEffects();
+}, 300);
+
 // Load live stats then animate
 setTimeout(async function(){
   const loaded = await loadCommunityStats();
@@ -1585,6 +1759,44 @@ setTimeout(flickerLive, 12000);
         activeId: "nav-community" // Lights up the 'Community' pill
       });
     }
+    
+    // Realtime subscription for new effects
+    if (window._supabase && typeof window._supabase.channel === 'function') {
+      const effectsChannel = window._supabase
+        .channel('community-effects-changes')
+        .on('postgres_changes', 
+          { event: 'INSERT', schema: 'public', table: 'effects', filter: 'is_public=eq.true' },
+          (payload) => {
+            console.log('[Realtime Community] New effect added:', payload);
+            // Reload effects to show the new one
+            loadCommunityEffects();
+          }
+        )
+        .subscribe((status) => {
+          console.log('[Realtime Community] Effects subscription status:', status);
+        });
+      
+      // Also listen for saved_effects changes to update button states
+      const savedChannel = window._supabase
+        .channel('community-saved-changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'saved_effects' },
+          (payload) => {
+            console.log('[Realtime Community] Saved effects changed:', payload);
+            updateCommunitySaveButtons();
+          }
+        )
+        .subscribe((status) => {
+          console.log('[Realtime Community] Saved subscription status:', status);
+        });
+    }
+    
+    // Update save buttons when auth state changes
+    window.addEventListener('authStateChanged', (e) => {
+      if (e.detail.user) {
+        setTimeout(updateCommunitySaveButtons, 500);
+      }
+    });
   });
 </script>
 
