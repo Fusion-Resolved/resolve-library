@@ -7,9 +7,6 @@
 (function() {
   'use strict';
 
-  // Debug: Check if edit functions are available
-  console.log('[Effect Modal] Loading. openEditSheet available:', typeof window.openEditSheet);
-  
   // Category to color mapping (matches index.html recent effects)
   const catColors = {
     'Colour':      { primary: '#6c7bff', light: '#9ca8ff', bg: 'rgba(108,123,255,0.13)' },
@@ -765,27 +762,9 @@
 
   // Edit effect function
   // Edit effect function - opens edit modal if available, otherwise navigates to edit page
-  // Edit effect function - opens edit modal if available, otherwise navigates to edit page
+  // Edit effect function
   window.editEffect = function(effectId) {
-    console.log('[editEffect] Called for effect:', effectId);
-    
-    // Try openEdit first (the legacy edit-panel overlay - this is the one wanted by the owner)
-    if (typeof window.openEdit === 'function') {
-      console.log('[editEffect] Using openEdit (legacy edit-panel)');
-      window.openEdit(effectId);
-      closeEffectModal();
-    }
-    // Fallback to openEditSheet (add-effect-modal sheet)
-    else if (typeof window.openEditSheet === 'function') {
-      console.log('[editEffect] Using openEditSheet');
-      window.openEditSheet(effectId);
-      closeEffectModal();
-    }
-    // Fallback to edit-effect.html page
-    else {
-      console.log('[editEffect] Fallback to edit-effect.html');
-      window.location.href = `edit-effect.html?id=${effectId}`;
-    }
+    window.location.href = `edit-effect.html?id=${effectId}`;
   };
   window.deleteEffect = function(effectId) {
     if (confirm('Are you sure you want to delete this effect?')) {
@@ -958,12 +937,5 @@
   
   // Expose utility to check if effect is saved
   window.isEffectSaved = isEffectPinned;
-
-  // Log available functions for debugging
-  console.log('[Effect Modal] Module loaded. Checking edit functions:');
-  console.log('[Effect Modal] window.openEditSheet:', typeof window.openEditSheet);
-  console.log('[Effect Modal] window.openEditModal:', typeof window.openEditModal);
-  console.log('[Effect Modal] window.editEffect:', typeof window.editEffect);
-  console.log('[Effect Modal] CURRENT_USER_ID:', window.CURRENT_USER_ID);
 
 })();

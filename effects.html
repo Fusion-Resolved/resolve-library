@@ -9934,18 +9934,6 @@ if (typeof window._shToast !== 'function') {
   Nodes copied
 </div>
 
-<script>
-  // Ensure edit functions are available globally before effect-modal.js loads
-  if (typeof openEditSheet === 'function') {
-    window.openEditSheet = openEditSheet;
-    console.log('[Pre-modal] Assigned openEditSheet to window');
-  }
-  if (typeof openEditModal === 'function') {
-    window.openEditModal = openEditModal;
-    console.log('[Pre-modal] Assigned openEditModal to window');
-  }
-</script>
-
 <script src="effect-modal.js"></script>
 
 </body>
