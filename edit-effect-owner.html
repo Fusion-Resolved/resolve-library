@@ -675,7 +675,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/auth.js"></script>
+<script src="auth.js" onload="console.log('[Edit Effect] auth.js loaded successfully')" onerror="console.error('[Edit Effect] auth.js failed to load')"></script>
 
 <script>
 (function () {
@@ -688,7 +688,17 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   }
   
   console.log('[Edit Effect] URL:', window.location.href);
-  console.log('[Edit Effect] Supabase available:', !!window._supabase);
+  console.log('[Edit Effect] Supabase available at startup:', !!window._supabase);
+  
+  // Watch for auth.js to initialize Supabase
+  let authCheckInterval = setInterval(function() {
+    if (window._supabase) {
+      console.log('[Edit Effect] Supabase initialized!');
+      clearInterval(authCheckInterval);
+    }
+  }, 100);
+  // Clear after 10 seconds to avoid infinite checking
+  setTimeout(function() { clearInterval(authCheckInterval); }, 10000);
 
   /* ══════════════════════════════
      NODE TYPE DATA
