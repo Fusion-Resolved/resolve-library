@@ -38,7 +38,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--tp);font-family:var(--fb);font-size:15px;font-weight:300;line-height:1.65;-webkit-font-smoothing:antialiased;min-height:100vh;transition:background var(--db),color var(--db);}
 /* Hide body background when loaded in iframe (modal mode) */
-body.in-iframe{background:transparent;min-height:auto;}
+body.in-iframe{background:transparent;height:100vh;min-height:100vh;overflow:hidden;}
 body.in-iframe .ambient{display:none;}
 button{font-family:var(--fb);cursor:pointer;border:none;background:none;}
 input,textarea,select{font-family:var(--fb);outline:none;}
@@ -72,9 +72,9 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 @keyframes panBack{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
 
 /* sheet - fills iframe completely */
-.sheet{background:var(--gb);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);width:100%;height:100vh;min-height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-body.in-iframe{margin:0;padding:0;height:100vh;overflow:hidden;}
-body.in-iframe .sheet{border:none;border-radius:0;box-shadow:none;height:100vh;min-height:100vh;}
+.sheet{background:var(--gb);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;}
+body.in-iframe{margin:0;padding:0;}
+body.in-iframe .sheet{border:none;border-radius:0;box-shadow:none;height:100%;}
 
 /* sheet header */
 .sh-hd{padding:1rem 1.5rem;border-bottom:1px solid var(--bs);display:flex;align-items:center;gap:12px;flex-shrink:0;background:var(--gb);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl);}
