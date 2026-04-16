@@ -799,28 +799,62 @@
     console.log('[Effect Modal] getPinnedEffects called, CURRENT_USER_ID:', window.CURRENT_USER_ID);
     if (!window._supabase || !window.CURRENT_USER_ID) return [];
     
-    const { data, error } = await window._supabase
+    // First get saved effect IDs
+    const { data: savedData, error: savedError } = await window._supabase
       .from('saved_effects')
-      .select('effect_id, effects(*)')
+      .select('effect_id, created_at')
       .eq('user_id', window.CURRENT_USER_ID);
     
-    if (error) {
-      console.error('[Effect Modal] Error fetching saved effects:', error);
+    if (savedError) {
+      console.error('[Effect Modal] Error fetching saved effects:', savedError);
       return [];
     }
     
-    console.log('[Effect Modal] Fetched saved effects:', data?.length || 0);
+    if (!savedData || !savedData.length) {
+      console.log('[Effect Modal] No saved effects found');
+      return [];
+    }
     
-    if (data) {
-      return data.map(d => ({
-        id: d.effect_id,
-        name: d.effects?.name || 'Unknown',
-        cat: d.effects?.cat || 'Other',
-        difficulty: d.effects?.difficulty || 'Beginner',
-        saved_at: d.created_at
+    console.log('[Effect Modal] Found saved effect IDs:', savedData.length);
+    
+    // Get full effect data for each saved effect
+    const effectIds = savedData.map(s => s.effect_id);
+    const { data: effectsData, error: effectsError } = await window._supabase
+      .from('effects')
+      .select('id, name, cat, difficulty')
+      .in('id', effectIds);
+    
+    if (effectsError) {
+      console.error('[Effect Modal] Error fetching effect details:', effectsError);
+      // Return basic data even if full details fail
+      return savedData.map(s => ({
+        id: s.effect_id,
+        name: 'Unknown',
+        cat: 'Other',
+        difficulty: 'Beginner',
+        saved_at: s.created_at
       }));
     }
-    return [];
+    
+    // Create lookup map
+    const effectsMap = {};
+    if (effectsData) {
+      effectsData.forEach(e => {
+        effectsMap[e.id] = e;
+      });
+    }
+    
+    // Merge data
+    const result = savedData.map(s => ({
+      id: s.effect_id,
+      name: effectsMap[s.effect_id]?.name || 'Unknown',
+      cat: effectsMap[s.effect_id]?.cat || 'Other',
+      difficulty: effectsMap[s.effect_id]?.difficulty || 'Beginner',
+      saved_at: s.created_at
+    }));
+    
+    console.log('[Effect Modal] Fetched saved effects:', result.length);
+    return result;
   }
 
   // Show login prompt modal
@@ -863,21 +897,41 @@
     
     if (isPinned) {
       // Unpin
-      await window._supabase
+      const { error } = await window._supabase
         .from('saved_effects')
         .delete()
         .eq('user_id', window.CURRENT_USER_ID)
         .eq('effect_id', effectId);
+      if (error) {
+        console.error('[Pin] Error removing:', error);
+        showToast('Error removing from library');
+        return;
+      }
       showToast('Removed from your library');
       updatePinButtonUI(effectId, false);
+      // Refresh saved effects tab if visible
+      if (typeof renderSavedEffects === 'function') {
+        renderSavedEffects();
+      }
     } else {
       // Pin - save to Supabase
-      await window._supabase.from('saved_effects').insert({
+      console.log('[Pin] Saving effect:', effectId, 'for user:', window.CURRENT_USER_ID);
+      const { error } = await window._supabase.from('saved_effects').insert({
         user_id: window.CURRENT_USER_ID,
         effect_id: effectId
       });
+      if (error) {
+        console.error('[Pin] Error saving:', error);
+        showToast('Error saving to library');
+        return;
+      }
+      console.log('[Pin] Saved successfully');
       showToast('Saved to your library');
       updatePinButtonUI(effectId, true);
+      // Refresh saved effects tab if visible
+      if (typeof renderSavedEffects === 'function') {
+        renderSavedEffects();
+      }
     }
   };
 

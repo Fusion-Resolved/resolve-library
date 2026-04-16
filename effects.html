@@ -6225,9 +6225,34 @@ async function renderSavedEffects() {
   
   let savedEffects = [];
   
+  console.log('[Saved Tab] getSavedEffects function available:', typeof getSavedEffects === 'function');
+  
   // Use effect-modal.js getSavedEffects if available
   if (typeof getSavedEffects === 'function') {
     savedEffects = await getSavedEffects();
+    console.log('[Saved Tab] Got saved effects:', savedEffects.length, savedEffects);
+  } else {
+    console.log('[Saved Tab] getSavedEffects not available, trying direct Supabase query');
+    // Fallback: query Supabase directly
+    if (window._supabase && userId) {
+      const { data, error } = await window._supabase
+        .from('saved_effects')
+        .select('effect_id, created_at, effects(name, cat, difficulty)')
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error('[Saved Tab] Supabase error:', error);
+      } else if (data) {
+        console.log('[Saved Tab] Raw Supabase data:', data);
+        savedEffects = data.map(d => ({
+          id: d.effect_id,
+          name: d.effects?.name || 'Unknown',
+          cat: d.effects?.cat || 'Other',
+          difficulty: d.effects?.difficulty || 'Beginner',
+          saved_at: d.created_at
+        }));
+      }
+    }
   }
   
   // Update badge count
