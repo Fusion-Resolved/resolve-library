@@ -2532,7 +2532,7 @@ window.nodingBlobsEnabled = function () {
     <div class="tabs-container">
       <button class="tab-btn active" onclick="switchTab('system')">Community Effects</button>
       <button class="tab-btn"        onclick="switchTab('mine')">My Effects</button>
-      <button class="tab-btn"        onclick="switchTab('saved')" id="saved-tab-btn">Saved <span id="saved-count" style="font-size:10px;background:rgba(108,123,255,0.2);padding:2px 6px;border-radius:999px;margin-left:4px;display:none;">0</span></button>
+      <button class="tab-btn"        onclick="switchTab('saved')" id="saved-tab-btn" style="display:none;">Saved <span id="saved-count" style="font-size:10px;background:rgba(108,123,255,0.2);padding:2px 6px;border-radius:999px;margin-left:4px;display:none;">0</span></button>
     </div>
 
     <!-- ── CARD GRIDS — populated by render() ──────────────────── -->
@@ -6183,19 +6183,22 @@ function render() {
   }
 }
 
-// ── Render Saved Effects (async - loads from Supabase + localStorage) ──
+// ── Render Saved Effects (async - loads from Supabase only) ──
 async function renderSavedEffects() {
   const savedCont = document.getElementById('saved-effects-container');
   if (!savedCont) return;
   
+  // Require login
+  if (!window.CURRENT_USER_ID) {
+    savedCont.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><strong>Sign in to see your saved effects.</strong><br><button onclick="window.location.href='login.html'" style="margin-top:1rem;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius);padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;">Sign In</button></div>`;
+    return;
+  }
+  
   let savedEffects = [];
   
-  // Try to use effect-modal.js getSavedEffects if available
+  // Use effect-modal.js getSavedEffects if available
   if (typeof getSavedEffects === 'function') {
     savedEffects = await getSavedEffects();
-  } else {
-    // Fallback to localStorage only
-    savedEffects = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
   }
   
   // Update badge count
@@ -9447,14 +9450,34 @@ document.addEventListener('DOMContentLoaded', function() {
   // auth.js fires 'authStateChanged' after its own DOMContentLoaded handler
   // resolves the session, so we just listen for that event to trigger the
   // first render. This avoids a race between auth state and the data load.
-  window.addEventListener('authStateChanged', function() {
+  window.addEventListener('authStateChanged', function(e) {
     // Re-render cards so the Delete button visibility reflects login state.
     if (typeof effects !== 'undefined' && effects.length > 0) {
       render();
     } else {
       loadEffectsFromSupabase();
     }
+    
+    // Show/hide Saved tab based on login state
+    const savedTab = document.getElementById('saved-tab-btn');
+    if (savedTab) {
+      if (e.detail.user) {
+        savedTab.style.display = '';
+      } else {
+        savedTab.style.display = 'none';
+        // If currently on saved tab, switch to system tab
+        if (document.getElementById('saved-content')?.style.display === 'block') {
+          switchTab('system');
+        }
+      }
+    }
   });
+
+  // Also check initial auth state
+  if (window.CURRENT_USER_ID) {
+    const savedTab = document.getElementById('saved-tab-btn');
+    if (savedTab) savedTab.style.display = '';
+  }
 
   // NOTE: We do NOT call loadEffectsFromSupabase() unconditionally here.
   // Relying solely on the 'authStateChanged' event guarantees that
