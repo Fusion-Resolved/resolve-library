@@ -5,7 +5,10 @@
  */
 
 (function() {
-  alert('[Effect Modal] Module loading! openEditSheet=' + typeof window.openEditSheet);
+  'use strict';
+
+  // Debug: Check if edit functions are available
+  console.log('[Effect Modal] Loading. openEditSheet available:', typeof window.openEditSheet);
   
   // Category to color mapping (matches index.html recent effects)
   const catColors = {
