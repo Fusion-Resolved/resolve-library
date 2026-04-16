@@ -7870,8 +7870,8 @@ function openEditIframe(effectId) {
   const iframe = document.getElementById('edit-effect-iframe');
   if (!overlay || !iframe) return;
   
-  // Load edit-effect.html with the effect ID
-  iframe.src = `edit-effect.html?id=${effectId}`;
+  // Load edit-effect-owner.html with the effect ID
+  iframe.src = `edit-effect-owner.html?id=${effectId}`;
   overlay.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }

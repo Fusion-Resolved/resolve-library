@@ -762,15 +762,15 @@
 
   // Edit effect function
   // Edit effect function - opens edit modal if available, otherwise navigates to edit page
-  // Edit effect function - opens edit-effect.html in iframe modal
+  // Edit effect function - opens edit-effect-owner.html in iframe modal for owners
   window.editEffect = function(effectId) {
     // Check if iframe modal is available (effects.html)
     if (typeof window.openEditIframe === 'function') {
       window.openEditIframe(effectId);
       closeEffectModal();
     } else {
-      // Fallback: navigate to edit-effect.html
-      window.location.href = `edit-effect.html?id=${effectId}`;
+      // Fallback: navigate to edit-effect-owner.html
+      window.location.href = `edit-effect-owner.html?id=${effectId}`;
     }
   };
   window.deleteEffect = function(effectId) {
