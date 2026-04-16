@@ -768,31 +768,25 @@
   // Edit effect function - opens edit modal if available, otherwise navigates to edit page
   window.editEffect = function(effectId) {
     console.log('[editEffect] Called for effect:', effectId);
-    console.log('[editEffect] openEditSheet available:', typeof window.openEditSheet);
-    console.log('[editEffect] openEditModal available:', typeof window.openEditModal);
-    console.log('[editEffect] openEdit available:', typeof window.openEdit);
     
-    // Check if we're on effects.html and openEditSheet is available
-    if (typeof window.openEditSheet === 'function') {
+    // Try openEdit first (the legacy edit-panel overlay - this is the one wanted by the owner)
+    if (typeof window.openEdit === 'function') {
+      console.log('[editEffect] Using openEdit (legacy edit-panel)');
+      window.openEdit(effectId);
+      closeEffectModal();
+    }
+    // Fallback to openEditSheet (add-effect-modal sheet)
+    else if (typeof window.openEditSheet === 'function') {
       console.log('[editEffect] Using openEditSheet');
       window.openEditSheet(effectId);
       closeEffectModal();
-    } else if (typeof window.openEditModal === 'function') {
-      console.log('[editEffect] Using openEditModal');
-      window.openEditModal(effectId);
-      closeEffectModal();
-    } else if (typeof window.openEdit === 'function') {
-      console.log('[editEffect] Using openEdit');
-      window.openEdit(effectId);
-      closeEffectModal();
-    } else {
+    }
+    // Fallback to edit-effect.html page
+    else {
       console.log('[editEffect] Fallback to edit-effect.html');
-      // Fallback: navigate to edit-effect.html
       window.location.href = `edit-effect.html?id=${effectId}`;
     }
   };
-
-  // Delete effect function
   window.deleteEffect = function(effectId) {
     if (confirm('Are you sure you want to delete this effect?')) {
       // Get effects from localStorage
