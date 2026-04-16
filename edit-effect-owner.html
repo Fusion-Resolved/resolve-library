@@ -1124,8 +1124,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       cat: catEl ? catEl.value : '',
       version: verEl ? verEl.value : '',
       difficulty: difficulty,
-      tags: tags,
-      updated_at: new Date().toISOString()
+      tags: tags
     };
     
     console.log('[doSave] Saving updates:', updates);
@@ -1517,7 +1516,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     window.addEventListener('resize', function () { resizeEd(); resizeLua(); });
     preloadGraph();
     // Load actual effect data from Supabase (replaces hardcoded metadata)
-    loadEffectData();
+    console.log('[init] Calling loadEffectData...');
+    loadEffectData().then(function() {
+      console.log('[init] loadEffectData completed');
+    }).catch(function(err) {
+      console.error('[init] loadEffectData failed:', err);
+    });
   }
 
   function openSheet () {
