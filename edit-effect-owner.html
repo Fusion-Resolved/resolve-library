@@ -302,29 +302,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 .toast.show{opacity:1;transform:translateY(0);}
 </style>
 
-<!-- Modal wrapper - for iframe embedding with rounded corners -->
-<style>
-  .modal-wrapper {
-    background: var(--bg);
-    border-radius: 18px 18px 0 0;
-    overflow: hidden;
-    max-width: 720px;
-    margin: 0 auto;
-    min-height: 90vh;
-  }
-  @media (max-width: 760px) {
-    .modal-wrapper {
-      border-radius: 0;
-      max-width: 100%;
-      min-height: 100vh;
-    }
-  }
-</style>
-
 <body>
-
-<!-- Modal wrapper -->
-<div class="modal-wrapper">
 
 <!-- SHEET -->
 <div class="sheet" id="theSheet">
@@ -692,8 +670,6 @@ input,textarea,select{font-family:var(--fb);outline:none;}
   <span style="color:var(--node-teal);font-family:var(--fm);font-weight:700;">&#x2713;</span>
   <span id="toastMsg">Saved</span>
 </div>
-
-</div><!-- /modal-wrapper -->
 
 <script>
 (function () {
