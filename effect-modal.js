@@ -762,18 +762,28 @@
 
   // Edit effect function
   // Edit effect function - opens edit modal if available, otherwise navigates to edit page
+  // Edit effect function - opens edit modal if available, otherwise navigates to edit page
   window.editEffect = function(effectId) {
+    console.log('[editEffect] Called for effect:', effectId);
+    console.log('[editEffect] openEditSheet available:', typeof window.openEditSheet);
+    console.log('[editEffect] openEditModal available:', typeof window.openEditModal);
+    console.log('[editEffect] openEdit available:', typeof window.openEdit);
+    
     // Check if we're on effects.html and openEditSheet is available
-    if (typeof openEditSheet === 'function') {
-      openEditSheet(effectId);
+    if (typeof window.openEditSheet === 'function') {
+      console.log('[editEffect] Using openEditSheet');
+      window.openEditSheet(effectId);
       closeEffectModal();
-    } else if (typeof openEditModal === 'function') {
-      openEditModal(effectId);
+    } else if (typeof window.openEditModal === 'function') {
+      console.log('[editEffect] Using openEditModal');
+      window.openEditModal(effectId);
       closeEffectModal();
-    } else if (typeof openEdit === 'function') {
-      openEdit(effectId);
+    } else if (typeof window.openEdit === 'function') {
+      console.log('[editEffect] Using openEdit');
+      window.openEdit(effectId);
       closeEffectModal();
     } else {
+      console.log('[editEffect] Fallback to edit-effect.html');
       // Fallback: navigate to edit-effect.html
       window.location.href = `edit-effect.html?id=${effectId}`;
     }

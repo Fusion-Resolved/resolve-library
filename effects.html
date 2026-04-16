@@ -4023,6 +4023,10 @@ function openEditModal(effectId) {
   openEditSheet(effectId);
 }
 
+// Explicitly assign to window for cross-script access
+window.openEditSheet = openEditSheet;
+window.openEditModal = openEditModal;
+
 function aeToggleCompat(k) {
   var b = document.getElementById('ae-compat-'+k);
   if (b) b.classList.toggle('on');
@@ -9269,6 +9273,10 @@ function openEditSheet(effectId) {
 function openEditModal(effectId) {
   openEditSheet(effectId);
 }
+
+// Explicitly assign to window for cross-script access
+window.openEditSheet = openEditSheet;
+window.openEditModal = openEditModal;
 
 function aeToggleCompat(k) {
   var b = document.getElementById('ae-compat-'+k);
