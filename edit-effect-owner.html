@@ -37,6 +37,9 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--tp);font-family:var(--fb);font-size:15px;font-weight:300;line-height:1.65;-webkit-font-smoothing:antialiased;min-height:100vh;transition:background var(--db),color var(--db);}
+/* Hide body background when loaded in iframe (modal mode) */
+body.in-iframe{background:transparent;min-height:auto;}
+body.in-iframe .ambient{display:none;}
 button{font-family:var(--fb);cursor:pointer;border:none;background:none;}
 input,textarea,select{font-family:var(--fb);outline:none;}
 
@@ -694,6 +697,12 @@ input,textarea,select{font-family:var(--fb);outline:none;}
 
 <script>
 (function () {
+
+  // Detect if running in iframe and add class for styling
+  if (window.self !== window.top) {
+    document.body.classList.add('in-iframe');
+    console.log('[Edit Effect] Running in iframe mode');
+  }
 
   /* ══════════════════════════════
      NODE TYPE DATA
