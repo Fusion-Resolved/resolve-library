@@ -723,6 +723,52 @@
     }
   });
 
+  // Simple toast notification
+  function showToast(msg) {
+    let t = document.getElementById('effect-modal-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'effect-modal-toast';
+      t.style.cssText = 'position:fixed;top:72px;right:1.5rem;background:rgba(15,168,136,0.15);backdrop-filter:blur(12px);border:1px solid rgba(15,168,136,0.3);color:#f4f4fb;padding:10px 18px;border-radius:14px;font-size:13px;opacity:0;transform:translateY(-6px);transition:all 240ms ease-out;pointer-events:none;z-index:9999;font-family:var(--font-body, sans-serif);';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    t.style.transform = 'translateY(0)';
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(-6px)';
+    }, 2400);
+  }
+
+  // Share effect function
+  window.shareEffect = function(effectId) {
+    const url = `${window.location.origin}${window.location.pathname}?effect=${effectId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('Link copied to clipboard');
+    }).catch(() => {
+      showToast('Failed to copy link');
+    });
+  };
+
+  // Pin effect function (placeholder - implement based on your pin logic)
+  window.pinEffect = function(effectId) {
+    // Get current pinned effects from localStorage
+    let pinned = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+    
+    if (pinned.includes(effectId)) {
+      // Unpin
+      pinned = pinned.filter(id => id !== effectId);
+      localStorage.setItem('pinnedEffects', JSON.stringify(pinned));
+      showToast('Effect unpinned');
+    } else {
+      // Pin
+      pinned.push(effectId);
+      localStorage.setItem('pinnedEffects', JSON.stringify(pinned));
+      showToast('Effect pinned');
+    }
+  };
+
   console.log('[Effect Modal] Module loaded successfully. openEffectModal is ready.');
 
 })();
