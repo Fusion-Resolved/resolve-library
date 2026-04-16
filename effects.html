@@ -6179,33 +6179,51 @@ function render() {
   // ── Render Saved Effects container ──────────────────────────────────────
   const savedCont = document.getElementById('saved-effects-container');
   if (savedCont) {
-    const savedEffects = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
-    // Update badge count
-    const badge = document.getElementById('saved-count');
-    if (badge) {
-      badge.textContent = savedEffects.length;
-      badge.style.display = savedEffects.length > 0 ? 'inline' : 'none';
-    }
-    if (!savedEffects.length) {
-      savedCont.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><strong>No saved effects yet.</strong> Click the bookmark icon on any effect to save it here.</div>`;
-    } else {
-      // Build cards from saved effect data
-      savedCont.innerHTML = savedEffects.map(e => `
-        <div class="card" onclick="openDetail('${e.id}')" style="cursor:pointer;">
-          <div class="card-thumbnail" style="background:linear-gradient(135deg, var(--ink-lift), var(--ink-soft));"></div>
-          <div class="card-content">
-            <div class="card-title-row">
-              <h3 class="card-title">${escapeHtml(e.name)}</h3>
-              <span class="cat-badge" style="background:${getCatColor(e.cat).bg};color:${getCatColor(e.cat).primary};">${escapeHtml(e.cat)}</span>
-            </div>
-            <div class="card-meta">
-              <span>${escapeHtml(e.difficulty || 'Beginner')}</span>
-              <span>Saved ${new Date(e.saved_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>
-            </div>
+    renderSavedEffects();
+  }
+}
+
+// ── Render Saved Effects (async - loads from Supabase + localStorage) ──
+async function renderSavedEffects() {
+  const savedCont = document.getElementById('saved-effects-container');
+  if (!savedCont) return;
+  
+  let savedEffects = [];
+  
+  // Try to use effect-modal.js getSavedEffects if available
+  if (typeof getSavedEffects === 'function') {
+    savedEffects = await getSavedEffects();
+  } else {
+    // Fallback to localStorage only
+    savedEffects = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+  }
+  
+  // Update badge count
+  const badge = document.getElementById('saved-count');
+  if (badge) {
+    badge.textContent = savedEffects.length;
+    badge.style.display = savedEffects.length > 0 ? 'inline' : 'none';
+  }
+  
+  if (!savedEffects.length) {
+    savedCont.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><strong>No saved effects yet.</strong> Click the bookmark icon on any effect to save it here.</div>`;
+  } else {
+    // Build cards from saved effect data
+    savedCont.innerHTML = savedEffects.map(e => `
+      <div class="card" onclick="openDetail('${e.id}')" style="cursor:pointer;">
+        <div class="card-thumbnail" style="background:linear-gradient(135deg, var(--ink-lift), var(--ink-soft));"></div>
+        <div class="card-content">
+          <div class="card-title-row">
+            <h3 class="card-title">${escapeHtml(e.name)}</h3>
+            <span class="cat-badge" style="background:${getCatColor(e.cat).bg};color:${getCatColor(e.cat).primary};">${escapeHtml(e.cat)}</span>
+          </div>
+          <div class="card-meta">
+            <span>${escapeHtml(e.difficulty || 'Beginner')}</span>
+            <span>Saved ${new Date(e.saved_at).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>
           </div>
         </div>
-      `).join('');
-    }
+      </div>
+    `).join('');
   }
 }
 
@@ -6220,7 +6238,7 @@ function switchTab(tabId) {
   var activeContent = document.getElementById(tabId + '-content');
   if (activeContent) activeContent.style.display = 'block';
   // Refresh saved effects when switching to saved tab
-  if (tabId === 'saved') render();
+  if (tabId === 'saved') renderSavedEffects();
 }
 
 // Global handler for "Open in Node Graph" buttons injected into card HTML.

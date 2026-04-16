@@ -87,7 +87,7 @@
   /* ═══════════════════════════════════════════════════════════════
      POPULATE MODAL WITH EFFECT DATA
      ═══════════════════════════════════════════════════════════════ */
-  function populateModal(effect) {
+  async function populateModal(effect) {
     const colors = getCatColor(effect.cat);
     const isOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === effect.user_id;
 
@@ -177,7 +177,7 @@
         <a href="effect-full-page.html?id=${effect.id}" class="btn-primary" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius);padding:9px 16px;font-size:13px;font-weight:600;font-family:var(--font-body);cursor:pointer;transition:var(--tr);white-space:nowrap;flex:1;text-decoration:none;">View full</a>
       `;
     } else {
-      const isPinned = isEffectPinned(effect.id);
+      const isPinned = await isEffectPinned(effect.id);
       const pinStyle = isPinned ? 
         'box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:rgba(108,123,255,0.25);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid rgba(108,123,255,0.6);border-radius:var(--radius);padding:0;width:40px;height:38px;font-family:var(--font-body);color:var(--violet-light,#9ca8ff);cursor:pointer;transition:var(--tr);flex-shrink:0;' :
         'box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine),var(--glass-shadow);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:0;width:40px;height:38px;font-family:var(--font-body);color:var(--text-secondary);cursor:pointer;transition:var(--tr);flex-shrink:0;';
@@ -781,30 +781,77 @@
     }
   };
 
-  // Check if effect is pinned
-  function isEffectPinned(effectId) {
+  // Check if effect is pinned (check Supabase first, then localStorage)
+  async function isEffectPinned(effectId) {
+    // Try Supabase first if logged in
+    if (window._supabase && window.CURRENT_USER_ID) {
+      const { data } = await window._supabase
+        .from('saved_effects')
+        .select('id')
+        .eq('user_id', window.CURRENT_USER_ID)
+        .eq('effect_id', effectId)
+        .single();
+      if (data) return true;
+    }
+    // Fall back to localStorage
     const pinned = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
     return pinned.some(e => e.id === effectId);
   }
 
-  // Get all pinned effects
-  function getPinnedEffects() {
-    return JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+  // Get all pinned effects (merge Supabase + localStorage)
+  async function getPinnedEffects() {
+    let effects = [];
+    
+    // Get from Supabase if logged in
+    if (window._supabase && window.CURRENT_USER_ID) {
+      const { data } = await window._supabase
+        .from('saved_effects')
+        .select('effect_id, effects(*)')
+        .eq('user_id', window.CURRENT_USER_ID);
+      if (data) {
+        effects = data.map(d => ({
+          id: d.effect_id,
+          name: d.effects?.name || 'Unknown',
+          cat: d.effects?.cat || 'Other',
+          difficulty: d.effects?.difficulty || 'Beginner',
+          saved_at: d.created_at
+        }));
+      }
+    }
+    
+    // Get from localStorage (for offline/not logged in)
+    const localPinned = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+    
+    // Merge, avoiding duplicates (Supabase takes precedence)
+    const supabaseIds = new Set(effects.map(e => e.id));
+    localPinned.forEach(e => {
+      if (!supabaseIds.has(e.id)) effects.push(e);
+    });
+    
+    return effects;
   }
 
-  // Pin effect function
+  // Pin effect function - save to Supabase + localStorage
   window.pinEffect = async function(effectId) {
-    let pinned = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
-    const isPinned = pinned.some(e => e.id === effectId);
+    const isPinned = await isEffectPinned(effectId);
     
     if (isPinned) {
-      // Unpin - remove from saved list
+      // Unpin - remove from both
+      if (window._supabase && window.CURRENT_USER_ID) {
+        await window._supabase
+          .from('saved_effects')
+          .delete()
+          .eq('user_id', window.CURRENT_USER_ID)
+          .eq('effect_id', effectId);
+      }
+      // Always update localStorage
+      let pinned = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
       pinned = pinned.filter(e => e.id !== effectId);
       localStorage.setItem('pinnedEffects', JSON.stringify(pinned));
       showToast('Removed from your library');
       updatePinButtonUI(effectId, false);
     } else {
-      // Pin - fetch full effect data and save
+      // Pin - fetch effect data
       if (window._supabase) {
         const { data: effect } = await window._supabase
           .from('effects')
@@ -813,15 +860,26 @@
           .single();
         
         if (effect) {
-          // Store minimal data needed for display
-          pinned.push({
+          const saveData = {
             id: effect.id,
             name: effect.name,
             cat: effect.cat,
             difficulty: effect.difficulty,
             date: effect.date || effect.created_at,
             saved_at: new Date().toISOString()
-          });
+          };
+          
+          // Save to Supabase if logged in
+          if (window.CURRENT_USER_ID) {
+            await window._supabase.from('saved_effects').insert({
+              user_id: window.CURRENT_USER_ID,
+              effect_id: effectId
+            });
+          }
+          
+          // Always save to localStorage for offline access
+          let pinned = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+          pinned.push(saveData);
           localStorage.setItem('pinnedEffects', JSON.stringify(pinned));
           showToast('Saved to your library');
           updatePinButtonUI(effectId, true);
@@ -855,6 +913,58 @@
   
   // Expose utility to check if effect is saved
   window.isEffectSaved = isEffectPinned;
+
+  // Sync localStorage saves to Supabase when user logs in
+  window.syncSavedEffectsToSupabase = async function() {
+    if (!window._supabase || !window.CURRENT_USER_ID) return;
+    
+    const localPinned = JSON.parse(localStorage.getItem('pinnedEffects') || '[]');
+    if (!localPinned.length) return;
+    
+    // Get existing Supabase saves to avoid duplicates
+    const { data: existing } = await window._supabase
+      .from('saved_effects')
+      .select('effect_id')
+      .eq('user_id', window.CURRENT_USER_ID);
+    
+    const existingIds = new Set((existing || []).map(e => e.effect_id));
+    
+    // Filter out already-saved effects
+    const toSync = localPinned.filter(e => !existingIds.has(e.id));
+    
+    if (toSync.length) {
+      // Batch insert to Supabase
+      const inserts = toSync.map(e => ({
+        user_id: window.CURRENT_USER_ID,
+        effect_id: e.id
+      }));
+      
+      const { error } = await window._supabase.from('saved_effects').insert(inserts);
+      
+      if (!error) {
+        console.log(`[Effect Modal] Synced ${toSync.length} saved effects to Supabase`);
+      } else {
+        console.error('[Effect Modal] Sync failed:', error);
+      }
+    }
+  };
+
+  // Listen for auth state changes to sync when user logs in
+  window.addEventListener('authStateChanged', function(e) {
+    if (e.detail.event === 'SIGNED_IN' && e.detail.user) {
+      // User just logged in - sync localStorage saves to Supabase
+      setTimeout(function() {
+        if (typeof syncSavedEffectsToSupabase === 'function') {
+          syncSavedEffectsToSupabase();
+        }
+      }, 500); // Small delay to ensure Supabase is ready
+    }
+  });
+
+  // Also try immediate sync if already logged in
+  if (window.CURRENT_USER_ID) {
+    setTimeout(syncSavedEffectsToSupabase, 1000);
+  }
 
   console.log('[Effect Modal] Module loaded successfully. openEffectModal is ready.');
 
