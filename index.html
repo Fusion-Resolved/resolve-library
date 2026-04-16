@@ -1555,7 +1555,22 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
         }
       )
       .subscribe((status) => {
-        console.log('[Realtime Index] Subscription status:', status);
+        console.log('[Realtime Index] Saved subscription status:', status);
+      });
+    
+    // Realtime subscription for new effects (updates Section 04)
+    const effectsChannel = window._supabase
+      .channel('idx-effects-changes')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'effects', filter: 'is_public=eq.true' },
+        (payload) => {
+          console.log('[Realtime Index] New effect added:', payload);
+          // Reload the recent effects to show the new one
+          loadRecentEffects();
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime Index] Effects subscription status:', status);
       });
   }
   
