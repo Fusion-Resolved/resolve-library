@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noding — Section 05 · Add Effect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#09090e;--ink-soft:#0f0f16;--ink-lift:#1e1e2a;
+  --violet:#6c7bff;--violet-light:#9ca8ff;--violet-dark:#4451d4;
+  --node-teal:#0fa888;--signal-amber:#b07118;
+  --danger:#f06060;--danger-dim:rgba(240,96,96,0.08);
+  --white:#f4f4fb;--white-pure:#ffffff;
+  --font-display:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+  --radius-xs:4px;--radius-sm:7px;--radius:14px;--radius-lg:18px;--radius-pill:999px;
+  --dur-fast:150ms;--dur-base:240ms;--dur-slow:400ms;
+  --ease:cubic-bezier(0.16,1,0.3,1);--tr:all 150ms ease-out;
+}
+:root {
+  --bg:#09090e;--bg-s2:#16161f;
+  --tp:#f4f4fb;--ts:#8f8fa8;--tm:#585870;
+  --bsur:rgba(255,255,255,0.06);--bsub:#16161f;--bc:#1e1e2a;
+  --tag-bg:rgba(108,123,255,0.08);--tag-c:#9ca8ff;
+  --gb:rgba(15,15,22,0.82);--gb2:rgba(22,22,31,0.82);
+  --gblur:blur(18px) saturate(1.6);
+  --gshine:inset 0 1px 0 rgba(255,255,255,0.07),inset 0 -1px 0 rgba(0,0,0,0.12);
+  --gshadow:0 2px 12px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.16);
+}
+[data-theme="light"] {
+  --bg:#ffffff;--bg-s2:#e2e6fd;
+  --tp:#09090e;--ts:#3b3d6e;--tm:#7577a8;
+  --bsur:rgba(108,123,255,0.12);--bsub:rgba(108,123,255,0.18);--bc:rgba(108,123,255,0.35);
+  --tag-bg:rgba(108,123,255,0.10);--tag-c:#4451d4;
+  --gb:rgba(236,239,254,0.82);--gb2:rgba(226,230,253,0.82);
+  --gblur:blur(18px) saturate(1.8);
+  --gshine:inset 0 1px 0 rgba(255,255,255,0.75),inset 0 -1px 0 rgba(108,123,255,0.08);
+  --gshadow:0 2px 10px rgba(108,123,255,0.10),0 1px 3px rgba(108,123,255,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--tp);font-family:var(--font-body);font-size:15px;font-weight:300;line-height:1.65;-webkit-font-smoothing:antialiased;transition:background var(--dur-base),color var(--dur-base);min-height:100vh;}
+button{font-family:var(--font-body);cursor:pointer;border:none;background:none;}
+input,textarea,select{font-family:var(--font-body);outline:none;}
+.ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.ab{position:absolute;border-radius:50%;mix-blend-mode:screen;animation-timing-function:ease-in-out;animation-iteration-count:infinite;}
+[data-theme="light"] .ab{mix-blend-mode:multiply;}
+.a1{width:600px;height:600px;top:-15%;left:-10%;background:radial-gradient(circle,rgba(108,123,255,0.07) 0%,transparent 70%);animation:d1 28s infinite;}
+.a2{width:500px;height:500px;top:10%;right:-8%;background:radial-gradient(circle,rgba(108,123,255,0.06) 0%,transparent 70%);animation:d2 34s infinite;}
+.a3{width:700px;height:700px;bottom:-20%;left:20%;background:radial-gradient(circle,rgba(108,123,255,0.05) 0%,transparent 70%);animation:d3 40s infinite;}
+@keyframes d1{0%{transform:translate(0,0)}25%{transform:translate(18vw,12vh)}50%{transform:translate(8vw,30vh)}75%{transform:translate(-5vw,15vh)}100%{transform:translate(0,0)}}
+@keyframes d2{0%{transform:translate(0,0)}25%{transform:translate(-20vw,15vh)}50%{transform:translate(-8vw,35vh)}75%{transform:translate(-15vw,8vh)}100%{transform:translate(0,0)}}
+@keyframes d3{0%{transform:translate(0,0)}25%{transform:translate(15vw,-20vh)}50%{transform:translate(30vw,-10vh)}75%{transform:translate(10vw,-25vh)}100%{transform:translate(0,0)}}
+
+/* preview chrome */
+.preview-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;position:relative;z-index:10;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);border-bottom:1px solid var(--bsub);box-shadow:var(--gshine);font-family:var(--font-mono);font-size:10px;color:var(--tm);letter-spacing:0.08em;text-transform:uppercase;}
+.preview-trigger-row{display:flex;gap:10px;align-items:center;padding:20px 24px;position:relative;z-index:2;border-bottom:1px solid var(--bsur);}
+.preview-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--tm);}
+.trigger-card{display:inline-flex;align-items:center;gap:10px;padding:10px 16px;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine),var(--gshadow);border:1px solid var(--bsub);border-radius:var(--radius-lg);cursor:pointer;transition:var(--tr);font-family:var(--font-display);font-weight:600;font-size:13px;color:var(--tp);}
+.trigger-card:hover{background:var(--gb2);border-color:var(--bc);}
+.tt-btn{display:flex;align-items:center;gap:8px;background:var(--gb2);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);border:1px solid var(--bsub);box-shadow:var(--gshine);border-radius:var(--radius-pill);padding:5px 12px 5px 7px;cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--ts);transition:var(--tr);letter-spacing:0.06em;}
+.tt-track{width:28px;height:16px;border-radius:var(--radius-pill);background:var(--bc);position:relative;transition:background var(--dur-base);flex-shrink:0;}
+.tt-track.on{background:var(--violet);}
+.tt-thumb{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--white-pure);transition:transform var(--dur-base) var(--ease);}
+.tt-track.on .tt-thumb{transform:translateX(12px);}
+
+/* overlay */
+.sheet-ov{display:none;position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem;}
+.sheet-ov.open{display:flex;}
+@keyframes modalIn{from{transform:translateY(24px) scale(0.98);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+
+/* wizard shell */
+.wizard{background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine),0 24px 80px rgba(0,0,0,0.65);border:1px solid var(--bsub);border-radius:var(--radius-lg);width:100%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;animation:modalIn var(--dur-slow) var(--ease);}
+.wiz-hd{padding:1rem 1.5rem;border-bottom:1px solid var(--bsur);display:flex;align-items:center;gap:12px;flex-shrink:0;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);}
+.wiz-dot{width:10px;height:10px;border-radius:50%;background:var(--violet);flex-shrink:0;}
+.wiz-title-wrap{flex:1;}
+.wiz-title{font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:-0.02em;color:var(--tp);line-height:1;}
+.wiz-subtitle{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--tm);margin-top:3px;}
+.wiz-close{background:var(--gb2);box-shadow:var(--gshine);border:1px solid var(--bsub);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;color:var(--ts);flex-shrink:0;transition:var(--tr);}
+.wiz-close:hover{color:var(--tp);border-color:var(--bc);}
+
+/* step indicator */
+.step-indicator{display:flex;align-items:center;padding:0 1.5rem;height:52px;flex-shrink:0;background:var(--bg-s2);border-bottom:1px solid var(--bsur);}
+.step-seg{display:flex;align-items:center;flex:1;}
+.step-seg:last-child{flex:0 0 auto;}
+.step-btn{display:flex;align-items:center;gap:8px;background:none;border:none;padding:0;}
+.step-num{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--bc);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:var(--tm);transition:all var(--dur-base) var(--ease);flex-shrink:0;background:var(--bg-s2);}
+.step-lbl{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);transition:color var(--dur-base);white-space:nowrap;}
+.step-line{flex:1;height:1px;background:var(--bc);margin:0 10px;transition:background var(--dur-base);}
+.step-seg.active .step-num{border-color:var(--violet);background:rgba(108,123,255,0.15);color:var(--violet-light);}
+.step-seg.active .step-lbl{color:var(--tp);}
+.step-seg.done .step-num{border-color:var(--violet);background:var(--violet);color:#fff;}
+.step-seg.done .step-lbl{color:var(--ts);}
+.step-seg.done .step-line{background:var(--violet);}
+
+/* wizard body */
+.wiz-bd{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bc) transparent;}
+.wiz-bd::-webkit-scrollbar{width:4px;}
+.wiz-bd::-webkit-scrollbar-thumb{background:var(--bc);border-radius:var(--radius-pill);}
+.wiz-panel{display:none;padding:1.25rem 1.5rem;}
+.wiz-panel.active{display:flex;flex-direction:column;gap:1rem;animation:panelIn 0.22s var(--ease);}
+.wiz-panel.back-anim{animation:panelBack 0.22s var(--ease);}
+@keyframes panelIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+@keyframes panelBack{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+
+/* form base */
+.form-row{display:grid;gap:14px;}
+.form-row.two{grid-template-columns:1fr 1fr;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-lbl{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--ts);}
+.form-lbl span{color:var(--violet);margin-left:2px;}
+.form-input,.form-textarea,.form-select{background:var(--gb2);border:1px solid var(--bsub);border-radius:var(--radius-sm);color:var(--tp);font-size:13px;transition:border-color var(--dur-fast);width:100%);}
+.form-input{height:40px;padding:0 13px;}
+.form-textarea{padding:11px 13px;resize:vertical;min-height:80px;line-height:1.6;}
+.form-select{height:40px;padding:0 13px;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238f8fa8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--tm);}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:rgba(108,123,255,0.5);}
+.form-hint{font-size:11px;color:var(--tm);margin-top:2px;}
+.form-group-hd{display:flex;align-items:center;justify-content:space-between;}
+.char-count{font-family:var(--font-mono);font-size:9px;color:var(--tm);}
+.char-count.warn{color:var(--signal-amber);}
+.panel-sec-lbl{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--tm);padding-bottom:6px;border-bottom:1px solid var(--bsur);}
+.tag-wrap{display:flex;flex-wrap:wrap;gap:5px;}
+.tag-tog{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:0.07em;padding:4px 10px;border-radius:var(--radius-pill);border:1px solid var(--bc);background:var(--gb2);color:var(--tm);cursor:pointer;transition:var(--tr);}
+.tag-tog.on{background:rgba(108,123,255,0.12);color:var(--violet-light);border-color:rgba(108,123,255,0.35);}
+.diff-row{display:flex;gap:8px;}
+.diff-btn{flex:1;padding:9px 0;border-radius:var(--radius-sm);border:1px solid var(--bc);background:var(--gb2);font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);cursor:pointer;transition:var(--tr);text-align:center;}
+.diff-btn.on.beg{border-color:rgba(15,168,136,0.45);background:rgba(15,168,136,0.10);color:var(--node-teal);}
+.diff-btn.on.int{border-color:rgba(176,113,24,0.45);background:rgba(176,113,24,0.10);color:var(--signal-amber);}
+.diff-btn.on.adv{border-color:rgba(240,96,96,0.45);background:rgba(240,96,96,0.10);color:var(--danger);}
+
+/* ════════════════════════════
+   STEP 2: NODE EDITOR
+   ════════════════════════════ */
+/* mode toggle */
+.node-mode-row{display:flex;gap:4px;padding:4px;background:var(--bg-s2);border:1px solid var(--bsur);border-radius:var(--radius-pill);width:fit-content;}
+.nm-btn{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:0.07em;padding:6px 16px;border-radius:var(--radius-pill);color:var(--tm);cursor:pointer;transition:var(--tr);display:flex;align-items:center;gap:7px;border:none;background:none;}
+.nm-btn:hover{color:var(--ts);}
+.nm-btn.on{background:var(--gb2);color:var(--tp);box-shadow:var(--gshadow);}
+.nm-btn svg{flex-shrink:0;}
+
+/* graph editor layout */
+.graph-editor-layout{display:flex;gap:0;border:1px solid var(--bsur);border-radius:var(--radius);overflow:hidden;height:280px;}
+
+/* palette */
+.pal-col{width:136px;flex-shrink:0;background:#06060d;border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;}
+.pal-search-wrap{padding:8px 8px 6px;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0;}
+.pal-search-input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-sm);padding:5px 8px;font-size:10px;font-family:var(--font-mono);color:rgba(244,244,251,0.7);letter-spacing:0.04em;}
+.pal-search-input::placeholder{color:rgba(88,88,112,0.8);}
+.pal-search-input:focus{border-color:rgba(108,123,255,0.4);outline:none;}
+.pal-list{flex:1;overflow-y:auto;padding:6px 0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.06) transparent;}
+.pal-list::-webkit-scrollbar{width:3px;}
+.pal-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.06);border-radius:4px;}
+.pal-item{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;transition:background 0.1s;}
+.pal-item:hover{background:rgba(255,255,255,0.04);}
+.pal-item:active{background:rgba(108,123,255,0.12);}
+.pal-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.pal-info{min-width:0;}
+.pal-name{font-family:var(--font-display);font-weight:600;font-size:10.5px;color:rgba(244,244,251,0.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;}
+.pal-cat{font-family:var(--font-mono);font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:rgba(88,88,112,0.9);margin-top:1px;}
+
+/* editor canvas area */
+.editor-canvas-wrap{flex:1;position:relative;overflow:hidden;background:#06060d;}
+.editor-canvas{width:100%;height:100%;display:block;cursor:grab;}
+.editor-canvas.panning{cursor:grabbing;}
+.editor-canvas.connecting{cursor:crosshair;}
+.editor-empty-hint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:none;}
+.editor-empty-hint-title{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:rgba(88,88,112,0.7);}
+.editor-empty-hint-sub{font-size:11px;color:rgba(88,88,112,0.5);text-align:center;max-width:200px;line-height:1.5;}
+/* connect mode badge */
+.connect-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:5px 14px;background:rgba(108,123,255,0.18);border:1px solid rgba(108,123,255,0.4);border-radius:var(--radius-pill);font-family:var(--font-mono);font-size:9.5px;letter-spacing:0.06em;color:var(--violet-light);display:none;pointer-events:none;}
+.connect-badge.show{display:block;}
+/* escape hint */
+.esc-hint{position:absolute;bottom:8px;right:10px;font-family:var(--font-mono);font-size:8.5px;color:rgba(88,88,112,0.5);letter-spacing:0.05em;pointer-events:none;}
+
+/* editor toolbar */
+.editor-toolbar{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--gb2);border:1px solid var(--bsur);border-radius:var(--radius-sm);flex-wrap:wrap;}
+.tb-btn{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:0.07em;padding:5px 12px;border-radius:var(--radius-sm);border:1px solid var(--bc);background:var(--gb2);color:var(--tm);cursor:pointer;transition:var(--tr);}
+.tb-btn:hover{color:var(--ts);border-color:var(--bc);}
+.tb-btn.danger{color:var(--danger);border-color:rgba(240,96,96,0.25);background:var(--danger-dim);}
+.tb-btn.danger:hover{border-color:var(--danger);}
+.tb-sep{width:1px;height:16px;background:var(--bsur);flex-shrink:0;}
+.tb-sel-info{display:flex;align-items:center;gap:8px;}
+.tb-sel-name{font-family:var(--font-display);font-weight:600;font-size:11px;color:var(--tp);}
+.tb-sel-type{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--tm);}
+.tb-node-count{font-family:var(--font-mono);font-size:9px;color:var(--tm);margin-left:auto;letter-spacing:0.05em;}
+
+/* ── LUA MODE ── */
+.lua-textarea{width:100%;min-height:140px;background:#06060d;border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius);padding:13px;font-family:var(--font-mono);font-size:11.5px;color:var(--node-teal);line-height:1.65;resize:vertical;transition:border-color var(--dur-fast);}
+.lua-textarea:focus{border-color:rgba(108,123,255,0.4);outline:none;}
+.lua-textarea::placeholder{color:rgba(88,88,112,0.7);}
+.parse-result{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:10px;letter-spacing:0.04em;}
+.parse-idle{background:var(--gb2);border:1px solid var(--bsub);color:var(--tm);}
+.parse-ok{background:rgba(15,168,136,0.08);border:1px solid rgba(15,168,136,0.25);color:var(--node-teal);}
+.parse-err{background:rgba(240,96,96,0.07);border:1px solid rgba(240,96,96,0.25);color:var(--danger);}
+/* lua graph preview */
+.lua-preview-wrap{height:180px;border-radius:var(--radius);overflow:hidden;border:1px solid rgba(255,255,255,0.05);background:#06060d;position:relative;}
+.lua-preview-canvas{width:100%;height:100%;display:block;}
+.lua-preview-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(88,88,112,0.6);pointer-events:none;}
+
+/* step 3 media */
+.media-type-row{display:flex;gap:6px;}
+.mt-btn{flex:1;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--bc);background:var(--gb2);font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);cursor:pointer;transition:var(--tr);display:flex;align-items:center;justify-content:center;gap:6px;}
+.mt-btn.on{border-color:rgba(108,123,255,0.45);background:rgba(108,123,255,0.10);color:var(--violet-light);}
+.upload-zone{border:1.5px dashed var(--bc);border-radius:var(--radius);padding:2rem 1rem;text-align:center;cursor:pointer;transition:var(--tr);position:relative;}
+.upload-zone:hover,.upload-zone.drag{border-color:rgba(108,123,255,0.5);background:rgba(108,123,255,0.04);}
+.upload-ico{width:40px;height:40px;border-radius:50%;background:rgba(108,123,255,0.10);border:1px solid rgba(108,123,255,0.25);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:var(--violet-light);}
+.upload-title{font-family:var(--font-display);font-weight:600;font-size:13px;color:var(--tp);margin-bottom:4px;}
+.upload-sub{font-size:11.5px;color:var(--tm);}
+.upload-sub span{color:var(--violet-light);cursor:pointer;}
+.upload-progress{height:3px;border-radius:3px;background:var(--bsub);overflow:hidden;margin-top:14px;}
+.upload-bar{height:100%;background:linear-gradient(90deg,var(--violet),var(--node-teal));width:0%;transition:width 0.3s ease;border-radius:3px;}
+.thumb-preview{width:100%;aspect-ratio:16/9;border-radius:var(--radius-sm);background:#0f0f16;overflow:hidden;position:relative;display:none;}
+.thumb-preview img{width:100%;height:100%;object-fit:cover;display:block;}
+.thumb-remove{position:absolute;top:8px;right:8px;background:rgba(9,9,14,0.75);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.12);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.7);font-size:12px;transition:var(--tr);}
+.thumb-remove:hover{color:#fff;background:rgba(240,96,96,0.5);}
+.url-row{display:flex;gap:8px;align-items:center;}
+.url-row .form-input{flex:1;}
+.url-confirm-btn{height:40px;padding:0 14px;border-radius:var(--radius-sm);border:1px solid rgba(108,123,255,0.35);background:rgba(108,123,255,0.10);color:var(--violet-light);font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;cursor:pointer;transition:var(--tr);white-space:nowrap;}
+.url-confirm-btn:hover{background:rgba(108,123,255,0.18);border-color:var(--violet);}
+.vis-row{display:flex;gap:8px;}
+.vis-card{flex:1;padding:12px 10px;border-radius:var(--radius-sm);border:1px solid var(--bc);background:var(--gb2);cursor:pointer;transition:var(--tr);text-align:center;}
+.vis-card.on{border-color:rgba(108,123,255,0.45);background:rgba(108,123,255,0.10);}
+.vis-icon{font-size:18px;margin-bottom:5px;}
+.vis-name{font-family:var(--font-display);font-weight:600;font-size:12px;color:var(--tp);margin-bottom:2px;}
+.vis-card.on .vis-name{color:var(--violet-light);}
+.vis-desc{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.05em;color:var(--tm);}
+
+/* step 4 review */
+.preview-card{background:#09090e;border:1px solid var(--bsur);border-radius:var(--radius);overflow:hidden;}
+.preview-media{aspect-ratio:16/9;background:#06060d;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:var(--tm);letter-spacing:0.07em;text-transform:uppercase;}
+.preview-body{padding:1rem 1.1rem;}
+.preview-head-row{display:flex;align-items:baseline;gap:10px;margin-bottom:5px;flex-wrap:wrap;}
+.preview-effect-title{font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:-0.02em;color:var(--tp);}
+.preview-meta{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.preview-desc{font-size:12.5px;color:var(--ts);line-height:1.65;margin-bottom:12px;}
+.preview-tags{display:flex;gap:5px;flex-wrap:wrap;}
+.preview-tag{font-size:9.5px;font-family:var(--font-mono);padding:2px 8px;border-radius:var(--radius-xs);background:var(--tag-bg);color:var(--tag-c);}
+.preview-nodes-code{font-family:var(--font-mono);font-size:10.5px;color:var(--node-teal);padding:10px 12px;background:#06060d;border-radius:var(--radius-sm);border:1px solid var(--bsur);margin-top:10px;line-height:1.55;word-break:break-all;}
+.check-list{display:flex;flex-direction:column;gap:6px;}
+.check-item{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ts);}
+.check-ico{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;}
+.check-ico.ok{background:rgba(15,168,136,0.15);color:var(--node-teal);border:1px solid rgba(15,168,136,0.3);}
+.check-ico.warn{background:rgba(176,113,24,0.12);color:var(--signal-amber);border:1px solid rgba(176,113,24,0.3);}
+.check-ico.err{background:rgba(240,96,96,0.10);color:var(--danger);border:1px solid rgba(240,96,96,0.3);}
+
+/* footer */
+.wiz-ft{padding:0.9rem 1.5rem;border-top:1px solid var(--bsur);display:flex;align-items:center;gap:8px;flex-shrink:0;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine);}
+.ft-progress{flex:1;display:flex;flex-direction:column;gap:5px;}
+.ft-progress-lbl{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);}
+.ft-bar{height:3px;border-radius:3px;background:var(--bsub);overflow:hidden;}
+.ft-fill{height:100%;background:linear-gradient(90deg,var(--violet),var(--violet-light));border-radius:3px;transition:width 0.4s var(--ease);}
+.btn-back-wiz{display:inline-flex;align-items:center;gap:6px;background:var(--gb2);box-shadow:var(--gshine);border:1px solid var(--bsub);border-radius:var(--radius-sm);padding:9px 16px;font-size:13px;font-weight:500;color:var(--ts);cursor:pointer;transition:var(--tr);white-space:nowrap;}
+.btn-back-wiz:hover{border-color:var(--bc);color:var(--tp);}
+.btn-next-wiz{display:inline-flex;align-items:center;gap:6px;background:var(--violet);color:var(--ink);border:none;border-radius:var(--radius-sm);padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;transition:var(--tr);white-space:nowrap;}
+.btn-next-wiz:hover{filter:brightness(1.12);transform:translateY(-1px);box-shadow:0 4px 18px rgba(108,123,255,0.4);}
+.btn-publish-wiz{display:inline-flex;align-items:center;gap:6px;background:var(--node-teal);color:#fff;border:none;border-radius:var(--radius-sm);padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;transition:var(--tr);}
+.btn-publish-wiz:hover{filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 4px 18px rgba(15,168,136,0.4);}
+.btn-draft{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--bsub);border-radius:var(--radius-sm);padding:9px 14px;font-size:12px;font-family:var(--font-mono);letter-spacing:0.05em;color:var(--tm);cursor:pointer;transition:var(--tr);}
+.btn-draft:hover{color:var(--ts);border-color:var(--bc);}
+
+/* success */
+.success-screen{display:none;flex-direction:column;align-items:center;justify-content:center;padding:3rem 2rem;text-align:center;gap:16px;}
+.success-screen.show{display:flex;}
+.success-ring{width:64px;height:64px;border-radius:50%;border:2px solid var(--node-teal);display:flex;align-items:center;justify-content:center;font-size:24px;animation:successPop 0.5s var(--ease);background:rgba(15,168,136,0.10);}
+@keyframes successPop{from{transform:scale(0.6);opacity:0}to{transform:scale(1);opacity:1}}
+.success-title{font-family:var(--font-display);font-size:1.4rem;font-weight:800;letter-spacing:-0.03em;color:var(--tp);}
+.success-sub{font-size:13px;color:var(--ts);line-height:1.65;max-width:360px;}
+.success-actions{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;justify-content:center;}
+
+/* toast */
+.toast{position:fixed;top:72px;right:1.5rem;background:var(--gb2);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine),var(--gshadow);border:1px solid var(--bsub);color:var(--tp);padding:10px 18px;border-radius:var(--radius-lg);font-size:13px;opacity:0;transform:translateY(-6px);transition:all var(--dur-base) var(--ease);pointer-events:none;z-index:999;display:flex;align-items:center;gap:8px;}
+.toast.show{opacity:1;transform:translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="ambient">
+  <div class="ab a1"></div><div class="ab a2"></div><div class="ab a3"></div>
+</div>
+
+<div class="preview-bar">
+  <span>Section 05 / 08 &middot; Add Effect Wizard &middot; Noding</span>
+  <button class="tt-btn" id="themeBtn">
+    <div class="tt-track on" id="ttTrack"><div class="tt-thumb"></div></div>
+    <span id="ttLabel">Night</span>
+  </button>
+</div>
+
+<div class="preview-trigger-row">
+  <span class="preview-lbl">Click to open &rarr;</span>
+  <div class="trigger-card" id="btnOpen">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    Add New Effect
+  </div>
+  <div class="trigger-card" id="btnOpenDraft" style="opacity:0.75;">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+    Resume Draft
+  </div>
+</div>
+
+<!-- WIZARD -->
+<div id="theWizard" class="sheet-ov">
+<div class="wizard" id="wizardBox">
+
+  <div class="wiz-hd">
+    <span class="wiz-dot"></span>
+    <div class="wiz-title-wrap">
+      <div class="wiz-title">Add New Effect</div>
+      <div class="wiz-subtitle" id="wizSubtitle">Step 1 of 4 &middot; Basic Info</div>
+    </div>
+    <button class="wiz-close" id="btnClose">&#x2715;</button>
+  </div>
+
+  <div class="step-indicator" id="stepIndicator">
+    <div class="step-seg active" data-step="0">
+      <div class="step-btn"><div class="step-num">1</div><div class="step-lbl">Info</div></div>
+      <div class="step-line"></div>
+    </div>
+    <div class="step-seg" data-step="1">
+      <div class="step-btn"><div class="step-num">2</div><div class="step-lbl">Nodes</div></div>
+      <div class="step-line"></div>
+    </div>
+    <div class="step-seg" data-step="2">
+      <div class="step-btn"><div class="step-num">3</div><div class="step-lbl">Media</div></div>
+      <div class="step-line"></div>
+    </div>
+    <div class="step-seg" data-step="3">
+      <div class="step-btn"><div class="step-num">4</div><div class="step-lbl">Review</div></div>
+    </div>
+  </div>
+
+  <div class="wiz-bd" id="wizBody">
+
+    <!-- STEP 1: INFO -->
+    <div class="wiz-panel active" id="panel0">
+      <div class="form-row two">
+        <div class="form-group">
+          <div class="form-group-hd">
+            <label class="form-lbl">Effect Name <span>*</span></label>
+            <span class="char-count" id="nameCount">0 / 60</span>
+          </div>
+          <input class="form-input" type="text" id="inputName" placeholder="e.g. Optical Flow Warp" maxlength="60">
+        </div>
+        <div class="form-group">
+          <label class="form-lbl">Category <span>*</span></label>
+          <select class="form-select" id="inputCat">
+            <option value="">Select…</option>
+            <option>Colour Grading</option><option>Compositing</option><option>Motion Graphics</option>
+            <option>Particle Systems</option><option>Masks &amp; Shapes</option><option>Blur &amp; Sharpen</option>
+            <option>3D Compositing</option><option>Transform</option><option>Lighting &amp; Glow</option>
+            <option>Text &amp; Titles</option><option>Keying &amp; Matte</option><option>Noise &amp; Texture</option>
+            <option>Distortion</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-group-hd">
+          <label class="form-lbl">Description <span>*</span></label>
+          <span class="char-count" id="descCount">0 / 400</span>
+        </div>
+        <textarea class="form-textarea" id="inputDesc" placeholder="Describe what the effect does, which nodes it uses, and any useful tips…" maxlength="400"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Difficulty</label>
+        <div class="diff-row">
+          <button class="diff-btn beg on" data-diff="Beginner">Beginner</button>
+          <button class="diff-btn int" data-diff="Intermediate">Intermediate</button>
+          <button class="diff-btn adv" data-diff="Advanced">Advanced</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-lbl">Tags</label>
+        <div class="tag-wrap" id="tagWrap">
+          <button class="tag-tog" data-tag="Fusion">Fusion</button>
+          <button class="tag-tog" data-tag="Color">Color</button>
+          <button class="tag-tog" data-tag="Motion Blur">Motion Blur</button>
+          <button class="tag-tog" data-tag="Glow">Glow</button>
+          <button class="tag-tog" data-tag="Distort">Distort</button>
+          <button class="tag-tog" data-tag="Mask">Mask</button>
+          <button class="tag-tog" data-tag="Text">Text</button>
+          <button class="tag-tog" data-tag="Particle">Particle</button>
+          <button class="tag-tog" data-tag="Optical Flow">Optical Flow</button>
+          <button class="tag-tog" data-tag="Warp">Warp</button>
+        </div>
+      </div>
+      <div class="form-row two">
+        <div class="form-group">
+          <label class="form-lbl">Software Version</label>
+          <select class="form-select" id="inputVersion">
+            <option>DaVinci Resolve 19</option><option>DaVinci Resolve 18.6</option>
+            <option>DaVinci Resolve 18</option><option>DaVinci Resolve 17</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-lbl">Render Weight</label>
+          <select class="form-select" id="inputWeight">
+            <option>Light</option><option selected>Medium</option><option>Heavy</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: NODES -->
+    <div class="wiz-panel" id="panel1">
+
+      <!-- mode toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div class="node-mode-row">
+          <button class="nm-btn on" id="nmGraph">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M8 5.5h8M5.5 8v8M19 8v3a2 2 0 0 1-2 2h-3"/></svg>
+            Graph Editor
+          </button>
+          <button class="nm-btn" id="nmLua">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Lua / Comp Code
+          </button>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--tm);letter-spacing:0.05em;" id="graphNodeCountLbl">0 nodes &middot; 0 connections</div>
+      </div>
+
+      <!-- GRAPH EDITOR MODE -->
+      <div id="graphEditorSection">
+        <div class="graph-editor-layout">
+          <!-- palette -->
+          <div class="pal-col">
+            <div class="pal-search-wrap">
+              <input class="pal-search-input" type="text" id="palSearch" placeholder="Filter…">
+            </div>
+            <div class="pal-list" id="palList"></div>
+          </div>
+          <!-- canvas -->
+          <div class="editor-canvas-wrap" id="editorCanvasWrap">
+            <canvas class="editor-canvas" id="editorCanvas"></canvas>
+            <div class="editor-empty-hint" id="editorEmptyHint">
+              <div class="editor-empty-hint-title">No nodes yet</div>
+              <div class="editor-empty-hint-sub">Click a node type from the palette to add it to the graph</div>
+            </div>
+            <div class="connect-badge" id="connectBadge">Connecting — click an input port &nbsp;·&nbsp; Esc to cancel</div>
+            <div class="esc-hint" id="editorEscHint" style="display:none;">Drag bg to pan &nbsp;·&nbsp; Drag &#x25b7; port to connect</div>
+          </div>
+        </div>
+        <!-- toolbar -->
+        <div class="editor-toolbar" id="editorToolbar">
+          <button class="tb-btn" id="btnAutoLayout">Auto-layout</button>
+          <button class="tb-btn" id="btnClearGraph">Clear all</button>
+          <div class="tb-sep"></div>
+          <div class="tb-sel-info" id="tbSelInfo" style="display:none;">
+            <div class="tb-sel-name" id="tbSelName"></div>
+            <div class="tb-sel-type" id="tbSelType"></div>
+            <button class="tb-btn danger" id="btnDeleteNode">Delete node</button>
+          </div>
+          <div class="tb-node-count" id="tbNodeCount">Click palette to add nodes</div>
+        </div>
+      </div>
+
+      <!-- LUA MODE -->
+      <div id="luaSection" style="display:none;">
+        <div class="form-group">
+          <div class="form-group-hd">
+            <label class="form-lbl">Paste Fusion Comp / Lua Code <span>*</span></label>
+          </div>
+          <textarea class="lua-textarea" id="luaInput" placeholder="{&#10;    Tools = ordered() {&#10;        OpticalFlow1 = OpticalFlow {&#10;            ...&#10;        },&#10;        DisplaceDistort1 = DisplaceDistort {&#10;            Inputs = {&#10;                Input1 = Input { SourceOp = &quot;OpticalFlow1&quot;, Source = &quot;Output&quot; },&#10;            },&#10;        },&#10;    }&#10;}&#10;&#10;-- or use simple arrow notation:&#10;-- OpticalFlow → DisplaceDistort → TimeSpeed → Merge"></textarea>
+          <div class="form-hint">Copy nodes from Fusion (Edit → Copy) and paste here. Also accepts simple arrow notation: A → B → C</div>
+        </div>
+        <div class="parse-result parse-idle" id="luaParseResult">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          Paste Lua comp data or arrow notation to parse
+        </div>
+        <div class="form-group">
+          <label class="form-lbl" style="margin-bottom:6px;">Parsed graph preview</label>
+          <div class="lua-preview-wrap">
+            <canvas class="lua-preview-canvas" id="luaCanvas"></canvas>
+            <div class="lua-preview-empty" id="luaEmpty">No comp data yet</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panel1 -->
+
+    <!-- STEP 3: MEDIA -->
+    <div class="wiz-panel" id="panel2">
+      <div class="panel-sec-lbl">Preview media type</div>
+      <div class="media-type-row">
+        <button class="mt-btn on" id="mtGif">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m8 10 2 2 4-4"/></svg>
+          GIF Showcase
+        </button>
+        <button class="mt-btn" id="mtVideo">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          Video Link
+        </button>
+        <button class="mt-btn" id="mtNone">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg>
+          No Media
+        </button>
+      </div>
+      <div id="gifSection">
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-ico"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+          <div class="upload-title">Drop your GIF here</div>
+          <div class="upload-sub">or <span id="uploadBrowseBtn">browse files</span> &nbsp;·&nbsp; GIF, PNG, WebP &nbsp;·&nbsp; max 8 MB</div>
+          <div class="upload-progress"><div class="upload-bar" id="uploadBar"></div></div>
+        </div>
+        <div class="thumb-preview" id="thumbPreview">
+          <img id="thumbImg" src="" alt="Preview">
+          <button class="thumb-remove" id="thumbRemove">&#x2715;</button>
+        </div>
+      </div>
+      <div id="videoSection" style="display:none;">
+        <div class="form-group">
+          <label class="form-lbl">Video URL</label>
+          <div class="url-row">
+            <input class="form-input" type="text" id="videoUrlInput" placeholder="https://youtube.com/watch?v=… or Vimeo link">
+            <button class="url-confirm-btn" id="urlConfirm">Confirm</button>
+          </div>
+          <div class="form-hint">YouTube, Vimeo, or direct .mp4 URLs supported.</div>
+        </div>
+        <div id="videoConfirmWrap" style="display:none;padding:10px 12px;background:rgba(15,168,136,0.07);border:1px solid rgba(15,168,136,0.25);border-radius:var(--radius-sm);">
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--node-teal);">&#x2713; Video link confirmed</div>
+          <div id="videoUrlDisplay" style="font-size:11.5px;color:var(--ts);margin-top:3px;word-break:break-all;"></div>
+        </div>
+      </div>
+      <div id="noMediaSection" style="display:none;padding:1rem;background:var(--gb2);border:1px solid var(--bsub);border-radius:var(--radius-sm);">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:0.07em;">No media selected</div>
+        <div style="font-size:12px;color:var(--ts);margin-top:4px;">You can add media later from the Edit Settings panel.</div>
+      </div>
+      <div class="panel-sec-lbl">Visibility</div>
+      <div class="vis-row">
+        <div class="vis-card on" data-vis="Public"><div class="vis-icon">🌐</div><div class="vis-name">Public</div><div class="vis-desc">Everyone can see</div></div>
+        <div class="vis-card" data-vis="Unlisted"><div class="vis-icon">🔗</div><div class="vis-name">Unlisted</div><div class="vis-desc">Link only</div></div>
+        <div class="vis-card" data-vis="Draft"><div class="vis-icon">🔒</div><div class="vis-name">Draft</div><div class="vis-desc">Only you</div></div>
+      </div>
+    </div>
+
+    <!-- STEP 4: REVIEW -->
+    <div class="wiz-panel" id="panel3">
+      <div class="panel-sec-lbl">Effect preview</div>
+      <div class="preview-card">
+        <div class="preview-media" id="previewMedia">No media</div>
+        <div class="preview-body">
+          <div class="preview-head-row">
+            <div class="preview-effect-title" id="previewTitle">—</div>
+            <span id="previewCatBadge" style="font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.06em;padding:2px 7px;border-radius:3px;border:1px solid rgba(108,123,255,0.25);color:var(--violet);background:rgba(108,123,255,0.08);"></span>
+          </div>
+          <div class="preview-meta">
+            <span id="previewDiff" style="font-family:var(--font-mono);font-size:11px;"></span>
+            <span id="previewVersion" style="font-family:var(--font-mono);font-size:11px;color:var(--tm);"></span>
+          </div>
+          <div class="preview-desc" id="previewDesc">—</div>
+          <div class="preview-tags" id="previewTags"></div>
+          <div class="preview-nodes-code" id="previewNodes" style="display:none;"></div>
+        </div>
+      </div>
+      <div class="panel-sec-lbl">Submission checklist</div>
+      <div class="check-list" id="checklist"></div>
+      <div style="padding:10px 12px;border-radius:var(--radius-sm);background:rgba(108,123,255,0.07);border:1px solid rgba(108,123,255,0.18);font-size:12px;color:var(--ts);line-height:1.6;">
+        By publishing you confirm this is your original work and agree to the
+        <span style="color:var(--violet-light);cursor:pointer;">Noding Community Guidelines</span>.
+      </div>
+    </div>
+
+    <!-- SUCCESS -->
+    <div class="success-screen" id="successScreen">
+      <div class="success-ring">✓</div>
+      <div class="success-title">Effect Published!</div>
+      <div class="success-sub" id="successMsg">Your effect is now live. The community can discover, vote on, and learn from it.</div>
+      <div class="success-actions">
+        <button class="btn-next-wiz" id="btnViewEffect">View Effect →</button>
+        <button class="btn-back-wiz" id="btnAddAnother">Add Another</button>
+      </div>
+    </div>
+
+  </div><!-- /wiz-bd -->
+
+  <div class="wiz-ft" id="wizFooter">
+    <div class="ft-progress">
+      <div class="ft-progress-lbl" id="progressLbl">Step 1 of 4</div>
+      <div class="ft-bar"><div class="ft-fill" id="progressFill" style="width:25%;"></div></div>
+    </div>
+    <button class="btn-draft" id="btnDraft">Save draft</button>
+    <button class="btn-back-wiz" id="btnBack" style="display:none;">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Back
+    </button>
+    <button class="btn-next-wiz" id="btnNext">
+      Next
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+</div><!-- /wizard -->
+</div><!-- /overlay -->
+
+<div class="toast" id="toast">
+  <span style="color:var(--node-teal);font-family:var(--font-mono);font-weight:700;">&#x2713;</span>
+  <span id="toastMsg">Saved</span>
+</div>
+
+<script>
+(function () {
+
+  /* ═══════════════════════════════════
+     NODE TYPE CATALOGUE
+     ═══════════════════════════════════ */
+  var NT = [
+    { name:'MediaIn',            cat:'Source',    col:'#0fa888', bg:'rgba(15,168,136,0.13)'  },
+    { name:'Background',         cat:'Source',    col:'#0fa888', bg:'rgba(15,168,136,0.13)'  },
+    { name:'Loader',             cat:'Source',    col:'#0fa888', bg:'rgba(15,168,136,0.13)'  },
+    { name:'OpticalFlow',        cat:'Analysis',  col:'#6c7bff', bg:'rgba(108,123,255,0.13)' },
+    { name:'Tracker',            cat:'Analysis',  col:'#6c7bff', bg:'rgba(108,123,255,0.13)' },
+    { name:'DisplaceDistort',    cat:'Distort',   col:'#a855f7', bg:'rgba(168,85,247,0.13)'  },
+    { name:'LensDistort',        cat:'Distort',   col:'#a855f7', bg:'rgba(168,85,247,0.13)'  },
+    { name:'TimeSpeed',          cat:'Time',      col:'#f59e0b', bg:'rgba(245,158,11,0.13)'  },
+    { name:'TimeStretcher',      cat:'Time',      col:'#f59e0b', bg:'rgba(245,158,11,0.13)'  },
+    { name:'ColorCorrector',     cat:'Color',     col:'#eab308', bg:'rgba(234,179,8,0.13)'   },
+    { name:'BrightnessContrast', cat:'Color',     col:'#eab308', bg:'rgba(234,179,8,0.13)'   },
+    { name:'HueCurves',          cat:'Color',     col:'#eab308', bg:'rgba(234,179,8,0.13)'   },
+    { name:'Blur',               cat:'Filter',    col:'#ef4444', bg:'rgba(239,68,68,0.13)'   },
+    { name:'Sharpen',            cat:'Filter',    col:'#ef4444', bg:'rgba(239,68,68,0.13)'   },
+    { name:'Glow',               cat:'Filter',    col:'#ef4444', bg:'rgba(239,68,68,0.13)'   },
+    { name:'Merge',              cat:'Composite', col:'#94a3b8', bg:'rgba(148,163,184,0.13)' },
+    { name:'AlphaMatte',         cat:'Composite', col:'#94a3b8', bg:'rgba(148,163,184,0.13)' },
+    { name:'Transform',          cat:'Transform', col:'#22d3ee', bg:'rgba(34,211,238,0.13)'  },
+    { name:'Resize',             cat:'Transform', col:'#22d3ee', bg:'rgba(34,211,238,0.13)'  },
+    { name:'Crop',               cat:'Transform', col:'#22d3ee', bg:'rgba(34,211,238,0.13)'  },
+    { name:'PolyMask',           cat:'Mask',      col:'#fb923c', bg:'rgba(251,146,60,0.13)'  },
+    { name:'BSplineMask',        cat:'Mask',      col:'#fb923c', bg:'rgba(251,146,60,0.13)'  },
+    { name:'FastNoise',          cat:'Generator', col:'#c084fc', bg:'rgba(192,132,252,0.13)' },
+    { name:'Text+',              cat:'Text',      col:'#f472b6', bg:'rgba(244,114,182,0.13)' },
+    { name:'MediaOut',           cat:'Output',    col:'#4ade80', bg:'rgba(74,222,128,0.13)'  },
+    { name:'Saver',              cat:'Output',    col:'#4ade80', bg:'rgba(74,222,128,0.13)'  },
+  ];
+
+  function getNT (name) {
+    var lower = name.toLowerCase();
+    for (var i = 0; i < NT.length; i++) {
+      if (NT[i].name.toLowerCase() === lower) { return NT[i]; }
+    }
+    /* guess from name */
+    if (/mediain|background|loader/.test(lower))   { return NT[0]; }
+    if (/opticalflow|tracker/.test(lower))          { return NT[3]; }
+    if (/displace|lens|warp/.test(lower))           { return NT[5]; }
+    if (/time/.test(lower))                         { return NT[7]; }
+    if (/color|colour|brightness|hue|lut/.test(lower)){ return NT[9]; }
+    if (/blur|sharpen|glow|soften/.test(lower))     { return NT[12]; }
+    if (/merge|matte|alpha/.test(lower))            { return NT[15]; }
+    if (/transform|resize|crop|rotate/.test(lower)) { return NT[17]; }
+    if (/mask|polygon|spline/.test(lower))          { return NT[20]; }
+    if (/noise|fast/.test(lower))                   { return NT[22]; }
+    if (/text|title/.test(lower))                   { return NT[23]; }
+    if (/mediaout|saver/.test(lower))               { return NT[24]; }
+    return { name: name, cat: 'Composite', col:'#94a3b8', bg:'rgba(148,163,184,0.13)' };
+  }
+
+  /* ═══════════════════════════════════
+     GRAPH STATE
+     ═══════════════════════════════════ */
+  var graphNodes  = [];
+  var graphEdges  = [];
+  var selNodeId   = null;
+  var nodeIdCtr   = 0;
+
+  /* editor interaction state */
+  var istate      = 'idle'; /* 'idle' | 'dragging' | 'panning' | 'connecting' */
+  var dragId      = null;
+  var dragOffX    = 0, dragOffY = 0;
+  var panX        = 0, panY    = 0;
+  var panLX       = 0, panLY   = 0;
+  var cxFrom      = null; /* connecting from node id */
+  var ghostX      = 0,    ghostY = 0;
+
+  var NW = 122, NH = 44;
+
+  /* canvas refs */
+  var edCanvas, edCtx, luaCanvas, luaCtx;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  function findNode (id) {
+    for (var i = 0; i < graphNodes.length; i++) {
+      if (graphNodes[i].id === id) { return graphNodes[i]; }
+    }
+    return null;
+  }
+
+  function addNode (typeDef) {
+    var id   = 'n' + (++nodeIdCtr);
+    var x    = 20, y = 30;
+    if (graphNodes.length > 0) {
+      var last = graphNodes[graphNodes.length - 1];
+      x = last.x + NW + 44;
+      y = last.y;
+      /* wrap if too wide */
+      if (x + NW > 700) { x = 20; y = last.y + NH + 28; }
+    }
+    var n = { id: id, name: typeDef.name, cat: typeDef.cat, col: typeDef.col, bg: typeDef.bg, x: x, y: y };
+    graphNodes.push(n);
+    /* auto-connect to previous selected node, or last node */
+    var prevId = selNodeId || (graphNodes.length > 1 ? graphNodes[graphNodes.length - 2].id : null);
+    if (prevId && prevId !== id) { addEdge(prevId, id); }
+    selectNode(id);
+    updateCounts();
+    renderEdGraph();
+  }
+
+  function removeNode (id) {
+    graphNodes = graphNodes.filter(function (n) { return n.id !== id; });
+    graphEdges = graphEdges.filter(function (e) { return e.from !== id && e.to !== id; });
+    if (selNodeId === id) { selectNode(null); }
+    updateCounts();
+    renderEdGraph();
+  }
+
+  function addEdge (fromId, toId) {
+    if (fromId === toId) { return; }
+    for (var i = 0; i < graphEdges.length; i++) {
+      if (graphEdges[i].from === fromId && graphEdges[i].to === toId) { return; }
+    }
+    graphEdges.push({ from: fromId, to: toId });
+  }
+
+  function selectNode (id) {
+    selNodeId = id;
+    var info = document.getElementById('tbSelInfo');
+    var nm   = document.getElementById('tbSelName');
+    var ty   = document.getElementById('tbSelType');
+    var cnt  = document.getElementById('tbNodeCount');
+    if (id) {
+      var n = findNode(id);
+      if (n && info && nm && ty) {
+        info.style.display = 'flex';
+        nm.textContent = n.name;
+        ty.textContent = n.cat;
+        nm.style.color = n.col;
+        if (cnt) { cnt.style.display = 'none'; }
+      }
+    } else {
+      if (info) { info.style.display = 'none'; }
+      if (cnt)  { cnt.style.display  = ''; }
+    }
+  }
+
+  function updateCounts () {
+    var txt = graphNodes.length + ' node' + (graphNodes.length !== 1 ? 's' : '') +
+              ' \u00b7 ' + graphEdges.length + ' connection' + (graphEdges.length !== 1 ? 's' : '');
+    var el  = document.getElementById('graphNodeCountLbl');
+    var tb  = document.getElementById('tbNodeCount');
+    if (el) { el.textContent = txt; }
+    if (tb && !selNodeId) { tb.textContent = graphNodes.length ? txt : 'Click palette to add nodes'; }
+    var emp = document.getElementById('editorEmptyHint');
+    if (emp) { emp.style.display = graphNodes.length ? 'none' : ''; }
+    var esc = document.getElementById('editorEscHint');
+    if (esc) { esc.style.display = graphNodes.length ? '' : 'none'; }
+  }
+
+  function autoLayout () {
+    var COLS = 5, XG = NW + 44, YG = NH + 28, SX = 20, SY = 24;
+    for (var i = 0; i < graphNodes.length; i++) {
+      graphNodes[i].x = SX + (i % COLS) * XG;
+      graphNodes[i].y = SY + Math.floor(i / COLS) * YG;
+    }
+    renderEdGraph();
+  }
+
+  /* ── coordinate helpers ── */
+  function toWorld (ex, ey) {
+    return { x: ex - panX, y: ey - panY };
+  }
+  function canvasXY (e) {
+    var r = edCanvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function nodeAt (wx, wy) {
+    for (var i = graphNodes.length - 1; i >= 0; i--) {
+      var n = graphNodes[i];
+      if (wx >= n.x && wx <= n.x + NW && wy >= n.y && wy <= n.y + NH) { return n; }
+    }
+    return null;
+  }
+  function outPortAt (wx, wy) {
+    for (var i = 0; i < graphNodes.length; i++) {
+      var n = graphNodes[i];
+      var dx = wx - (n.x + NW), dy = wy - (n.y + NH / 2);
+      if (dx * dx + dy * dy < 81) { return n; }
+    }
+    return null;
+  }
+  function inPortAt (wx, wy) {
+    for (var i = 0; i < graphNodes.length; i++) {
+      var n = graphNodes[i];
+      var dx = wx - n.x, dy = wy - (n.y + NH / 2);
+      if (dx * dx + dy * dy < 81) { return n; }
+    }
+    return null;
+  }
+
+  /* ── RENDER EDITOR GRAPH ── */
+  function resizeEdCanvas () {
+    if (!edCanvas) { return; }
+    var wrap = edCanvas.parentElement;
+    var W = wrap.offsetWidth, H = wrap.offsetHeight;
+    edCanvas.width  = W * dpr; edCanvas.height = H * dpr;
+    edCanvas.style.width  = W + 'px'; edCanvas.style.height = H + 'px';
+    edCtx.setTransform(1, 0, 0, 1, 0, 0);
+    edCtx.scale(dpr, dpr);
+    renderEdGraph();
+  }
+
+  function rrect (ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y,     x + w, y + r,     r);
+    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h); ctx.arcTo(x,     y + h, x,     y + h - r, r);
+    ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
+
+  function drawPort (ctx, x, y, col, isIn) {
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#06060d'; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = isIn ? '#0fa888' : '#9ca8ff'; ctx.fill();
+  }
+
+  function drawNodeCard (ctx, n, sel) {
+    if (sel) { ctx.shadowColor = n.col; ctx.shadowBlur = 14; }
+    rrect(ctx, n.x, n.y, NW, NH, 6);
+    ctx.fillStyle = n.bg; ctx.fill();
+    ctx.strokeStyle = sel ? n.col : n.col + '55';
+    ctx.lineWidth   = sel ? 1.5 : 1;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    /* dot */
+    ctx.beginPath(); ctx.arc(n.x + 12, n.y + NH / 2, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = n.col; ctx.fill();
+    /* name */
+    ctx.fillStyle = 'rgba(244,244,251,0.88)';
+    ctx.font = '600 10.5px Syne, sans-serif';
+    ctx.textBaseline = 'middle';
+    var mw = NW - 30, lbl = n.name;
+    while (lbl.length > 3 && ctx.measureText(lbl).width > mw) { lbl = lbl.slice(0, -1); }
+    if (lbl !== n.name) { lbl += '\u2026'; }
+    ctx.fillText(lbl, n.x + 24, n.y + NH / 2 - 3);
+    /* cat */
+    ctx.font = '9px DM Mono, monospace';
+    ctx.fillStyle = n.col + 'aa';
+    ctx.fillText(n.cat, n.x + 24, n.y + NH / 2 + 9);
+    /* ports */
+    drawPort(ctx, n.x, n.y + NH / 2, n.col, true);
+    drawPort(ctx, n.x + NW, n.y + NH / 2, n.col, false);
+  }
+
+  function drawEdges (ctx, nodes, edges) {
+    for (var i = 0; i < edges.length; i++) {
+      var fn = null, tn = null;
+      for (var k = 0; k < nodes.length; k++) {
+        if (nodes[k].id === edges[i].from) { fn = nodes[k]; }
+        if (nodes[k].id === edges[i].to)   { tn = nodes[k]; }
+      }
+      if (!fn || !tn) { continue; }
+      var fx = fn.x + NW, fy = fn.y + NH / 2;
+      var tx = tn.x,      ty = tn.y + NH / 2;
+      var pull = Math.max(36, Math.abs(tx - fx) * 0.45);
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.bezierCurveTo(fx + pull, fy, tx - pull, ty, tx, ty);
+      ctx.strokeStyle = 'rgba(108,123,255,0.42)';
+      ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tx, ty);
+      ctx.lineTo(tx - 6, ty - 3.5); ctx.lineTo(tx - 6, ty + 3.5);
+      ctx.closePath(); ctx.fillStyle = 'rgba(108,123,255,0.65)'; ctx.fill();
+    }
+  }
+
+  function renderEdGraph () {
+    if (!edCtx || !edCanvas) { return; }
+    var W = edCanvas.offsetWidth, H = edCanvas.offsetHeight;
+    edCtx.clearRect(0, 0, W, H);
+    edCtx.fillStyle = '#06060d'; edCtx.fillRect(0, 0, W, H);
+    /* dot grid */
+    edCtx.fillStyle = 'rgba(108,123,255,0.1)';
+    var gs = 22, ox = panX % gs, oy = panY % gs;
+    for (var gx = ox; gx < W; gx += gs) {
+      for (var gy = oy; gy < H; gy += gs) {
+        edCtx.beginPath(); edCtx.arc(gx, gy, 0.8, 0, Math.PI * 2); edCtx.fill();
+      }
+    }
+    edCtx.save();
+    edCtx.translate(panX, panY);
+    drawEdges(edCtx, graphNodes, graphEdges);
+    /* ghost connection */
+    if (istate === 'connecting' && cxFrom) {
+      var fn2 = findNode(cxFrom);
+      if (fn2) {
+        var fx2 = fn2.x + NW, fy2 = fn2.y + NH / 2;
+        var pull2 = Math.max(36, Math.abs(ghostX - fx2) * 0.45);
+        edCtx.beginPath();
+        edCtx.moveTo(fx2, fy2);
+        edCtx.bezierCurveTo(fx2 + pull2, fy2, ghostX - pull2, ghostY, ghostX, ghostY);
+        edCtx.strokeStyle = 'rgba(108,123,255,0.55)';
+        edCtx.lineWidth = 1.5;
+        edCtx.setLineDash([4, 3]); edCtx.stroke(); edCtx.setLineDash([]);
+      }
+    }
+    for (var ni = 0; ni < graphNodes.length; ni++) {
+      drawNodeCard(edCtx, graphNodes[ni], graphNodes[ni].id === selNodeId);
+    }
+    edCtx.restore();
+  }
+
+  /* ── canvas mouse events ── */
+  function onEdMouseDown (e) {
+    if (e.button !== 0) { return; }
+    var sc = canvasXY(e);
+    var w  = toWorld(sc.x, sc.y);
+    /* check output port first → start connecting */
+    var op = outPortAt(w.x, w.y);
+    if (op) {
+      istate = 'connecting'; cxFrom = op.id;
+      ghostX = w.x; ghostY = w.y;
+      edCanvas.classList.add('connecting');
+      document.getElementById('connectBadge').classList.add('show');
+      return;
+    }
+    /* check node body → drag */
+    var hn = nodeAt(w.x, w.y);
+    if (hn) {
+      istate  = 'dragging'; dragId  = hn.id;
+      dragOffX = w.x - hn.x; dragOffY = w.y - hn.y;
+      selectNode(hn.id);
+      renderEdGraph();
+      return;
+    }
+    /* background → pan */
+    istate = 'panning';
+    panLX  = e.clientX; panLY = e.clientY;
+    edCanvas.classList.add('panning');
+    selectNode(null);
+    renderEdGraph();
+  }
+
+  function onDocMouseMove (e) {
+    if (istate === 'idle' || !edCanvas) { return; }
+    if (istate === 'dragging' && dragId) {
+      var sc  = canvasXY(e);
+      var w   = toWorld(sc.x, sc.y);
+      var dn  = findNode(dragId);
+      if (dn) { dn.x = w.x - dragOffX; dn.y = w.y - dragOffY; }
+      renderEdGraph();
+    } else if (istate === 'panning') {
+      panX += e.clientX - panLX; panY += e.clientY - panLY;
+      panLX = e.clientX; panLY = e.clientY;
+      renderEdGraph();
+    } else if (istate === 'connecting') {
+      var sc2 = canvasXY(e);
+      var w2  = toWorld(sc2.x, sc2.y);
+      ghostX = w2.x; ghostY = w2.y;
+      renderEdGraph();
+    }
+  }
+
+  function onDocMouseUp (e) {
+    if (!edCanvas) { return; }
+    if (istate === 'connecting' && cxFrom) {
+      var sc = canvasXY(e);
+      var w  = toWorld(sc.x, sc.y);
+      var ip = inPortAt(w.x, w.y);
+      if (ip && ip.id !== cxFrom) {
+        addEdge(cxFrom, ip.id);
+        updateCounts();
+        showToast('Connection created');
+      }
+      document.getElementById('connectBadge').classList.remove('show');
+      edCanvas.classList.remove('connecting');
+    }
+    if (istate === 'panning') { edCanvas.classList.remove('panning'); }
+    istate = 'idle'; dragId = null; cxFrom = null;
+    renderEdGraph();
+  }
+
+  /* cancel connecting with Escape */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && istate === 'connecting') {
+      istate = 'idle'; cxFrom = null;
+      var cb = document.getElementById('connectBadge');
+      if (cb) { cb.classList.remove('show'); }
+      if (edCanvas) { edCanvas.classList.remove('connecting'); }
+      renderEdGraph();
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selNodeId) {
+      var focused = document.activeElement;
+      if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) { return; }
+      removeNode(selNodeId);
+    }
+  });
+
+  /* ── PALETTE ── */
+  function buildPalette (filter) {
+    var list = document.getElementById('palList');
+    if (!list) { return; }
+    list.innerHTML = '';
+    var f = (filter || '').toLowerCase();
+    for (var i = 0; i < NT.length; i++) {
+      var t = NT[i];
+      if (f && t.name.toLowerCase().indexOf(f) === -1 && t.cat.toLowerCase().indexOf(f) === -1) { continue; }
+      var item = document.createElement('div');
+      item.className = 'pal-item';
+      item.innerHTML =
+        '<div class="pal-dot" style="background:' + t.col + '"></div>' +
+        '<div class="pal-info"><div class="pal-name">' + t.name + '</div><div class="pal-cat">' + t.cat + '</div></div>';
+      (function (td) {
+        item.addEventListener('click', function () { addNode(td); });
+      }(t));
+      list.appendChild(item);
+    }
+  }
+
+  /* ── LUA PARSER ── */
+  function parseLua (str) {
+    var ns = [], es = [];
+    if (!str.trim()) { return { nodes: ns, edges: es }; }
+
+    /* Try Fusion comp format */
+    if (str.indexOf('Tools') !== -1 || str.indexOf('SourceOp') !== -1) {
+      var toolPat = /(\w+)\s*=\s*(\w+)\s*\{/g;
+      var srcPat  = /SourceOp\s*=\s*"(\w+)"/g;
+      var tm, defs = [];
+      while ((tm = toolPat.exec(str)) !== null) {
+        var skip = ['ordered','Comp','Tools','Inputs','Outputs','Input','Output'];
+        var found = false;
+        for (var s = 0; s < skip.length; s++) { if (skip[s] === tm[2]) { found = true; break; } }
+        if (!found) { defs.push({ inst: tm[1], typeName: tm[2], pos: tm.index }); }
+      }
+      var srcs = [];
+      while ((tm = srcPat.exec(str)) !== null) { srcs.push({ src: tm[1], pos: tm.index }); }
+      for (var d = 0; d < defs.length; d++) {
+        var td = defs[d], nt2 = getNT(td.typeName);
+        ns.push({ id: 'l' + d, name: td.typeName, inst: td.inst, cat: nt2.cat, col: nt2.col, bg: nt2.bg, x: 0, y: 0 });
+      }
+      for (var sc = 0; sc < srcs.length; sc++) {
+        var sv = srcs[sc], containing = null;
+        for (var t2 = defs.length - 1; t2 >= 0; t2--) {
+          if (defs[t2].pos < sv.pos) { containing = defs[t2]; break; }
+        }
+        if (containing && sv.src !== containing.inst) {
+          es.push({ from: sv.src, to: containing.inst });
+        }
+      }
+      return { nodes: ns, edges: es };
+    }
+
+    /* fallback: arrow notation */
+    var parts = str.split(/\s*(?:\u2192|->|>|,)\s*/).map(function (s) { return s.trim(); }).filter(Boolean);
+    for (var p = 0; p < parts.length; p++) {
+      var nt3 = getNT(parts[p]);
+      ns.push({ id: 'l' + p, name: parts[p], inst: parts[p], cat: nt3.cat, col: nt3.col, bg: nt3.bg, x: 0, y: 0 });
+      if (p > 0) { es.push({ from: parts[p - 1], to: parts[p] }); }
+    }
+    return { nodes: ns, edges: es };
+  }
+
+  function layoutParsed (nodes) {
+    var COLS = 5, XG = NW + 40, YG = NH + 24, SX = 16, SY = 20;
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].x = SX + (i % COLS) * XG;
+      nodes[i].y = SY + Math.floor(i / COLS) * YG;
+    }
+  }
+
+  /* rendered lua edge list uses inst names as ids */
+  function renderLuaGraph (nodes, edges) {
+    if (!luaCtx || !luaCanvas) { return; }
+    var W = luaCanvas.offsetWidth, H = luaCanvas.offsetHeight;
+    luaCtx.clearRect(0, 0, W, H);
+    luaCtx.fillStyle = '#06060d'; luaCtx.fillRect(0, 0, W, H);
+    /* dot grid */
+    luaCtx.fillStyle = 'rgba(108,123,255,0.08)';
+    for (var gx = 0; gx < W; gx += 22) {
+      for (var gy = 0; gy < H; gy += 22) {
+        luaCtx.beginPath(); luaCtx.arc(gx, gy, 0.8, 0, Math.PI * 2); luaCtx.fill();
+      }
+    }
+    /* build lookup by inst */
+    var byInst = {};
+    for (var i = 0; i < nodes.length; i++) { byInst[nodes[i].inst] = nodes[i]; }
+    /* draw edges */
+    for (var e2 = 0; e2 < edges.length; e2++) {
+      var fn3 = byInst[edges[e2].from], tn3 = byInst[edges[e2].to];
+      if (!fn3 || !tn3) { continue; }
+      var fx3 = fn3.x + NW, fy3 = fn3.y + NH / 2;
+      var tx3 = tn3.x,      ty3 = tn3.y + NH / 2;
+      var pull3 = Math.max(30, Math.abs(tx3 - fx3) * 0.45);
+      luaCtx.beginPath();
+      luaCtx.moveTo(fx3, fy3);
+      luaCtx.bezierCurveTo(fx3 + pull3, fy3, tx3 - pull3, ty3, tx3, ty3);
+      luaCtx.strokeStyle = 'rgba(108,123,255,0.4)'; luaCtx.lineWidth = 1.4; luaCtx.stroke();
+      luaCtx.beginPath(); luaCtx.moveTo(tx3, ty3);
+      luaCtx.lineTo(tx3 - 5.5, ty3 - 3); luaCtx.lineTo(tx3 - 5.5, ty3 + 3);
+      luaCtx.closePath(); luaCtx.fillStyle = 'rgba(108,123,255,0.6)'; luaCtx.fill();
+    }
+    /* draw nodes */
+    for (var n3 = 0; n3 < nodes.length; n3++) { drawNodeCard(luaCtx, nodes[n3], false); }
+  }
+
+  function resizeLuaCanvas () {
+    if (!luaCanvas) { return; }
+    var wrap = luaCanvas.parentElement;
+    var W = wrap.offsetWidth, H = wrap.offsetHeight;
+    luaCanvas.width  = W * dpr; luaCanvas.height = H * dpr;
+    luaCanvas.style.width  = W + 'px'; luaCanvas.style.height = H + 'px';
+    luaCtx.setTransform(1, 0, 0, 1, 0, 0);
+    luaCtx.scale(dpr, dpr);
+  }
+
+  function onLuaInput () {
+    var val    = document.getElementById('luaInput').value;
+    var pr     = document.getElementById('luaParseResult');
+    var empty  = document.getElementById('luaEmpty');
+    if (!val.trim()) {
+      pr.className = 'parse-result parse-idle';
+      pr.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg> Paste Lua comp data or arrow notation to parse';
+      if (empty) { empty.style.display = ''; }
+      return;
+    }
+    var res = parseLua(val);
+    if (res.nodes.length === 0) {
+      pr.className = 'parse-result parse-err';
+      pr.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Could not detect nodes — use arrow notation (A → B → C) or paste Fusion comp data';
+      if (empty) { empty.style.display = ''; }
+      return;
+    }
+    pr.className = 'parse-result parse-ok';
+    pr.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> ' +
+      res.nodes.length + ' node' + (res.nodes.length !== 1 ? 's' : '') +
+      ' &nbsp;&middot;&nbsp; ' + res.edges.length + ' connection' + (res.edges.length !== 1 ? 's' : '') + ' detected';
+    if (empty) { empty.style.display = 'none'; }
+    layoutParsed(res.nodes);
+    resizeLuaCanvas();
+    renderLuaGraph(res.nodes, res.edges);
+    /* sync into graph state so review can use it */
+    graphNodes = []; graphEdges = [];
+    for (var i = 0; i < res.nodes.length; i++) {
+      var rn = res.nodes[i];
+      graphNodes.push({ id: rn.id, name: rn.name, inst: rn.inst, cat: rn.cat, col: rn.col, bg: rn.bg, x: rn.x, y: rn.y });
+    }
+    for (var e = 0; e < res.edges.length; e++) {
+      /* remap inst names to node ids */
+      var fromN = null, toN = null;
+      for (var k = 0; k < res.nodes.length; k++) {
+        if (res.nodes[k].inst === res.edges[e].from) { fromN = res.nodes[k].id; }
+        if (res.nodes[k].inst === res.edges[e].to)   { toN   = res.nodes[k].id; }
+      }
+      if (fromN && toN) { graphEdges.push({ from: fromN, to: toN }); }
+    }
+    updateCounts();
+    document.getElementById('graphNodeCountLbl').textContent =
+      graphNodes.length + ' nodes \u00b7 ' + graphEdges.length + ' connections (from Lua)';
+  }
+
+  /* ── NODE MODE SWITCH ── */
+  var activeNodeMode = 'graph';
+  function setNodeMode (m) {
+    activeNodeMode = m;
+    var gSec = document.getElementById('graphEditorSection');
+    var lSec = document.getElementById('luaSection');
+    var ng   = document.getElementById('nmGraph');
+    var nl   = document.getElementById('nmLua');
+    if (m === 'graph') {
+      gSec.style.display = ''; lSec.style.display = 'none';
+      ng.classList.add('on'); nl.classList.remove('on');
+      setTimeout(resizeEdCanvas, 30);
+    } else {
+      gSec.style.display = 'none'; lSec.style.display = '';
+      ng.classList.remove('on'); nl.classList.add('on');
+      setTimeout(resizeLuaCanvas, 30);
+    }
+  }
+
+  /* ── STEP NAV ── */
+  var STEPS = ['Info', 'Nodes', 'Media', 'Review'];
+  var curStep = 0;
+
+  function goStep (n, dir) {
+    var panels = document.querySelectorAll('.wiz-panel');
+    for (var i = 0; i < panels.length; i++) { panels[i].classList.remove('active', 'back-anim'); }
+    var segs = document.querySelectorAll('.step-seg');
+    for (var j = 0; j < segs.length; j++) {
+      segs[j].classList.remove('active', 'done');
+      if (j < n) { segs[j].classList.add('done'); }
+      if (j === n) { segs[j].classList.add('active'); }
+    }
+    var panel = document.getElementById('panel' + n);
+    if (panel) { panel.classList.add('active'); if (dir === 'back') { panel.classList.add('back-anim'); } }
+    curStep = n;
+    var sub = document.getElementById('wizSubtitle');
+    if (sub) { sub.textContent = 'Step ' + (n + 1) + ' of ' + STEPS.length + ' \u00b7 ' + STEPS[n]; }
+    var lbl  = document.getElementById('progressLbl');
+    var fill = document.getElementById('progressFill');
+    if (lbl)  { lbl.textContent  = 'Step ' + (n + 1) + ' of ' + STEPS.length; }
+    if (fill) { fill.style.width = ((n + 1) / STEPS.length * 100) + '%'; }
+    var back = document.getElementById('btnBack');
+    if (back) { back.style.display = n > 0 ? '' : 'none'; }
+    var next = document.getElementById('btnNext');
+    if (next) {
+      if (n === STEPS.length - 1) {
+        next.innerHTML = 'Publish <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+        next.classList.remove('btn-next-wiz'); next.classList.add('btn-publish-wiz');
+      } else {
+        next.innerHTML = 'Next <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+        next.classList.remove('btn-publish-wiz'); next.classList.add('btn-next-wiz');
+      }
+    }
+    if (n === 1) { setTimeout(function () { resizeEdCanvas(); resizeLuaCanvas(); }, 60); }
+    if (n === STEPS.length - 1) { buildReview(); }
+  }
+
+  /* ── REVIEW ── */
+  function graphToArrowString () {
+    if (!graphNodes.length) { return ''; }
+    /* simple ordered list if no edges, otherwise DFS */
+    if (!graphEdges.length) { return graphNodes.map(function (n) { return n.name; }).join(' \u2192 '); }
+    /* find root nodes (no incoming edges) */
+    var hasIn = {};
+    for (var e = 0; e < graphEdges.length; e++) { hasIn[graphEdges[e].to] = true; }
+    var roots = [];
+    for (var n = 0; n < graphNodes.length; n++) {
+      if (!hasIn[graphNodes[n].id]) { roots.push(graphNodes[n].id); }
+    }
+    if (!roots.length) { return graphNodes.map(function (n2) { return n2.name; }).join(' \u2192 '); }
+    /* DFS from first root */
+    var visited = {}, order = [];
+    function dfs (id) {
+      if (visited[id]) { return; }
+      visited[id] = true;
+      var nd = findNode(id);
+      if (nd) { order.push(nd.name); }
+      for (var ei = 0; ei < graphEdges.length; ei++) {
+        if (graphEdges[ei].from === id) { dfs(graphEdges[ei].to); }
+      }
+    }
+    dfs(roots[0]);
+    return order.join(' \u2192 ');
+  }
+
+  function buildReview () {
+    var name = document.getElementById('inputName')   ? document.getElementById('inputName').value   : '';
+    var cat  = document.getElementById('inputCat')    ? document.getElementById('inputCat').value    : '';
+    var desc = document.getElementById('inputDesc')   ? document.getElementById('inputDesc').value   : '';
+    var ver  = document.getElementById('inputVersion')? document.getElementById('inputVersion').value : '';
+    var el   = function (id) { return document.getElementById(id); };
+    if (el('previewTitle'))   { el('previewTitle').textContent   = name || '(No title)'; }
+    if (el('previewCatBadge')){ el('previewCatBadge').textContent= cat  || ''; el('previewCatBadge').style.display = cat ? '' : 'none'; }
+    if (el('previewDesc'))    { el('previewDesc').textContent    = desc || '(No description)'; }
+    if (el('previewVersion')) { el('previewVersion').textContent = ver  || ''; }
+    var diffColors = { Beginner:'var(--node-teal)', Intermediate:'var(--signal-amber)', Advanced:'var(--danger)' };
+    if (el('previewDiff'))    { el('previewDiff').textContent = '\u25cf ' + state.diff; el('previewDiff').style.color = diffColors[state.diff] || ''; }
+    var tagsEl = el('previewTags');
+    if (tagsEl) {
+      tagsEl.innerHTML = '';
+      for (var ti = 0; ti < state.tags.length; ti++) {
+        var sp = document.createElement('span'); sp.className = 'preview-tag'; sp.textContent = state.tags[ti]; tagsEl.appendChild(sp);
+      }
+    }
+    var arrow  = graphToArrowString();
+    var ndEl   = el('previewNodes');
+    if (ndEl) { ndEl.style.display = arrow ? '' : 'none'; ndEl.textContent = arrow; }
+    var checks = [
+      { label: 'Effect name provided',  ok: !!name.trim() },
+      { label: 'Category selected',     ok: !!cat         },
+      { label: 'Description written',   ok: desc.trim().length > 15 },
+      { label: 'Node graph built',      ok: graphNodes.length > 0,   warn: graphNodes.length === 0 },
+      { label: 'Media / preview added', ok: state.mediaUrl !== '',   warn: state.mediaUrl === ''   },
+      { label: 'Visibility set',        ok: !!state.visibility       },
+    ];
+    var cl = el('checklist');
+    if (cl) {
+      cl.innerHTML = '';
+      for (var ci = 0; ci < checks.length; ci++) {
+        var ch = checks[ci];
+        var cls  = ch.ok ? (ch.warn ? 'warn' : 'ok') : 'err';
+        var icon = ch.ok ? (ch.warn ? '!' : '\u2713') : '\u2715';
+        var div  = document.createElement('div'); div.className = 'check-item';
+        div.innerHTML = '<div class="check-ico ' + cls + '">' + icon + '</div><span>' + ch.label + '</span>';
+        cl.appendChild(div);
+      }
+    }
+  }
+
+  /* ── SHARED STATE ── */
+  var state = { diff: 'Beginner', tags: [], mediaUrl: '', mediaType: 'gif', visibility: 'Public' };
+
+  /* ── UPLOAD SIM ── */
+  function simulateUpload () {
+    var bar  = document.getElementById('uploadBar');
+    var zone = document.getElementById('uploadZone');
+    if (!zone || zone.style.display === 'none') { return; }
+    var ttl = zone.querySelector('.upload-title');
+    if (ttl) { ttl.textContent = 'Uploading\u2026'; }
+    var prog = 0;
+    var iv = setInterval(function () {
+      prog += Math.random() * 18;
+      if (prog >= 100) {
+        prog = 100; clearInterval(iv);
+        setTimeout(function () {
+          zone.style.display = 'none';
+          var thumb = document.getElementById('thumbPreview');
+          var img   = document.getElementById('thumbImg');
+          if (thumb && img) {
+            thumb.style.display = 'block';
+            img.src = 'data:image/svg+xml,' + encodeURIComponent(
+              '<svg width="640" height="360" xmlns="http://www.w3.org/2000/svg"><rect width="640" height="360" fill="#06060d"/>' +
+              '<text x="50%" y="47%" dominant-baseline="middle" text-anchor="middle" font-family="DM Mono,monospace" font-size="13" fill="rgba(108,123,255,0.6)">GIF Preview</text>' +
+              '<text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="rgba(108,123,255,0.35)">optical-flow-warp.gif</text></svg>'
+            );
+            state.mediaUrl = 'optical-flow-warp.gif';
+          }
+          showToast('Media uploaded');
+        }, 300);
+      }
+      if (bar) { bar.style.width = prog + '%'; }
+    }, 80);
+  }
+
+  /* ── WIRE UP ── */
+  function init () {
+    /* canvases */
+    edCanvas  = document.getElementById('editorCanvas');
+    luaCanvas = document.getElementById('luaCanvas');
+    if (edCanvas)  { edCtx  = edCanvas.getContext('2d'); }
+    if (luaCanvas) { luaCtx = luaCanvas.getContext('2d'); }
+
+    /* palette */
+    buildPalette('');
+    var ps = document.getElementById('palSearch');
+    if (ps) { ps.addEventListener('input', function () { buildPalette(this.value); }); }
+
+    /* editor canvas events */
+    if (edCanvas) {
+      edCanvas.addEventListener('mousedown', onEdMouseDown);
+      document.addEventListener('mousemove', onDocMouseMove);
+      document.addEventListener('mouseup',   onDocMouseUp);
+    }
+
+    /* toolbar */
+    var bal = document.getElementById('btnAutoLayout');
+    if (bal) { bal.addEventListener('click', autoLayout); }
+    var bcg = document.getElementById('btnClearGraph');
+    if (bcg) { bcg.addEventListener('click', function () { graphNodes = []; graphEdges = []; selNodeId = null; selectNode(null); updateCounts(); renderEdGraph(); showToast('Graph cleared'); }); }
+    var bdn = document.getElementById('btnDeleteNode');
+    if (bdn) { bdn.addEventListener('click', function () { if (selNodeId) { removeNode(selNodeId); } }); }
+
+    /* mode toggle */
+    var ng = document.getElementById('nmGraph');
+    var nl = document.getElementById('nmLua');
+    if (ng) { ng.addEventListener('click', function () { setNodeMode('graph'); }); }
+    if (nl) { nl.addEventListener('click', function () { setNodeMode('lua');   }); }
+
+    /* lua input */
+    var li = document.getElementById('luaInput');
+    if (li) { li.addEventListener('input', onLuaInput); }
+
+    /* wizard nav */
+    document.getElementById('btnOpen').addEventListener('click', function () {
+      document.getElementById('theWizard').classList.add('open');
+      setTimeout(function () { resizeEdCanvas(); }, 80);
+    });
+    document.getElementById('btnOpenDraft').addEventListener('click', function () {
+      document.getElementById('theWizard').classList.add('open');
+      document.getElementById('inputName').value = 'Optical Flow Warp';
+      document.getElementById('inputDesc').value = 'Uses optical flow vectors to warp a source clip \u2014 creates a liquid smear without third-party plugins.';
+      document.getElementById('inputCat').value  = 'Distortion';
+      /* pre-populate graph */
+      var draftTypes = ['MediaIn','OpticalFlow','TimeSpeed','DisplaceDistort','ColorCorrector','Merge','MediaOut'];
+      graphNodes = []; graphEdges = []; selNodeId = null; nodeIdCtr = 0;
+      for (var i = 0; i < draftTypes.length; i++) { addNode(getNT(draftTypes[i])); }
+      updateCounts();
+      showToast('Draft loaded');
+      setTimeout(function () { resizeEdCanvas(); }, 80);
+    });
+    document.getElementById('btnClose').addEventListener('click', closeWizard);
+    document.getElementById('theWizard').addEventListener('click', function (e) {
+      if (e.target === this) { closeWizard(); }
+    });
+    document.getElementById('btnNext').addEventListener('click', function () {
+      if (curStep < STEPS.length - 1) { goStep(curStep + 1, 'fwd'); }
+      else { publish(); }
+    });
+    document.getElementById('btnBack').addEventListener('click', function () {
+      if (curStep > 0) { goStep(curStep - 1, 'back'); }
+    });
+    document.getElementById('btnDraft').addEventListener('click', function () { showToast('Draft saved'); });
+
+    /* info fields */
+    var nameInp = document.getElementById('inputName');
+    if (nameInp) {
+      nameInp.addEventListener('input', function () {
+        var nc = document.getElementById('nameCount');
+        if (nc) { nc.textContent = this.value.length + ' / 60'; nc.className = 'char-count' + (this.value.length > 50 ? ' warn' : ''); }
+      });
+    }
+    var descInp = document.getElementById('inputDesc');
+    if (descInp) {
+      descInp.addEventListener('input', function () {
+        var dc = document.getElementById('descCount');
+        if (dc) { dc.textContent = this.value.length + ' / 400'; dc.className = 'char-count' + (this.value.length > 360 ? ' warn' : ''); }
+      });
+    }
+    var dbtns = document.querySelectorAll('.diff-btn');
+    for (var di = 0; di < dbtns.length; di++) {
+      dbtns[di].addEventListener('click', function () {
+        for (var x = 0; x < dbtns.length; x++) { dbtns[x].classList.remove('on'); }
+        this.classList.add('on');
+        state.diff = this.getAttribute('data-diff');
+      });
+    }
+    var tbtns = document.querySelectorAll('.tag-tog');
+    for (var ti2 = 0; ti2 < tbtns.length; ti2++) {
+      tbtns[ti2].addEventListener('click', function () {
+        this.classList.toggle('on');
+        var tag = this.getAttribute('data-tag');
+        var idx = state.tags.indexOf(tag);
+        if (idx > -1) { state.tags.splice(idx, 1); } else { state.tags.push(tag); }
+      });
+    }
+
+    /* media */
+    function setMediaType (m) {
+      state.mediaType = m;
+      var gif = document.getElementById('gifSection');
+      var vid = document.getElementById('videoSection');
+      var non = document.getElementById('noMediaSection');
+      var btns2 = [document.getElementById('mtGif'), document.getElementById('mtVideo'), document.getElementById('mtNone')];
+      for (var b = 0; b < btns2.length; b++) { if (btns2[b]) { btns2[b].classList.remove('on'); } }
+      if (m === 'gif')   { if (btns2[0]) { btns2[0].classList.add('on'); } gif.style.display=''; vid.style.display='none'; non.style.display='none'; }
+      else if (m === 'video') { if (btns2[1]) { btns2[1].classList.add('on'); } gif.style.display='none'; vid.style.display=''; non.style.display='none'; }
+      else { if (btns2[2]) { btns2[2].classList.add('on'); } gif.style.display='none'; vid.style.display='none'; non.style.display=''; }
+    }
+    document.getElementById('mtGif').addEventListener('click',   function () { setMediaType('gif');   });
+    document.getElementById('mtVideo').addEventListener('click',  function () { setMediaType('video'); });
+    document.getElementById('mtNone').addEventListener('click',   function () { setMediaType('none');  });
+    var uz = document.getElementById('uploadZone');
+    if (uz) {
+      uz.addEventListener('click', simulateUpload);
+      uz.addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('drag'); });
+      uz.addEventListener('dragleave',function ()  { this.classList.remove('drag'); });
+      uz.addEventListener('drop', function (e) { e.preventDefault(); this.classList.remove('drag'); simulateUpload(); });
+    }
+    var ubb = document.getElementById('uploadBrowseBtn');
+    if (ubb) { ubb.addEventListener('click', function (e) { e.stopPropagation(); simulateUpload(); }); }
+    var tr = document.getElementById('thumbRemove');
+    if (tr) {
+      tr.addEventListener('click', function () {
+        document.getElementById('thumbPreview').style.display = 'none';
+        var uz2 = document.getElementById('uploadZone');
+        if (uz2) { uz2.style.display = ''; var tt = uz2.querySelector('.upload-title'); if (tt) { tt.textContent = 'Drop your GIF here'; } document.getElementById('uploadBar').style.width = '0%'; }
+        state.mediaUrl = '';
+      });
+    }
+    var uc = document.getElementById('urlConfirm');
+    if (uc) {
+      uc.addEventListener('click', function () {
+        var url = document.getElementById('videoUrlInput').value.trim();
+        if (!url) { return; }
+        state.mediaUrl = url;
+        var vw = document.getElementById('videoConfirmWrap');
+        var vd = document.getElementById('videoUrlDisplay');
+        if (vw) { vw.style.display = ''; } if (vd) { vd.textContent = url; }
+        showToast('Video link saved');
+      });
+    }
+    var vcards = document.querySelectorAll('.vis-card');
+    for (var vc = 0; vc < vcards.length; vc++) {
+      vcards[vc].addEventListener('click', function () {
+        for (var x2 = 0; x2 < vcards.length; x2++) { vcards[x2].classList.remove('on'); }
+        this.classList.add('on');
+        state.visibility = this.getAttribute('data-vis');
+      });
+    }
+
+    /* success */
+    document.getElementById('btnViewEffect').addEventListener('click', closeWizard);
+    document.getElementById('btnAddAnother').addEventListener('click', function () {
+      closeWizard();
+      setTimeout(function () {
+        graphNodes = []; graphEdges = []; selNodeId = null;
+        document.getElementById('wizBody').style.display = '';
+        document.getElementById('wizFooter').style.display = '';
+        document.getElementById('stepIndicator').style.display = '';
+        document.getElementById('successScreen').classList.remove('show');
+        goStep(0, 'fwd');
+        updateCounts();
+      }, 300);
+    });
+
+    /* theme */
+    document.getElementById('themeBtn').addEventListener('click', function () {
+      var html = document.documentElement, track = document.getElementById('ttTrack'), label = document.getElementById('ttLabel');
+      if (html.getAttribute('data-theme') === 'light') {
+        html.removeAttribute('data-theme'); track.classList.add('on'); label.textContent = 'Night';
+      } else {
+        html.setAttribute('data-theme', 'light'); track.classList.remove('on'); label.textContent = 'Day';
+      }
+    });
+
+    window.addEventListener('resize', function () { resizeEdCanvas(); resizeLuaCanvas(); });
+    goStep(0, 'fwd');
+    updateCounts();
+  }
+
+  function publish () {
+    document.getElementById('wizBody').style.display = 'none';
+    document.getElementById('wizFooter').style.display = 'none';
+    document.getElementById('stepIndicator').style.display = 'none';
+    var succ = document.getElementById('successScreen');
+    var msg  = document.getElementById('successMsg');
+    succ.classList.add('show');
+    if (msg) {
+      if (state.visibility === 'Draft')    { msg.textContent = 'Saved as a draft. Publish any time from your profile.'; }
+      else if (state.visibility === 'Unlisted') { msg.textContent = 'Effect is live with an unlisted link — only people with the URL can find it.'; }
+      else { msg.textContent = 'Your effect is now live. The community can discover, vote on, and learn from it.'; }
+    }
+  }
+
+  function closeWizard () { document.getElementById('theWizard').classList.remove('open'); }
+  function showToast (msg) {
+    var t = document.getElementById('toast'), m = document.getElementById('toastMsg');
+    if (m) { m.textContent = msg; }
+    t.classList.add('show'); clearTimeout(t._t);
+    t._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  init();
+
+}());
+</script>
+</body>
+</html>
