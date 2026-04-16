@@ -762,9 +762,23 @@
 
   // Edit effect function
   // Edit effect function - opens edit modal if available, otherwise navigates to edit page
-  // Edit effect function - navigate to edit-effect-owner.html for owners
+  // Edit effect function - opens edit-effect-owner.html in iframe modal
   window.editEffect = function(effectId) {
-    window.location.href = `edit-effect-owner.html?id=${effectId}`;
+    console.log('[editEffect] Starting for effect:', effectId);
+    
+    // Close the effect detail modal first
+    closeEffectModal();
+    console.log('[editEffect] Effect modal closed');
+    
+    // Check if iframe modal is available (effects.html)
+    console.log('[editEffect] openEditIframe available:', typeof window.openEditIframe);
+    if (typeof window.openEditIframe === 'function') {
+      console.log('[editEffect] Opening iframe modal');
+      window.openEditIframe(effectId);
+    } else {
+      console.log('[editEffect] Fallback to navigation');
+      window.location.href = `edit-effect-owner.html?id=${effectId}`;
+    }
   };
   window.deleteEffect = function(effectId) {
     if (confirm('Are you sure you want to delete this effect?')) {
