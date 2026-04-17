@@ -140,9 +140,12 @@
       try {
         console.log('[effect-modal] Parsing node_code...');
         var parsed = window.NodeSystem.parse(effect.node_code);
+        console.log('[effect-modal] Parsed result:', parsed);
         var normalized = window.NodeSystem.normalize(parsed);
+        console.log('[effect-modal] Normalized:', normalized.nodes.length, 'nodes');
         
         if (normalized.nodes.length > 0) {
+          console.log('[effect-modal] Found', normalized.nodes.length, 'nodes, building UI...');
           // Store current effect ID for click handler
           window.currentEffectId = effect.id;
           
@@ -242,11 +245,12 @@
           }
           
         } else {
+          console.log('[effect-modal] No nodes found in parsed data');
           if (accordionEl) accordionEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">No parseable nodes found</div>';
         }
       } catch (err) {
-        console.error('[effect-modal] Node graph render failed:', err);
-        if (accordionEl) accordionEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">Error parsing nodes</div>';
+        console.error('[effect-modal] Node graph PARSE ERROR:', err);
+        if (accordionEl) accordionEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">Error parsing nodes: ' + err.message + '</div>';
       }
     } else {
       console.log('[effect-modal] Skipping node graph - node_code missing or NodeSystem not loaded');
