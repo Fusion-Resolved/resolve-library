@@ -129,84 +129,126 @@
     console.log('[effect-modal] self_contained value:', effect.self_contained);
     document.getElementById('modal-dependencies').textContent = effect.fusion_env || 'None';
 
-    // Node graph visualization using Universal Node System
-    var nodeCodeEl = document.getElementById('modal-node-code');
-    if (nodeCodeEl && window.NodeSystem) {
-      if (effect.node_code && effect.node_code.trim()) {
-        try {
-          var parsed = window.NodeSystem.parse(effect.node_code);
-          var normalized = window.NodeSystem.normalize(parsed);
+    // Node graph visualization and accordion using Universal Node System
+    var nodeSection = document.getElementById('modal-node-section');
+    var nodeCountEl = document.getElementById('modal-node-count');
+    var accordionEl = document.getElementById('modal-node-accordion');
+    var canvasContainer = document.getElementById('modal-node-code');
+    
+    if (window.NodeSystem && effect.node_code && effect.node_code.trim()) {
+      try {
+        var parsed = window.NodeSystem.parse(effect.node_code);
+        var normalized = window.NodeSystem.normalize(parsed);
+        
+        if (normalized.nodes.length > 0) {
+          // Store current effect ID for click handler
+          window.currentEffectId = effect.id;
           
-          if (normalized.nodes.length > 0) {
-            // Create canvas for node graph
-            var canvasId = 'modal-node-canvas-' + effect.id;
-            nodeCodeEl.innerHTML = '<div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">' + 
-              normalized.nodes.length + ' node' + (normalized.nodes.length !== 1 ? 's' : '') + '</div>' +
-              '<canvas id="' + canvasId + '" width="400" height="160" style="width:100%;height:160px;background:#0f0f16;border-radius:6px;cursor:pointer;" onclick="window.openNodeGraphModal(\'' + effect.id + '\')"></canvas>' +
-              '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;text-align:center;">Click to open full editor</div>';
+          // Update node count
+          if (nodeCountEl) {
+            nodeCountEl.textContent = normalized.nodes.length + ' node' + (normalized.nodes.length !== 1 ? 's' : '');
+          }
+          
+          // Render canvas
+          setTimeout(function() {
+            var canvas = document.getElementById('modal-node-canvas');
+            if (canvas && canvas.parentElement) {
+              canvas.width = canvas.parentElement.offsetWidth;
+              canvas.height = 160;
+              var ctx = canvas.getContext('2d');
+              window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
+                width: canvas.width,
+                height: 160,
+                scale: 0.12,
+                selectedId: null,
+                clearColor: '#0f0f16'
+              });
+            }
+          }, 50);
+          
+          // Build accordion
+          if (accordionEl) {
+            accordionEl.innerHTML = '';
             
-            // Render after DOM update
-            setTimeout(function() {
-              var canvas = document.getElementById(canvasId);
-              if (canvas) {
-                var ctx = canvas.getContext('2d');
-                window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
-                  width: 400,
-                  height: 160,
-                  scale: 0.12,
-                  selectedId: null,
-                  clearColor: '#0f0f16'
+            normalized.nodes.forEach(function(node, idx) {
+              var hasParams = Object.keys(node.params || {}).length > 0;
+              var hasAnimation = hasParams && Object.values(node.params).some(function(p) {
+                return p.keyframes && p.keyframes.length > 0;
+              });
+              
+              // Accordion item
+              var item = document.createElement('div');
+              item.className = 'node-accordion-item';
+              item.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.05);';
+              
+              // Header
+              var header = document.createElement('div');
+              header.className = 'node-accordion-header';
+              header.style.cssText = 'padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background 0.15s;';
+              header.innerHTML = '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<span style="width:8px;height:8px;border-radius:50%;background:' + (node.catColor || '#6c7bff') + ';"></span>' +
+                '<span style="font-size:12px;color:var(--text);">' + (node.fusionName || node.name) + '</span>' +
+                '<span style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">' + (node.category || 'Node') + '</span>' +
+              '</div>' +
+              '<div style="display:flex;align-items:center;gap:6px;">' +
+                (hasAnimation ? '<span style="font-size:8px;color:var(--violet);">◆</span>' : '') +
+                '<span style="font-size:10px;color:var(--text-muted);transition:transform 0.2s;" class="accordion-arrow">▾</span>' +
+              '</div>';
+              
+              // Content (hidden by default)
+              var content = document.createElement('div');
+              content.className = 'node-accordion-content';
+              content.style.cssText = 'display:none;padding:0 12px 12px 32px;';
+              
+              if (hasParams) {
+                var paramsDiv = document.createElement('div');
+                paramsDiv.style.cssText = 'background:rgba(0,0,0,0.3);border-radius:4px;padding:8px;';
+                window.NodeSystem.renderParams(paramsDiv, node, {
+                  readOnly: true,
+                  showSplines: true
                 });
+                content.appendChild(paramsDiv);
+              } else {
+                content.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No parameters</div>';
               }
-            }, 50);
-          } else {
-            nodeCodeEl.textContent = 'No parseable nodes found';
-          }
-        } catch (err) {
-          console.error('[effect-modal] Node graph render failed:', err);
-          nodeCodeEl.textContent = effect.node_code || 'No node tree available';
-        }
-      } else {
-        nodeCodeEl.textContent = 'No node tree available';
-      }
-    } else if (nodeCodeEl) {
-      nodeCodeEl.textContent = effect.node_code || effect.node || 'No node tree available';
-    }
-
-    // Node Parameters Panel using Universal Node System
-    var paramsSec = document.getElementById('modal-params-sec');
-    var paramsList = document.getElementById('modal-params-list');
-    if (paramsSec && paramsList && window.NodeSystem) {
-      if (effect.node_code && effect.node_code.trim()) {
-        try {
-          var parsedParams = window.NodeSystem.parse(effect.node_code);
-          var normalizedParams = window.NodeSystem.normalize(parsedParams);
-          
-          // Find first node with parameters
-          var nodeWithParams = normalizedParams.nodes.find(function(n) {
-            return Object.keys(n.params || {}).length > 0;
-          });
-          
-          if (nodeWithParams) {
-            paramsSec.style.display = '';
-            paramsList.innerHTML = '';
-            window.NodeSystem.renderParams(paramsList, nodeWithParams, {
-              readOnly: true,
-              showSplines: true,
-              onParamSelect: function(key, param) {
-                console.log('[effect-modal] Parameter selected:', key);
-              }
+              
+              // Toggle handler
+              var isOpen = false;
+              header.onmouseenter = function() { header.style.background = 'rgba(255,255,255,0.03)'; };
+              header.onmouseleave = function() { header.style.background = 'transparent'; };
+              header.onclick = function() {
+                isOpen = !isOpen;
+                content.style.display = isOpen ? 'block' : 'none';
+                var arrow = header.querySelector('.accordion-arrow');
+                if (arrow) arrow.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+              };
+              
+              item.appendChild(header);
+              item.appendChild(content);
+              accordionEl.appendChild(item);
             });
-          } else {
-            paramsSec.style.display = 'none';
           }
-        } catch (err) {
-          console.error('[effect-modal] Parameter panel render failed:', err);
-          paramsSec.style.display = 'none';
+          
+          // Update copy button
+          var copyBtn = document.getElementById('btnCopy');
+          if (copyBtn) {
+            copyBtn.onclick = function() {
+              navigator.clipboard.writeText(effect.node_code).then(function() {
+                showToast('Node code copied!');
+              });
+            };
+          }
+          
+        } else {
+          if (accordionEl) accordionEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">No parseable nodes found</div>';
         }
-      } else {
-        paramsSec.style.display = 'none';
+      } catch (err) {
+        console.error('[effect-modal] Node graph render failed:', err);
+        if (accordionEl) accordionEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">Error parsing nodes</div>';
       }
+    } else {
+      // No node_code or NodeSystem not available
+      if (nodeSection) nodeSection.style.display = 'none';
     }
 
     // Steps (parse if JSON, or use as string)

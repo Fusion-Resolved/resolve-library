@@ -8217,6 +8217,25 @@ function saveEdit(id) {
   const shareLimit = (shareLimitRaw !== '' && !isNaN(parseInt(shareLimitRaw, 10))) ? parseInt(shareLimitRaw, 10) : null;
   const sharePassEl = document.getElementById('e-share-password');
   const sharePassword = (sharePassEl && sharePassEl.value.trim()) ? sharePassEl.value.trim() : null;
+  
+  // Auto-extract node names from nodeCode if NodeSystem is available
+  const nodeCodeValue = document.getElementById('e-nodeCode').value.trim();
+  let extractedNodeNames = [];
+  if (nodeCodeValue && window.NodeSystem) {
+    try {
+      const parsed = window.NodeSystem.parse(nodeCodeValue);
+      const normalized = window.NodeSystem.normalize(parsed);
+      extractedNodeNames = normalized.nodes.map(n => n.name || n.fusionName).filter(Boolean);
+      console.log('[saveEdit] Auto-extracted nodes from nodeCode:', extractedNodeNames);
+    } catch (e) {
+      console.warn('[saveEdit] Could not parse nodeCode:', e);
+    }
+  }
+  
+  // Merge extracted nodes with manually selected nodes (deduplicated)
+  const manualNodes = editSelectedNodes.map(n => n.name);
+  const allNodes = [...new Set([...manualNodes, ...extractedNodeNames])];
+  
   effects[idx] = {
     ...effects[idx],
     is_public:       isPublic,
@@ -8236,8 +8255,8 @@ function saveEdit(id) {
     explanation:     document.getElementById('e-explanation').value.trim(),
     steps:           document.getElementById('e-steps').value.trim(),
     settingFile:     document.getElementById('e-settingFile').value.trim(),
-    nodeCode:        document.getElementById('e-nodeCode').value.trim(),
-    nodes:           editSelectedNodes.map(n => n.name),
+    nodeCode:        nodeCodeValue,
+    nodes:           allNodes,
     renderWeight:    document.getElementById('e-render').value,
     selfContained:   selfVal === 'true' ? true : selfVal === 'false' ? false : undefined,
     dependencies:    document.getElementById('e-deps').value.trim(),

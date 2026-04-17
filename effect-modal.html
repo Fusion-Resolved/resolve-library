@@ -111,6 +111,14 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 .rel-chip:hover{border-color:rgba(108,123,255,0.45);color:var(--violet-light);background:rgba(108,123,255,0.10);}
 
 /* ═══════════════════════════════════
+   NODE ACCORDION STYLES
+   ═══════════════════════════════════ */
+.node-accordion-item:last-child{border-bottom:none !important;}
+.node-accordion-header:hover{background:rgba(255,255,255,0.05);}
+.node-accordion-content .param-row{margin-bottom:8px;font-size:11px;padding:6px;background:rgba(255,255,255,0.03);border-radius:4px;}
+.node-accordion-content .param-row:last-child{margin-bottom:0;}
+
+/* ═══════════════════════════════════
    NODE GRAPH CANVAS
    ═══════════════════════════════════ */
 .graph-canvas-wrap{position:relative;height:320px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border-surface);user-select:none;-webkit-user-select:none;}
@@ -281,26 +289,24 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
           </ol>
         </div>
 
-        <!-- Code -->
-        <div class="sec">
-          <div class="sec-lbl">Node tree code</div>
-          <div class="code-wrap">
-            <div id="modal-node-code" style="background:#0f0f16;border-radius:6px;min-height:60px;">
-              <code class="node-code" id="nodeCode">OpticalFlow &#x2192; DisplaceDistort &#x2192; TimeSpeed &#x2192; Merge</code>
-            </div>
-            <button class="copy-btn" id="btnCopy">copy</button>
-          </div>
-        </div>
-
-        <!-- Node Parameters -->
-        <div class="sec" id="modal-params-sec" style="display:none;">
+        <!-- Node Graph Section -->
+        <div class="sec" id="modal-node-section">
           <div class="sec-lbl" style="display:flex;align-items:center;justify-content:space-between;">
-            <span>Node Parameters</span>
-            <span style="font-size:9px;color:var(--text-muted);font-family:var(--font-mono);">select to view</span>
+            <span>Node Graph</span>
+            <span style="font-size:9px;color:var(--text-muted);font-family:var(--font-mono);" id="modal-node-count"></span>
           </div>
-          <div id="modal-params-list" style="max-height:250px;overflow-y:auto;background:#0f0f16;border-radius:6px;border:1px solid var(--border-surface);">
-            <!-- Populated by JS -->
+          
+          <!-- Visual Canvas -->
+          <div id="modal-node-code" style="background:#0f0f16;border-radius:6px;height:160px;margin-bottom:12px;cursor:pointer;overflow:hidden;" onclick="window.openNodeGraphModal && window.openNodeGraphModal(currentEffectId)">
+            <canvas id="modal-node-canvas" style="width:100%;height:100%;"></canvas>
           </div>
+          
+          <!-- Node Accordion List -->
+          <div id="modal-node-accordion" style="background:#0f0f16;border-radius:6px;border:1px solid var(--border-surface);overflow:hidden;">
+            <!-- Populated by JS - accordion items for each node -->
+          </div>
+          
+          <button class="copy-btn" id="btnCopy" style="margin-top:8px;width:100%;">copy node code</button>
         </div>
 
         <!-- Details -->

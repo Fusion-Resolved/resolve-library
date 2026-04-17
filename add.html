@@ -1050,6 +1050,25 @@ function saveEffect() {
     return;
   }
 
+  const nodeCodeValue = document.getElementById('f-nodeCode').value.trim();
+  
+  // Auto-extract node names from nodeCode if NodeSystem is available
+  var extractedNodeNames = [];
+  if (nodeCodeValue && window.NodeSystem) {
+    try {
+      var parsed = window.NodeSystem.parse(nodeCodeValue);
+      var normalized = window.NodeSystem.normalize(parsed);
+      extractedNodeNames = normalized.nodes.map(function(n) { return n.name || n.fusionName; }).filter(Boolean);
+      console.log('[saveEffect] Auto-extracted nodes from nodeCode:', extractedNodeNames);
+    } catch (e) {
+      console.warn('[saveEffect] Could not parse nodeCode:', e);
+    }
+  }
+  
+  // Merge extracted nodes with manually selected nodes (deduplicated)
+  var manualNodes = selectedNodes.map(function(n) { return n.name; });
+  var allNodes = [...new Set([...manualNodes, ...extractedNodeNames])];
+
   const effect = {
     id: Date.now().toString(),
     name,
@@ -1063,9 +1082,9 @@ function saveEffect() {
     gifUrl:       document.getElementById('f-gif').value.trim(),
     explanation:  document.getElementById('f-explanation').value.trim(),
     steps:        document.getElementById('f-steps').value.trim(),
-    nodeCode:     document.getElementById('f-nodeCode').value.trim(),
+    nodeCode:     nodeCodeValue,
     settingFile:  document.getElementById('f-settingFile').value.trim(),
-    nodes:        selectedNodes.map(n => n.name),
+    nodes:        allNodes,
     renderWeight: document.getElementById('f-render').value,
     selfContained:document.getElementById('f-self').value === 'true' ? true : document.getElementById('f-self').value === 'false' ? false : undefined,
     dependencies: document.getElementById('f-deps').value.trim(),
