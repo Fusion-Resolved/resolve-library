@@ -157,10 +157,12 @@
           // Render canvas
           setTimeout(function() {
             var canvas = document.getElementById('modal-node-canvas');
+            console.log('[effect-modal] Canvas element:', canvas ? 'found' : 'not found');
             if (canvas && canvas.parentElement) {
               canvas.width = canvas.parentElement.offsetWidth;
               canvas.height = 160;
               var ctx = canvas.getContext('2d');
+              console.log('[effect-modal] Rendering graph to canvas...');
               window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
                 width: canvas.width,
                 height: 160,
@@ -168,14 +170,19 @@
                 selectedId: null,
                 clearColor: '#0f0f16'
               });
+              console.log('[effect-modal] Graph rendered');
+            } else {
+              console.log('[effect-modal] Canvas or parent not found');
             }
           }, 50);
           
           // Build accordion
           if (accordionEl) {
+            console.log('[effect-modal] Building accordion...');
             accordionEl.innerHTML = '';
             
             normalized.nodes.forEach(function(node, idx) {
+              console.log('[effect-modal] Processing node', idx, ':', node.name || node.fusionName);
               var hasParams = Object.keys(node.params || {}).length > 0;
               var hasAnimation = hasParams && Object.values(node.params).some(function(p) {
                 return p.keyframes && p.keyframes.length > 0;
@@ -232,6 +239,9 @@
               item.appendChild(content);
               accordionEl.appendChild(item);
             });
+            console.log('[effect-modal] Accordion built with', accordionEl.children.length, 'items');
+          } else {
+            console.log('[effect-modal] accordionEl not found!');
           }
           
           // Update copy button
