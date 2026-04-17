@@ -147,6 +147,13 @@
         if (normalized.nodes.length > 0) {
           console.log('[effect-modal] Found', normalized.nodes.length, 'nodes, building UI...');
           
+          // Auto-layout nodes if they don't have positions
+          var needsLayout = normalized.nodes.some(function(n) { return n.x === 0 && n.y === 0; });
+          if (needsLayout && window.NodeSystem.autoLayout) {
+            console.log('[effect-modal] Auto-layout needed, positioning nodes...');
+            window.NodeSystem.autoLayout(normalized.nodes, { cols: 3, xGap: 50, yGap: 40 });
+          }
+          
           // Delay UI building to ensure DOM is ready
           setTimeout(function() {
             var nodeSection = document.getElementById('modal-node-section');
@@ -195,11 +202,12 @@
               // Increased canvas height for better visibility
               canvas.height = 220;
               
-              console.log('[effect-modal] Rendering graph with scale:', scale, 'for', nodeCount, 'nodes');
+              console.log('[effect-modal] Rendering graph with auto-fit for', nodeCount, 'nodes');
               window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
                 width: canvas.width,
                 height: 220,
-                scale: scale,
+                autoFit: true,
+                padding: 20,
                 selectedId: null,
                 clearColor: '#0f0f16'
               });

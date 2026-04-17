@@ -7771,6 +7771,12 @@ function openDetail(id) {
           const parsed = window.NodeSystem.parse(e.node_code);
           const normalized = window.NodeSystem.normalize(parsed);
           if (normalized.nodes.length > 0) {
+            // Auto-layout nodes if they don't have positions
+            const needsLayout = normalized.nodes.some(n => n.x === 0 && n.y === 0);
+            if (needsLayout && window.NodeSystem.autoLayout) {
+              window.NodeSystem.autoLayout(normalized.nodes, { cols: 3, xGap: 50, yGap: 40 });
+            }
+            
             const canvas = document.createElement('canvas');
             canvas.width = graphContainer.offsetWidth;
             canvas.height = 220;
@@ -7781,22 +7787,12 @@ function openDetail(id) {
             
             const ctx = canvas.getContext('2d');
             
-            // Calculate dynamic scale based on node count
-            const nodeCount = normalized.nodes.length;
-            let scale;
-            if (nodeCount <= 2) {
-              scale = 0.55;
-            } else if (nodeCount <= 4) {
-              scale = 0.40;
-            } else if (nodeCount <= 6) {
-              scale = 0.28;
-            } else {
-              scale = 0.18;
-            }
-            
+            // Auto-fit the graph to fill canvas
             window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
               width: canvas.width,
               height: 220,
+              autoFit: true,
+              padding: 20,
               scale: scale,
               selectedId: null,
               clearColor: '#0f0f16'

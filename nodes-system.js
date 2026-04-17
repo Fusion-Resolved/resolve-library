@@ -589,13 +589,49 @@
    * Render complete graph to canvas
    */
   function renderGraph(ctx, nodes, edges, options = {}) {
-    const { 
+    let { 
       width, 
       height, 
       scale = 1, 
+      autoFit = true,
+      padding = 20,
       selectedId = null,
       clearColor = '#06060d'
     } = options;
+
+    // Auto-fit: calculate scale to fit all nodes within canvas
+    if (autoFit && nodes.length > 0) {
+      // Find bounding box of all nodes
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      nodes.forEach(n => {
+        minX = Math.min(minX, n.x);
+        minY = Math.min(minY, n.y);
+        maxX = Math.max(maxX, n.x + CONFIG.NODE_W);
+        maxY = Math.max(maxY, n.y + CONFIG.NODE_H);
+      });
+      
+      // Add padding
+      const graphWidth = maxX - minX + (padding * 2);
+      const graphHeight = maxY - minY + (padding * 2);
+      
+      // Calculate scale to fit
+      const scaleX = (width - padding * 2) / graphWidth;
+      const scaleY = (height - padding * 2) / graphHeight;
+      const fitScale = Math.min(scaleX, scaleY, 1.0); // Cap at 1.0 to prevent oversizing
+      
+      // Use the larger of fitScale or the provided scale (but cap at 1.0)
+      scale = Math.max(fitScale, Math.min(scale, 1.0));
+      
+      // Center the graph
+      const offsetX = (width - (maxX - minX) * scale) / 2 - minX * scale;
+      const offsetY = (height - (maxY - minY) * scale) / 2 - minY * scale;
+      
+      // Apply offset to all nodes temporarily for rendering
+      nodes.forEach(n => {
+        n._renderX = n.x + offsetX / scale;
+        n._renderY = n.y + offsetY / scale;
+      });
+    }
 
     // Clear
     ctx.fillStyle = clearColor;
@@ -619,17 +655,36 @@
       const from = nodeMap[edge.from];
       const to = nodeMap[edge.to];
       if (from && to) {
-        drawConnection(ctx, from, to, { scale });
+        // Use offset positions if autoFit
+        if (autoFit) {
+          const fromCopy = { ...from, x: from._renderX || from.x, y: from._renderY || from.y };
+          const toCopy = { ...to, x: to._renderX || to.x, y: to._renderY || to.y };
+          drawConnection(ctx, fromCopy, toCopy, { scale });
+        } else {
+          drawConnection(ctx, from, to, { scale });
+        }
       }
     });
 
     // Draw nodes
     nodes.forEach(node => {
-      drawNode(ctx, node, { 
+      const renderNode = autoFit ? 
+        { ...node, x: node._renderX || node.x, y: node._renderY || node.y } : 
+        node;
+      
+      drawNode(ctx, renderNode, { 
         scale, 
         selected: node.id === selectedId 
       });
     });
+    
+    // Clean up temporary render positions
+    if (autoFit) {
+      nodes.forEach(n => {
+        delete n._renderX;
+        delete n._renderY;
+      });
+    }
   }
 
   /* ================================================================
