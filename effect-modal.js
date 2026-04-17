@@ -146,7 +146,20 @@
         
         if (normalized.nodes.length > 0) {
           console.log('[effect-modal] Found', normalized.nodes.length, 'nodes, building UI...');
-          console.log('[effect-modal] Elements check - nodeSection:', !!nodeSection, 'nodeCountEl:', !!nodeCountEl, 'accordionEl:', !!accordionEl, 'canvasContainer:', !!canvasContainer);
+          
+          // Delay UI building to ensure DOM is ready
+          setTimeout(function() {
+            var nodeSection = document.getElementById('modal-node-section');
+            var nodeCountEl = document.getElementById('modal-node-count');
+            var accordionEl = document.getElementById('modal-node-accordion');
+            var canvasContainer = document.getElementById('modal-node-code');
+            
+            console.log('[effect-modal] Elements check (delayed) - nodeSection:', !!nodeSection, 'nodeCountEl:', !!nodeCountEl, 'accordionEl:', !!accordionEl, 'canvasContainer:', !!canvasContainer);
+            
+            if (!nodeSection) {
+              console.log('[effect-modal] modal-node-section not found even after delay');
+              return;
+            }
           
           // Store current effect ID for click handler
           window.currentEffectId = effect.id;
@@ -256,12 +269,14 @@
             };
           }
           
+          }, 100); // End of setTimeout for DOM ready
+          
         } else {
           console.log('[effect-modal] No nodes found in parsed data');
-          if (accordionEl) accordionEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">No parseable nodes found</div>';
         }
       } catch (err) {
         console.error('[effect-modal] Node graph PARSE ERROR:', err);
+        var accordionEl = document.getElementById('modal-node-accordion');
         if (accordionEl) accordionEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">Error parsing nodes: ' + err.message + '</div>';
       }
     } else {
