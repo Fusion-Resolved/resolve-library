@@ -182,15 +182,27 @@
             console.log('[effect-modal] Canvas element:', canvas ? 'found' : 'not found');
             if (canvas && canvas.parentElement) {
               canvas.width = canvas.parentElement.offsetWidth;
-              canvas.height = 220; // Set height before rendering
+              canvas.height = 220;
               var ctx = canvas.getContext('2d');
               
-              console.log('[effect-modal] Rendering graph with auto-fit for', normalized.nodes.length, 'nodes');
+              // Dynamic scale based on node count - larger trees get smaller scale
+              var nodeCount = normalized.nodes.length;
+              var scale;
+              if (nodeCount <= 2) {
+                scale = 0.45; // Large for few nodes
+              } else if (nodeCount <= 4) {
+                scale = 0.32; // Medium for moderate nodes
+              } else if (nodeCount <= 6) {
+                scale = 0.22; // Smaller for more nodes
+              } else {
+                scale = 0.15; // Compact for many nodes
+              }
+              
+              console.log('[effect-modal] Rendering graph with scale:', scale, 'for', nodeCount, 'nodes');
               window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
                 width: canvas.width,
                 height: 220,
-                autoFit: true,
-                padding: 20,
+                scale: scale,
                 selectedId: null,
                 clearColor: '#0f0f16'
               });
