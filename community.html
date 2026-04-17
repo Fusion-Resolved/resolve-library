@@ -1158,7 +1158,7 @@ async function loadCommunityEffects() {
   try {
     const { data: effects, error } = await window._supabase
       .from('effects')
-      .select('id, name, cat, tags, desc, difficulty, gifUrl, created_at, user_id, is_public')
+      .select('id, name, cat, tags, desc, difficulty, gif_url, created_at, user_id, is_public')
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -1376,6 +1376,24 @@ function getFiltered(){
   else if(currentSort==='new') data.sort((a,b)=>(b.isNew?1:0)-(a.isNew?1:0)||b.id-a.id);
   else data.sort((a,b)=>(b.votes+b.saved*0.5)-(a.votes+a.saved*0.5));
   return data;
+}
+
+function updateFilteredCount(){
+  const filtered = getFiltered();
+  const total = EFFECTS_DATA.length;
+  const showing = Math.min(filtered.length, displayedCount);
+  
+  // Update count display if element exists
+  const countEl = document.getElementById('resultsCount');
+  if(countEl){
+    countEl.textContent = `Showing ${showing} of ${filtered.length} effects`;
+  }
+  
+  // Update load more button visibility
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  if(loadMoreBtn){
+    loadMoreBtn.style.display = filtered.length > displayedCount ? 'flex' : 'none';
+  }
 }
 
 function renderCards(){

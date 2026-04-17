@@ -7995,6 +7995,23 @@ function openEditIframe(effectId) {
   // Load edit-effect-owner.html with the effect ID
   const url = `edit-effect-owner.html?id=${effectId}`;
   console.log('[openEditIframe] Loading URL:', url);
+  
+  // Add error handling for iframe load
+  iframe.onerror = function() {
+    console.error('[openEditIframe] Failed to load iframe content');
+  };
+  
+  iframe.onload = function() {
+    console.log('[openEditIframe] Iframe loaded successfully');
+    // Check if content is accessible
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      console.log('[openEditIframe] Iframe document accessible:', !!iframeDoc);
+    } catch (e) {
+      console.warn('[openEditIframe] Cannot access iframe content (cross-origin or not loaded)');
+    }
+  };
+  
   iframe.src = url;
   overlay.style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -8013,7 +8030,11 @@ function closeEditIframe(event) {
   const overlay = document.getElementById('edit-iframe-overlay');
   const iframe = document.getElementById('edit-effect-iframe');
   if (overlay) overlay.style.display = 'none';
-  if (iframe) iframe.src = ''; // Clear iframe
+  if (iframe) {
+    iframe.src = ''; // Clear iframe
+    iframe.onload = null; // Remove load handler
+    iframe.onerror = null; // Remove error handler
+  }
   document.body.style.overflow = '';
   console.log('[closeEditIframe] Modal closed');
 }

@@ -1364,7 +1364,7 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
     try {
       const { data: effects, error } = await window._supabase
         .from('effects')
-        .select('id, name, cat, nodes, difficulty, gifUrl, created_at')
+        .select('id, name, cat, nodes, difficulty, gif_url, created_at')
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(6);
