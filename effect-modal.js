@@ -182,13 +182,10 @@
             console.log('[effect-modal] Canvas element:', canvas ? 'found' : 'not found');
             if (canvas && canvas.parentElement) {
               canvas.width = canvas.parentElement.offsetWidth;
-              canvas.height = 160;
+              canvas.height = 220; // Set height before rendering
               var ctx = canvas.getContext('2d');
               
-              // Auto-fit the graph to fill canvas
-              canvas.height = 220;
-              
-              console.log('[effect-modal] Rendering graph with auto-fit for', nodeCount, 'nodes');
+              console.log('[effect-modal] Rendering graph with auto-fit for', normalized.nodes.length, 'nodes');
               window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
                 width: canvas.width,
                 height: 220,
