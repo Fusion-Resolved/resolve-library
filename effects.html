@@ -7762,19 +7762,66 @@ function openDetail(id) {
     }
     
     // Render node graph visualization and parameter panel in detail view
-    console.log('[effects] Detail view - node_code:', e.node_code ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
-    if (e.node_code && window.NodeSystem) {
+    console.log('[effects] Detail view - node_code:', e.node_code ? 'exists' : 'missing', '_graphData:', e._graphData ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
+    
+    // Try _graphData first (has positions), fall back to node_code
+    var nodeData = null;
+    var hasValidNodeData = false;
+    var usedGraphDataForNodes = false;
+    
+    if (e._graphData && window.NodeSystem) {
+      try {
+        var graphData = typeof e._graphData === 'string' ? JSON.parse(e._graphData) : e._graphData;
+        if (graphData && graphData.nodes && graphData.nodes.length > 0) {
+          console.log('[effects] Using _graphData with', graphData.nodes.length, 'nodes (has positions)');
+          nodeData = {
+            nodes: graphData.nodes.map(function(n) { return {
+              id: n.id,
+              name: n.name,
+              fusionName: n.label || n.name,
+              category: n.cat || 'Custom',
+              catColor: n.col || '#6c7bff',
+              x: n.x || 0,
+              y: n.y || 0,
+              params: n.fusionParams || {}
+            };}),
+            edges: (graphData.conns || []).map(function(c) { return {
+              from: c.fromNode,
+              to: c.toNode
+            };})
+          };
+          hasValidNodeData = true;
+          usedGraphDataForNodes = true;
+        }
+      } catch (err) {
+        console.warn('[effects] Failed to parse _graphData:', err);
+      }
+    }
+    
+    // Fall back to node_code if _graphData not available
+    if (!hasValidNodeData && e.node_code && window.NodeSystem) {
+      try {
+        console.log('[effects] Falling back to node_code parsing...');
+        var parsed = window.NodeSystem.parse(e.node_code);
+        nodeData = window.NodeSystem.normalize(parsed);
+        hasValidNodeData = nodeData.nodes.length > 0;
+      } catch (err) {
+        console.warn('[effects] Failed to parse node_code:', err);
+      }
+    }
+    
+    if (hasValidNodeData && nodeData) {
       // Node graph
       const graphContainer = document.getElementById('detail-node-graph-' + e.id);
       if (graphContainer && !graphContainer.querySelector('canvas')) {
         try {
-          const parsed = window.NodeSystem.parse(e.node_code);
-          const normalized = window.NodeSystem.normalize(parsed);
-          if (normalized.nodes.length > 0) {
-            // Auto-layout nodes if they don't have positions
-            const needsLayout = normalized.nodes.some(n => n.x === 0 && n.y === 0);
-            if (needsLayout && window.NodeSystem.autoLayout) {
-              window.NodeSystem.autoLayout(normalized.nodes, { cols: 3, xGap: 50, yGap: 40 });
+          if (nodeData.nodes.length > 0) {
+            // Auto-layout only if we don't have positions from _graphData
+            if (!usedGraphDataForNodes) {
+              const needsLayout = nodeData.nodes.some(n => n.x === 0 && n.y === 0);
+              if (needsLayout && window.NodeSystem.autoLayout) {
+                window.NodeSystem.autoLayout(nodeData.nodes, { cols: 3, xGap: 50, yGap: 40 });
+              }
             }
             
             const canvas = document.createElement('canvas');
@@ -7788,7 +7835,7 @@ function openDetail(id) {
             const ctx = canvas.getContext('2d');
             
             // Dynamic scale based on node count
-            const nodeCount = normalized.nodes.length;
+            const nodeCount = nodeData.nodes.length;
             let scale;
             if (nodeCount <= 2) {
               scale = 0.45;
@@ -7800,10 +7847,12 @@ function openDetail(id) {
               scale = 0.15;
             }
             
-            window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
+            console.log('[effects] Rendering graph with scale:', scale, 'for', nodeCount, 'nodes');
+            console.log('[effects] Used _graphData with positions:', usedGraphDataForNodes);
+            
+            window.NodeSystem.renderGraph(ctx, nodeData.nodes, nodeData.edges, {
               width: canvas.width,
               height: 220,
-              scale: scale,
               scale: scale,
               selectedId: null,
               clearColor: '#0f0f16'
@@ -7811,7 +7860,7 @@ function openDetail(id) {
             
             const overlay = document.createElement('div');
             overlay.style.cssText = 'position:absolute;bottom:8px;left:8px;padding:4px 8px;border-radius:4px;background:rgba(6,6,13,0.8);font-size:10px;color:var(--violet);font-family:var(--font-mono);pointer-events:none;';
-            overlay.textContent = normalized.nodes.length + ' nodes · Click to open';
+            overlay.textContent = nodeData.nodes.length + ' nodes · Click to open';
             graphContainer.style.position = 'relative';
             graphContainer.appendChild(overlay);
           }
@@ -7824,11 +7873,8 @@ function openDetail(id) {
       const paramsContainer = document.getElementById('panel-params-' + e.id);
       if (paramsContainer) {
         try {
-          const parsed = window.NodeSystem.parse(e.node_code);
-          const normalized = window.NodeSystem.normalize(parsed);
-          
           // Find first node with parameters
-          const nodeWithParams = normalized.nodes.find(n => Object.keys(n.params || {}).length > 0);
+          const nodeWithParams = nodeData.nodes.find(n => Object.keys(n.params || {}).length > 0);
           if (nodeWithParams) {
             paramsContainer.innerHTML = '';
             window.NodeSystem.renderParams(paramsContainer, nodeWithParams, {

@@ -130,182 +130,195 @@
     document.getElementById('modal-dependencies').textContent = effect.fusion_env || 'None';
 
     // Node graph visualization and accordion using Universal Node System
-    console.log('[effect-modal] Modal opened - node_code:', effect.node_code ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
+    console.log('[effect-modal] Modal opened - node_code:', effect.node_code ? 'exists' : 'missing', '_graphData:', effect._graphData ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
     var nodeSection = document.getElementById('modal-node-section');
     var nodeCountEl = document.getElementById('modal-node-count');
     var accordionEl = document.getElementById('modal-node-accordion');
     var canvasContainer = document.getElementById('modal-node-code');
     
-    if (window.NodeSystem && effect.node_code && effect.node_code.trim()) {
+    // Try to get node data - prefer _graphData (has positions), fall back to node_code
+    var nodeData = null;
+    var hasValidData = false;
+    var usedGraphData = false;
+    
+    if (effect._graphData && window.NodeSystem) {
       try {
-        console.log('[effect-modal] Parsing node_code...');
-        var parsed = window.NodeSystem.parse(effect.node_code);
-        console.log('[effect-modal] Parsed result:', parsed);
-        var normalized = window.NodeSystem.normalize(parsed);
-        console.log('[effect-modal] Normalized:', normalized.nodes.length, 'nodes');
-        
-        if (normalized.nodes.length > 0) {
-          console.log('[effect-modal] Found', normalized.nodes.length, 'nodes, building UI...');
-          
-          // Auto-layout nodes if they don't have positions
-          var needsLayout = normalized.nodes.some(function(n) { return n.x === 0 && n.y === 0; });
-          if (needsLayout && window.NodeSystem.autoLayout) {
-            console.log('[effect-modal] Auto-layout needed, positioning nodes...');
-            window.NodeSystem.autoLayout(normalized.nodes, { cols: 3, xGap: 50, yGap: 40 });
-          }
-          
-          // Delay UI building to ensure DOM is ready
-          setTimeout(function() {
-            var nodeSection = document.getElementById('modal-node-section');
-            var nodeCountEl = document.getElementById('modal-node-count');
-            var accordionEl = document.getElementById('modal-node-accordion');
-            var canvasContainer = document.getElementById('modal-node-code');
-            
-            console.log('[effect-modal] Elements check (delayed) - nodeSection:', !!nodeSection, 'nodeCountEl:', !!nodeCountEl, 'accordionEl:', !!accordionEl, 'canvasContainer:', !!canvasContainer);
-            
-            if (!nodeSection) {
-              console.log('[effect-modal] modal-node-section not found even after delay');
-              return;
-            }
-          
-          // Store current effect ID for click handler
-          window.currentEffectId = effect.id;
-          
-          // Update node count
-          if (nodeCountEl) {
-            nodeCountEl.textContent = normalized.nodes.length + ' node' + (normalized.nodes.length !== 1 ? 's' : '');
-          }
-          
-          // Render canvas
-          setTimeout(function() {
-            var canvas = document.getElementById('modal-node-canvas');
-            console.log('[effect-modal] Canvas element:', canvas ? 'found' : 'not found');
-            if (canvas && canvas.parentElement) {
-              canvas.width = canvas.parentElement.offsetWidth;
-              canvas.height = 220;
-              var ctx = canvas.getContext('2d');
-              
-              // Dynamic scale based on node count - larger trees get smaller scale
-              var nodeCount = normalized.nodes.length;
-              var scale;
-              if (nodeCount <= 2) {
-                scale = 0.45; // Large for few nodes
-              } else if (nodeCount <= 4) {
-                scale = 0.32; // Medium for moderate nodes
-              } else if (nodeCount <= 6) {
-                scale = 0.22; // Smaller for more nodes
-              } else {
-                scale = 0.15; // Compact for many nodes
-              }
-              
-              console.log('[effect-modal] Rendering graph with scale:', scale, 'for', nodeCount, 'nodes');
-              window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
-                width: canvas.width,
-                height: 220,
-                scale: scale,
-                selectedId: null,
-                clearColor: '#0f0f16'
-              });
-              console.log('[effect-modal] Graph rendered');
-            } else {
-              console.log('[effect-modal] Canvas or parent not found');
-            }
-          }, 50);
-          
-          // Build accordion
-          if (accordionEl) {
-            console.log('[effect-modal] Building accordion...');
-            accordionEl.innerHTML = '';
-            
-            normalized.nodes.forEach(function(node, idx) {
-              console.log('[effect-modal] Processing node', idx, ':', node.name || node.fusionName);
-              var hasParams = Object.keys(node.params || {}).length > 0;
-              var hasAnimation = hasParams && Object.values(node.params).some(function(p) {
-                return p.keyframes && p.keyframes.length > 0;
-              });
-              
-              // Accordion item
-              var item = document.createElement('div');
-              item.className = 'node-accordion-item';
-              item.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.05);';
-              
-              // Header
-              var header = document.createElement('div');
-              header.className = 'node-accordion-header';
-              header.style.cssText = 'padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background 0.15s;';
-              header.innerHTML = '<div style="display:flex;align-items:center;gap:8px;">' +
-                '<span style="width:8px;height:8px;border-radius:50%;background:' + (node.catColor || '#6c7bff') + ';"></span>' +
-                '<span style="font-size:12px;color:var(--text);">' + (node.fusionName || node.name) + '</span>' +
-                '<span style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">' + (node.category || 'Node') + '</span>' +
-              '</div>' +
-              '<div style="display:flex;align-items:center;gap:6px;">' +
-                (hasAnimation ? '<span style="font-size:8px;color:var(--violet);">◆</span>' : '') +
-                '<span style="font-size:10px;color:var(--text-muted);transition:transform 0.2s;" class="accordion-arrow">▾</span>' +
-              '</div>';
-              
-              // Content (hidden by default)
-              var content = document.createElement('div');
-              content.className = 'node-accordion-content';
-              content.style.cssText = 'display:none;padding:0 12px 12px 32px;';
-              
-              if (hasParams) {
-                var paramsDiv = document.createElement('div');
-                paramsDiv.style.cssText = 'background:rgba(0,0,0,0.3);border-radius:4px;padding:8px;';
-                window.NodeSystem.renderParams(paramsDiv, node, {
-                  readOnly: true,
-                  showSplines: true
-                });
-                content.appendChild(paramsDiv);
-              } else {
-                content.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No parameters</div>';
-              }
-              
-              // Toggle handler
-              var isOpen = false;
-              header.onmouseenter = function() { header.style.background = 'rgba(255,255,255,0.03)'; };
-              header.onmouseleave = function() { header.style.background = 'transparent'; };
-              header.onclick = function() {
-                isOpen = !isOpen;
-                content.style.display = isOpen ? 'block' : 'none';
-                var arrow = header.querySelector('.accordion-arrow');
-                if (arrow) arrow.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-              };
-              
-              item.appendChild(header);
-              item.appendChild(content);
-              accordionEl.appendChild(item);
-            });
-            console.log('[effect-modal] Accordion built with', accordionEl.children.length, 'items');
-          } else {
-            console.log('[effect-modal] accordionEl not found!');
-          }
-          
-          // Update copy button
-          var copyBtn = document.getElementById('btnCopy');
-          if (copyBtn) {
-            copyBtn.onclick = function() {
-              navigator.clipboard.writeText(effect.node_code).then(function() {
-                showToast('Node code copied!');
-              });
-            };
-          }
-          
-          }, 100); // End of setTimeout for DOM ready
-          
-        } else {
-          console.log('[effect-modal] No nodes found in parsed data');
-          var accordionElEmpty = document.getElementById('modal-node-accordion');
-          if (accordionElEmpty) accordionElEmpty.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">No parseable nodes found</div>';
+        // Use _graphData which has actual positions from nodegraph
+        var graphData = typeof effect._graphData === 'string' ? JSON.parse(effect._graphData) : effect._graphData;
+        if (graphData && graphData.nodes && graphData.nodes.length > 0) {
+          console.log('[effect-modal] Using _graphData with', graphData.nodes.length, 'nodes (has positions)');
+          nodeData = {
+            nodes: graphData.nodes.map(function(n) { return {
+              id: n.id,
+              name: n.name,
+              fusionName: n.label || n.name,
+              category: n.cat || 'Custom',
+              catColor: n.col || '#6c7bff',
+              x: n.x || 0,
+              y: n.y || 0,
+              params: n.fusionParams || {}
+            };}),
+            edges: (graphData.conns || []).map(function(c) { return {
+              from: c.fromNode,
+              to: c.toNode
+            };})
+          };
+          hasValidData = true;
+          usedGraphData = true;
         }
-      } catch (err) {
-        console.error('[effect-modal] Node graph PARSE ERROR:', err);
-        var accordionEl = document.getElementById('modal-node-accordion');
-        if (accordionEl) accordionEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">Error parsing nodes: ' + err.message + '</div>';
+      } catch (e) {
+        console.warn('[effect-modal] Failed to parse _graphData:', e);
       }
+    }
+    
+    // Fall back to node_code parsing if _graphData not available
+    if (!hasValidData && effect.node_code && window.NodeSystem) {
+      try {
+        console.log('[effect-modal] Falling back to node_code parsing...');
+        var parsed = window.NodeSystem.parse(effect.node_code);
+        nodeData = window.NodeSystem.normalize(parsed);
+        hasValidData = nodeData.nodes.length > 0;
+        
+        // Auto-layout since we don't have positions
+        if (hasValidData && window.NodeSystem.autoLayout) {
+          console.log('[effect-modal] Auto-layout needed, positioning nodes...');
+          window.NodeSystem.autoLayout(nodeData.nodes, { cols: 3, xGap: 50, yGap: 40 });
+        }
+      } catch (e) {
+        console.warn('[effect-modal] Failed to parse node_code:', e);
+      }
+    }
+    
+    // Render the node graph section
+    if (hasValidData && nodeData && nodeSection) {
+      nodeSection.style.display = 'block';
+      
+      // Store current effect ID for click handler
+      window.currentEffectId = effect.id;
+      
+      // Update node count
+      if (nodeCountEl) {
+        nodeCountEl.textContent = nodeData.nodes.length + ' node' + (nodeData.nodes.length !== 1 ? 's' : '');
+      }
+      
+      // Render canvas
+      setTimeout(function() {
+        var canvas = document.getElementById('modal-node-canvas');
+        console.log('[effect-modal] Canvas element:', canvas ? 'found' : 'not found');
+        if (canvas && canvas.parentElement) {
+          canvas.width = canvas.parentElement.offsetWidth;
+          canvas.height = 220;
+          var ctx = canvas.getContext('2d');
+          
+          // Dynamic scale based on node count - larger trees get smaller scale
+          var nodeCount = nodeData.nodes.length;
+          var scale;
+          if (nodeCount <= 2) {
+            scale = 0.45; // Large for few nodes
+          } else if (nodeCount <= 4) {
+            scale = 0.32; // Medium for moderate nodes
+          } else if (nodeCount <= 6) {
+            scale = 0.22; // Smaller for more nodes
+          } else {
+            scale = 0.15; // Compact for many nodes
+          }
+          
+          console.log('[effect-modal] Rendering graph with scale:', scale, 'for', nodeCount, 'nodes');
+          console.log('[effect-modal] Used _graphData with positions:', usedGraphData);
+          window.NodeSystem.renderGraph(ctx, nodeData.nodes, nodeData.edges, {
+            width: canvas.width,
+            height: 220,
+            scale: scale,
+            selectedId: null,
+            clearColor: '#0f0f16'
+          });
+          console.log('[effect-modal] Graph rendered');
+        } else {
+          console.log('[effect-modal] Canvas or parent not found');
+        }
+      }, 50);
+      
+      // Build accordion
+      if (accordionEl) {
+        console.log('[effect-modal] Building accordion...');
+        accordionEl.innerHTML = '';
+        
+        nodeData.nodes.forEach(function(node, idx) {
+          console.log('[effect-modal] Processing node', idx, ':', node.name || node.fusionName);
+          var hasParams = Object.keys(node.params || {}).length > 0;
+          var hasAnimation = hasParams && Object.values(node.params).some(function(p) {
+            return p.keyframes && p.keyframes.length > 0;
+          });
+          
+          // Accordion item
+          var item = document.createElement('div');
+          item.className = 'node-accordion-item';
+          item.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.05);';
+          
+          // Header
+          var header = document.createElement('div');
+          header.className = 'node-accordion-header';
+          header.style.cssText = 'padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background 0.15s;';
+          header.innerHTML = '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="width:8px;height:8px;border-radius:50%;background:' + (node.catColor || '#6c7bff') + ';"></span>' +
+            '<span style="font-size:12px;color:var(--text);">' + (node.fusionName || node.name) + '</span>' +
+            '<span style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">' + (node.category || 'Node') + '</span>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+            (hasAnimation ? '<span style="font-size:8px;color:var(--violet);">◆</span>' : '') +
+            '<span style="font-size:10px;color:var(--text-muted);transition:transform 0.2s;" class="accordion-arrow">▾</span>' +
+          '</div>';
+          
+          // Content (hidden by default)
+          var content = document.createElement('div');
+          content.className = 'node-accordion-content';
+          content.style.cssText = 'display:none;padding:0 12px 12px 32px;';
+          
+          if (hasParams) {
+            var paramsDiv = document.createElement('div');
+            paramsDiv.style.cssText = 'background:rgba(0,0,0,0.3);border-radius:4px;padding:8px;';
+            window.NodeSystem.renderParams(paramsDiv, node, {
+              readOnly: true,
+              showSplines: true
+            });
+            content.appendChild(paramsDiv);
+          } else {
+            content.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No parameters</div>';
+          }
+          
+          // Toggle handler
+          var isOpen = false;
+          header.onmouseenter = function() { header.style.background = 'rgba(255,255,255,0.03)'; };
+          header.onmouseleave = function() { header.style.background = 'transparent'; };
+          header.onclick = function() {
+            isOpen = !isOpen;
+            content.style.display = isOpen ? 'block' : 'none';
+            var arrow = header.querySelector('.accordion-arrow');
+            if (arrow) arrow.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+          };
+          
+          item.appendChild(header);
+          item.appendChild(content);
+          accordionEl.appendChild(item);
+        });
+        console.log('[effect-modal] Accordion built with', accordionEl.children.length, 'items');
+      } else {
+        console.log('[effect-modal] accordionEl not found!');
+      }
+      
+      // Update copy button
+      var copyBtn = document.getElementById('btnCopy');
+      if (copyBtn) {
+        copyBtn.onclick = function() {
+          navigator.clipboard.writeText(effect.node_code).then(function() {
+            showToast('Node code copied!');
+          });
+        };
+      }
+      
     } else {
-      console.log('[effect-modal] Skipping node graph - node_code missing or NodeSystem not loaded');
-      var nodeSectionHide = document.getElementById('modal-node-section');
-      if (nodeSectionHide) nodeSectionHide.style.display = 'none';
+      console.log('[effect-modal] No valid node data found or NodeSystem not loaded');
+      if (nodeSection) nodeSection.style.display = 'none';
     }
 
     // Steps (parse if JSON, or use as string)
