@@ -7825,22 +7825,28 @@ function openDetail(id) {
             }
             
             const canvas = document.createElement('canvas');
-            canvas.width = graphContainer.offsetWidth;
-            canvas.height = 220;
+            const dpr = window.devicePixelRatio || 1;
+            const displayWidth = graphContainer.offsetWidth;
+            const displayHeight = 220;
+            
+            // Set actual canvas size to match display size × DPR for crisp rendering
+            canvas.width = displayWidth * dpr;
+            canvas.height = displayHeight * dpr;
             canvas.style.width = '100%';
             canvas.style.height = '100%';
             canvas.style.borderRadius = '8px';
             graphContainer.appendChild(canvas);
             
             const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
             
             // Auto-fit to canvas with padding - scale calculated based on node bounds
             console.log('[effects] Rendering graph with fit mode for', nodeData.nodes.length, 'nodes');
             console.log('[effects] Used _graphData with positions:', usedGraphDataForNodes);
             
             window.NodeSystem.renderGraph(ctx, nodeData.nodes, nodeData.edges, {
-              width: canvas.width,
-              height: 220,
+              width: displayWidth,
+              height: displayHeight,
               fit: true,
               padding: 20,
               selectedId: null,

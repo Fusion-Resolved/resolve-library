@@ -238,16 +238,25 @@
         var canvas = document.getElementById('modal-node-canvas');
         console.log('[effect-modal] Canvas element:', canvas ? 'found' : 'not found');
         if (canvas && canvas.parentElement) {
-          canvas.width = canvas.parentElement.offsetWidth;
-          canvas.height = 220;
+          var dpr = window.devicePixelRatio || 1;
+          var displayWidth = canvas.parentElement.offsetWidth;
+          var displayHeight = 220;
+          
+          // Set actual canvas size to match display size × DPR for crisp rendering
+          canvas.width = displayWidth * dpr;
+          canvas.height = displayHeight * dpr;
+          canvas.style.width = displayWidth + 'px';
+          canvas.style.height = displayHeight + 'px';
+          
           var ctx = canvas.getContext('2d');
+          ctx.scale(dpr, dpr);
           
           // Auto-fit to canvas with padding - scale calculated based on node bounds
           console.log('[effect-modal] Rendering graph with fit mode for', nodeData.nodes.length, 'nodes');
           console.log('[effect-modal] Used _graphData with positions:', usedGraphData);
           window.NodeSystem.renderGraph(ctx, nodeData.nodes, nodeData.edges, {
-            width: canvas.width,
-            height: 220,
+            width: displayWidth,
+            height: displayHeight,
             fit: true,
             padding: 20,
             selectedId: null,
