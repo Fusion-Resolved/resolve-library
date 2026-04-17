@@ -273,6 +273,8 @@
           
         } else {
           console.log('[effect-modal] No nodes found in parsed data');
+          var accordionElEmpty = document.getElementById('modal-node-accordion');
+          if (accordionElEmpty) accordionElEmpty.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">No parseable nodes found</div>';
         }
       } catch (err) {
         console.error('[effect-modal] Node graph PARSE ERROR:', err);
@@ -281,7 +283,8 @@
       }
     } else {
       console.log('[effect-modal] Skipping node graph - node_code missing or NodeSystem not loaded');
-      if (nodeSection) nodeSection.style.display = 'none';
+      var nodeSectionHide = document.getElementById('modal-node-section');
+      if (nodeSectionHide) nodeSectionHide.style.display = 'none';
     }
 
     // Steps (parse if JSON, or use as string)
