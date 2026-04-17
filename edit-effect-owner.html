@@ -1045,6 +1045,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     return window.NodeSystem.parse(str);
   }
 
+  /* ── LUA INPUT HANDLER (stub - prevents ReferenceError) ── */
+  function onLuaInput () {
+    // Stub function - prevents ReferenceError during init
+    console.log('[onLuaInput] Lua input changed (stub)');
+  }
+
   /* ── PALETTE ── */
   function buildPalette (f) {
     var list = document.getElementById('palList'); if (!list) { return; }
@@ -1601,21 +1607,35 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     /* sheet opens automatically */
 
     /* close */
-    document.getElementById('btnClose').addEventListener('click', function () {
-      if (isDirty) {
-        if (!confirm('You have unsaved changes. Close anyway?')) { return; }
+    try {
+      var btnClose = document.getElementById('btnClose');
+      if (btnClose) {
+        btnClose.addEventListener('click', function () {
+          if (isDirty) {
+            if (!confirm('You have unsaved changes. Close anyway?')) { return; }
+          }
+          closeSheet();
+        });
       }
-      closeSheet();
-    });
+    } catch (e) { console.error('[init] Error attaching btnClose listener:', e); }
 
     /* save */
-    document.getElementById('btnSave').addEventListener('click', doSave);
-    document.getElementById('btnHdSave').addEventListener('click', doSave);
-    document.getElementById('btnBannerSave').addEventListener('click', doSave);
-    document.getElementById('btnDiscard').addEventListener('click', function () {
-      if (!isDirty) { return; }
-      clearDirty(); showToast('Changes discarded');
-    });
+    try {
+      var btnSave = document.getElementById('btnSave');
+      var btnHdSave = document.getElementById('btnHdSave');
+      var btnBannerSave = document.getElementById('btnBannerSave');
+      var btnDiscard = document.getElementById('btnDiscard');
+      
+      if (btnSave) btnSave.addEventListener('click', doSave);
+      if (btnHdSave) btnHdSave.addEventListener('click', doSave);
+      if (btnBannerSave) btnBannerSave.addEventListener('click', doSave);
+      if (btnDiscard) {
+        btnDiscard.addEventListener('click', function () {
+          if (!isDirty) { return; }
+          clearDirty(); showToast('Changes discarded');
+        });
+      }
+    } catch (e) { console.error('[init] Error attaching save button listeners:', e); }
 
     /* field dirty listeners */
     var fields = ['fName','fDesc','fCat','fVer','fWeight','fSelf'];
@@ -1678,54 +1698,79 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     document.getElementById('btnCopyEmbed').addEventListener('click', function () { showToast('Embed code copied'); });
 
     /* media */
-    function setMediaMode (m) {
-      document.getElementById('mt0').classList.toggle('on', m === 'gif');
-      document.getElementById('mt1').classList.toggle('on', m === 'video');
-      document.getElementById('gifUpSec').style.display  = m === 'gif'   ? '' : 'none';
-      document.getElementById('vidLinkSec').style.display = m === 'video' ? '' : 'none';
-    }
-    document.getElementById('mt0').addEventListener('click', function () { setMediaMode('gif'); });
-    document.getElementById('mt1').addEventListener('click', function () { setMediaMode('video'); });
-    document.getElementById('dropZone').addEventListener('click', function () { showToast('GIF uploaded'); markDirty(2); });
-    document.getElementById('browseBtn').addEventListener('click', function (e) { e.stopPropagation(); showToast('GIF uploaded'); markDirty(2); });
-    document.getElementById('btnVidConfirm').addEventListener('click', function () { showToast('Video link updated'); markDirty(2); });
-    document.getElementById('btnReplace').addEventListener('click', function () { showToast('Ready to replace media'); });
-    document.getElementById('btnRemoveMedia').addEventListener('click', function () { showToast('Media removed'); markDirty(2); });
+    /* media & other buttons - wrapped in try-catch for safety */
+    try {
+      function setMediaMode (m) {
+        document.getElementById('mt0').classList.toggle('on', m === 'gif');
+        document.getElementById('mt1').classList.toggle('on', m === 'video');
+        document.getElementById('gifUpSec').style.display  = m === 'gif'   ? '' : 'none';
+        document.getElementById('vidLinkSec').style.display = m === 'video' ? '' : 'none';
+      }
+      
+      var mt0 = document.getElementById('mt0');
+      var mt1 = document.getElementById('mt1');
+      var dropZone = document.getElementById('dropZone');
+      var browseBtn = document.getElementById('browseBtn');
+      var btnVidConfirm = document.getElementById('btnVidConfirm');
+      var btnReplace = document.getElementById('btnReplace');
+      var btnRemoveMedia = document.getElementById('btnRemoveMedia');
+      
+      if (mt0) mt0.addEventListener('click', function () { setMediaMode('gif'); });
+      if (mt1) mt1.addEventListener('click', function () { setMediaMode('video'); });
+      if (dropZone) dropZone.addEventListener('click', function () { showToast('GIF uploaded'); markDirty(2); });
+      if (browseBtn) browseBtn.addEventListener('click', function (e) { e.stopPropagation(); showToast('GIF uploaded'); markDirty(2); });
+      if (btnVidConfirm) btnVidConfirm.addEventListener('click', function () { showToast('Video link updated'); markDirty(2); });
+      if (btnReplace) btnReplace.addEventListener('click', function () { showToast('Ready to replace media'); });
+      if (btnRemoveMedia) btnRemoveMedia.addEventListener('click', function () { showToast('Media removed'); markDirty(2); });
+    } catch (e) { console.error('[init] Error attaching media listeners:', e); }
 
     /* danger zone */
-    document.getElementById('btnArchive').addEventListener('click', function () {
-      document.getElementById('archiveOv').classList.add('open');
-    });
-    document.getElementById('btnCancelArchive').addEventListener('click', function () {
-      document.getElementById('archiveOv').classList.remove('open');
-    });
-    document.getElementById('btnConfirmArchive').addEventListener('click', function () {
-      document.getElementById('archiveOv').classList.remove('open');
-      closeSheet();
-      showToast('Effect archived');
-    });
+    try {
+      var btnArchive = document.getElementById('btnArchive');
+      var btnCancelArchive = document.getElementById('btnCancelArchive');
+      var btnConfirmArchive = document.getElementById('btnConfirmArchive');
+      
+      if (btnArchive) btnArchive.addEventListener('click', function () {
+        document.getElementById('archiveOv').classList.add('open');
+      });
+      if (btnCancelArchive) btnCancelArchive.addEventListener('click', function () {
+        document.getElementById('archiveOv').classList.remove('open');
+      });
+      if (btnConfirmArchive) btnConfirmArchive.addEventListener('click', function () {
+        document.getElementById('archiveOv').classList.remove('open');
+        closeSheet();
+        showToast('Effect archived');
+      });
 
-    var effectName = 'Optical Flow Warp';
-    document.getElementById('btnDelete').addEventListener('click', function () {
-      var hint = document.getElementById('confirmNameHint');
-      if (hint) { hint.textContent = '"' + effectName + '"'; }
-      document.getElementById('confirmInput').value = '';
-      document.getElementById('btnConfirmDelete').classList.remove('enabled');
-      document.getElementById('deleteOv').classList.add('open');
-    });
-    document.getElementById('confirmInput').addEventListener('input', function () {
-      var btn = document.getElementById('btnConfirmDelete');
-      if (this.value === effectName) { btn.classList.add('enabled'); } else { btn.classList.remove('enabled'); }
-    });
-    document.getElementById('btnCancelDelete').addEventListener('click', function () {
-      document.getElementById('deleteOv').classList.remove('open');
-    });
-    document.getElementById('btnConfirmDelete').addEventListener('click', function () {
-      if (!this.classList.contains('enabled')) { return; }
-      document.getElementById('deleteOv').classList.remove('open');
-      closeSheet();
-      showToast('Effect deleted permanently');
-    });
+      var effectName = 'Optical Flow Warp';
+      var btnDelete = document.getElementById('btnDelete');
+      var btnCancelDelete = document.getElementById('btnCancelDelete');
+      var btnConfirmDelete = document.getElementById('btnConfirmDelete');
+      var confirmInput = document.getElementById('confirmInput');
+      
+      if (btnDelete) btnDelete.addEventListener('click', function () {
+        var hint = document.getElementById('confirmNameHint');
+        if (hint) { hint.textContent = '"' + effectName + '"'; }
+        if (confirmInput) confirmInput.value = '';
+        if (btnConfirmDelete) btnConfirmDelete.classList.remove('enabled');
+        document.getElementById('deleteOv').classList.add('open');
+      });
+      if (confirmInput) confirmInput.addEventListener('input', function () {
+        var btn = document.getElementById('btnConfirmDelete');
+        if (btn) {
+          if (this.value === effectName) { btn.classList.add('enabled'); } else { btn.classList.remove('enabled'); }
+        }
+      });
+      if (btnCancelDelete) btnCancelDelete.addEventListener('click', function () {
+        document.getElementById('deleteOv').classList.remove('open');
+      });
+      if (btnConfirmDelete) btnConfirmDelete.addEventListener('click', function () {
+        if (!this.classList.contains('enabled')) { return; }
+        document.getElementById('deleteOv').classList.remove('open');
+        closeSheet();
+        showToast('Effect deleted permanently');
+      });
+    } catch (e) { console.error('[init] Error attaching danger zone listeners:', e); }
 
 
 

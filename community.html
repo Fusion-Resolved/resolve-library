@@ -1396,6 +1396,14 @@ function updateFilteredCount(){
   }
 }
 
+function renderSpotlight(){
+  // Wrapper function to call buildSpotlight
+  // Prevents ReferenceError while maintaining functionality
+  if(typeof buildSpotlight === 'function'){
+    buildSpotlight();
+  }
+}
+
 function renderCards(){
   const grid = document.getElementById('cardsGrid');
   grid.innerHTML='';
