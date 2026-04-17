@@ -7787,12 +7787,23 @@ function openDetail(id) {
             
             const ctx = canvas.getContext('2d');
             
-            // Auto-fit the graph to fill canvas
+            // Dynamic scale based on node count
+            const nodeCount = normalized.nodes.length;
+            let scale;
+            if (nodeCount <= 2) {
+              scale = 0.45;
+            } else if (nodeCount <= 4) {
+              scale = 0.32;
+            } else if (nodeCount <= 6) {
+              scale = 0.22;
+            } else {
+              scale = 0.15;
+            }
+            
             window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
               width: canvas.width,
               height: 220,
-              autoFit: true,
-              padding: 20,
+              scale: scale,
               scale: scale,
               selectedId: null,
               clearColor: '#0f0f16'
