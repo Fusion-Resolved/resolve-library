@@ -7773,17 +7773,31 @@ function openDetail(id) {
           if (normalized.nodes.length > 0) {
             const canvas = document.createElement('canvas');
             canvas.width = graphContainer.offsetWidth;
-            canvas.height = 180;
+            canvas.height = 220;
             canvas.style.width = '100%';
             canvas.style.height = '100%';
             canvas.style.borderRadius = '8px';
             graphContainer.appendChild(canvas);
             
             const ctx = canvas.getContext('2d');
+            
+            // Calculate dynamic scale based on node count
+            const nodeCount = normalized.nodes.length;
+            let scale;
+            if (nodeCount <= 2) {
+              scale = 0.55;
+            } else if (nodeCount <= 4) {
+              scale = 0.40;
+            } else if (nodeCount <= 6) {
+              scale = 0.28;
+            } else {
+              scale = 0.18;
+            }
+            
             window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
               width: canvas.width,
-              height: 180,
-              scale: 0.12,
+              height: 220,
+              scale: scale,
               selectedId: null,
               clearColor: '#0f0f16'
             });
