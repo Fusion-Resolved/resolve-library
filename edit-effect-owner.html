@@ -981,6 +981,16 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     edCtx.setTransform(1, 0, 0, 1, 0, 0); edCtx.scale(dpr, dpr);
     renderEd();
   }
+  function resizeLua () {
+    if (!luaCanvas) { return; }
+    var w2 = luaCanvas.parentElement;
+    var W = w2.offsetWidth, H = w2.offsetHeight;
+    luaCanvas.width = W * dpr; luaCanvas.height = H * dpr;
+    luaCanvas.style.width = W + 'px'; luaCanvas.style.height = H + 'px';
+    if (luaCtx) {
+      luaCtx.setTransform(1, 0, 0, 1, 0, 0); luaCtx.scale(dpr, dpr);
+    }
+  }
   function renderEd () {
     if (!edCtx || !edCanvas) { return; }
     var W = edCanvas.offsetWidth, H = edCanvas.offsetHeight;
