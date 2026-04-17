@@ -146,6 +146,8 @@
         
         if (normalized.nodes.length > 0) {
           console.log('[effect-modal] Found', normalized.nodes.length, 'nodes, building UI...');
+          console.log('[effect-modal] Elements check - nodeSection:', !!nodeSection, 'nodeCountEl:', !!nodeCountEl, 'accordionEl:', !!accordionEl, 'canvasContainer:', !!canvasContainer);
+          
           // Store current effect ID for click handler
           window.currentEffectId = effect.id;
           
