@@ -141,9 +141,9 @@
     var hasValidData = false;
     var usedGraphData = false;
     
+    // Case 1: _graphData already transformed (from effects.html _rowToEffect)
     if (effect._graphData && window.NodeSystem) {
       try {
-        // Use _graphData which has actual positions from nodegraph
         var graphData = typeof effect._graphData === 'string' ? JSON.parse(effect._graphData) : effect._graphData;
         if (graphData && graphData.nodes && graphData.nodes.length > 0) {
           console.log('[effect-modal] Using _graphData with', graphData.nodes.length, 'nodes (has positions)');
@@ -153,7 +153,7 @@
               name: n.name,
               fusionName: n.label || n.name,
               category: n.cat || 'Custom',
-              catColor: n.col || '#6c7bff',
+              catColor: n.catColor || n.col || '#6c7bff',
               x: n.x || 0,
               y: n.y || 0,
               params: n.fusionParams || {}
@@ -171,7 +171,39 @@
       }
     }
     
-    // Fall back to node_code parsing if _graphData not available
+    // Case 2: effect.nodes is the JSONB column from Supabase (raw graph data)
+    if (!hasValidData && effect.nodes && window.NodeSystem) {
+      try {
+        var rawNodes = effect.nodes;
+        // Check if it's a full graph object (has schemaVersion or nodes array)
+        if (rawNodes && typeof rawNodes === 'object' && !Array.isArray(rawNodes)
+            && (rawNodes.nodes || rawNodes.schemaVersion)) {
+          console.log('[effect-modal] Using effect.nodes (JSONB) with', rawNodes.nodes.length, 'nodes');
+          nodeData = {
+            nodes: rawNodes.nodes.map(function(n) { return {
+              id: n.id,
+              name: n.name,
+              fusionName: n.label || n.name,
+              category: n.cat || 'Custom',
+              catColor: n.catColor || n.col || '#6c7bff',
+              x: n.x || 0,
+              y: n.y || 0,
+              params: n.fusionParams || {}
+            };}),
+            edges: (rawNodes.conns || []).map(function(c) { return {
+              from: c.fromNode,
+              to: c.toNode
+            };})
+          };
+          hasValidData = true;
+          usedGraphData = true;
+        }
+      } catch (e) {
+        console.warn('[effect-modal] Failed to parse effect.nodes:', e);
+      }
+    }
+    
+    // Case 3: Fall back to node_code parsing if no graph data available
     if (!hasValidData && effect.node_code && window.NodeSystem) {
       try {
         console.log('[effect-modal] Falling back to node_code parsing...');

@@ -493,7 +493,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 
     var _a = await sb
       .from('effects')
-      .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, created_at, user_id')
+      .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, created_at, user_id, node_code, nodes')
       .eq('id', effectId)
       .single();
     var data = _a.data, error = _a.error;

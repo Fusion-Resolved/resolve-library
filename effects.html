@@ -7780,7 +7780,7 @@ function openDetail(id) {
               name: n.name,
               fusionName: n.label || n.name,
               category: n.cat || 'Custom',
-              catColor: n.col || '#6c7bff',
+              catColor: n.catColor || n.col || '#6c7bff',
               x: n.x || 0,
               y: n.y || 0,
               params: n.fusionParams || {}
