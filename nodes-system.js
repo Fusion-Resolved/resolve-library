@@ -510,7 +510,7 @@
 
     // Node name
     ctx.fillStyle = '#f4f4fb';
-    ctx.font = `${600 * scale}px 'DM Sans', sans-serif`;
+    ctx.font = `600 ${Math.max(8, 14 * scale)}px 'DM Sans', sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     
@@ -527,7 +527,7 @@
 
     // Category label
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = `${10 * scale}px 'DM Mono', monospace`;
+    ctx.font = `${Math.max(7, 10 * scale)}px 'DM Mono', monospace`;
     ctx.fillText(node.category || 'Custom', x + 10 * scale, y + 40 * scale);
 
     // Instance indicator
