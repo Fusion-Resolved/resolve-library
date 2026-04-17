@@ -185,21 +185,7 @@
               canvas.height = 160;
               var ctx = canvas.getContext('2d');
               
-              // Calculate dynamic scale based on node count
-              // Larger scale = bigger nodes. Adjusted for 220px height canvas.
-              var nodeCount = normalized.nodes.length;
-              var scale;
-              if (nodeCount <= 2) {
-                scale = 0.55; // Very large for few nodes
-              } else if (nodeCount <= 4) {
-                scale = 0.40; // Large for moderate nodes (3-4 nodes)
-              } else if (nodeCount <= 6) {
-                scale = 0.28; // Medium for more nodes
-              } else {
-                scale = 0.18; // Smaller for many nodes
-              }
-              
-              // Increased canvas height for better visibility
+              // Auto-fit the graph to fill canvas
               canvas.height = 220;
               
               console.log('[effect-modal] Rendering graph with auto-fit for', nodeCount, 'nodes');
