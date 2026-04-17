@@ -481,12 +481,14 @@
   function drawNode(ctx, node, options = {}) {
     const { 
       selected = false, 
-      scale = 1, 
+      scale = 1,
+      offsetX = 0,
+      offsetY = 0,
       ghost = false 
     } = options;
 
-    const x = node.x * scale;
-    const y = node.y * scale;
+    const x = node.x * scale + offsetX;
+    const y = node.y * scale + offsetY;
     const w = CONFIG.NODE_W * scale;
     const h = CONFIG.NODE_H * scale;
     const r = 8 * scale;
@@ -539,12 +541,17 @@
    * Draw a connection edge (bezier spline)
    */
   function drawConnection(ctx, fromNode, toNode, options = {}) {
-    const { scale = 1, highlight = false } = options;
+    const { 
+      scale = 1, 
+      offsetX = 0,
+      offsetY = 0,
+      highlight = false 
+    } = options;
 
-    const x1 = (fromNode.x + CONFIG.NODE_W) * scale;
-    const y1 = (fromNode.y + CONFIG.NODE_H / 2) * scale;
-    const x2 = toNode.x * scale;
-    const y2 = (toNode.y + CONFIG.NODE_H / 2) * scale;
+    const x1 = (fromNode.x + CONFIG.NODE_W) * scale + offsetX;
+    const y1 = (fromNode.y + CONFIG.NODE_H / 2) * scale + offsetY;
+    const x2 = toNode.x * scale + offsetX;
+    const y2 = (toNode.y + CONFIG.NODE_H / 2) * scale + offsetY;
 
     const cp1x = x1 + Math.max(50 * scale, (x2 - x1) * 0.4);
     const cp1y = y1;
@@ -586,6 +593,48 @@
   }
 
   /**
+   * Calculate bounding box of all nodes
+   */
+  function getNodesBounds(nodes) {
+    if (!nodes || nodes.length === 0) {
+      return { minX: 0, minY: 0, maxX: 200, maxY: 100 };
+    }
+    
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    nodes.forEach(node => {
+      const nx = node.x || 0;
+      const ny = node.y || 0;
+      minX = Math.min(minX, nx);
+      minY = Math.min(minY, ny);
+      maxX = Math.max(maxX, nx + CONFIG.NODE_W);
+      maxY = Math.max(maxY, ny + CONFIG.NODE_H);
+    });
+    
+    return { minX, minY, maxX, maxY };
+  }
+
+  /**
+   * Calculate scale to fit nodes within canvas with padding
+   */
+  function calculateFitScale(nodes, width, height, padding = 30) {
+    const bounds = getNodesBounds(nodes);
+    const contentWidth = bounds.maxX - bounds.minX;
+    const contentHeight = bounds.maxY - bounds.minY;
+    
+    if (contentWidth <= 0 || contentHeight <= 0) return 1;
+    
+    const availableWidth = width - padding * 2;
+    const availableHeight = height - padding * 2;
+    
+    const scaleX = availableWidth / contentWidth;
+    const scaleY = availableHeight / contentHeight;
+    
+    // Use the smaller scale to fit everything, clamp to reasonable limits
+    return Math.max(0.08, Math.min(2, Math.min(scaleX, scaleY)));
+  }
+
+  /**
    * Render complete graph to canvas
    */
   function renderGraph(ctx, nodes, edges, options = {}) {
@@ -593,9 +642,27 @@
       width, 
       height, 
       scale = 1, 
+      fit = false,
+      padding = 30,
       selectedId = null,
       clearColor = '#06060d'
     } = options;
+
+    // Calculate scale if fit mode is enabled
+    let finalScale = scale;
+    let offsetX = 0;
+    let offsetY = 0;
+    
+    if (fit && nodes.length > 0) {
+      finalScale = calculateFitScale(nodes, width, height, padding);
+      const bounds = getNodesBounds(nodes);
+      
+      // Center the content
+      const contentWidth = (bounds.maxX - bounds.minX) * finalScale;
+      const contentHeight = (bounds.maxY - bounds.minY) * finalScale;
+      offsetX = (width - contentWidth) / 2 - bounds.minX * finalScale;
+      offsetY = (height - contentHeight) / 2 - bounds.minY * finalScale;
+    }
 
     // Clear
     ctx.fillStyle = clearColor;
@@ -619,14 +686,20 @@
       const from = nodeMap[edge.from];
       const to = nodeMap[edge.to];
       if (from && to) {
-        drawConnection(ctx, from, to, { scale });
+        drawConnection(ctx, from, to, { 
+          scale: finalScale,
+          offsetX,
+          offsetY 
+        });
       }
     });
 
     // Draw nodes
     nodes.forEach(node => {
       drawNode(ctx, node, { 
-        scale, 
+        scale: finalScale, 
+        offsetX,
+        offsetY,
         selected: node.id === selectedId 
       });
     });

@@ -242,25 +242,14 @@
           canvas.height = 220;
           var ctx = canvas.getContext('2d');
           
-          // Dynamic scale based on node count - larger trees get smaller scale
-          var nodeCount = nodeData.nodes.length;
-          var scale;
-          if (nodeCount <= 2) {
-            scale = 0.45; // Large for few nodes
-          } else if (nodeCount <= 4) {
-            scale = 0.32; // Medium for moderate nodes
-          } else if (nodeCount <= 6) {
-            scale = 0.22; // Smaller for more nodes
-          } else {
-            scale = 0.15; // Compact for many nodes
-          }
-          
-          console.log('[effect-modal] Rendering graph with scale:', scale, 'for', nodeCount, 'nodes');
+          // Auto-fit to canvas with padding - scale calculated based on node bounds
+          console.log('[effect-modal] Rendering graph with fit mode for', nodeData.nodes.length, 'nodes');
           console.log('[effect-modal] Used _graphData with positions:', usedGraphData);
           window.NodeSystem.renderGraph(ctx, nodeData.nodes, nodeData.edges, {
             width: canvas.width,
             height: 220,
-            scale: scale,
+            fit: true,
+            padding: 20,
             selectedId: null,
             clearColor: '#0f0f16'
           });

@@ -7834,26 +7834,15 @@ function openDetail(id) {
             
             const ctx = canvas.getContext('2d');
             
-            // Dynamic scale based on node count
-            const nodeCount = nodeData.nodes.length;
-            let scale;
-            if (nodeCount <= 2) {
-              scale = 0.45;
-            } else if (nodeCount <= 4) {
-              scale = 0.32;
-            } else if (nodeCount <= 6) {
-              scale = 0.22;
-            } else {
-              scale = 0.15;
-            }
-            
-            console.log('[effects] Rendering graph with scale:', scale, 'for', nodeCount, 'nodes');
+            // Auto-fit to canvas with padding - scale calculated based on node bounds
+            console.log('[effects] Rendering graph with fit mode for', nodeData.nodes.length, 'nodes');
             console.log('[effects] Used _graphData with positions:', usedGraphDataForNodes);
             
             window.NodeSystem.renderGraph(ctx, nodeData.nodes, nodeData.edges, {
               width: canvas.width,
               height: 220,
-              scale: scale,
+              fit: true,
+              padding: 20,
               selectedId: null,
               clearColor: '#0f0f16'
             });
