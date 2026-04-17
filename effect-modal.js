@@ -130,6 +130,7 @@
     document.getElementById('modal-dependencies').textContent = effect.fusion_env || 'None';
 
     // Node graph visualization and accordion using Universal Node System
+    console.log('[effect-modal] Modal opened - node_code:', effect.node_code ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
     var nodeSection = document.getElementById('modal-node-section');
     var nodeCountEl = document.getElementById('modal-node-count');
     var accordionEl = document.getElementById('modal-node-accordion');
@@ -137,6 +138,7 @@
     
     if (window.NodeSystem && effect.node_code && effect.node_code.trim()) {
       try {
+        console.log('[effect-modal] Parsing node_code...');
         var parsed = window.NodeSystem.parse(effect.node_code);
         var normalized = window.NodeSystem.normalize(parsed);
         
@@ -247,7 +249,7 @@
         if (accordionEl) accordionEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);">Error parsing nodes</div>';
       }
     } else {
-      // No node_code or NodeSystem not available
+      console.log('[effect-modal] Skipping node graph - node_code missing or NodeSystem not loaded');
       if (nodeSection) nodeSection.style.display = 'none';
     }
 

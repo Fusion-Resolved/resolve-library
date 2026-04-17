@@ -7756,6 +7756,7 @@ function openDetail(id) {
     }
     
     // Render node graph visualization and parameter panel in detail view
+    console.log('[effects] Detail view - node_code:', e.node_code ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
     if (e.node_code && window.NodeSystem) {
       // Node graph
       const graphContainer = document.getElementById('detail-node-graph-' + e.id);
