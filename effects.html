@@ -2044,6 +2044,12 @@ header { z-index: 100 !important; }
   #effect-modal-overlay .eds-sheet { border-radius: var(--radius-lg) !important; max-height: 78vh !important; }
 }
 
+/* Node Accordion Styles */
+.node-accordion-item:last-child{border-bottom:none !important;}
+.node-accordion-header:hover{background:rgba(255,255,255,0.05);}
+.node-accordion-content .param-row{margin-bottom:8px;font-size:11px;padding:6px;background:rgba(255,255,255,0.03);border-radius:4px;}
+.node-accordion-content .param-row:last-child{margin-bottom:0;}
+
 /* Modal Footer Buttons */
 .btn-glass {
   display:inline-flex; align-items:center; justify-content:center; gap:6px;
@@ -10069,27 +10075,25 @@ if (typeof window._shToast !== 'function') {
 
         <p class="det-desc" id="modal-desc" style="font-size:13px;color:var(--text-secondary);line-height:1.7;">Effect description goes here.</p>
 
-        <!-- NODE GRAPH CANVAS -->
-        <div class="sec" style="display:flex;flex-direction:column;gap:8px;padding-top:6px;border-top:1px solid var(--border-surface);">
-          <div class="sec-lbl" style="font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);">
-            Node graph &nbsp;
-            <span style="color:var(--violet-light);font-size:9px;text-transform:none;letter-spacing:0;opacity:0.8;">click node to inspect &middot; drag to pan &middot; scroll to zoom</span>
-          </div>
-          <div class="graph-canvas-wrap" id="modal-graph-wrap" style="position:relative;height:320px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border-surface);user-select:none;-webkit-user-select:none;">
-            <div class="graph-viewport" id="modal-graph-viewport" style="position:absolute;inset:0;overflow:hidden;cursor:grab;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.13) 1px,transparent 1px);background-size:22px 22px;">
-              <div class="graph-world" id="modal-graph-world" style="position:absolute;top:0;left:0;transform-origin:0 0;">
-                <svg class="graph-svg" id="modal-graph-svg" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible;"></svg>
-              </div>
-            </div>
-            <div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;">
-              <button class="gc-btn" id="modal-graph-zoom-in" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">+</button>
-              <button class="gc-btn" id="modal-graph-zoom-out" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">&minus;</button>
-              <button class="gc-btn gc-fit" id="modal-graph-fit" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;">FIT</button>
-            </div>
-            <div class="graph-zoom-lbl" id="modal-graph-zoom" style="position:absolute;bottom:10px;left:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.07em;pointer-events:none;z-index:10;">100%</div>
-            <div class="graph-hint" style="position:absolute;bottom:10px;right:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.18);letter-spacing:0.05em;pointer-events:none;z-index:10;">drag to pan &middot; ctrl+scroll to zoom</div>
-          </div>
-        </div>
+         <!-- NODE GRAPH SECTION (with NodeSystem accordion) -->
+         <div class="sec" id="modal-node-section" style="display:flex;flex-direction:column;gap:8px;padding-top:6px;border-top:1px solid var(--border-surface);">
+           <div class="sec-lbl" style="display:flex;align-items:center;justify-content:space-between;font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);">
+             <span>Node Graph &nbsp;<span id="modal-node-count" style="color:var(--violet-light);font-size:9px;text-transform:none;letter-spacing:0;opacity:0.8;"></span></span>
+             <span style="font-size:9px;color:var(--text-muted);font-family:var(--font-mono);">click node to inspect</span>
+           </div>
+           
+           <!-- Visual Canvas -->
+           <div id="modal-node-code" style="background:#0f0f16;border-radius:6px;height:160px;margin-bottom:12px;cursor:pointer;overflow:hidden;" onclick="window.openNodeGraphModal && window.openNodeGraphModal(window.currentEffectId)">
+             <canvas id="modal-node-canvas" style="width:100%;height:100%;"></canvas>
+           </div>
+           
+           <!-- Node Accordion List -->
+           <div id="modal-node-accordion" style="background:#0f0f16;border-radius:6px;border:1px solid var(--border-surface);overflow:hidden;max-height:300px;overflow-y:auto;">
+             <!-- Populated by JS - accordion items for each node -->
+           </div>
+           
+           <button class="copy-btn" id="btnCopy" style="margin-top:8px;width:100%;">copy node code</button>
+         </div>
 
         <!-- Steps -->
         <div class="sec" style="display:flex;flex-direction:column;gap:8px;padding-top:6px;border-top:1px solid var(--border-surface);">
