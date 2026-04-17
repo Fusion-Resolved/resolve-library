@@ -285,8 +285,21 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
         <div class="sec">
           <div class="sec-lbl">Node tree code</div>
           <div class="code-wrap">
-            <code class="node-code" id="nodeCode">OpticalFlow &#x2192; DisplaceDistort &#x2192; TimeSpeed &#x2192; Merge</code>
+            <div id="modal-node-code" style="background:#0f0f16;border-radius:6px;min-height:60px;">
+              <code class="node-code" id="nodeCode">OpticalFlow &#x2192; DisplaceDistort &#x2192; TimeSpeed &#x2192; Merge</code>
+            </div>
             <button class="copy-btn" id="btnCopy">copy</button>
+          </div>
+        </div>
+
+        <!-- Node Parameters -->
+        <div class="sec" id="modal-params-sec" style="display:none;">
+          <div class="sec-lbl" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Node Parameters</span>
+            <span style="font-size:9px;color:var(--text-muted);font-family:var(--font-mono);">select to view</span>
+          </div>
+          <div id="modal-params-list" style="max-height:250px;overflow-y:auto;background:#0f0f16;border-radius:6px;border:1px solid var(--border-surface);">
+            <!-- Populated by JS -->
           </div>
         </div>
 
@@ -367,6 +380,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
+<script src="nodes-system.js"></script>
 
 <script>
 (function () {

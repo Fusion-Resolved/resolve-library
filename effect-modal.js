@@ -44,6 +44,11 @@
       .replace(/'/g, '&#039;');
   }
 
+  // Open full node graph editor
+  window.openNodeGraphModal = function(effectId) {
+    window.open('nodegraph.html?id=' + encodeURIComponent(effectId), '_blank');
+  };
+
   // Graph rendering variables
   var NW = 132, NH = 50;
   var tx = 0, ty = 0, sc = 1;
@@ -124,9 +129,85 @@
     console.log('[effect-modal] self_contained value:', effect.self_contained);
     document.getElementById('modal-dependencies').textContent = effect.fusion_env || 'None';
 
-    // Node code
-    document.getElementById('modal-node-code').textContent = 
-      effect.node_code || effect.node || 'No node tree available';
+    // Node graph visualization using Universal Node System
+    var nodeCodeEl = document.getElementById('modal-node-code');
+    if (nodeCodeEl && window.NodeSystem) {
+      if (effect.node_code && effect.node_code.trim()) {
+        try {
+          var parsed = window.NodeSystem.parse(effect.node_code);
+          var normalized = window.NodeSystem.normalize(parsed);
+          
+          if (normalized.nodes.length > 0) {
+            // Create canvas for node graph
+            var canvasId = 'modal-node-canvas-' + effect.id;
+            nodeCodeEl.innerHTML = '<div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">' + 
+              normalized.nodes.length + ' node' + (normalized.nodes.length !== 1 ? 's' : '') + '</div>' +
+              '<canvas id="' + canvasId + '" width="400" height="160" style="width:100%;height:160px;background:#0f0f16;border-radius:6px;cursor:pointer;" onclick="window.openNodeGraphModal(\'' + effect.id + '\')"></canvas>' +
+              '<div style="font-size:9px;color:var(--text-muted);margin-top:4px;text-align:center;">Click to open full editor</div>';
+            
+            // Render after DOM update
+            setTimeout(function() {
+              var canvas = document.getElementById(canvasId);
+              if (canvas) {
+                var ctx = canvas.getContext('2d');
+                window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
+                  width: 400,
+                  height: 160,
+                  scale: 0.12,
+                  selectedId: null,
+                  clearColor: '#0f0f16'
+                });
+              }
+            }, 50);
+          } else {
+            nodeCodeEl.textContent = 'No parseable nodes found';
+          }
+        } catch (err) {
+          console.error('[effect-modal] Node graph render failed:', err);
+          nodeCodeEl.textContent = effect.node_code || 'No node tree available';
+        }
+      } else {
+        nodeCodeEl.textContent = 'No node tree available';
+      }
+    } else if (nodeCodeEl) {
+      nodeCodeEl.textContent = effect.node_code || effect.node || 'No node tree available';
+    }
+
+    // Node Parameters Panel using Universal Node System
+    var paramsSec = document.getElementById('modal-params-sec');
+    var paramsList = document.getElementById('modal-params-list');
+    if (paramsSec && paramsList && window.NodeSystem) {
+      if (effect.node_code && effect.node_code.trim()) {
+        try {
+          var parsedParams = window.NodeSystem.parse(effect.node_code);
+          var normalizedParams = window.NodeSystem.normalize(parsedParams);
+          
+          // Find first node with parameters
+          var nodeWithParams = normalizedParams.nodes.find(function(n) {
+            return Object.keys(n.params || {}).length > 0;
+          });
+          
+          if (nodeWithParams) {
+            paramsSec.style.display = '';
+            paramsList.innerHTML = '';
+            window.NodeSystem.renderParams(paramsList, nodeWithParams, {
+              readOnly: true,
+              showSplines: true,
+              onParamSelect: function(key, param) {
+                console.log('[effect-modal] Parameter selected:', key);
+              }
+            });
+          } else {
+            paramsSec.style.display = 'none';
+          }
+        } catch (err) {
+          console.error('[effect-modal] Parameter panel render failed:', err);
+          paramsSec.style.display = 'none';
+        }
+      } else {
+        paramsSec.style.display = 'none';
+      }
+    }
 
     // Steps (parse if JSON, or use as string)
     const stepsContainer = document.getElementById('modal-steps');

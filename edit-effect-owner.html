@@ -456,6 +456,19 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
             <div class="con-badge" id="conBadge">Connecting — click an input port &middot; Esc to cancel</div>
             <div class="ed-hint">Drag bg to pan &middot; Drag &#x25b7; port to connect</div>
           </div>
+          <!-- Node Parameters Panel -->
+          <div class="node-params-panel" id="nodeParamsPanel" style="display:none;width:280px;flex-shrink:0;border-left:1px solid var(--border);background:var(--bg2);overflow-y:auto;max-height:calc(82vh - 200px);">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--border);">
+              <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;" id="npNodeName">Node Name</div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;" id="npNodeType">Type</div>
+            </div>
+            <div id="npInputsList" style="padding:10px 14px;">
+              <!-- Inputs will be populated here -->
+            </div>
+            <div style="padding:10px 14px;border-top:1px solid var(--border);font-size:10px;color:var(--text-muted);">
+              <em>Click parameter to view • Click <span style="color:var(--violet);">View Animation</span> for all curves</em>
+            </div>
+          </div>
         </div>
         <div class="ed-toolbar">
           <button class="tb" id="btnLayout">Auto-layout</button>
@@ -464,6 +477,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           <div class="tb-sel" id="tbSel" style="display:none;">
             <div class="tb-sn" id="tbSelName"></div>
             <div class="tb-sc" id="tbSelCat"></div>
+            <button class="tb" id="btnViewAnim" style="background:rgba(108,123,255,0.15);border-color:rgba(108,123,255,0.4);color:var(--violet);" title="View animation curves">View Animation</button>
             <button class="tb tbd" id="btnDel">Delete</button>
           </div>
           <div class="tb-nc" id="tbCount">Click palette to add nodes</div>
@@ -675,6 +689,62 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   </div>
 </div>
 
+<!-- Spline/Animation Detail Modal -->
+<div id="splineModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(9,9,14,0.92);backdrop-filter:blur(12px);z-index:2000;align-items:center;justify-content:center;">
+  <div style="width:90%;max-width:900px;height:85vh;background:var(--bg2);border-radius:var(--radius-lg);border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,0.6);">
+    <!-- Header -->
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg);">
+      <div>
+        <div style="font-family:var(--fd);font-size:15px;font-weight:600;color:var(--tp);" id="splineModalTitle">Animation Curves</div>
+        <div style="font-size:10px;color:var(--ts);margin-top:2px;" id="splineModalSubtitle">Select a parameter to view its animation curve</div>
+      </div>
+      <button onclick="closeSplineModal()" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--ts);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='var(--tp)'" onmouseout="this.style.background='transparent';this.style.color='var(--ts)'">&times;</button>
+    </div>
+    
+    <!-- Content -->
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <!-- Left: Parameter List -->
+      <div style="width:220px;border-right:1px solid var(--border);overflow-y:auto;background:var(--bg);" id="splineParamList">
+        <!-- Populated by JS -->
+      </div>
+      
+      <!-- Right: Spline Canvas -->
+      <div style="flex:1;display:flex;flex-direction:column;padding:20px;gap:16px;overflow:hidden;">
+        <!-- Canvas Container -->
+        <div style="flex:1;background:#0d0d10;border-radius:var(--radius);border:1px solid var(--border);position:relative;overflow:hidden;">
+          <canvas id="splineModalCanvas" style="width:100%;height:100%;"></canvas>
+          
+          <!-- Overlay Controls -->
+          <div style="position:absolute;top:12px;right:12px;display:flex;gap:8px;">
+            <button onclick="fitSplineView()" style="padding:6px 12px;border-radius:var(--rsm);border:1px solid var(--border);background:rgba(6,6,13,0.8);color:var(--ts);font-size:10px;font-family:var(--fm);cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--violet)';this.style.color='var(--violet)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--ts)'">Fit View</button>
+          </div>
+          
+          <!-- Value Readout -->
+          <div id="splineValueReadout" style="position:absolute;bottom:12px;left:12px;padding:8px 12px;border-radius:var(--rsm);background:rgba(6,6,13,0.9);border:1px solid var(--border);font-family:var(--fm);font-size:11px;color:var(--tp);display:none;">
+            Frame: <span id="readoutFrame">--</span> | Value: <span id="readoutValue">--</span>
+          </div>
+        </div>
+        
+        <!-- Keyframe Info -->
+        <div style="display:flex;gap:16px;padding:12px 16px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
+          <div style="flex:1;">
+            <div style="font-size:9px;color:var(--ts);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Keyframes</div>
+            <div style="font-family:var(--fm);font-size:14px;color:var(--tp);font-weight:600;" id="splineKeyframeCount">--</div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:9px;color:var(--ts);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Frame Range</div>
+            <div style="font-family:var(--fm);font-size:14px;color:var(--tp);font-weight:600;" id="splineFrameRange">--</div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:9px;color:var(--ts);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Value Range</div>
+            <div style="font-family:var(--fm);font-size:14px;color:var(--tp);font-weight:600;" id="splineValueRange">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast">
   <span style="color:var(--node-teal);font-family:var(--fm);font-weight:700;">&#x2713;</span>
@@ -683,6 +753,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js" onload="console.log('[Edit Effect] auth.js loaded successfully')" onerror="console.error('[Edit Effect] auth.js failed to load')"></script>
+<script src="nodes-system.js"></script>
 
 <script>
 (function () {
@@ -782,18 +853,50 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     selId = id;
     var sel = document.getElementById('tbSel');
     var cnt = document.getElementById('tbCount');
+    var panel = document.getElementById('nodeParamsPanel');
+    
     if (id) {
       var n = fNode(id);
       if (n && sel) {
         sel.style.display = 'flex';
         document.getElementById('tbSelName').textContent = n.name;
-        document.getElementById('tbSelName').style.color = n.col;
+        document.getElementById('tbSelName').style.color = n.col || n.catColor;
         document.getElementById('tbSelCat').textContent  = n.cat;
         if (cnt) { cnt.style.display = 'none'; }
+        
+        // Show parameter panel using Universal Node System
+        if (panel && window.NodeSystem) {
+          panel.style.display = 'block';
+          
+          // Convert internal node format to NodeSystem format
+          var nodeForSystem = {
+            id: n.id,
+            name: n.name,
+            fusionName: n.fusionName || n.inst,
+            category: n.cat,
+            params: n.params || {}
+          };
+          
+          // Use universal parameter renderer
+          var inputsList = document.getElementById('npInputsList');
+          if (inputsList) {
+            window.NodeSystem.renderParams(inputsList, nodeForSystem, { 
+              readOnly: true,
+              showSplines: true,
+              onParamSelect: function(key, param) {
+                // Open spline modal for animated parameters
+                if (param.keyframes && param.keyframes.length > 0) {
+                  openSplineModal(nodeForSystem, key);
+                }
+              }
+            });
+          }
+        }
       }
     } else {
       if (sel) { sel.style.display = 'none'; }
       if (cnt) { cnt.style.display = ''; }
+      if (panel) { panel.style.display = 'none'; }
     }
   }
 
@@ -935,79 +1038,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     istate = 'idle'; dragId = null; cxFrom = null; renderEd();
   }
 
-  /* lua */
+  /* ── UNIVERSAL NODE SYSTEM (via nodes-system.js) ── */
+  // parseLua() now uses window.NodeSystem.parse() for consistent parsing across all pages
   function parseLua (str) {
-    var ns = [], es = [];
-    if (!str.trim()) { return { nodes: ns, edges: es }; }
-    if (str.indexOf('Tools') !== -1 || str.indexOf('SourceOp') !== -1) {
-      var tp = /(\w+)\s*=\s*(\w+)\s*\{/g, sp = /SourceOp\s*=\s*"(\w+)"/g, tm, defs = [], srcs = [];
-      var skip = ['ordered','Comp','Tools','Inputs','Outputs','Input','Output'];
-      while ((tm = tp.exec(str)) !== null) {
-        var sk = false; for (var x = 0; x < skip.length; x++) { if (skip[x] === tm[2]) { sk = true; break; } }
-        if (!sk) { defs.push({ inst: tm[1], typeName: tm[2], pos: tm.index }); }
-      }
-      while ((tm = sp.exec(str)) !== null) { srcs.push({ src: tm[1], pos: tm.index }); }
-      for (var d = 0; d < defs.length; d++) { var nt = getNT(defs[d].typeName); ns.push({ id: 'l' + d, name: defs[d].typeName, inst: defs[d].inst, cat: nt.cat, col: nt.col, bg: nt.bg, x: 0, y: 0 }); }
-      for (var s = 0; s < srcs.length; s++) {
-        var ct = null; for (var t = defs.length - 1; t >= 0; t--) { if (defs[t].pos < srcs[s].pos) { ct = defs[t]; break; } }
-        if (ct && srcs[s].src !== ct.inst) { es.push({ from: srcs[s].src, to: ct.inst }); }
-      }
-      return { nodes: ns, edges: es };
-    }
-    var parts = str.split(/\s*(?:\u2192|->|>|,)\s*/).map(function (s) { return s.trim(); }).filter(Boolean);
-    for (var p = 0; p < parts.length; p++) { var nt2 = getNT(parts[p]); ns.push({ id: 'l' + p, name: parts[p], inst: parts[p], cat: nt2.cat, col: nt2.col, bg: nt2.bg, x: 0, y: 0 }); if (p > 0) { es.push({ from: parts[p-1], to: parts[p] }); } }
-    return { nodes: ns, edges: es };
-  }
-  function layoutParsed (ns) {
-    var COLS = 5, XG = NW + 40, YG = NH + 22, SX = 14, SY = 18;
-    for (var i = 0; i < ns.length; i++) { ns[i].x = SX + (i % COLS) * XG; ns[i].y = SY + Math.floor(i / COLS) * YG; }
-  }
-  function renderLuaCanvas (ns, es) {
-    if (!luaCtx || !luaCanvas) { return; }
-    var W = luaCanvas.offsetWidth, H = luaCanvas.offsetHeight;
-    luaCtx.clearRect(0, 0, W, H); luaCtx.fillStyle = '#06060d'; luaCtx.fillRect(0, 0, W, H);
-    luaCtx.fillStyle = 'rgba(108,123,255,0.07)';
-    for (var gx = 0; gx < W; gx += 22) { for (var gy = 0; gy < H; gy += 22) { luaCtx.beginPath(); luaCtx.arc(gx, gy, 0.8, 0, Math.PI * 2); luaCtx.fill(); } }
-    var byInst = {};
-    for (var i = 0; i < ns.length; i++) { byInst[ns[i].inst] = ns[i]; }
-    for (var e = 0; e < es.length; e++) { var fn3 = byInst[es[e].from], tn3 = byInst[es[e].to]; if (!fn3 || !tn3) { continue; } var fx3 = fn3.x + NW, fy3 = fn3.y + NH / 2, tx3 = tn3.x, ty3 = tn3.y + NH / 2, p3 = Math.max(30, Math.abs(tx3 - fx3) * 0.45); luaCtx.beginPath(); luaCtx.moveTo(fx3, fy3); luaCtx.bezierCurveTo(fx3 + p3, fy3, tx3 - p3, ty3, tx3, ty3); luaCtx.strokeStyle = 'rgba(108,123,255,0.4)'; luaCtx.lineWidth = 1.4; luaCtx.stroke(); luaCtx.beginPath(); luaCtx.moveTo(tx3, ty3); luaCtx.lineTo(tx3 - 5.5, ty3 - 3); luaCtx.lineTo(tx3 - 5.5, ty3 + 3); luaCtx.closePath(); luaCtx.fillStyle = 'rgba(108,123,255,0.6)'; luaCtx.fill(); }
-    for (var n3 = 0; n3 < ns.length; n3++) { drawCard(luaCtx, ns[n3], false); }
-  }
-  function resizeLua () {
-    if (!luaCanvas) { return; }
-    var w2 = luaCanvas.parentElement;
-    var W = w2.offsetWidth, H = w2.offsetHeight;
-    luaCanvas.width = W * dpr; luaCanvas.height = H * dpr;
-    luaCanvas.style.width = W + 'px'; luaCanvas.style.height = H + 'px';
-    luaCtx.setTransform(1, 0, 0, 1, 0, 0); luaCtx.scale(dpr, dpr);
-  }
-  function onLuaInput () {
-    var val = document.getElementById('luaInput').value;
-    var pr  = document.getElementById('luaParseResult');
-    var emp = document.getElementById('luaEmpty');
-    markDirty(1);
-    if (!val.trim()) {
-      pr.className = 'parse-r pr-idle';
-      pr.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg> Paste comp data or arrow notation to parse';
-      if (emp) { emp.style.display = ''; } return;
-    }
-    var res = parseLua(val);
-    if (!res.nodes.length) {
-      pr.className = 'parse-r pr-err';
-      pr.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Could not detect nodes';
-      return;
-    }
-    pr.className = 'parse-r pr-ok';
-    pr.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> ' + res.nodes.length + ' nodes \u00b7 ' + res.edges.length + ' connections detected';
-    if (emp) { emp.style.display = 'none'; }
-    layoutParsed(res.nodes);
-    resizeLua(); renderLuaCanvas(res.nodes, res.edges);
-    /* sync to graph state */
-    gNodes = []; gEdges = []; selId = null;
-    for (var i = 0; i < res.nodes.length; i++) { gNodes.push({ id: res.nodes[i].id, name: res.nodes[i].name, inst: res.nodes[i].inst, cat: res.nodes[i].cat, col: res.nodes[i].col, bg: res.nodes[i].bg, x: res.nodes[i].x, y: res.nodes[i].y }); }
-    var byInst = {}; for (var k = 0; k < res.nodes.length; k++) { byInst[res.nodes[k].inst] = res.nodes[k].id; }
-    for (var e = 0; e < res.edges.length; e++) { var fid = byInst[res.edges[e].from], tid = byInst[res.edges[e].to]; if (fid && tid) { gEdges.push({ from: fid, to: tid }); } }
-    updateCounts();
+    if (!str || !str.trim()) { return { nodes: [], edges: [] }; }
+    return window.NodeSystem.parse(str);
   }
 
   /* ── PALETTE ── */
@@ -1179,7 +1214,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       console.log('[doSave] Verifying save by re-fetching...');
       const { data: verifyData, error: verifyError } = await supabase
         .from('effects')
-        .select('name, cat, desc, version, difficulty, tags, render_weight, self_contained')
+        .select('name, cat, desc, version, difficulty, tags, render_weight, self_contained, node_code')
         .eq('id', effectId)
         .single();
       
@@ -1265,7 +1300,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[loadEffectData] Fetching effect:', effectId);
         const { data, error } = await supabase
           .from('effects')
-          .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, user_id')
+          .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, node_code, user_id')
           .eq('id', effectId)
           .single();
         
@@ -1424,6 +1459,70 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       shMeta.innerHTML = (effect.cat || 'Effect') + ' &nbsp;&middot;&nbsp; Version ' + (effect.version || '1.0') + ' &nbsp;&middot;&nbsp; Last edited ' + dateStr;
     }
     
+    // Load actual nodes from node_code using Universal Node System
+    console.log('[populateForm] Loading nodes from node_code...');
+    if (effect.node_code) {
+      console.log('[populateForm] node_code length:', effect.node_code.length);
+      
+      // Use universal parser
+      var parsed = window.NodeSystem.parse(effect.node_code);
+      var normalized = window.NodeSystem.normalize(parsed);
+      
+      console.log('[populateForm] Parsed nodes:', normalized.nodes.length, 'edges:', normalized.edges.length);
+      
+      if (normalized.nodes.length > 0) {
+        // Clear existing
+        gNodes = []; gEdges = []; selId = null; nodeIdCtr = 0;
+        
+        // Transfer normalized nodes
+        for (var i = 0; i < normalized.nodes.length; i++) { 
+          nodeIdCtr++;
+          var n = normalized.nodes[i];
+          gNodes.push({ 
+            id: 'n' + nodeIdCtr, 
+            name: n.name, 
+            fusionName: n.fusionName,
+            inst: n.fusionName,
+            category: n.category,
+            cat: n.category,
+            catColor: n.catColor,
+            col: n.catColor,
+            x: n.x,
+            y: n.y,
+            params: n.params || {}
+          }); 
+        }
+        
+        // Transfer edges
+        for (var e = 0; e < normalized.edges.length; e++) { 
+          gEdges.push({ 
+            from: 'n' + (parseInt(normalized.edges[e].from.replace('n', ''))),
+            to: 'n' + (parseInt(normalized.edges[e].to.replace('n', '')))
+          }); 
+        }
+        
+        // Auto-layout if positions are missing or at origin
+        var needsLayout = gNodes.every(function(n) { return n.x === 0 && n.y === 0; });
+        if (needsLayout) {
+          window.NodeSystem.autoLayout(gNodes, { cols: 4, xGap: 40, yGap: 30, startX: 18, startY: 24 });
+        }
+        
+        updateCounts();
+        renderEd();
+        console.log('[populateForm] Loaded', gNodes.length, 'nodes with parameters via NodeSystem');
+      } else {
+        console.warn('[populateForm] No nodes found in node_code');
+        gNodes = []; gEdges = []; selId = null; nodeIdCtr = 0;
+        updateCounts();
+        renderEd();
+      }
+    } else {
+      console.log('[populateForm] No node_code - clearing graph');
+      gNodes = []; gEdges = []; selId = null; nodeIdCtr = 0;
+      updateCounts();
+      renderEd();
+    }
+    
     console.log('[populateForm] ========== COMPLETE ==========');
     
     // Open the sheet after populating
@@ -1450,6 +1549,21 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     document.getElementById('btnLayout').addEventListener('click', autoLayout);
     document.getElementById('btnClear').addEventListener('click', function () { gNodes=[]; gEdges=[]; selId=null; selectNode(null); updateCounts(); renderEd(); markDirty(1); showToast('Graph cleared'); });
     document.getElementById('btnDel').addEventListener('click', function () { if (selId) { removeNode(selId); } });
+    document.getElementById('btnViewAnim').addEventListener('click', function () { 
+      if (selId && window.NodeSystem) {
+        var n = fNode(selId);
+        if (n) {
+          var nodeForSystem = {
+            id: n.id,
+            name: n.name,
+            fusionName: n.fusionName || n.inst,
+            category: n.cat,
+            params: n.params || {}
+          };
+          openSplineModal(nodeForSystem);
+        }
+      }
+    });
     document.getElementById('nmGraph').addEventListener('click', function () { setNodeMode('graph'); });
     document.getElementById('nmLua').addEventListener('click', function () { setNodeMode('lua'); });
     document.getElementById('luaInput').addEventListener('input', onLuaInput);
@@ -1616,7 +1730,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 
 
     window.addEventListener('resize', function () { resizeEd(); resizeLua(); });
-    preloadGraph();
+    // preloadGraph() removed - nodes now load from actual effect data
     // Load actual effect data from Supabase (replaces hardcoded metadata)
     console.log('[init] Calling loadEffectData...');
     loadEffectData().then(function() {
@@ -1645,6 +1759,231 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     t.classList.add('show'); clearTimeout(t._t);
     t._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
   }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SPLINE MODAL FUNCTIONS
+     ═══════════════════════════════════════════════════════════════ */
+  
+  var _splineModalCurrentNode = null;
+  var _splineModalCurrentParam = null;
+  
+  /**
+   * Open the spline modal for detailed animation viewing
+   * @param {Object} node - The node object containing params
+   * @param {String} paramKey - Optional: specific parameter to show first
+   */
+  window.openSplineModal = function(node, paramKey) {
+    if (!node || !window.NodeSystem) return;
+    
+    _splineModalCurrentNode = node;
+    var modal = document.getElementById('splineModal');
+    if (!modal) return;
+    
+    // Show modal
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    // Update title
+    document.getElementById('splineModalTitle').textContent = (node.fusionName || node.name) + ' — Animation Curves';
+    
+    // Populate parameter list
+    populateSplineParamList(node, paramKey);
+    
+    // Select initial parameter
+    var initialParam = paramKey || findFirstAnimatedParam(node);
+    if (initialParam) {
+      selectSplineParam(initialParam);
+    } else {
+      clearSplineCanvas();
+    }
+  };
+  
+  /**
+   * Close the spline modal
+   */
+  window.closeSplineModal = function() {
+    var modal = document.getElementById('splineModal');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+    _splineModalCurrentNode = null;
+    _splineModalCurrentParam = null;
+  };
+  
+  /**
+   * Find first animated parameter in node
+   */
+  function findFirstAnimatedParam(node) {
+    var params = node.params || {};
+    for (var key in params) {
+      if (params[key].keyframes && params[key].keyframes.length > 0) {
+        return key;
+      }
+    }
+    return null;
+  }
+  
+  /**
+   * Populate the parameter list in the spline modal
+   */
+  function populateSplineParamList(node, selectedKey) {
+    var list = document.getElementById('splineParamList');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    var params = node.params || {};
+    
+    // Header
+    var header = document.createElement('div');
+    header.style.cssText = 'padding:12px 16px;font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border);';
+    header.textContent = 'Animated Parameters';
+    list.appendChild(header);
+    
+    // List parameters
+    var hasAnimated = false;
+    for (var key in params) {
+      var param = params[key];
+      if (!param.keyframes || param.keyframes.length === 0) continue;
+      hasAnimated = true;
+      
+      var item = document.createElement('div');
+      item.className = 'spline-param-item';
+      var isSelected = key === selectedKey;
+      item.style.cssText = isSelected 
+        ? 'padding:10px 16px;cursor:pointer;background:rgba(108,123,255,0.15);border-left:3px solid var(--violet);'
+        : 'padding:10px 16px;cursor:pointer;border-left:3px solid transparent;transition:all 0.15s;';
+      
+      if (!isSelected) {
+        item.onmouseenter = function() { this.style.background = 'rgba(255,255,255,0.05)'; };
+        item.onmouseleave = function() { this.style.background = 'transparent'; };
+      }
+      
+      item.innerHTML = '<div style="font-size:11px;color:var(--tp);margin-bottom:2px;">' + key + '</div>'
+        + '<div style="font-size:9px;color:var(--violet);">' + param.keyframes.length + ' keyframes</div>';
+      
+      item.onclick = (function(k) { 
+        return function() { selectSplineParam(k); };
+      })(key);
+      
+      list.appendChild(item);
+    }
+    
+    if (!hasAnimated) {
+      list.innerHTML += '<div style="padding:20px 16px;font-size:11px;color:var(--ts);text-align:center;">No animated parameters</div>';
+    }
+  }
+  
+  /**
+   * Select a parameter and render its spline
+   */
+  function selectSplineParam(key) {
+    if (!_splineModalCurrentNode) return;
+    
+    var param = _splineModalCurrentNode.params[key];
+    if (!param || !param.keyframes) return;
+    
+    _splineModalCurrentParam = key;
+    
+    // Update list selection styling
+    var items = document.querySelectorAll('.spline-param-item');
+    items.forEach(function(item, idx) {
+      // Find the key for this item
+      var itemKey = Object.keys(_splineModalCurrentNode.params).filter(function(k) {
+        return _splineModalCurrentNode.params[k].keyframes;
+      })[idx];
+      
+      if (itemKey === key) {
+        item.style.background = 'rgba(108,123,255,0.15)';
+        item.style.borderLeftColor = 'var(--violet)';
+        item.onmouseenter = null;
+        item.onmouseleave = null;
+      } else {
+        item.style.background = 'transparent';
+        item.style.borderLeftColor = 'transparent';
+        item.onmouseenter = function() { this.style.background = 'rgba(255,255,255,0.05)'; };
+        item.onmouseleave = function() { this.style.background = 'transparent'; };
+      }
+    });
+    
+    // Update info
+    var kfs = param.keyframes;
+    document.getElementById('splineKeyframeCount').textContent = kfs.length;
+    document.getElementById('splineFrameRange').textContent = kfs[0].frame + ' → ' + kfs[kfs.length-1].frame;
+    
+    var minV = Infinity, maxV = -Infinity;
+    kfs.forEach(function(kf) { 
+      minV = Math.min(minV, kf.value || kf.val); 
+      maxV = Math.max(maxV, kf.value || kf.val); 
+    });
+    document.getElementById('splineValueRange').textContent = minV.toFixed(3) + ' → ' + maxV.toFixed(3);
+    
+    // Render spline
+    renderSplineModalCanvas(kfs);
+  }
+  
+  /**
+   * Render the spline canvas in the modal
+   */
+  function renderSplineModalCanvas(keyframes) {
+    var canvas = document.getElementById('splineModalCanvas');
+    if (!canvas || !window.NodeSystem) return;
+    
+    var ctx = canvas.getContext('2d');
+    var container = canvas.parentElement;
+    
+    // Set canvas size to match container
+    canvas.width = container.offsetWidth;
+    canvas.height = container.offsetHeight;
+    
+    window.NodeSystem.renderSplineGraph(ctx, [{
+      name: _splineModalCurrentParam,
+      color: '#6c7bff',
+      keyframes: keyframes
+    }], {
+      width: container.offsetWidth,
+      height: container.offsetHeight,
+      showGrid: true,
+      showLabels: true
+    });
+  }
+  
+  /**
+   * Clear the spline canvas
+   */
+  function clearSplineCanvas() {
+    var canvas = document.getElementById('splineModalCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0d0d10';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    document.getElementById('splineKeyframeCount').textContent = '--';
+    document.getElementById('splineFrameRange').textContent = '--';
+    document.getElementById('splineValueRange').textContent = '--';
+  }
+  
+  /**
+   * Fit the spline view to show all keyframes
+   */
+  window.fitSplineView = function() {
+    if (!_splineModalCurrentNode || !_splineModalCurrentParam) return;
+    var param = _splineModalCurrentNode.params[_splineModalCurrentParam];
+    if (param && param.keyframes) {
+      renderSplineModalCanvas(param.keyframes);
+    }
+  };
+  
+  // Close modal on escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var modal = document.getElementById('splineModal');
+      if (modal && modal.style.display === 'flex') {
+        closeSplineModal();
+      }
+    }
+  });
 
   init();
 

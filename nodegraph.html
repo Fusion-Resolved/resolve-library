@@ -27,6 +27,8 @@
 
   <!-- SSOT node data: NODE_DETAIL, FUSION_NODES, PORT_COLOUR_HEX -->
   <script src="nodes-data.js"></script>
+  <!-- Universal node system -->
+  <script src="nodes-system.js"></script>
   <!-- Theme/UI flash prevention (preserved verbatim) -->
   <script>
 (function(){try{var t=JSON.parse(localStorage.getItem('noding-theme')||'{}'),s=document.documentElement.style,h=function(x){var r=parseInt(x.slice(1,3),16),g=parseInt(x.slice(3,5),16),b=parseInt(x.slice(5,7),16);return[r,g,b]};if(t.accent){s.setProperty('--accent',t.accent);var a=h(t.accent);s.setProperty('--accent-dim','rgba('+a+',0.08)');s.setProperty('--tag-bg','rgba('+a+',0.08)');s.setProperty('--tag-color',t.accent);}if(t.accent2){s.setProperty('--accent2',t.accent2);var c=h(t.accent2);s.setProperty('--accent2-dim','rgba('+c+',0.08)');}if(t.bg)s.setProperty('--bg',t.bg);if(t.surface)s.setProperty('--surface',t.surface);if(t.surface2)s.setProperty('--surface2',t.surface2);if(t.surface3)s.setProperty('--surface3',t.surface3);if(t.text)s.setProperty('--text',t.text);}catch(e){}
@@ -1549,7 +1551,7 @@ var FUSION_NODES_UNIQUE = FUSION_NODES;
         <div class="rp-sec-body">
         <div style="font-size:8px;font-family:var(--font-mono);color:var(--muted);margin-bottom:6px;line-height:1.5;">Select any nodes or group in Fusion → Ctrl+C → paste below. Nodes will be created on the canvas with all parameters auto-filled.</div>
         <textarea class="gpaste-area" id="gpaste-area" placeholder="Paste Fusion .setting here…" spellcheck="false"></textarea>
-        <button class="gpaste-btn" onclick="importFromFusion()">↳ Import nodes to canvas</button>
+        <button class="gpaste-btn" onclick="importFromFusionAuto()">↳ Import nodes to canvas</button>
         <div class="gpaste-err" id="gpaste-err"></div>
         <div class="gpaste-result" id="gpaste-result"></div>
         <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
@@ -2191,10 +2193,10 @@ function importCompFile(event) {
   const reader = new FileReader();
   reader.onload = function(e) {
     const text = e.target.result;
-    // Paste into gpaste-area and call importFromFusion
+    // Paste into gpaste-area and call importFromFusionAuto
     const area = document.getElementById('gpaste-area');
     area.value = text;
-    importFromFusion();
+    importFromFusionAuto();
     // Mirror result/error to comp panel
     resEl.textContent = document.getElementById('gpaste-result').textContent;
     errEl.textContent = document.getElementById('gpaste-err').textContent;
@@ -4964,6 +4966,155 @@ function importFromFusion(str) {
   if (typeof toast === 'function') toast(`Imported ${createdNodes.length} nodes from Fusion`);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// ALTERNATIVE: Import using Universal Node System (nodes-system.js)
+// Provides consistent parsing with other pages (effects.html, edit-effect-owner.html)
+// ════════════════════════════════════════════════════════════════════════════
+function importFromNodeSystem(str) {
+  if (!window.NodeSystem) {
+    console.warn('[nodegraph] NodeSystem not available, falling back to native import');
+    return importFromFusion(str);
+  }
+  
+  const text = (str !== undefined && str !== null) ? str : (document.getElementById('gpaste-area') || {}).value || '';
+  const trimmedText = typeof text === 'string' ? text.trim() : '';
+  
+  const err = document.getElementById('gpaste-err');
+  const res = document.getElementById('gpaste-result');
+  if (err) err.classList.remove('show');
+  if (res) res.textContent = '';
+  
+  if (!trimmedText) {
+    if (err) { err.textContent = 'Nothing pasted yet.'; err.classList.add('show'); }
+    return;
+  }
+  
+  try {
+    // Use Universal Node System for parsing
+    const parsed = window.NodeSystem.parse(trimmedText);
+    const normalized = window.NodeSystem.normalize(parsed);
+    
+    if (!normalized.nodes.length) {
+      if (err) { err.textContent = 'No nodes found in paste data.'; err.classList.add('show'); }
+      return;
+    }
+    
+    // Clear existing canvas
+    clearCanvas();
+    
+    // Canvas centre for placement
+    const canvasWrap = document.getElementById('canvas-wrap');
+    const cw = canvasWrap ? canvasWrap.clientWidth  : 800;
+    const ch = canvasWrap ? canvasWrap.clientHeight : 600;
+    const cx = (cw / 2 - vpX) / vpZ;
+    const cy = (ch / 2 - vpY) / vpZ;
+    
+    const nodeMap = {}; // fusionName → canvas node id
+    const createdNodes = [];
+    
+    // Check if nodes have positions
+    const hasPositions = normalized.nodes.some(n => n.x !== 0 || n.y !== 0);
+    
+    // Layout nodes
+    if (!hasPositions) {
+      window.NodeSystem.autoLayout(normalized.nodes, { cols: 4, xGap: 50, yGap: 40 });
+    }
+    
+    // Calculate bounding box for centering
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    normalized.nodes.forEach(n => {
+      minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + 170); maxY = Math.max(maxY, n.y + 110);
+    });
+    const offsetX = hasPositions ? cx - (minX + (maxX - minX) / 2) : 0;
+    const offsetY = hasPositions ? cy - (minY + (maxY - minY) / 2) : 0;
+    
+    // Create nodes
+    normalized.nodes.forEach((n, idx) => {
+      const nodeDef = (typeof NT !== 'undefined' && NT.find(t => t.name === n.name)) || {
+        name: n.name,
+        cat: n.category || 'Custom',
+        col: n.catColor || '#6c7bff'
+      };
+      
+      const x = (hasPositions ? n.x : normalized.nodes[idx].x) + offsetX;
+      const y = (hasPositions ? n.y : normalized.nodes[idx].y) + offsetY;
+      
+      const newNode = _addNode(nodeDef.name, nodeDef.cat, x * vpZ + vpX, y * vpZ + vpY);
+      newNode.label = n.fusionName || n.name;
+      
+      // Store fusion params if available
+      if (n.params && Object.keys(n.params).length > 0) {
+        newNode.fusionParams = [{
+          table: n.name,
+          params: n.params
+        }];
+        newNode._rawSetting = trimmedText;
+      }
+      
+      nodeMap[n.fusionName || n.id] = newNode.id;
+      createdNodes.push(newNode);
+    });
+    
+    // Create connections
+    let connCount = 0;
+    normalized.edges.forEach(edge => {
+      const fromNode = normalized.nodes.find(n => n.id === edge.from);
+      const toNode = normalized.nodes.find(n => n.id === edge.to);
+      
+      if (fromNode && toNode) {
+        const fromId = nodeMap[fromNode.fusionName || fromNode.id];
+        const toId = nodeMap[toNode.fusionName || toNode.id];
+        
+        if (fromId && toId && fromId !== toId) {
+          if (!conns.find(c => c.fromNode === fromId && c.toNode === toId)) {
+            conns.push({
+              id: 'c' + (cid++),
+              fromNode: fromId,
+              fromPort: 0,
+              toNode: toId,
+              toPort: 0,
+              color: '#ffffff'
+            });
+            connCount++;
+          }
+        }
+      }
+    });
+    
+    // Finalize
+    if (typeof autoSaveParams === 'function') autoSaveParams();
+    updAllPS();
+    renderAllConns();
+    setTimeout(typeof fitAll === 'function' ? fitAll : function(){}, 80);
+    if (typeof centerGraph === 'function') centerGraph();
+    
+    if (res) res.innerHTML = `✓ Created <strong>${createdNodes.length}</strong> node${createdNodes.length !== 1 ? 's' : ''} · <strong>${connCount}</strong> connection${connCount !== 1 ? 's' : ''} wired <span style="color:var(--violet)">(via NodeSystem)</span>`;
+    const gpArea = document.getElementById('gpaste-area');
+    if (gpArea) gpArea.value = '';
+    if (typeof toast === 'function') toast(`Imported ${createdNodes.length} nodes via NodeSystem`);
+    
+  } catch (e) {
+    console.error('[nodegraph] NodeSystem import failed:', e);
+    // Fall back to native import
+    console.log('[nodegraph] Falling back to native importFromFusion');
+    importFromFusion(str);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Detect which import method to use based on availability
+// ════════════════════════════════════════════════════════════════════════════
+function importFromFusionAuto(str) {
+  if (window.NodeSystem) {
+    console.log('[nodegraph] Using NodeSystem import');
+    importFromNodeSystem(str);
+  } else {
+    console.log('[nodegraph] Using native Fusion import');
+    importFromFusion(str);
+  }
+}
+
 // ── Legacy pipeline (non-Tools block formats) ─────────────────────────────
 // Handles formats that don't have the Tools = ordered() { } wrapper by
 // falling back to the original parseSettingText → full-featured import path.
@@ -5211,7 +5362,7 @@ function _importFromFusionLegacy(text, tools, err, res) {
 // Auto-trigger import when text is pasted into the group paste area
 document.addEventListener('DOMContentLoaded', () => {
   const gp = document.getElementById('gpaste-area');
-  if (gp) gp.addEventListener('paste', () => setTimeout(importFromFusion, 0));
+  if (gp) gp.addEventListener('paste', () => setTimeout(importFromFusionAuto, 0));
 });
 
 // ── ?import= URL listener (V3) ────────────────────────────────────────────
@@ -5271,12 +5422,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Dispatch once the canvas + NODE_DETAIL are ready ─────────────────
     function _doImport() {
 
-      // ── Fusion .setting path: pipe through existing importFromFusion() ──
+      // ── Fusion .setting path: pipe through existing importFromFusionAuto() ──
       if (fusionLuaStr) {
         const area = document.getElementById('gpaste-area');
         if (area) {
           area.value = fusionLuaStr;
-          importFromFusion();
+          importFromFusionAuto();
           // Switch to the Import panel so the user sees the result
           rpOpenPanel('import');
           toast('Graph spawned from Library link ✓');
@@ -5389,7 +5540,7 @@ async function _sbFetch(table, filters) {
     var area = document.getElementById('gpaste-area');
     if (!area) { console.warn('[nodegraph] gpaste-area not found'); return; }
     area.value = payload;
-    importFromFusion();
+    importFromFusionAuto();
     if (typeof rpOpenPanel === 'function') rpOpenPanel('import');
   }
 
@@ -5745,7 +5896,7 @@ document.getElementById('params-paste').addEventListener('paste', () => {
           if (payload) {
             setTimeout(function() {
               const area = document.getElementById('gpaste-area');
-              if (area) { area.value = payload; importFromFusion(); }
+              if (area) { area.value = payload; importFromFusionAuto(); }
               if (!linkedEffects.some(le => le.id === row.id)) {
                 linkedEffects.push({ id: row.id, name: row.name });
               }

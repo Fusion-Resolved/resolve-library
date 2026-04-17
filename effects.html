@@ -4917,9 +4917,30 @@ function openEffectDetail(id) {
   }
 
   // ── Body ───────────────────────────────────────────────────────────────────
-  var body = document.getElementById('eds-body');
+    var body = document.getElementById('eds-body');
   if (body) {
     var catBadge = renderCatBadge(cat);
+    
+    // Node graph visualization using Universal Node System
+    var nodeGraphHtml = '';
+    if (e.nodeCode && e.nodeCode.trim() && window.NodeSystem) {
+      try {
+        var parsed = window.NodeSystem.parse(e.nodeCode);
+        var normalized = window.NodeSystem.normalize(parsed);
+        if (normalized.nodes.length > 0) {
+          var graphId = 'nodegraph-' + e.id;
+          nodeGraphHtml = '<div style="margin:12px 0;">'
+            + '<div class="eds-section-lbl">Node Graph (' + normalized.nodes.length + ' nodes)</div>'
+            + '<canvas id="' + graphId + '" width="340" height="200" style="width:100%;height:200px;background:#06060d;border-radius:8px;cursor:pointer;" onclick="openNodeGraphModal(\'' + e.id + '\')"></canvas>'
+            + '</div>';
+          // Store data for rendering after DOM insertion
+          body._nodeGraphData = { id: graphId, nodes: normalized.nodes, edges: normalized.edges };
+        }
+      } catch (err) {
+        console.error('[effects] Node graph parse failed:', err);
+      }
+    }
+    
     var nodeHtml = '';
     if (e.nodeCode && e.nodeCode.trim()) {
       nodeHtml = '<div>'
@@ -4934,7 +4955,26 @@ function openEffectDetail(id) {
       : '';
     body.innerHTML = '<div class="eds-cat-row">' + catBadge + '</div>'
       + descHtml
+      + nodeGraphHtml
       + nodeHtml;
+    
+    // Render node graph canvas after DOM insertion
+    if (body._nodeGraphData && window.NodeSystem) {
+      setTimeout(function() {
+        var canvas = document.getElementById(body._nodeGraphData.id);
+        if (canvas) {
+          var ctx = canvas.getContext('2d');
+          window.NodeSystem.renderGraph(ctx, body._nodeGraphData.nodes, body._nodeGraphData.edges, {
+            width: 340,
+            height: 200,
+            scale: 0.15,
+            selectedId: null,
+            clearColor: '#06060d'
+          });
+        }
+        body._nodeGraphData = null; // Clean up
+      }, 50);
+    }
   }
 
   // ── Footer ─────────────────────────────────────────────────────────────────
@@ -5001,6 +5041,13 @@ function closeEffectDetail() {
   var sheet = document.getElementById('effect-detail-sheet');
   if (sheet) sheet.classList.remove('open');
   document.body.style.overflow = '';
+}
+
+// ── openNodeGraphModal ──────────────────────────────────────────────────────────
+// Opens the full node graph in the nodegraph.html editor
+function openNodeGraphModal(effectId) {
+  // Navigate to node graph editor with this effect pre-loaded
+  window.open('nodegraph.html?id=' + encodeURIComponent(effectId), '_blank');
 }
 
 // ── cloneEffect ───────────────────────────────────────────────────────────────
@@ -7584,8 +7631,8 @@ function openDetail(id) {
         </div>
         <div class="det-desc">${escHtml(e.description || 'No description provided.')}</div>
         <div class="det-nodes-section">
-          <div class="nodes-hd">Nodes</div>
-          <pre class="nodes-code"><code>${escHtml(e.nodes || '')}</code></pre>
+          <div class="nodes-hd">Node Graph</div>
+          ${e.node_code ? `<div id="detail-node-graph-${e.id}" style="width:100%;height:180px;background:#0f0f16;border-radius:8px;margin-bottom:12px;cursor:pointer;" onclick="openNodeGraphModal('${e.id}')"></div>` : '<pre class="nodes-code"><code>' + escHtml(e.nodes || '') + '</code></pre>'}
         </div>
       </div>
     `;
@@ -7635,6 +7682,16 @@ function openDetail(id) {
       ${e.nodeCode ? `<div class="panel-section">
         <div class="section-label">Node tree code</div>
         ${locked(`<div class="code-block" id="nc-${e.id}">${escHtml(e.nodeCode)}<button class="copy-btn" onclick="copyCode('${e.id}')">copy</button></div>`, 'Node code locked')}
+      </div>` : ''}
+
+      ${e.node_code && window.NodeSystem ? `<div class="panel-section">
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Node Parameters</span>
+          <span style="font-size:9px;font-family:var(--font-mono);color:var(--muted)">select to view animation</span>
+        </div>
+        <div id="panel-params-${e.id}" style="max-height:300px;overflow-y:auto;background:var(--bg);border-radius:var(--radius-sm);border:1px solid var(--border);">
+          <div style="padding:12px;font-size:11px;color:var(--text-muted);text-align:center;">Loading parameters...</div>
+        </div>
       </div>` : ''}
 
       ${(e.nodes||[]).length ? `<div class="panel-section"><div class="section-label" style="display:flex;align-items:center;justify-content:space-between"><span>Nodes / tools used</span><span style="font-size:9px;font-family:var(--font-mono);color:var(--muted)">click a node for info</span></div>${locked(`<div class="nodes-list">${e.nodes.map(n=>`<span class="node-pill" onclick="openNodeQL('${n.replace(/'/g,"\\'")}',event)">${n}</span>`).join('')}</div>`, 'Node list locked')}</div>` : ''}
@@ -7696,6 +7753,72 @@ function openDetail(id) {
   requestAnimationFrame(() => {
     if (typeof _idxInitSplineCanvases === 'function' && panel) {
       _idxInitSplineCanvases(panel);
+    }
+    
+    // Render node graph visualization and parameter panel in detail view
+    if (e.node_code && window.NodeSystem) {
+      // Node graph
+      const graphContainer = document.getElementById('detail-node-graph-' + e.id);
+      if (graphContainer && !graphContainer.querySelector('canvas')) {
+        try {
+          const parsed = window.NodeSystem.parse(e.node_code);
+          const normalized = window.NodeSystem.normalize(parsed);
+          if (normalized.nodes.length > 0) {
+            const canvas = document.createElement('canvas');
+            canvas.width = graphContainer.offsetWidth;
+            canvas.height = 180;
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.borderRadius = '8px';
+            graphContainer.appendChild(canvas);
+            
+            const ctx = canvas.getContext('2d');
+            window.NodeSystem.renderGraph(ctx, normalized.nodes, normalized.edges, {
+              width: canvas.width,
+              height: 180,
+              scale: 0.12,
+              selectedId: null,
+              clearColor: '#0f0f16'
+            });
+            
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:absolute;bottom:8px;left:8px;padding:4px 8px;border-radius:4px;background:rgba(6,6,13,0.8);font-size:10px;color:var(--violet);font-family:var(--font-mono);pointer-events:none;';
+            overlay.textContent = normalized.nodes.length + ' nodes · Click to open';
+            graphContainer.style.position = 'relative';
+            graphContainer.appendChild(overlay);
+          }
+        } catch (err) {
+          console.error('[effects] Detail node graph render failed:', err);
+        }
+      }
+      
+      // Parameter panel
+      const paramsContainer = document.getElementById('panel-params-' + e.id);
+      if (paramsContainer) {
+        try {
+          const parsed = window.NodeSystem.parse(e.node_code);
+          const normalized = window.NodeSystem.normalize(parsed);
+          
+          // Find first node with parameters
+          const nodeWithParams = normalized.nodes.find(n => Object.keys(n.params || {}).length > 0);
+          if (nodeWithParams) {
+            paramsContainer.innerHTML = '';
+            window.NodeSystem.renderParams(paramsContainer, nodeWithParams, {
+              readOnly: true,
+              showSplines: true,
+              onParamSelect: function(key, param) {
+                // Parameter selected - mini spline already shown in panel
+                console.log('[effects] Parameter selected:', key);
+              }
+            });
+          } else {
+            paramsContainer.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);text-align:center;">No parameters available</div>';
+          }
+        } catch (err) {
+          console.error('[effects] Parameter panel render failed:', err);
+          paramsContainer.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-muted);text-align:center;">Error loading parameters</div>';
+        }
+      }
     }
   });
 }
@@ -9858,6 +9981,7 @@ if (typeof window._shToast !== 'function') {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 <script src="noding-shared.js"></script>
+<script src="nodes-system.js"></script>
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
