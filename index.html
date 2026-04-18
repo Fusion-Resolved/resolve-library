@@ -1587,9 +1587,31 @@ footer { border-top:1px solid var(--border-color); padding:40px 24px; }
   // Load effects when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
+      // Inject header and sidebar
+      if (typeof window.shInjectHeader === 'function') {
+        window.shInjectHeader({
+          actionText: "+ Create",
+          actionFunc: "openGlobalAdd()",
+          activeId: "nav-home"
+        });
+      }
+      if (typeof window.shInjectSidebar === 'function') {
+        window.shInjectSidebar('index.html');
+      }
       setTimeout(loadRecentEffects, 500); // Wait for auth.js to initialize
     });
   } else {
+    // DOM already loaded, inject immediately
+    if (typeof window.shInjectHeader === 'function') {
+      window.shInjectHeader({
+        actionText: "+ Create",
+        actionFunc: "openGlobalAdd()",
+        activeId: "nav-home"
+      });
+    }
+    if (typeof window.shInjectSidebar === 'function') {
+      window.shInjectSidebar('index.html');
+    }
     setTimeout(loadRecentEffects, 500);
   }
 })();
