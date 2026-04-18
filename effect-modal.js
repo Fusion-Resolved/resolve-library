@@ -1632,7 +1632,7 @@
     
     var world = document.createElement('div');
     world.id = 'expanded-graph-world';
-    world.style.cssText = 'position:absolute;top:0;left:0;transform-origin:0 0;';
+    world.style.cssText = 'position:absolute;top:0;left:0;transform-origin:0 0;transition:transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);';
     
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.id = 'expanded-graph-svg';
@@ -2088,6 +2088,8 @@
       dX = e.clientX - tx;
       dY = e.clientY - ty;
       vp.style.cursor = 'grabbing';
+      // Disable transition during drag for responsive feel
+      world.style.transition = 'none';
     });
     
     document.addEventListener('mousemove', function(e) {
@@ -2104,11 +2106,19 @@
     document.addEventListener('mouseup', function() {
       dragging = false;
       vp.style.cursor = 'grab';
+      // Re-enable smooth transition after drag
+      world.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
     });
     
     vp.addEventListener('wheel', function(e) {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
+      // Disable transition for smooth zooming
+      world.style.transition = 'none';
+      // Clear any existing restore timer
+      if (window._wheelTransitionTimer) {
+        clearTimeout(window._wheelTransitionTimer);
+      }
       var r = vp.getBoundingClientRect();
       var cx = e.clientX - r.left;
       var cy = e.clientY - r.top;
@@ -2120,6 +2130,10 @@
       ty = cy - wy * ns;
       world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
       zoomLbl.textContent = Math.round(sc * 100) + '%';
+      // Restore transition after zooming stops
+      window._wheelTransitionTimer = setTimeout(function() {
+        world.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      }, 150);
     }, { passive: false });
     
     document.getElementById('exp-zoom-in').addEventListener('click', function() {
