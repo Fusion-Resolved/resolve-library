@@ -2365,23 +2365,12 @@
         '</div>' +
       '</div>';
     
-    // Add timeline component if animation exists
-    if (hasAnimation) {
-      html += 
-        '<div id="timeline-container-' + node.id + '" style="margin-bottom:16px;"></div>' +
-        '<div id="value-display-' + node.id + '" style="margin-bottom:16px;"></div>';
-    }
+    // Always show value display container (works for animated and static)
+    html += '<div id="value-display-' + node.id + '" style="margin-bottom:16px;"></div>';
     
-    if (hasParams) {
-      html += '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;">Parameters</div>';
-      html += '<div id="param-list-' + node.id + '" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;">';
-      
-      // Parameters will be rendered by value display component
-      html += '<div style="padding:20px;text-align:center;font-size:12px;color:rgba(255,255,255,0.4);">Loading parameters...</div>';
-      
-      html += '</div>';
-    } else {
-      html += '<div style="padding:20px;text-align:center;font-size:12px;color:rgba(255,255,255,0.4);">No parameters</div>';
+    // Add timeline only if animation exists
+    if (hasAnimation) {
+      html += '<div id="timeline-container-' + node.id + '" style="margin-bottom:16px;"></div>';
     }
     
     // Show the panel
@@ -2395,14 +2384,30 @@
       controls.style.right = '380px';
     }
     
-    // Initialize new components if animation exists
-    if (hasAnimation && window.TimelineScrubber && window.ParameterValueDisplay) {
-      var timelineContainer = document.getElementById('timeline-container-' + node.id);
+    // Initialize value display component (works with or without animation)
+    if (window.ParameterValueDisplay) {
       var valueContainer = document.getElementById('value-display-' + node.id);
-      var paramList = document.getElementById('param-list-' + node.id);
       
-      if (timelineContainer && valueContainer) {
-        // Create timeline scrubber
+      if (valueContainer) {
+        var valueDisplay = new window.ParameterValueDisplay(valueContainer, {
+          node: node,
+          currentFrame: hasAnimation ? Math.floor(frameRange.start) : 0,
+          onParamClick: function(key, param) {
+            // Show detailed spline view for clicked parameter
+            showParamDetail(node, key, param);
+          }
+        });
+        
+        // Store reference for cleanup
+        nodePanel._valueDisplay = valueDisplay;
+      }
+    }
+    
+    // Initialize timeline if animation exists
+    if (hasAnimation && window.TimelineScrubber) {
+      var timelineContainer = document.getElementById('timeline-container-' + node.id);
+      
+      if (timelineContainer && nodePanel._valueDisplay) {
         var timeline = new window.TimelineScrubber(timelineContainer, {
           startFrame: Math.floor(frameRange.start),
           endFrame: Math.ceil(frameRange.end),
@@ -2410,50 +2415,13 @@
           keyframes: allKeyframes,
           onFrameChange: function(frame) {
             // Update value display when frame changes
-            valueDisplay.setFrame(frame);
+            nodePanel._valueDisplay.setFrame(frame);
           }
         });
         
-        // Create value display
-        var valueDisplay = new window.ParameterValueDisplay(valueContainer, {
-          node: node,
-          currentFrame: Math.floor(frameRange.start),
-          onParamClick: function(key, param) {
-            // Show detailed spline view for clicked parameter
-            showParamDetail(node, key, param);
-          }
-        });
-        
-        // Store references for cleanup
+        // Store reference for cleanup
         nodePanel._timeline = timeline;
-        nodePanel._valueDisplay = valueDisplay;
       }
-    }
-    
-    // Fallback: render spline canvases for original implementation
-    setTimeout(function() {
-      Object.entries(params).forEach(function([key, param]) {
-        if (param.keyframes && param.keyframes.length > 0) {
-          var canvas = document.getElementById('spline-' + node.id + '-' + key);
-          if (canvas && window.renderSplineToCanvas) {
-            window.renderSplineToCanvas(canvas, param.keyframes);
-          }
-        }
-      });
-    }, 50);
-    
-    // Render spline canvases after DOM update
-    if (hasParams) {
-      setTimeout(function() {
-        Object.entries(params).forEach(function([key, param]) {
-          if (param.keyframes && param.keyframes.length > 0) {
-            var canvas = document.getElementById('spline-' + node.id + '-' + key);
-            if (canvas) {
-              drawMiniSpline(canvas, param);
-            }
-          }
-        });
-      }, 50);
     }
   }
 

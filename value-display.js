@@ -167,7 +167,10 @@
     }
 
     update() {
+      console.log('[ValueDisplay] update() called', this.options.node?.id, 'frame:', this.options.currentFrame);
+      
       if (!this.options.node) {
+        console.log('[ValueDisplay] No node, showing empty');
         this.showEmpty('No node selected');
         return;
       }
@@ -185,9 +188,12 @@
       const values = window.SplineEvaluator 
         ? window.SplineEvaluator.evaluateNodeAtFrame(node, frame)
         : this.getRawValues(node);
+      
+      console.log('[ValueDisplay] Values count:', Object.keys(values).length);
 
       // Group by table
       const grouped = this.groupByTable(values, node);
+      console.log('[ValueDisplay] Groups:', Object.keys(grouped));
 
       // Render groups
       Object.entries(grouped).forEach(([tableName, params]) => {
@@ -205,7 +211,10 @@
       });
 
       if (this.list.children.length === 0) {
+        console.log('[ValueDisplay] No children, showing empty');
         this.showEmpty('No parameters available');
+      } else {
+        console.log('[ValueDisplay] Rendered', this.list.children.length, 'items');
       }
     }
 
