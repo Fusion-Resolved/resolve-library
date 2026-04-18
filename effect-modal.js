@@ -1625,10 +1625,10 @@
     };
     header.appendChild(closeBtn);
     
-    // Graph viewport (clone of main graph)
+    // Graph viewport (clone of main graph) - bottom adjusts for step bar
     var viewport = document.createElement('div');
     viewport.id = 'expanded-graph-vp';
-    viewport.style.cssText = 'position:absolute;top:50px;left:0;right:0;bottom:0;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;overflow:hidden;cursor:grab;';
+    viewport.style.cssText = 'position:absolute;top:50px;left:0;right:0;bottom:56px;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;overflow:hidden;cursor:grab;';
     
     var world = document.createElement('div');
     world.id = 'expanded-graph-world';
@@ -1677,18 +1677,39 @@
     sidePanel.appendChild(videoSection.section);
     sidePanel.appendChild(nodesSection.section);
     
-    // Bottom bar for step navigation
+    // Bottom bar for step navigation (collapsible)
     var bottomBar = document.createElement('div');
     bottomBar.id = 'expanded-bottom-bar';
-    bottomBar.style.cssText = 'position:absolute;bottom:0;left:0;right:360px;height:80px;background:rgba(15,15,22,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.08);z-index:26;display:flex;align-items:center;padding:0 20px;gap:16px;';
-    bottomBar.innerHTML = 
-      '<button id="exp-step-prev-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:14px;width:36px;height:36px;cursor:pointer;flex-shrink:0;">&#x2190;</button>' +
-      '<div style="flex:1;min-width:0;">' +
-        '<div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Step <span id="exp-step-current-bottom">1</span> of <span id="exp-step-total-bottom">5</span></div>' +
-        '<div id="exp-step-content-bottom" style="font-size:14px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Loading...</div>' +
+    bottomBar.style.cssText = 'position:absolute;bottom:0;left:0;right:360px;background:rgba(15,15,22,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.08);z-index:26;display:flex;flex-direction:column;transition:height 0.3s ease;';
+    
+    // Header (clickable to toggle)
+    var bottomBarHeader = document.createElement('div');
+    bottomBarHeader.id = 'exp-bottom-bar-header';
+    bottomBarHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 20px;cursor:pointer;user-select:none;height:56px;box-sizing:border-box;';
+    bottomBarHeader.innerHTML = 
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+        '<svg class="exp-bottom-chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.5);transition:transform 0.2s;"><polyline points="18 15 12 9 6 15"/></svg>' +
+        '<span style="font-size:12px;color:var(--text-primary);font-weight:500;">Step-by-Step</span>' +
+        '<span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,0.5);"><span id="exp-step-current-header">1</span> / <span id="exp-step-total-header">5</span></span>' +
       '</div>' +
-      '<button id="exp-step-next-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:14px;width:36px;height:36px;cursor:pointer;flex-shrink:0;">&#x2192;</button>' +
-      '<div id="exp-step-dots-bottom" style="display:flex;gap:4px;flex-shrink:0;"></div>';
+      '<div id="exp-step-preview" style="font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;">Loading...</div>';
+    
+    // Content (collapsible)
+    var bottomBarContent = document.createElement('div');
+    bottomBarContent.id = 'exp-bottom-bar-content';
+    bottomBarContent.style.cssText = 'overflow:hidden;transition:max-height 0.3s ease;';
+    bottomBarContent.innerHTML = 
+      '<div style="display:flex;align-items:center;padding:0 20px 20px;gap:16px;">' +
+        '<button id="exp-step-prev-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:14px;width:36px;height:36px;cursor:pointer;flex-shrink:0;">&#x2190;</button>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div id="exp-step-content-bottom" style="font-size:14px;color:var(--text-secondary);line-height:1.6;max-height:100px;overflow-y:auto;">Loading...</div>' +
+        '</div>' +
+        '<button id="exp-step-next-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:14px;width:36px;height:36px;cursor:pointer;flex-shrink:0;">&#x2192;</button>' +
+        '<div id="exp-step-dots-bottom" style="display:flex;gap:4px;flex-shrink:0;"></div>' +
+      '</div>';
+    
+    bottomBar.appendChild(bottomBarHeader);
+    bottomBar.appendChild(bottomBarContent);
     
     container.appendChild(sidePanel);
     container.appendChild(bottomBar);
@@ -1699,7 +1720,32 @@
     // Store references for later use
     window.expandedNodePanel = sidePanel;
     window.expandedBottomBar = bottomBar;
+    window.expandedBottomBarContent = bottomBarContent;
+    window.expandedBottomBarHeader = bottomBarHeader;
     window.expandedSections = { video: videoSection, nodes: nodesSection };
+    
+    // Setup bottom bar toggle
+    var bottomBarExpanded = true;
+    bottomBarHeader.addEventListener('click', function() {
+      bottomBarExpanded = !bottomBarExpanded;
+      var viewport = document.getElementById('expanded-graph-vp');
+      if (bottomBarExpanded) {
+        bottomBarContent.style.maxHeight = '150px';
+        bottomBarHeader.querySelector('.exp-bottom-chevron').style.transform = 'rotate(180deg)';
+        if (viewport) viewport.style.bottom = '176px';
+      } else {
+        bottomBarContent.style.maxHeight = '0';
+        bottomBarHeader.querySelector('.exp-bottom-chevron').style.transform = 'rotate(0deg)';
+        if (viewport) viewport.style.bottom = '56px';
+      }
+      // Recalculate fit after toggle
+      var fitBtn = document.getElementById('exp-fit');
+      if (fitBtn) setTimeout(function() { fitBtn.click(); }, 310);
+    });
+    // Start collapsed by default
+    bottomBarContent.style.maxHeight = '0';
+    bottomBarHeader.querySelector('.exp-bottom-chevron').style.transform = 'rotate(0deg)';
+    bottomBarExpanded = false;
     
     // Setup toggle functionality
     setupExpandedToggles();
@@ -2314,13 +2360,18 @@
     // Step navigation for bottom bar
     var prevBtn = document.getElementById('exp-step-prev-bottom');
     var nextBtn = document.getElementById('exp-step-next-bottom');
+    var dots = document.getElementById('exp-step-dots-bottom');
     
-    console.log('[setupExpandedToggles] Step buttons found:', { prevBtn: !!prevBtn, nextBtn: !!nextBtn });
+    // Prevent step navigation clicks from toggling the bar
+    if (dots) {
+      dots.addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+    }
     
     if (prevBtn) {
       prevBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        console.log('[prevBtn] clicked, current step:', _expandedCurrentStep);
         if (_expandedCurrentStep > 0) {
           _expandedCurrentStep--;
           renderExpandedStep(_expandedCurrentStep);
@@ -2331,7 +2382,6 @@
     if (nextBtn) {
       nextBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        console.log('[nextBtn] clicked, current step:', _expandedCurrentStep, 'total:', _expandedStepsData.length);
         if (_expandedCurrentStep < _expandedStepsData.length - 1) {
           _expandedCurrentStep++;
           renderExpandedStep(_expandedCurrentStep);
@@ -2366,10 +2416,8 @@
     
     // Steps - populate bottom bar
     var bottomBar = document.getElementById('expanded-bottom-bar');
-    console.log('[populateExpandedPanelData] Steps data:', effect.steps, 'bottomBar:', !!bottomBar);
     if (effect.steps && bottomBar) {
       _expandedStepsData = Array.isArray(effect.steps) ? effect.steps : effect.steps.split('\n').filter(function(s) { return s.trim(); });
-      console.log('[populateExpandedPanelData] Parsed steps:', _expandedStepsData.length);
       if (_expandedStepsData.length > 0) {
         renderExpandedStep(0);
         bottomBar.style.display = 'flex';
@@ -2414,30 +2462,33 @@
     
     // Adjust side panel position if bottom bar is hidden
     var bottomBar = document.getElementById('expanded-bottom-bar');
+    var bottomBarContent = document.getElementById('exp-bottom-bar-content');
     if (bottomBar && panel) {
       if (bottomBar.style.display === 'none') {
         panel.style.bottom = '0';
       } else {
-        panel.style.bottom = '80px';
+        // Calculate bottom bar height based on collapsed/expanded state
+        var barHeight = bottomBarContent && bottomBarContent.style.maxHeight !== '0' ? 176 : 56;
+        panel.style.bottom = barHeight + 'px';
       }
     }
   }
   
   function renderExpandedStep(idx) {
-    console.log('[renderExpandedStep] Rendering step:', idx, 'of', _expandedStepsData.length);
     if (!_expandedStepsData.length || idx < 0 || idx >= _expandedStepsData.length) {
-      console.log('[renderExpandedStep] Invalid index or no data');
       return;
     }
     
     var content = document.getElementById('exp-step-content-bottom');
-    var current = document.getElementById('exp-step-current-bottom');
-    var total = document.getElementById('exp-step-total-bottom');
+    var currentHeader = document.getElementById('exp-step-current-header');
+    var totalHeader = document.getElementById('exp-step-total-header');
+    var preview = document.getElementById('exp-step-preview');
     var dots = document.getElementById('exp-step-dots-bottom');
     
     if (content) content.textContent = _expandedStepsData[idx];
-    if (current) current.textContent = idx + 1;
-    if (total) total.textContent = _expandedStepsData.length;
+    if (currentHeader) currentHeader.textContent = idx + 1;
+    if (totalHeader) totalHeader.textContent = _expandedStepsData.length;
+    if (preview) preview.textContent = _expandedStepsData[idx];
     
     if (dots) {
       // Sliding window approach - show max 7 dots centered around current step
