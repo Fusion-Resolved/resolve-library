@@ -1597,8 +1597,19 @@
     container.appendChild(viewport);
     container.appendChild(controls);
     container.appendChild(zoomLbl);
+    
+    // Right side panel for node details (hidden by default)
+    var sidePanel = document.createElement('div');
+    sidePanel.id = 'expanded-node-panel';
+    sidePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:0;width:320px;background:rgba(15,15,22,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:15;transform:translateX(100%);transition:transform 0.25s ease;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;';
+    sidePanel.innerHTML = '<div style="padding:16px;"><div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Select a node to view parameters</div></div>';
+    container.appendChild(sidePanel);
+    
     modal.appendChild(container);
     document.body.appendChild(modal);
+    
+    // Store reference to panel for node clicks
+    window.expandedNodePanel = sidePanel;
     
     // Render the graph in expanded view
     renderExpandedGraph(world, svg, zoomLbl);
@@ -1680,6 +1691,13 @@
       
       card.appendChild(dot);
       card.appendChild(labels);
+      
+      // Click handler to show node details in side panel
+      card.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        showNodeInSidePanel(n);
+      });
+      
       world.appendChild(card);
     });
     
@@ -1726,81 +1744,164 @@
     }
   }
 
-  var expandedFlowAnimId = null;
-  function startExpandedFlowAnimation(canvas, nodes, edges) {
-    if (expandedFlowAnimId) cancelAnimationFrame(expandedFlowAnimId);
+  function showNodeInSidePanel(node) {
+    var panel = document.getElementById('expanded-node-panel');
+    if (!panel) return;
     
-    var ctx = canvas.getContext('2d');
-    var SPEED = 36;
-    var DASH_LEN = 7;
-    var DASH_GAP = 18;
-    var PATTERN = DASH_LEN + DASH_GAP;
-    var startTime = performance.now();
+    var params = node.params || {};
+    var hasParams = Object.keys(params).length > 0;
     
-    var nodeMap = {};
-    nodes.forEach(function(n) { nodeMap[n.id] = n; });
+    // Build panel content
+    var html = 
+      '<div style="padding:16px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);">' +
+          '<div style="width:10px;height:10px;border-radius:50%;background:' + (node.catColor || '#6c7bff') + ';flex-shrink:0;"></div>' +
+          '<div style="min-width:0;">' +
+            '<div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (node.fusionName || node.name) + '</div>' +
+            '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">' + (node.category || 'Custom') + '</div>' +
+          '</div>' +
+        '</div>';
     
-    var world = document.getElementById('expanded-graph-world');
-    var NW = 132, NH = 50;
-    
-    function drawFlow(ts) {
-      var elapsed = (ts - startTime) / 1000;
-      var W = canvas.width, H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
+    if (hasParams) {
+      html += '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;">Parameters</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
       
-      var dashOffset = -(elapsed * SPEED) % PATTERN;
-      ctx.setLineDash([DASH_LEN, DASH_GAP]);
-      ctx.lineDashOffset = dashOffset;
-      
-      // Get current transform from world element
-      var transform = world.style.transform || 'translate(0px,0px) scale(1)';
-      var translateMatch = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
-      var scaleMatch = transform.match(/scale\(([^)]+)\)/);
-      var tx = translateMatch ? parseFloat(translateMatch[1]) : 0;
-      var ty = translateMatch ? parseFloat(translateMatch[2]) : 0;
-      var sc = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
-      
-      edges.forEach(function(e) {
-        var fn = nodeMap[e.from];
-        var tn = nodeMap[e.to];
-        if (!fn || !tn) return;
+      Object.entries(params).forEach(function([key, param]) {
+        var val = param.value !== undefined ? param.value : param;
+        var hasKeyframes = param.keyframes && param.keyframes.length > 0;
         
-        var fx = ((fn.x || 0) + NW) * sc + tx;
-        var fy = ((fn.y || 0) + NH / 2) * sc + ty;
-        var tx2 = (tn.x || 0) * sc + tx;
-        var ty2 = ((tn.y || 0) + NH / 2) * sc + ty;
+        html += 
+          '<div style="padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.05);">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+              '<span style="font-family:var(--font-mono);font-size:10px;color:var(--violet-light);">' + key + '</span>' +
+              '<span style="font-family:var(--font-mono);font-size:10px;color:var(--teal);padding:2px 6px;background:rgba(15,168,136,0.08);border-radius:3px;border:1px solid rgba(15,168,136,0.2);">' + val + '</span>' +
+            '</div>';
         
-        var minX = Math.min(fx, tx2) - 20, maxX = Math.max(fx, tx2) + 20;
-        var minY = Math.min(fy, ty2) - 20, maxY = Math.max(fy, ty2) + 20;
-        if (maxX < 0 || minX > W || maxY < 0 || minY > H) return;
+        if (hasKeyframes) {
+          // Add mini spline visualization
+          html += '<div style="margin-top:8px;height:60px;position:relative;">';
+          html += '<canvas id="spline-' + node.id + '-' + key + '" style="width:100%;height:60px;border-radius:4px;background:rgba(0,0,0,0.3);"></canvas>';
+          html += '</div>';
+        }
         
-        var pull = Math.abs(tx2 - fx) * 0.45;
-        var c1x = fx + pull, c1y = fy;
-        var c2x = tx2 - pull, c2y = ty2;
-        
-        ctx.strokeStyle = 'rgba(108,123,255,0.55)';
-        ctx.lineWidth = 1.4;
-        ctx.shadowColor = 'rgba(108,123,255,0.35)';
-        ctx.shadowBlur = 4;
-        
-        ctx.beginPath();
-        ctx.moveTo(fx, fy);
-        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx2, ty2);
-        ctx.stroke();
-        
-        ctx.shadowBlur = 0;
+        html += '</div>';
       });
       
-      ctx.setLineDash([]);
-      ctx.lineDashOffset = 0;
-      expandedFlowAnimId = requestAnimationFrame(drawFlow);
+      html += '</div>';
+    } else {
+      html += '<div style="padding:20px;text-align:center;font-size:12px;color:rgba(255,255,255,0.4);">No parameters</div>';
     }
     
-    expandedFlowAnimId = requestAnimationFrame(drawFlow);
+    html += '</div>';
+    
+    panel.innerHTML = html;
+    panel.style.transform = 'translateX(0)';
+    
+    // Render spline canvases after DOM update
+    if (hasParams) {
+      setTimeout(function() {
+        Object.entries(params).forEach(function([key, param]) {
+          if (param.keyframes && param.keyframes.length > 0) {
+            var canvas = document.getElementById('spline-' + node.id + '-' + key);
+            if (canvas) {
+              drawMiniSpline(canvas, param);
+            }
+          }
+        });
+      }, 50);
+    }
+  }
+
+  function drawMiniSpline(canvas, param) {
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var w = canvas.offsetWidth, h = canvas.offsetHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.scale(dpr, dpr);
+    
+    var kfs = param.keyframes.slice().sort(function(a, b) { return a.frame - b.frame; });
+    if (!kfs.length) return;
+    
+    var PAD = { l: 8, r: 8, t: 8, b: 20 };
+    var gW = w - PAD.l - PAD.r, gH = h - PAD.t - PAD.b;
+    
+    var minF = kfs[0].frame, maxF = kfs[kfs.length - 1].frame;
+    var minV = Infinity, maxV = -Infinity;
+    kfs.forEach(function(k) {
+      var v = parseFloat(k.value !== undefined ? k.value : k.val || 0);
+      minV = Math.min(minV, v);
+      maxV = Math.max(maxV, v);
+    });
+    
+    if (minF === maxF) { minF -= 1; maxF += 1; }
+    if (minV === maxV) { minV -= 0.1; maxV += 0.1; }
+    
+    var tx = function(f) { return PAD.l + (f - minF) / (maxF - minF) * gW; };
+    var ty = function(v) { return PAD.t + (1 - (v - minV) / (maxV - minV)) * gH; };
+    
+    // Clear
+    ctx.fillStyle = '#0d0d10';
+    ctx.fillRect(0, 0, w, h);
+    
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, PAD.t);
+    ctx.lineTo(PAD.l, h - PAD.b);
+    ctx.lineTo(w - PAD.r, h - PAD.b);
+    ctx.stroke();
+    
+    // Curve
+    ctx.strokeStyle = '#f0c060';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var i = 0; i < kfs.length - 1; i++) {
+      var k0 = kfs[i], k1 = kfs[i+1];
+      var v0 = parseFloat(k0.value !== undefined ? k0.value : k0.val || 0);
+      var v1 = parseFloat(k1.value !== undefined ? k1.value : k1.val || 0);
+      var x0 = tx(k0.frame), y0 = ty(v0), x3 = tx(k1.frame), y3 = ty(v1);
+      var cp1x = x0 + (x3 - x0) / 3, cp1y = y0;
+      var cp2x = x3 - (x3 - x0) / 3, cp2y = y3;
+      if (i === 0) ctx.moveTo(x0, y0);
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x3, y3);
+    }
+    ctx.stroke();
+    
+    // Keyframe diamonds
+    kfs.forEach(function(k) {
+      var v = parseFloat(k.value !== undefined ? k.value : k.val || 0);
+      var px = tx(k.frame), py = ty(v);
+      ctx.fillStyle = '#f0c060';
+      ctx.beginPath();
+      ctx.moveTo(px, py - 4);
+      ctx.lineTo(px + 4, py);
+      ctx.lineTo(px, py + 4);
+      ctx.lineTo(px - 4, py);
+      ctx.closePath();
+      ctx.fill();
+    });
+    
+    // Frame labels
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '8px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(Math.round(minF), PAD.l, h - 6);
+    ctx.fillText(Math.round(maxF), w - PAD.r, h - 6);
   }
 
   function wireExpandedGraphEvents(vp, world, svg, zoomLbl) {
     var tx = 0, ty = 0, sc = 1, dragging = false, dX = 0, dY = 0;
+    
+    // Click to close panel when clicking empty canvas
+    vp.addEventListener('click', function(e) {
+      if (e.target.closest('div[style*="position:absolute;left:"]')) return;
+      var panel = document.getElementById('expanded-node-panel');
+      if (panel) {
+        panel.style.transform = 'translateX(100%)';
+      }
+    });
     
     vp.addEventListener('mousedown', function(e) {
       if (e.target.closest('div[style*="position:absolute;left:"]')) return;
