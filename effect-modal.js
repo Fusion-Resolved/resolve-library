@@ -755,28 +755,54 @@
   }
 
   function fitGraph() {
-    if (!viewport) return;
-    const vr = viewport.getBoundingClientRect();
-    const pad = 36;
-    const nodes = world?.querySelectorAll('.gn-card');
+    // Use graphState if available, otherwise fall back to module-level variables
+    var vp = graphState.vp || viewport;
+    var wrld = graphState.world || world;
+    
+    if (!vp || !wrld) return;
+    var vr = vp.getBoundingClientRect();
+    var pad = 36;
+    var nodes = wrld.querySelectorAll('.gn-card');
     if (!nodes || nodes.length === 0) return;
 
-    let mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
-    nodes.forEach(n => {
-      const x = parseFloat(n.style.left);
-      const y = parseFloat(n.style.top);
+    var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
+    nodes.forEach(function(n) {
+      var x = parseFloat(n.style.left);
+      var y = parseFloat(n.style.top);
       if (x < mnX) mnX = x;
       if (y < mnY) mnY = y;
       if (x + NW > mxX) mxX = x + NW;
       if (y + NH > mxY) mxY = y + NH;
     });
 
-    const gw = mxX - mnX;
-    const gh = mxY - mnY;
-    sc = clampScale(Math.min((vr.width - pad * 2) / gw, (vr.height - pad * 2) / gh));
-    tx = (vr.width - gw * sc) / 2 - mnX * sc;
-    ty = (vr.height - gh * sc) / 2 - mnY * sc;
-    applyXform();
+    var gw = mxX - mnX;
+    var gh = mxY - mnY;
+    
+    // Update both graphState and module-level variables
+    var newSc = clampScale(Math.min((vr.width - pad * 2) / gw, (vr.height - pad * 2) / gh));
+    var newTx = (vr.width - gw * newSc) / 2 - mnX * newSc;
+    var newTy = (vr.height - gh * newSc) / 2 - mnY * newSc;
+    
+    // Update graphState
+    graphState.sc = newSc;
+    graphState.tx = newTx;
+    graphState.ty = newTy;
+    
+    // Update module-level variables for compatibility
+    sc = newSc;
+    tx = newTx;
+    ty = newTy;
+    
+    // Apply transform using the world element from graphState or module level
+    if (wrld) {
+      wrld.style.transform = 'translate(' + newTx + 'px,' + newTy + 'px) scale(' + newSc + ')';
+    }
+    
+    // Update zoom label
+    var zLbl = graphState.zLbl || zoomLbl;
+    if (zLbl) {
+      zLbl.textContent = Math.round(newSc * 100) + '%';
+    }
   }
 
   function onMouseDown(e) {
