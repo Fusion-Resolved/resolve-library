@@ -4539,6 +4539,8 @@ async function saveGraph() {
   graphObj.id   = Date.now().toString();
   
   console.log('[saveGraph] Serialized graph:', graphObj.nodes.length, 'nodes,', graphObj.conns.length, 'connections');
+  console.log('[saveGraph] Node names:', graphObj.nodes.map(n => n.name).join(', '));
+  console.log('[saveGraph] Full nodes data:', JSON.stringify(graphObj.nodes, null, 2));
 
   // ── 1. Persist to localStorage (local library list) ─────────────────────
   savedGraphs = savedGraphs.filter(x => x.name !== name);
@@ -4585,9 +4587,13 @@ async function saveGraph() {
   if (effectIdsToPatch.length) {
     console.log('[saveGraph] Sending PATCH requests...');
     
-    const patchPromises = effectIdsToPatch.map(async function(le) {
+      const patchPromises = effectIdsToPatch.map(async function(le) {
       const url = _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(le.id);
       console.log('[saveGraph] PATCH URL:', url);
+      
+      const bodyString = JSON.stringify(patchPayload);
+      console.log('[saveGraph] PATCH body size:', bodyString.length, 'bytes');
+      console.log('[saveGraph] PATCH body:', bodyString.substring(0, 500) + '...');
       
       try {
         const response = await fetch(url, {
@@ -4596,21 +4602,35 @@ async function saveGraph() {
             'apikey':        _NG_SB_KEY,
             'Authorization': 'Bearer ' + _NG_SB_KEY,
             'Content-Type':  'application/json',
-            'Prefer':        'return=minimal',
+            'Prefer':        'return=representation',  // Get back the updated row
           },
-          body: JSON.stringify(patchPayload),
+          body: bodyString,
         });
         
         console.log('[saveGraph] Response status for', le.id, ':', response.status, response.statusText);
         
+        // Always try to read the response body
+        let responseBody = null;
+        try {
+          responseBody = await response.json();
+          console.log('[saveGraph] Response body:', JSON.stringify(responseBody).substring(0, 300));
+        } catch (e) {
+          console.log('[saveGraph] No JSON response body');
+        }
+        
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[saveGraph] PATCH failed for effect', le.id, ':', response.status, errorText);
-          return { id: le.id, success: false, error: errorText };
+          console.error('[saveGraph] PATCH failed for effect', le.id, ':', response.status, responseBody);
+          return { id: le.id, success: false, error: responseBody };
+        }
+        
+        // Check what was actually saved
+        if (responseBody && responseBody[0] && responseBody[0].nodes) {
+          const savedNodes = responseBody[0].nodes.nodes ? responseBody[0].nodes.nodes.length : 'unknown';
+          console.log('[saveGraph] Supabase returned saved node count:', savedNodes);
         }
         
         console.log('[saveGraph] PATCH successful for effect', le.id);
-        return { id: le.id, success: true };
+        return { id: le.id, success: true, response: responseBody };
       } catch (err) {
         console.error('[saveGraph] PATCH error for effect', le.id, ':', err);
         return { id: le.id, success: false, error: err.message };

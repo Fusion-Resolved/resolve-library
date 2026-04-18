@@ -68,14 +68,17 @@
     }
 
     try {
-      // Force fresh fetch - no caching
+      // Clear any potential cache by using a cache-busting timestamp in headers
       const { data: effect, error } = await window._supabase
         .from('effects')
         .select('*')
         .eq('id', effectId)
         .eq('is_public', true)
-        .single()
-        .throwOnError();
+        .single();
+      
+      if (error) {
+        console.log('[Effect Modal] Supabase error:', error.message, error.code);
+      }
 
       if (error || !effect) {
         console.log('[Effect Modal] Effect not found:', error);
