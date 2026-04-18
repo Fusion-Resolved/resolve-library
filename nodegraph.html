@@ -4588,91 +4588,60 @@ async function saveGraph() {
     console.log('[saveGraph] Sending PATCH requests...');
     
       const patchPromises = effectIdsToPatch.map(async function(le) {
-      const url = _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(le.id);
-      console.log('[saveGraph] PATCH URL:', url);
-      
-      const bodyString = JSON.stringify(patchPayload);
-      console.log('[saveGraph] PATCH body size:', bodyString.length, 'bytes');
-      console.log('[saveGraph] PATCH body:', bodyString.substring(0, 500) + '...');
+      console.log('[saveGraph] Using Supabase JS client for update...');
       
       try {
-        const response = await fetch(url, {
-          method: 'PATCH',
-          headers: {
-            'apikey':        _NG_SB_KEY,
-            'Authorization': 'Bearer ' + _NG_SB_KEY,
-            'Content-Type':  'application/json',
-            'Prefer':        'return=representation',  // Get back the updated row
-          },
-          body: bodyString,
-        });
+        // Use Supabase JS client instead of raw fetch
+        const { data, error } = await supabase
+          .from('effects')
+          .update({
+            nodes: patchPayload.nodes,
+            node_code: patchPayload.node_code
+          })
+          .eq('id', le.id)
+          .select();
         
-        console.log('[saveGraph] Response status for', le.id, ':', response.status, response.statusText);
-        
-        // Always try to read the response body
-        let responseBody = null;
-        try {
-          responseBody = await response.json();
-          console.log('[saveGraph] Response body:', JSON.stringify(responseBody).substring(0, 300));
-        } catch (e) {
-          console.log('[saveGraph] No JSON response body');
+        if (error) {
+          console.error('[saveGraph] Supabase update error:', error);
+          return { id: le.id, success: false, error: error.message };
         }
         
-        if (!response.ok) {
-          console.error('[saveGraph] PATCH failed for effect', le.id, ':', response.status, responseBody);
-          return { id: le.id, success: false, error: responseBody };
+        console.log('[saveGraph] Supabase update successful:', data);
+        
+        // Verify immediately
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('effects')
+          .select('nodes')
+          .eq('id', le.id)
+          .single();
+        
+        if (verifyError) {
+          console.error('[saveGraph] Verification error:', verifyError);
+        } else if (verifyData && verifyData.nodes) {
+          const nodeCount = verifyData.nodes.nodes ? verifyData.nodes.nodes.length : 'unknown';
+          console.log('[saveGraph] Verified saved nodes:', nodeCount);
         }
         
-        // Check what was actually saved
-        if (responseBody && responseBody[0] && responseBody[0].nodes) {
-          const savedNodes = responseBody[0].nodes.nodes ? responseBody[0].nodes.nodes.length : 'unknown';
-          console.log('[saveGraph] Supabase returned saved node count:', savedNodes);
-        }
-        
-        console.log('[saveGraph] PATCH successful for effect', le.id);
-        return { id: le.id, success: true, response: responseBody };
+        return { id: le.id, success: true, data: data };
       } catch (err) {
-        console.error('[saveGraph] PATCH error for effect', le.id, ':', err);
+        console.error('[saveGraph] Supabase error:', err);
         return { id: le.id, success: false, error: err.message };
       }
     });
     
     const results = await Promise.all(patchPromises);
-    console.log('[saveGraph] All PATCH results:', results);
+    console.log('[saveGraph] All update results:', results);
     
     const allSuccess = results.every(r => r.success);
     
     if (allSuccess) {
-      toast('Effect updated ✓ Saved to Supabase');
-      
-      // Verify the save worked by fetching back
-      setTimeout(async function() {
-        try {
-          const verifyRes = await fetch(
-            _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(effectIdsToPatch[0].id) + '&select=nodes',
-            {
-              headers: {
-                'apikey': _NG_SB_KEY,
-                'Authorization': 'Bearer ' + _NG_SB_KEY,
-              }
-            }
-          );
-          const verifyData = await verifyRes.json();
-          console.log('[saveGraph] Verification fetch:', verifyData);
-          if (verifyData && verifyData[0] && verifyData[0].nodes) {
-            const nodesData = verifyData[0].nodes;
-            console.log('[saveGraph] nodes data structure:', typeof nodesData, JSON.stringify(nodesData).substring(0, 200));
-            const savedNodeCount = nodesData.nodes ? nodesData.nodes.length : (Array.isArray(nodesData) ? nodesData.length : 'unknown structure');
-            console.log('[saveGraph] Verified: nodes saved =', savedNodeCount);
-          } else {
-            console.error('[saveGraph] Verification FAILED: no nodes data returned');
-          }
-        } catch (err) {
-          console.error('[saveGraph] Verification error:', err);
-        }
-      }, 500);
+      const savedCount = results[0].data && results[0].data[0] && results[0].data[0].nodes 
+        ? (results[0].data[0].nodes.nodes ? results[0].data[0].nodes.nodes.length : 'unknown')
+        : 'unknown';
+      toast('Effect updated ✓ (' + savedCount + ' nodes saved)');
     } else {
-      toast('Update failed - check console for errors');
+      const errors = results.filter(r => !r.success).map(r => r.error).join(', ');
+      toast('Update failed: ' + errors);
     }
   } else {
     console.log('[saveGraph] No effects to patch');
