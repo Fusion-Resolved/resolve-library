@@ -2832,9 +2832,6 @@
     var PATTERN = DASH_LEN + DASH_GAP;
     var startTime = performance.now();
     
-    var nodeMap = {};
-    nodes.forEach(function(n) { nodeMap[n.id] = n; });
-    
     var NW = 132, NH = 50;
     
     function drawFlow(ts) {
@@ -2846,14 +2843,20 @@
       ctx.setLineDash([DASH_LEN, DASH_GAP]);
       ctx.lineDashOffset = dashOffset;
       
+      // Build fresh nodeMap from current data (positions may have changed)
+      var currentNodes = window.currentNodeData ? window.currentNodeData.nodes : nodes;
+      var currentEdges = window.currentNodeData ? window.currentNodeData.edges : edges;
+      var nodeMap = {};
+      currentNodes.forEach(function(n) { nodeMap[n.id] = n; });
+      
       // Canvas is now INSIDE world element, so we draw in world coordinates directly
       // No need to apply transform - CSS handles it automatically
-      edges.forEach(function(e) {
+      currentEdges.forEach(function(e) {
         var fn = nodeMap[e.from];
         var tn = nodeMap[e.to];
         if (!fn || !tn) return;
         
-        // World coordinates (same as SVG paths)
+        // World coordinates (same as SVG paths) - use CURRENT positions
         var fx = (fn.x || 0) + NW;
         var fy = (fn.y || 0) + NH / 2;
         var tx = tn.x || 0;
