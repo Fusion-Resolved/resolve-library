@@ -140,6 +140,7 @@
     const params = node.params || {};
     
     console.log('[SplineEvaluator] evaluateNodeAtFrame, node.params keys:', Object.keys(params));
+    console.log('[SplineEvaluator] Full node.params:', JSON.stringify(params, null, 2).slice(0, 2000));
 
     // Handle nested structure: params[tableKey] = { table: "Transform", params: { ... } }
     Object.entries(params).forEach(([tableKey, tableGroup]) => {
@@ -158,6 +159,7 @@
         console.log('[SplineEvaluator] Processing table:', tableKey, '->', tableName, 'with params:', nestedKeys);
 
         Object.entries(nestedParams).forEach(([key, param]) => {
+          console.log('[SplineEvaluator] Param', key, 'raw:', JSON.stringify(param).slice(0, 100));
           if (key.endsWith('_SourceOp') || key.startsWith('_')) {
             console.log('[SplineEvaluator] Skipping nested metadata:', key);
             return;
