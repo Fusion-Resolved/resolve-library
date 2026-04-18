@@ -2609,14 +2609,27 @@
     }
     
     function findNodeByName(name) {
+      console.log('[findNodeByName] Looking for:', name);
+      
       // First check expanded graph nodes (priority for side panel interactions)
       var expandedNodes = window.currentNodeData && window.currentNodeData.nodes;
+      console.log('[findNodeByName] Expanded nodes available:', expandedNodes ? expandedNodes.length : 0);
+      
       if (expandedNodes && expandedNodes.length) {
+        // Log first few node names for debugging
+        console.log('[findNodeByName] First 3 nodes:', expandedNodes.slice(0, 3).map(function(n) { 
+          return { id: n.id, name: n.name, fusionName: n.fusionName, label: n.label }; 
+        }));
+        
         var found = expandedNodes.find(function(n) { 
-          return n.name === name || n.label === name || n.fusionName === name || n.fusionName === name;
+          var match = n.name === name || n.label === name || n.fusionName === name;
+          if (match) console.log('[findNodeByName] Found match:', n.name, 'fusionName:', n.fusionName);
+          return match;
         });
         if (found) return found;
       }
+      
+      console.log('[findNodeByName] Not found in expanded nodes, checking effect data');
       
       // Look in the current effect's nodes as fallback
       var effectData = window._currentEffectData;
