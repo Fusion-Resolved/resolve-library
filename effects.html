@@ -8147,8 +8147,9 @@ window.addEventListener('message', function(e) {
     closeEditIframe();
   }
   if (e.data && e.data.action === 'effect-updated') {
-    // Refresh effects to show updated data
-    console.log('[effects] Effect updated, refreshing... ID:', e.data.id);
+    // Close the edit modal and refresh effects to show updated data
+    console.log('[effects] Effect updated, closing modal and refreshing... ID:', e.data.id);
+    closeEditIframe();
     loadEffectsFromSupabase().then(function() {
       console.log('[effects] Effects refreshed after save');
     }).catch(function(err) {
