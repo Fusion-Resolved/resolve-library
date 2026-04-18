@@ -1661,18 +1661,15 @@
     container.appendChild(controls);
     container.appendChild(zoomLbl);
     
-    // Floating video (positioned below controls, draggable)
+    // Floating video (positioned below controls, draggable - no visible header)
     var videoContainer = document.createElement('div');
     videoContainer.id = 'exp-video-section';
-    videoContainer.style.cssText = 'position:absolute;top:110px;right:20px;width:320px;display:none;z-index:25;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,0.5);cursor:move;';
+    videoContainer.style.cssText = 'position:absolute;top:110px;right:20px;width:320px;display:none;z-index:25;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,0.5);cursor:grab;';
     videoContainer.innerHTML = 
-      '<div id="exp-video-drag-header" style="padding:8px 12px;background:rgba(255,255,255,0.1);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;cursor:grab;user-select:none;">' +
-        '<span style="font-size:11px;color:rgba(255,255,255,0.6);font-family:var(--font-mono);">Video</span>' +
-        '<button id="exp-video-close" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;padding:0 4px;line-height:1;">&#x2715;</button>' +
-      '</div>' +
       '<div id="exp-video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">' +
         '<div id="exp-video-inner" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>' +
-      '</div>';
+      '</div>' +
+      '<button id="exp-video-close" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border:none;border-radius:4px;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;padding:4px 8px;opacity:0;transition:opacity 0.2s;z-index:10;">&#x2715;</button>';
     
     // Node details panel (only shows when node selected)
     var nodePanel = document.createElement('div');
@@ -1729,43 +1726,50 @@
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
     
-    // Setup video container drag functionality
-    var videoDragHeader = document.getElementById('exp-video-drag-header');
+    // Setup video container drag functionality (entire container is draggable)
     var videoCloseBtn = document.getElementById('exp-video-close');
     var isDraggingVideo = false;
     var videoDragStartX = 0, videoDragStartY = 0;
     var videoStartX = 0, videoStartY = 0;
     
-    if (videoDragHeader) {
-      videoDragHeader.addEventListener('mousedown', function(e) {
-        isDraggingVideo = true;
-        videoDragStartX = e.clientX;
-        videoDragStartY = e.clientY;
-        videoStartX = parseInt(videoContainer.style.right) || 20;
-        videoStartY = parseInt(videoContainer.style.top) || 110;
-        videoDragHeader.style.cursor = 'grabbing';
-        e.preventDefault();
-      });
-      
-      document.addEventListener('mousemove', function(e) {
-        if (!isDraggingVideo) return;
-        var dx = e.clientX - videoDragStartX;
-        var dy = e.clientY - videoDragStartY;
-        // Calculate new position (constrained to viewport)
-        var containerRect = container.getBoundingClientRect();
-        var newRight = Math.max(0, Math.min(containerRect.width - 320, videoStartX - dx));
-        var newTop = Math.max(50, Math.min(containerRect.height - 200, videoStartY + dy));
-        videoContainer.style.right = newRight + 'px';
-        videoContainer.style.top = newTop + 'px';
-      });
-      
-      document.addEventListener('mouseup', function() {
-        if (isDraggingVideo) {
-          isDraggingVideo = false;
-          videoDragHeader.style.cursor = 'grab';
-        }
-      });
-    }
+    // Show/hide close button on hover
+    videoContainer.addEventListener('mouseenter', function() {
+      if (videoCloseBtn) videoCloseBtn.style.opacity = '1';
+    });
+    videoContainer.addEventListener('mouseleave', function() {
+      if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
+    });
+    
+    // Drag on mousedown anywhere on container (except close button)
+    videoContainer.addEventListener('mousedown', function(e) {
+      if (e.target === videoCloseBtn || e.target.closest('#exp-video-close')) return;
+      isDraggingVideo = true;
+      videoDragStartX = e.clientX;
+      videoDragStartY = e.clientY;
+      videoStartX = parseInt(videoContainer.style.right) || 20;
+      videoStartY = parseInt(videoContainer.style.top) || 110;
+      videoContainer.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+      if (!isDraggingVideo) return;
+      var dx = e.clientX - videoDragStartX;
+      var dy = e.clientY - videoDragStartY;
+      // Calculate new position (constrained to viewport)
+      var containerRect = container.getBoundingClientRect();
+      var newRight = Math.max(0, Math.min(containerRect.width - 320, videoStartX - dx));
+      var newTop = Math.max(50, Math.min(containerRect.height - 200, videoStartY + dy));
+      videoContainer.style.right = newRight + 'px';
+      videoContainer.style.top = newTop + 'px';
+    });
+    
+    document.addEventListener('mouseup', function() {
+      if (isDraggingVideo) {
+        isDraggingVideo = false;
+        videoContainer.style.cursor = 'grab';
+      }
+    });
     
     // Video close button
     if (videoCloseBtn) {
