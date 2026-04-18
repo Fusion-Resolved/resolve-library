@@ -4640,7 +4640,9 @@ async function saveGraph() {
           const verifyData = await verifyRes.json();
           console.log('[saveGraph] Verification fetch:', verifyData);
           if (verifyData && verifyData[0] && verifyData[0].nodes) {
-            const savedNodeCount = verifyData[0].nodes.nodes ? verifyData[0].nodes.nodes.length : 'legacy format';
+            const nodesData = verifyData[0].nodes;
+            console.log('[saveGraph] nodes data structure:', typeof nodesData, JSON.stringify(nodesData).substring(0, 200));
+            const savedNodeCount = nodesData.nodes ? nodesData.nodes.length : (Array.isArray(nodesData) ? nodesData.length : 'unknown structure');
             console.log('[saveGraph] Verified: nodes saved =', savedNodeCount);
           } else {
             console.error('[saveGraph] Verification FAILED: no nodes data returned');

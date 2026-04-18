@@ -68,12 +68,14 @@
     }
 
     try {
+      // Force fresh fetch - no caching
       const { data: effect, error } = await window._supabase
         .from('effects')
         .select('*')
         .eq('id', effectId)
         .eq('is_public', true)
-        .single();
+        .single()
+        .throwOnError();
 
       if (error || !effect) {
         console.log('[Effect Modal] Effect not found:', error);
@@ -82,7 +84,17 @@
 
       console.log('[Effect Modal] Fetched effect:', effect.id, 'nodes:', effect.nodes ? typeof effect.nodes : 'missing');
       if (effect.nodes) {
-        console.log('[Effect Modal] nodes data:', typeof effect.nodes === 'object' ? 'object' : effect.nodes.substring(0, 100));
+        if (typeof effect.nodes === 'object') {
+          console.log('[Effect Modal] nodes object keys:', Object.keys(effect.nodes));
+          if (effect.nodes.nodes) {
+            console.log('[Effect Modal] nodes.nodes array length:', effect.nodes.nodes.length);
+            console.log('[Effect Modal] First node:', effect.nodes.nodes[0]);
+          } else if (Array.isArray(effect.nodes)) {
+            console.log('[Effect Modal] nodes is array length:', effect.nodes.length);
+          }
+        } else {
+          console.log('[Effect Modal] nodes string:', effect.nodes.substring(0, 100));
+        }
       }
 
       populateModal(effect);
