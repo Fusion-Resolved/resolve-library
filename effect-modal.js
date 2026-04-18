@@ -130,7 +130,7 @@
     document.getElementById('modal-dependencies').textContent = effect.fusion_env || 'None';
 
     // Node graph visualization and accordion using Universal Node System
-    console.log('[effect-modal] Modal opened - node_code:', effect.node_code ? 'exists' : 'missing', '_graphData:', effect._graphData ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
+    console.log('[effect-modal] Modal opened - node_code:', effect.node_code ? 'exists' : 'missing', 'nodes:', effect.nodes ? 'exists' : 'missing', 'nodes type:', typeof effect.nodes, '_graphData:', effect._graphData ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
     var nodeSection = document.getElementById('modal-node-section');
     var nodeCountEl = document.getElementById('modal-node-count');
     var accordionEl = document.getElementById('modal-node-accordion');
@@ -175,6 +175,15 @@
     if (!hasValidData && effect.nodes && window.NodeSystem) {
       try {
         var rawNodes = effect.nodes;
+        // If nodes is a string, parse it (Supabase sometimes returns JSONB as string)
+        if (typeof rawNodes === 'string') {
+          try {
+            rawNodes = JSON.parse(rawNodes);
+            console.log('[effect-modal] Parsed effect.nodes from JSON string');
+          } catch (parseErr) {
+            console.warn('[effect-modal] Failed to parse effect.nodes as JSON string:', parseErr);
+          }
+        }
         // Check if it's a full graph object (has schemaVersion or nodes array)
         if (rawNodes && typeof rawNodes === 'object' && !Array.isArray(rawNodes)
             && (rawNodes.nodes || rawNodes.schemaVersion)) {
@@ -1206,10 +1215,10 @@
             '<svg class="graph-svg" id="graphSvg" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible;"></svg>' +
           '</div>' +
         '</div>' +
-        '<div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:6px;">' +
-          '<button class="gc-btn" id="gcIn" style="font-size:16px;width:36px;height:36px;border-radius:8px;">+</button>' +
-          '<button class="gc-btn" id="gcOut" style="font-size:16px;width:36px;height:36px;border-radius:8px;">&minus;</button>' +
-          '<button class="gc-btn gc-fit" id="gcFit" style="font-size:10px;width:auto;padding:8px 14px;letter-spacing:0.07em;border-radius:8px;">FIT</button>' +
+        '<div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:5px;">' +
+          '<button class="gc-btn" id="gcIn" style="font-size:15px;width:32px;height:32px;border-radius:7px;">+</button>' +
+          '<button class="gc-btn" id="gcOut" style="font-size:15px;width:32px;height:32px;border-radius:7px;">&minus;</button>' +
+          '<button class="gc-btn gc-fit" id="gcFit" style="font-size:9px;width:auto;padding:6px 12px;letter-spacing:0.07em;border-radius:7px;">FIT</button>' +
         '</div>' +
         '<div class="graph-action-btns" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:8px;">' +
           '<button id="gcOpenEditor" style="background:rgba(6,6,13,0.85);backdrop-filter:blur(8px);border:1px solid rgba(108,123,255,0.3);border-radius:6px;color:var(--violet-light);font-family:var(--font-mono);font-size:10px;padding:6px 12px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;display:flex;align-items:center;gap:6px;">' +

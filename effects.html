@@ -2107,10 +2107,10 @@ header { z-index: 100 !important; }
 #gcExpand:hover { background:rgba(255,255,255,0.1) !important;border-color:rgba(255,255,255,0.3) !important;color:#fff !important; }
 
 /* Graph control buttons (+ - FIT) */
-.gc-btn { background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);cursor:pointer;transition:all 0.13s;display:flex;align-items:center;justify-content:center;padding:8px 12px;min-width:36px;min-height:36px; }
+.gc-btn { background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);cursor:pointer;transition:all 0.13s;display:flex;align-items:center;justify-content:center;padding:6px 10px;min-width:32px;min-height:32px; }
 .gc-btn:hover { background:rgba(108,123,255,0.2);border-color:rgba(108,123,255,0.4);color:#fff;transform:translateY(-1px);box-shadow:0 4px 12px rgba(108,123,255,0.15); }
 .gc-btn:active { transform:translateY(0); }
-.gc-btn.gc-fit { padding:8px 14px;font-size:10px;letter-spacing:0.07em; }
+.gc-btn.gc-fit { padding:6px 12px;font-size:9px;letter-spacing:0.07em; }
 
 /* Flow animation canvas */
 #flow-canvas { position:absolute;inset:0;pointer-events:none;z-index:5; }
@@ -7595,9 +7595,28 @@ function toast(msg) {
 // .card-thumb-img  = static poster on top (z-index 2), fades to opacity:0 on .card-thumb:hover
 // No JS needed — no blank frame, no flicker.
 
-function openDetail(id) {
-  const e = effects.find(x => x.id === id);
+async function openDetail(id) {
+  // Fetch fresh data from Supabase to ensure we have the latest nodes/graph
+  let e = effects.find(x => x.id === id);
   if (!e) return;
+  
+  // Re-fetch to get latest nodes JSONB data
+  try {
+    const { data: freshEffect, error } = await supabase
+      .from('effects')
+      .select('*, nodes')  // Explicitly fetch nodes column
+      .eq('id', id)
+      .single();
+    
+    if (!error && freshEffect) {
+      // Merge fresh data, especially nodes
+      e = Object.assign({}, e, freshEffect);
+      console.log('[effects] Fetched fresh effect data, nodes:', freshEffect.nodes ? 'exists' : 'missing');
+    }
+  } catch (err) {
+    console.warn('[effects] Failed to fetch fresh effect data:', err);
+  }
+  
   activeDetail = id;
   const cat = CATS[e.cat] || { label: e.cat || 'Effect', cls: 'cat-default' };
   const diff = DIFF[e.difficulty];
@@ -10166,10 +10185,10 @@ if (typeof window._shToast !== 'function') {
                   <svg class="graph-svg" id="graphSvg"></svg>
                 </div>
               </div>
-              <div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:6px;">
-                <button class="gc-btn" id="gcIn" style="font-size:16px;width:36px;height:36px;">+</button>
-                <button class="gc-btn" id="gcOut" style="font-size:16px;width:36px;height:36px;">&minus;</button>
-                <button class="gc-btn gc-fit" id="gcFit" style="font-size:10px;">FIT</button>
+              <div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:5px;">
+                <button class="gc-btn" id="gcIn" style="font-size:15px;width:32px;height:32px;">+</button>
+                <button class="gc-btn" id="gcOut" style="font-size:15px;width:32px;height:32px;">&minus;</button>
+                <button class="gc-btn gc-fit" id="gcFit" style="font-size:9px;">FIT</button>
               </div>
               <div class="graph-action-btns" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:8px;">
                 <button id="gcOpenEditor" style="background:rgba(6,6,13,0.85);backdrop-filter:blur(8px);border:1px solid rgba(108,123,255,0.3);border-radius:6px;color:var(--violet-light);font-family:var(--font-mono);font-size:10px;padding:6px 12px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;display:flex;align-items:center;gap:6px;">
