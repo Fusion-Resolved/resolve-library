@@ -68,36 +68,30 @@
     }
 
     try {
-      // Clear any potential cache by using a cache-busting timestamp in headers
+      // Force fresh fetch by adding a timestamp to bypass any caching
+      const cacheBuster = Date.now();
       const { data: effect, error } = await window._supabase
         .from('effects')
         .select('*')
         .eq('id', effectId)
         .eq('is_public', true)
-        .single();
-      
-      if (error) {
-        console.log('[Effect Modal] Supabase error:', error.message, error.code);
-      }
+        .single()
+        .abortSignal(AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined);
 
       if (error || !effect) {
         console.log('[Effect Modal] Effect not found:', error);
         return;
       }
 
-      console.log('[Effect Modal] Fetched effect:', effect.id, 'nodes:', effect.nodes ? typeof effect.nodes : 'missing');
-      if (effect.nodes) {
-        if (typeof effect.nodes === 'object') {
-          console.log('[Effect Modal] nodes object keys:', Object.keys(effect.nodes));
-          if (effect.nodes.nodes) {
-            console.log('[Effect Modal] nodes.nodes array length:', effect.nodes.nodes.length);
-            console.log('[Effect Modal] First node:', effect.nodes.nodes[0]);
-          } else if (Array.isArray(effect.nodes)) {
-            console.log('[Effect Modal] nodes is array length:', effect.nodes.length);
-          }
-        } else {
-          console.log('[Effect Modal] nodes string:', effect.nodes.substring(0, 100));
-        }
+      // Re-fetch to get fresh data
+      const { data: freshEffect } = await window._supabase
+        .from('effects')
+        .select('id, nodes')
+        .eq('id', effectId)
+        .single();
+      
+      if (freshEffect && freshEffect.nodes) {
+        effect.nodes = freshEffect.nodes;
       }
 
       populateModal(effect);
@@ -150,7 +144,6 @@
     document.getElementById('modal-dependencies').textContent = effect.fusion_env || 'None';
 
     // Node graph visualization and accordion using Universal Node System
-    console.log('[effect-modal] Modal opened - node_code:', effect.node_code ? 'exists' : 'missing', 'nodes:', effect.nodes ? 'exists' : 'missing', 'nodes type:', typeof effect.nodes, '_graphData:', effect._graphData ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
     var nodeSection = document.getElementById('modal-node-section');
     var nodeCountEl = document.getElementById('modal-node-count');
     var accordionEl = document.getElementById('modal-node-accordion');
@@ -195,21 +188,17 @@
     if (!hasValidData && effect.nodes && window.NodeSystem) {
       try {
         var rawNodes = effect.nodes;
-        console.log('[effect-modal] effect.nodes raw type:', typeof rawNodes, 'isArray:', Array.isArray(rawNodes));
         // If nodes is a string, parse it (Supabase sometimes returns JSONB as string)
         if (typeof rawNodes === 'string') {
           try {
             rawNodes = JSON.parse(rawNodes);
-            console.log('[effect-modal] Parsed effect.nodes from JSON string');
           } catch (parseErr) {
             console.warn('[effect-modal] Failed to parse effect.nodes as JSON string:', parseErr);
           }
         }
         // Check if it's a full graph object (has schemaVersion or nodes array)
-        console.log('[effect-modal] After parsing - type:', typeof rawNodes, 'schemaVersion:', rawNodes.schemaVersion, 'nodes array:', rawNodes.nodes ? rawNodes.nodes.length : 'none');
         if (rawNodes && typeof rawNodes === 'object' && !Array.isArray(rawNodes)
             && (rawNodes.nodes || rawNodes.schemaVersion)) {
-          console.log('[effect-modal] Using effect.nodes (JSONB) with', rawNodes.nodes.length, 'nodes');
           nodeData = {
             nodes: rawNodes.nodes.map(function(n) { return {
               id: n.id,
@@ -272,11 +261,9 @@
       
       // Build accordion
       if (accordionEl) {
-        console.log('[effect-modal] Building accordion...');
         accordionEl.innerHTML = '';
         
         nodeData.nodes.forEach(function(node, idx) {
-          console.log('[effect-modal] Processing node', idx, ':', node.name || node.fusionName);
           var hasParams = Object.keys(node.params || {}).length > 0;
           var hasAnimation = hasParams && Object.values(node.params).some(function(p) {
             return p.keyframes && p.keyframes.length > 0;
@@ -333,7 +320,6 @@
           item.appendChild(content);
           accordionEl.appendChild(item);
         });
-        console.log('[effect-modal] Accordion built with', accordionEl.children.length, 'items');
       } else {
         console.log('[effect-modal] accordionEl not found!');
       }

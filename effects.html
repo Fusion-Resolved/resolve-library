@@ -7600,22 +7600,20 @@ async function openDetail(id) {
   let e = effects.find(x => x.id === id);
   if (!e) return;
   
-  // Re-fetch to get latest nodes JSONB data
-  try {
-    const { data: freshEffect, error } = await supabase
-      .from('effects')
-      .select('*, nodes')  // Explicitly fetch nodes column
-      .eq('id', id)
-      .single();
-    
-    if (!error && freshEffect) {
-      // Merge fresh data, especially nodes
-      e = Object.assign({}, e, freshEffect);
-      console.log('[effects] Fetched fresh effect data, nodes:', freshEffect.nodes ? 'exists' : 'missing');
+    // Re-fetch to get latest nodes JSONB data
+    try {
+      const { data: freshEffect, error } = await supabase
+        .from('effects')
+        .select('*, nodes')
+        .eq('id', id)
+        .single();
+      
+      if (!error && freshEffect) {
+        e = Object.assign({}, e, freshEffect);
+      }
+    } catch (err) {
+      console.warn('[effects] Failed to fetch fresh effect data:', err);
     }
-  } catch (err) {
-    console.warn('[effects] Failed to fetch fresh effect data:', err);
-  }
   
   activeDetail = id;
   const cat = CATS[e.cat] || { label: e.cat || 'Effect', cls: 'cat-default' };
@@ -7824,7 +7822,6 @@ async function openDetail(id) {
     }
     
     // Render node graph visualization and parameter panel in detail view
-    console.log('[effects] Detail view - node_code:', e.node_code ? 'exists' : 'missing', '_graphData:', e._graphData ? 'exists' : 'missing', 'NodeSystem:', window.NodeSystem ? 'loaded' : 'not loaded');
     
     // Try _graphData first (has positions), fall back to node_code
     var nodeData = null;
@@ -7835,7 +7832,6 @@ async function openDetail(id) {
       try {
         var graphData = typeof e._graphData === 'string' ? JSON.parse(e._graphData) : e._graphData;
         if (graphData && graphData.nodes && graphData.nodes.length > 0) {
-          console.log('[effects] Using _graphData with', graphData.nodes.length, 'nodes (has positions)');
           nodeData = {
             nodes: graphData.nodes.map(function(n) { return {
               id: n.id,
@@ -7863,7 +7859,6 @@ async function openDetail(id) {
     // Fall back to node_code if _graphData not available
     if (!hasValidNodeData && e.node_code && window.NodeSystem) {
       try {
-        console.log('[effects] Falling back to node_code parsing...');
         var parsed = window.NodeSystem.parse(e.node_code);
         nodeData = window.NodeSystem.normalize(parsed);
         hasValidNodeData = nodeData.nodes.length > 0;

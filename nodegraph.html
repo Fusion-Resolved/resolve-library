@@ -4531,70 +4531,43 @@ async function saveGraph() {
   const name = document.getElementById('sv-name').value.trim();
   if (!name) { document.getElementById('sv-name').focus(); return; }
 
-  console.log('[saveGraph] Starting save...');
-  console.log('[saveGraph] currentEffectId:', currentEffectId);
-  console.log('[saveGraph] currentEffectOwnerId:', currentEffectOwnerId);
-  console.log('[saveGraph] isCurrentUserOwner:', isCurrentUserOwner);
-  console.log('[saveGraph] window.CURRENT_USER_ID:', window.CURRENT_USER_ID);
-
   const graphObj = _serializeGraph();
   graphObj.name = name;
   graphObj.id   = Date.now().toString();
-  
-  console.log('[saveGraph] Serialized graph:', graphObj.nodes.length, 'nodes,', graphObj.conns.length, 'connections');
-  console.log('[saveGraph] Node names:', graphObj.nodes.map(n => n.name).join(', '));
-  console.log('[saveGraph] Full nodes data:', JSON.stringify(graphObj.nodes, null, 2));
 
   // ── 1. Persist to localStorage (local library list) ─────────────────────
   savedGraphs = savedGraphs.filter(x => x.name !== name);
   savedGraphs.unshift(graphObj);
   localStorage.setItem('ng-graphs', JSON.stringify(savedGraphs));
 
-  // ── 2. Supabase PATCH — write full graph JSONB to Supabase ───────────────
+  // ── 2. Supabase PATCH ─ write full graph JSONB to Supabase ───────────────
   const nodeNames = nodes.map(function(n) { return n.name; });
   const patchPayload = {
     nodes: graphObj,
     node_code: nodeNames.join(', '),
   };
-  
-  console.log('[saveGraph] PATCH payload:', JSON.stringify(patchPayload).substring(0, 200) + '...');
 
   // Collect IDs: start with linked effects, then add URL ?id= if owner
   const _urlEffectId = (new URLSearchParams(window.location.search)).get('id');
-  console.log('[saveGraph] URL effect ID:', _urlEffectId);
-  
   let effectIdsToPatch = linkedEffects.map(function(le) { return { id: le.id, name: le.name }; });
-  console.log('[saveGraph] linkedEffects:', linkedEffects);
   
   // If there's a URL effect ID, only include it if user is owner
   if (_urlEffectId) {
-    console.log('[saveGraph] Checking ownership for URL effect...');
     if (currentEffectId === _urlEffectId && isCurrentUserOwner) {
-      console.log('[saveGraph] User IS owner - adding to patch list');
       if (!effectIdsToPatch.some(function(le) { return le.id === _urlEffectId; })) {
         const urlName = linkedEffects.find(function(le){ return le.id === _urlEffectId; })
                      ? null : name;
         effectIdsToPatch.push({ id: _urlEffectId, name: urlName || name });
       }
     } else if (currentEffectId === _urlEffectId && !isCurrentUserOwner) {
-      console.log('[saveGraph] User is NOT owner - skipping update');
-      toast('Cannot update: you are not the owner. Save to library instead.');
+      toast('Cannot update: you are not the owner');
       effectIdsToPatch = effectIdsToPatch.filter(function(le) { return le.id !== _urlEffectId; });
-    } else {
-      console.log('[saveGraph] Ownership check failed: currentEffectId=', currentEffectId, '_urlEffectId=', _urlEffectId);
     }
   }
-  
-  console.log('[saveGraph] Effects to patch:', effectIdsToPatch.map(e => e.id));
 
   if (effectIdsToPatch.length) {
-    console.log('[saveGraph] Sending PATCH requests...');
-    
-      const patchPromises = effectIdsToPatch.map(async function(le) {
-      console.log('[saveGraph] Using Supabase JS client for update...');
-      
+    const patchPromises = effectIdsToPatch.map(async function(le) {
       try {
-        // Use Supabase JS client instead of raw fetch - use _supabase (the global with underscore)
         const { data, error } = await _supabase
           .from('effects')
           .update({
@@ -4609,22 +4582,6 @@ async function saveGraph() {
           return { id: le.id, success: false, error: error.message };
         }
         
-        console.log('[saveGraph] Supabase update successful:', data);
-        
-        // Verify immediately
-        const { data: verifyData, error: verifyError } = await _supabase
-          .from('effects')
-          .select('nodes')
-          .eq('id', le.id)
-          .single();
-        
-        if (verifyError) {
-          console.error('[saveGraph] Verification error:', verifyError);
-        } else if (verifyData && verifyData.nodes) {
-          const nodeCount = verifyData.nodes.nodes ? verifyData.nodes.nodes.length : 'unknown';
-          console.log('[saveGraph] Verified saved nodes:', nodeCount);
-        }
-        
         return { id: le.id, success: true, data: data };
       } catch (err) {
         console.error('[saveGraph] Supabase error:', err);
@@ -4633,21 +4590,15 @@ async function saveGraph() {
     });
     
     const results = await Promise.all(patchPromises);
-    console.log('[saveGraph] All update results:', results);
     
     const allSuccess = results.every(r => r.success);
     
     if (allSuccess) {
-      const savedCount = results[0].data && results[0].data[0] && results[0].data[0].nodes 
-        ? (results[0].data[0].nodes.nodes ? results[0].data[0].nodes.nodes.length : 'unknown')
-        : 'unknown';
-      toast('Effect updated ✓ (' + savedCount + ' nodes saved)');
+      toast('Effect updated ✓');
     } else {
-      const errors = results.filter(r => !r.success).map(r => r.error).join(', ');
-      toast('Update failed: ' + errors);
+      toast('Update failed - check console');
     }
   } else {
-    console.log('[saveGraph] No effects to patch');
     toast('Graph saved locally (no linked effect)');
   }
 
