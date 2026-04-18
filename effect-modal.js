@@ -1221,8 +1221,7 @@
             'Expand' +
           '</button>' +
         '</div>' +
-        '<div class="graph-zoom-lbl" id="gZoomLbl" style="position:absolute;bottom:42px;left:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.07em;pointer-events:none;z-index:10;">100%</div>' +
-         '<div class="graph-hint" style="position:absolute;top:10px;left:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.18);letter-spacing:0.05em;pointer-events:none;z-index:10;">ctrl+scroll to zoom · drag to pan</div>' +
+         '<div class="graph-zoom-lbl" id="gZoomLbl" style="position:absolute;bottom:10px;left:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.07em;pointer-events:none;z-index:10;">100%</div>' +
       '</div>';
     
     // Create a container div
