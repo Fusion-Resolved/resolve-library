@@ -1727,12 +1727,15 @@
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
     
-    // Setup video container drag functionality (using overlay to capture events over iframe)
+    // Setup video container drag functionality (with drag threshold like canvas nodes)
     var videoCloseBtn = document.getElementById('exp-video-close');
     var videoDragOverlay = document.getElementById('exp-video-drag-overlay');
     var isDraggingVideo = false;
+    var hasVideoDragged = false;
     var videoDragStartX = 0, videoDragStartY = 0;
+    var videoMouseStartX = 0, videoMouseStartY = 0;
     var videoStartX = 0, videoStartY = 0;
+    var VIDEO_DRAG_THRESHOLD = 5; // pixels
     
     // Show/hide close button on hover
     videoContainer.addEventListener('mouseenter', function() {
@@ -1742,33 +1745,47 @@
       if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
     });
     
-    // Drag using the overlay (covering entire video area)
+    // Drag using the overlay (with threshold detection)
     if (videoDragOverlay) {
       videoDragOverlay.addEventListener('mousedown', function(e) {
         // Don't drag if clicking close button
         if (e.target === videoCloseBtn) return;
         isDraggingVideo = true;
+        hasVideoDragged = false;
+        videoMouseStartX = e.clientX;
+        videoMouseStartY = e.clientY;
         videoDragStartX = e.clientX;
         videoDragStartY = e.clientY;
         videoStartX = parseInt(videoContainer.style.right) || 20;
         videoStartY = parseInt(videoContainer.style.top) || 110;
-        videoDragOverlay.style.cursor = 'grabbing';
-        videoContainer.style.cursor = 'grabbing';
         e.preventDefault();
-        e.stopPropagation();
       });
     }
     
     document.addEventListener('mousemove', function(e) {
       if (!isDraggingVideo) return;
-      var dx = e.clientX - videoDragStartX;
-      var dy = e.clientY - videoDragStartY;
-      // Calculate new position (constrained to viewport)
-      var containerRect = container.getBoundingClientRect();
-      var newRight = Math.max(0, Math.min(containerRect.width - 320, videoStartX - dx));
-      var newTop = Math.max(50, Math.min(containerRect.height - 200, videoStartY + dy));
-      videoContainer.style.right = newRight + 'px';
-      videoContainer.style.top = newTop + 'px';
+      
+      // Check if we've moved enough to count as a drag
+      if (!hasVideoDragged) {
+        var moveX = Math.abs(e.clientX - videoMouseStartX);
+        var moveY = Math.abs(e.clientY - videoMouseStartY);
+        if (moveX > VIDEO_DRAG_THRESHOLD || moveY > VIDEO_DRAG_THRESHOLD) {
+          hasVideoDragged = true;
+          videoDragOverlay.style.cursor = 'grabbing';
+          videoContainer.style.cursor = 'grabbing';
+        }
+      }
+      
+      if (hasVideoDragged) {
+        var dx = e.clientX - videoDragStartX;
+        var dy = e.clientY - videoDragStartY;
+        // Calculate new position (constrained to viewport)
+        var containerRect = container.getBoundingClientRect();
+        var newRight = Math.max(0, Math.min(containerRect.width - 320, videoStartX - dx));
+        var newTop = Math.max(50, Math.min(containerRect.height - 200, videoStartY + dy));
+        videoContainer.style.right = newRight + 'px';
+        videoContainer.style.top = newTop + 'px';
+      }
     });
     
     document.addEventListener('mouseup', function() {
@@ -1776,6 +1793,17 @@
         isDraggingVideo = false;
         if (videoDragOverlay) videoDragOverlay.style.cursor = 'grab';
         videoContainer.style.cursor = 'grab';
+      }
+    });
+    
+    // Allow click-through to video when not dragging (by hiding overlay briefly)
+    videoDragOverlay.addEventListener('click', function(e) {
+      if (!hasVideoDragged && e.target !== videoCloseBtn) {
+        // Briefly hide overlay to allow click to pass through to video
+        videoDragOverlay.style.pointerEvents = 'none';
+        setTimeout(function() {
+          videoDragOverlay.style.pointerEvents = 'auto';
+        }, 100);
       }
     });
     
