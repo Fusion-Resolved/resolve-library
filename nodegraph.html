@@ -1529,7 +1529,7 @@ var FUSION_NODES_UNIQUE = FUSION_NODES;
       <div class="rp-sec" id="rpsec-save" style="display:none">
         <div class="rp-sec-header">Save &amp; Export</div>
         <div class="rp-sec-body">
-        <div class="rp-lbl" style="margin-bottom:5px">Save graph</div>
+        <div class="rp-lbl" id="save-graph-label" style="margin-bottom:5px">Save graph</div>
         <input class="sv-inp" id="sv-name" type="text" placeholder="Graph name…">
         <button class="sv-btn" id="btn-save-lib" onclick="saveGraph()">Save to library</button>
         <button class="sv-btn" id="btn-update-effect" onclick="saveGraph()" style="display:none;background:rgba(108,123,255,0.2);border-color:rgba(108,123,255,0.5);color:var(--violet-light);">Update Effect</button>
@@ -4704,8 +4704,19 @@ function renderEffList(){
 function updateSaveButtonVisibility() {
   const btnSaveLib = document.getElementById('btn-save-lib');
   const btnUpdateEffect = document.getElementById('btn-update-effect');
+  const saveLabel = document.getElementById('save-graph-label');
   
   if (!btnSaveLib || !btnUpdateEffect) return;
+  
+  // Update label with effect name if loaded
+  if (saveLabel) {
+    if (currentEffectId) {
+      const eff = linkedEffects.find(function(le) { return le.id === currentEffectId; });
+      saveLabel.textContent = eff ? eff.name : 'Save graph';
+    } else {
+      saveLabel.textContent = 'Save graph';
+    }
+  }
   
   if (currentEffectId && isCurrentUserOwner) {
     // Owner of loaded effect - show "Update Effect" button
