@@ -365,6 +365,10 @@ input,textarea,select{font-family:var(--fb);outline:none;}
         <textarea class="ft" id="fDesc" maxlength="400" style="min-height:90px;">Uses optical flow vectors to warp a source clip — creates a liquid smear without third-party plugins. Works best on clips with strong directional motion. Chain two passes for a more pronounced effect.</textarea>
       </div>
       <div class="fg">
+        <div class="fg-hd"><label class="fl">Step-by-Step</label><span class="cc" id="stepsCC">0 / 2000</span></div>
+        <textarea class="ft" id="fSteps" maxlength="2000" style="min-height:120px;" placeholder="1. Create MediaIn node&#10;2. Add OpticalFlow&#10;3. Connect to DisplaceDistort&#10;4. Adjust scale settings"></textarea>
+      </div>
+      <div class="fg">
         <label class="fl">Difficulty</label>
         <div class="diff-row">
           <button class="db beg" data-d="Beginner">Beginner</button>
@@ -1133,7 +1137,7 @@ input,textarea,select{font-family:var(--fb);outline:none;}
     });
 
     /* field dirty listeners */
-    var fields = ['fName','fDesc','fCat','fVer','fWeight','fSelf'];
+    var fields = ['fName','fDesc','fSteps','fCat','fVer','fWeight','fSelf'];
     for (var f = 0; f < fields.length; f++) {
       var el = document.getElementById(fields[f]);
       if (el) { el.addEventListener('input', function () { markDirty(0); }); el.addEventListener('change', function () { markDirty(0); }); }
@@ -1152,6 +1156,14 @@ input,textarea,select{font-family:var(--fb);outline:none;}
       descEl.addEventListener('input', function () {
         dcEl.textContent = this.value.length + ' / 400';
         dcEl.className = 'cc' + (this.value.length > 360 ? ' warn' : '');
+        markDirty(0);
+      });
+    }
+    var stepsEl = document.getElementById('fSteps'), scEl = document.getElementById('stepsCC');
+    if (stepsEl && scEl) {
+      stepsEl.addEventListener('input', function () {
+        scEl.textContent = this.value.length + ' / 2000';
+        scEl.className = 'cc' + (this.value.length > 1800 ? ' warn' : '');
         markDirty(0);
       });
     }
