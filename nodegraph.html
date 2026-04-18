@@ -4529,8 +4529,17 @@ function _deserializeAndLoad(graphData) {
 }
 
 async function saveGraph() {
-  const name = document.getElementById('sv-name').value.trim();
-  if (!name) { document.getElementById('sv-name').focus(); return; }
+  // Get name from input if available, otherwise use current effect name
+  const svNameEl = document.getElementById('sv-name');
+  const name = svNameEl && svNameEl.style.display !== 'none' 
+    ? svNameEl.value.trim() 
+    : (currentEffectName || 'Untitled');
+  
+  // Only require name input when creating new graph (not when editing effect)
+  if (svNameEl && svNameEl.style.display !== 'none' && !name) { 
+    svNameEl.focus(); 
+    return; 
+  }
 
   const graphObj = _serializeGraph();
   graphObj.name = name;
@@ -4613,8 +4622,11 @@ function clearCanvas(){
   document.getElementById('svg-layer').querySelectorAll('.conn, .inst-conn').forEach(e=>e.remove());
   document.getElementById('svg-layer').querySelector('defs').innerHTML='';
   selConn=null;selNode=null;linkedEffects=[];renderEffList();
-  // Reset current effect info
-  currentEffectId=null;currentEffectName=null;currentEffectOwnerId=null;isCurrentUserOwner=false;updateSaveButtonVisibility();
+  // Reset current effect info and show name field again
+  currentEffectId=null;currentEffectName=null;currentEffectOwnerId=null;isCurrentUserOwner=false;
+  const svName = document.getElementById('sv-name');
+  if (svName) { svName.value = ''; svName.style.display = 'block'; }
+  updateSaveButtonVisibility();
   const _ccHint=document.getElementById('conn-hint');if(_ccHint)_ccHint.textContent='Click an arrow to select it';
   const _ccCtrl=document.getElementById('conn-ctrl');if(_ccCtrl)_ccCtrl.style.display='none';
   document.getElementById('node-color-sec').style.display = 'none';
@@ -4708,24 +4720,24 @@ function updateSaveButtonVisibility() {
   const btnSaveLib = document.getElementById('btn-save-lib');
   const btnUpdateEffect = document.getElementById('btn-update-effect');
   const saveLabel = document.getElementById('save-graph-label');
-  
-  console.log('[nodegraph] updateSaveButtonVisibility called, saveLabel:', saveLabel, 'currentEffectName:', currentEffectName);
+  const svName = document.getElementById('sv-name');
   
   if (!btnSaveLib || !btnUpdateEffect) return;
   
-  // Update label with effect name if loaded (use currentEffectName from DB, fallback to linkedEffects)
-  if (saveLabel) {
-    if (currentEffectId && currentEffectName) {
-      saveLabel.textContent = currentEffectName;
-      console.log('[nodegraph] Set label to currentEffectName:', currentEffectName);
-    } else if (currentEffectId) {
-      const eff = linkedEffects.find(function(le) { return le.id === currentEffectId; });
-      saveLabel.textContent = eff ? eff.name : 'Save graph';
-      console.log('[nodegraph] Set label from linkedEffects:', eff ? eff.name : 'Save graph');
-    } else {
-      saveLabel.textContent = 'Save graph';
-      console.log('[nodegraph] Set label to default: Save graph');
-    }
+  // Update label and name field visibility based on whether an effect is loaded
+  if (currentEffectId && currentEffectName) {
+    // Editing existing effect - show name as label, hide input field
+    if (saveLabel) saveLabel.textContent = currentEffectName;
+    if (svName) svName.style.display = 'none';
+  } else if (currentEffectId) {
+    // Effect loaded but name not set (fallback)
+    const eff = linkedEffects.find(function(le) { return le.id === currentEffectId; });
+    if (saveLabel) saveLabel.textContent = eff ? eff.name : 'Save graph';
+    if (svName) svName.style.display = 'none';
+  } else {
+    // Creating new graph - show default label and input field
+    if (saveLabel) saveLabel.textContent = 'Save graph';
+    if (svName) svName.style.display = 'block';
   }
   
   if (currentEffectId && isCurrentUserOwner) {
@@ -4733,17 +4745,14 @@ function updateSaveButtonVisibility() {
     btnSaveLib.style.display = 'none';
     btnUpdateEffect.style.display = 'block';
     btnUpdateEffect.textContent = 'Update Effect';
-    console.log('[nodegraph] Save mode: UPDATE (owner)');
   } else if (currentEffectId && !isCurrentUserOwner) {
     // Not owner - can only save to library (fork), not update original
     btnSaveLib.style.display = 'block';
     btnUpdateEffect.style.display = 'none';
-    console.log('[nodegraph] Save mode: FORK (not owner)');
   } else {
     // No effect loaded - normal library save
     btnSaveLib.style.display = 'block';
     btnUpdateEffect.style.display = 'none';
-    console.log('[nodegraph] Save mode: LIBRARY (no effect loaded)');
   }
 }
 
