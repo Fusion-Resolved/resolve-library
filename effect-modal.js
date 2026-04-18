@@ -1727,36 +1727,34 @@
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
     
-    // Setup video container drag functionality (with drag threshold like canvas nodes)
+    // Setup video container drag functionality (3px threshold, click-through on non-drag)
     var videoCloseBtn = document.getElementById('exp-video-close');
     var videoDragOverlay = document.getElementById('exp-video-drag-overlay');
     var isDraggingVideo = false;
     var hasVideoDragged = false;
+    var videoMouseDown = false;
     var videoDragStartX = 0, videoDragStartY = 0;
     var videoMouseStartX = 0, videoMouseStartY = 0;
     var videoStartX = 0, videoStartY = 0;
-    var VIDEO_DRAG_THRESHOLD = 5; // pixels
+    var VIDEO_DRAG_THRESHOLD = 3; // pixels - lower threshold for more responsive feel
     
-    // Show/hide close button on hover (overlay stays non-interactive by default)
+    // Show/hide close button on hover
     videoContainer.addEventListener('mouseenter', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '1';
-      // Enable overlay interaction only on hover
       if (videoDragOverlay) videoDragOverlay.style.pointerEvents = 'auto';
     });
     videoContainer.addEventListener('mouseleave', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
-      // Disable overlay when not hovering (lets clicks through to video)
-      if (videoDragOverlay && !isDraggingVideo) {
+      if (videoDragOverlay && !videoMouseDown) {
         videoDragOverlay.style.pointerEvents = 'none';
       }
     });
     
-    // Drag using the overlay (with threshold detection)
+    // Mousedown - start tracking, but don't decide yet if it's drag or click
     if (videoDragOverlay) {
       videoDragOverlay.addEventListener('mousedown', function(e) {
-        // Don't drag if clicking close button
         if (e.target === videoCloseBtn) return;
-        isDraggingVideo = true;
+        videoMouseDown = true;
         hasVideoDragged = false;
         videoMouseStartX = e.clientX;
         videoMouseStartY = e.clientY;
@@ -1764,27 +1762,28 @@
         videoDragStartY = e.clientY;
         videoStartX = parseInt(videoContainer.style.right) || 20;
         videoStartY = parseInt(videoContainer.style.top) || 110;
-        e.preventDefault();
+        // Don't prevent default - let the click potentially go through
       });
     }
     
+    // Mousemove - check if we've moved enough to be a drag
     document.addEventListener('mousemove', function(e) {
-      if (!isDraggingVideo) return;
+      if (!videoMouseDown) return;
       
-      // Check if we've moved enough to count as a drag
-      if (!hasVideoDragged) {
-        var moveX = Math.abs(e.clientX - videoMouseStartX);
-        var moveY = Math.abs(e.clientY - videoMouseStartY);
-        if (moveX > VIDEO_DRAG_THRESHOLD || moveY > VIDEO_DRAG_THRESHOLD) {
-          hasVideoDragged = true;
-          videoDragOverlay.style.cursor = 'grabbing';
-        }
+      var moveX = Math.abs(e.clientX - videoMouseStartX);
+      var moveY = Math.abs(e.clientY - videoMouseStartY);
+      
+      // If moved > 3px, this is now a drag
+      if (!hasVideoDragged && (moveX > VIDEO_DRAG_THRESHOLD || moveY > VIDEO_DRAG_THRESHOLD)) {
+        hasVideoDragged = true;
+        isDraggingVideo = true;
+        if (videoDragOverlay) videoDragOverlay.style.cursor = 'grabbing';
       }
       
+      // If we're dragging, move the video
       if (hasVideoDragged) {
         var dx = e.clientX - videoDragStartX;
         var dy = e.clientY - videoDragStartY;
-        // Calculate new position (constrained to viewport)
         var containerRect = container.getBoundingClientRect();
         var newRight = Math.max(0, Math.min(containerRect.width - 320, videoStartX - dx));
         var newTop = Math.max(50, Math.min(containerRect.height - 200, videoStartY + dy));
@@ -1793,17 +1792,28 @@
       }
     });
     
-    document.addEventListener('mouseup', function() {
-      if (isDraggingVideo) {
-        isDraggingVideo = false;
+    // Mouseup - decide: was it a drag or a click?
+    document.addEventListener('mouseup', function(e) {
+      if (!videoMouseDown) return;
+      
+      videoMouseDown = false;
+      
+      // If we didn't drag (moved < 3px), it was a click - let it pass through
+      if (!hasVideoDragged) {
+        // Temporarily disable overlay to let click reach YouTube
         if (videoDragOverlay) {
-          videoDragOverlay.style.cursor = 'default';
-          // If mouse left container, disable pointer events
-          if (!videoContainer.matches(':hover')) {
-            videoDragOverlay.style.pointerEvents = 'none';
-          }
+          videoDragOverlay.style.pointerEvents = 'none';
+          // Re-enable after a short delay
+          setTimeout(function() {
+            if (videoContainer.matches(':hover')) {
+              videoDragOverlay.style.pointerEvents = 'auto';
+            }
+          }, 50);
         }
       }
+      
+      isDraggingVideo = false;
+      if (videoDragOverlay) videoDragOverlay.style.cursor = 'default';
     });
     
     // Video close button
