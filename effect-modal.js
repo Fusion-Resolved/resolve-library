@@ -1319,16 +1319,28 @@
       svgEl.appendChild(path);
     });
     
-    // Create or clear flow animation canvas
+    // Create or clear flow animation canvas INSIDE world element
     var flowCanvas = document.getElementById('flow-canvas');
     if (!flowCanvas) {
       flowCanvas = document.createElement('canvas');
       flowCanvas.id = 'flow-canvas';
-      flowCanvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:5;';
-      vp.appendChild(flowCanvas);
+      // Match world dimensions
+      var worldW = parseInt(graphState.world.style.width) || 1200;
+      var worldH = parseInt(graphState.world.style.height) || 800;
+      flowCanvas.width = worldW;
+      flowCanvas.height = worldH;
+      flowCanvas.style.cssText = 'position:absolute;top:0;left:0;width:' + worldW + 'px;height:' + worldH + 'px;pointer-events:none;z-index:5;';
+      graphState.world.appendChild(flowCanvas);
     }
-    flowCanvas.width = vp.clientWidth;
-    flowCanvas.height = vp.clientHeight;
+    // Ensure canvas matches current world size
+    var currentWorldW = parseInt(graphState.world.style.width) || 1200;
+    var currentWorldH = parseInt(graphState.world.style.height) || 800;
+    if (flowCanvas.width !== currentWorldW || flowCanvas.height !== currentWorldH) {
+      flowCanvas.width = currentWorldW;
+      flowCanvas.height = currentWorldH;
+      flowCanvas.style.width = currentWorldW + 'px';
+      flowCanvas.style.height = currentWorldH + 'px';
+    }
     
     // Start flow animation
     startFlowAnimation(flowCanvas, nodes, edges);
@@ -1401,7 +1413,8 @@
 
   /* ══════════════════════════════════════════════════════════════════
      FLOW ANIMATION — Animated dashed lines on canvas overlay
-     Draws animated dashes along every connection edge
+     Canvas is INSIDE world element, so it inherits CSS transform automatically
+     Draws in world coordinates directly (no manual transform calculations needed)
      Technique: ctx.setLineDash([DASH, GAP]) + animated lineDashOffset
      ══════════════════════════════════════════════════════════════════ */
   var flowAnimId = null;
@@ -1409,14 +1422,16 @@
     if (flowAnimId) cancelAnimationFrame(flowAnimId);
     
     var ctx = canvas.getContext('2d');
-    var SPEED = 36;      // px/s
-    var DASH_LEN = 7;  // solid dash segment length
-    var DASH_GAP = 18; // gap between dashes
+    var SPEED = 36;
+    var DASH_LEN = 7;
+    var DASH_GAP = 18;
     var PATTERN = DASH_LEN + DASH_GAP;
     var startTime = performance.now();
     
     var nodeMap = {};
     nodes.forEach(function(n) { nodeMap[n.id] = n; });
+    
+    var NW = 132, NH = 50;
     
     function drawFlow(ts) {
       var elapsed = (ts - startTime) / 1000;
@@ -1427,26 +1442,18 @@
       ctx.setLineDash([DASH_LEN, DASH_GAP]);
       ctx.lineDashOffset = dashOffset;
       
-      // Apply current transform to get screen coords
-      var sc = graphState.sc || 1;
-      var tx = graphState.tx || 0;
-      var ty = graphState.ty || 0;
-      
+      // Canvas is INSIDE world element - draw in world coordinates directly
+      // CSS transform on parent handles positioning automatically
       edges.forEach(function(e) {
         var fn = nodeMap[e.from];
         var tn = nodeMap[e.to];
         if (!fn || !tn) return;
         
-        // Convert world coords to screen coords
-        var fx = ((fn.x || 0) + NW) * sc + tx;
-        var fy = ((fn.y || 0) + NH / 2) * sc + ty;
-        var tx2 = (tn.x || 0) * sc + tx;
-        var ty2 = ((tn.y || 0) + NH / 2) * sc + ty;
-        
-        // Off-screen culling
-        var minX = Math.min(fx, tx2) - 20, maxX = Math.max(fx, tx2) + 20;
-        var minY = Math.min(fy, ty2) - 20, maxY = Math.max(fy, ty2) + 20;
-        if (maxX < 0 || minX > W || maxY < 0 || minY > H) return;
+        // World coordinates (same as SVG paths and node cards)
+        var fx = (fn.x || 0) + NW;
+        var fy = (fn.y || 0) + NH / 2;
+        var tx2 = tn.x || 0;
+        var ty2 = (tn.y || 0) + NH / 2;
         
         var pull = Math.abs(tx2 - fx) * 0.45;
         var c1x = fx + pull, c1y = fy;
@@ -1718,15 +1725,17 @@
       world.appendChild(card);
     });
     
-    // Add flow animation canvas for expanded view
-    var vp = document.getElementById('expanded-graph-vp');
-    if (vp) {
+    // Add flow animation canvas INSIDE world element (inherits CSS transform)
+    if (world) {
       var flowCanvas = document.createElement('canvas');
       flowCanvas.id = 'expanded-flow-canvas';
-      flowCanvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:5;';
-      flowCanvas.width = vp.clientWidth;
-      flowCanvas.height = vp.clientHeight;
-      vp.appendChild(flowCanvas);
+      // Match world dimensions, positioned absolutely within world
+      var wW = parseInt(world.style.width) || 1200;
+      var wH = parseInt(world.style.height) || 800;
+      flowCanvas.width = wW;
+      flowCanvas.height = wH;
+      flowCanvas.style.cssText = 'position:absolute;top:0;left:0;width:' + wW + 'px;height:' + wH + 'px;pointer-events:none;z-index:5;';
+      world.appendChild(flowCanvas);
       
       // Start flow animation for expanded view
       startExpandedFlowAnimation(flowCanvas, nodes, edges);
@@ -2055,7 +2064,6 @@
     var nodeMap = {};
     nodes.forEach(function(n) { nodeMap[n.id] = n; });
     
-    var world = document.getElementById('expanded-graph-world');
     var NW = 132, NH = 50;
     
     function drawFlow(ts) {
@@ -2067,31 +2075,22 @@
       ctx.setLineDash([DASH_LEN, DASH_GAP]);
       ctx.lineDashOffset = dashOffset;
       
-      // Get current transform from world element
-      var transform = world ? (world.style.transform || 'translate(0px,0px) scale(1)') : 'translate(0px,0px) scale(1)';
-      var translateMatch = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
-      var scaleMatch = transform.match(/scale\(([^)]+)\)/);
-      var tx = translateMatch ? parseFloat(translateMatch[1]) : 0;
-      var ty = translateMatch ? parseFloat(translateMatch[2]) : 0;
-      var sc = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
-      
+      // Canvas is now INSIDE world element, so we draw in world coordinates directly
+      // No need to apply transform - CSS handles it automatically
       edges.forEach(function(e) {
         var fn = nodeMap[e.from];
         var tn = nodeMap[e.to];
         if (!fn || !tn) return;
         
-        var fx = ((fn.x || 0) + NW) * sc + tx;
-        var fy = ((fn.y || 0) + NH / 2) * sc + ty;
-        var tx2 = (tn.x || 0) * sc + tx;
-        var ty2 = ((tn.y || 0) + NH / 2) * sc + ty;
+        // World coordinates (same as SVG paths)
+        var fx = (fn.x || 0) + NW;
+        var fy = (fn.y || 0) + NH / 2;
+        var tx = tn.x || 0;
+        var ty = (tn.y || 0) + NH / 2;
         
-        var minX = Math.min(fx, tx2) - 20, maxX = Math.max(fx, tx2) + 20;
-        var minY = Math.min(fy, ty2) - 20, maxY = Math.max(fy, ty2) + 20;
-        if (maxX < 0 || minX > W || maxY < 0 || minY > H) return;
-        
-        var pull = Math.abs(tx2 - fx) * 0.45;
+        var pull = Math.max(55, Math.abs(tx - fx) * 0.45);
         var c1x = fx + pull, c1y = fy;
-        var c2x = tx2 - pull, c2y = ty2;
+        var c2x = tx - pull, c2y = ty;
         
         ctx.strokeStyle = 'rgba(108,123,255,0.55)';
         ctx.lineWidth = 1.4;
@@ -2100,7 +2099,7 @@
         
         ctx.beginPath();
         ctx.moveTo(fx, fy);
-        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx2, ty2);
+        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx, ty);
         ctx.stroke();
         
         ctx.shadowBlur = 0;
