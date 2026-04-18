@@ -1922,10 +1922,17 @@
       resizeDirection = '';
     });
     
-    // Video close button
+    // Video close button - pause and save timestamp
     if (videoCloseBtn) {
       videoCloseBtn.addEventListener('click', function(e) {
         e.stopPropagation();
+        
+        // Pause video and save current time
+        if (window.expandedYTPlayer && window.expandedYTPlayer.pauseVideo) {
+          window._expandedVideoTime = window.expandedYTPlayer.getCurrentTime();
+          window.expandedYTPlayer.pauseVideo();
+        }
+        
         videoContainer.style.display = 'none';
         var toggleBtn = document.getElementById('exp-toggle-video');
         if (toggleBtn) {
@@ -2434,7 +2441,7 @@
       zoomLbl.textContent = Math.round(sc * 100) + '%';
     });
     
-    // Toggle Video button (just toggles the floating video, doesn't affect node panel)
+    // Toggle Video button - pause/resume with timestamp
     var toggleVideoBtn = document.getElementById('exp-toggle-video');
     if (toggleVideoBtn) {
       toggleVideoBtn.addEventListener('click', function() {
@@ -2449,7 +2456,20 @@
           toggleVideoBtn.style.background = 'rgba(108,123,255,0.25)';
           toggleVideoBtn.style.borderColor = 'rgba(108,123,255,0.5)';
           toggleVideoBtn.style.color = 'var(--violet-light)';
+          
+          // Resume from saved timestamp if available
+          if (window.expandedYTPlayer && window.expandedYTPlayer.seekTo) {
+            var savedTime = window._expandedVideoTime || 0;
+            window.expandedYTPlayer.seekTo(savedTime, true);
+            window.expandedYTPlayer.playVideo();
+          }
         } else {
+          // Pause and save timestamp before hiding
+          if (window.expandedYTPlayer && window.expandedYTPlayer.pauseVideo) {
+            window._expandedVideoTime = window.expandedYTPlayer.getCurrentTime();
+            window.expandedYTPlayer.pauseVideo();
+          }
+          
           videoContainer.style.display = 'none';
           toggleVideoBtn.style.background = 'rgba(6,6,13,0.75)';
           toggleVideoBtn.style.borderColor = 'rgba(255,255,255,0.1)';
@@ -2457,6 +2477,42 @@
         }
       });
     }
+  }
+
+  // YouTube IFrame API callback - called when API is ready
+  window.onYouTubeIframeAPIReady = function() {
+    createExpandedPlayer();
+  };
+  
+  // Create YouTube player for expanded view
+  function createExpandedPlayer() {
+    var videoId = window._expandedVideoId;
+    if (!videoId || !window.YT || !window.YT.Player) return;
+    
+    // Destroy existing player if any
+    if (window.expandedYTPlayer && window.expandedYTPlayer.destroy) {
+      window.expandedYTPlayer.destroy();
+    }
+    
+    var savedTime = window._expandedVideoTime || 0;
+    
+    window.expandedYTPlayer = new YT.Player('exp-yt-player', {
+      videoId: videoId,
+      playerVars: {
+        rel: 0,
+        modestbranding: 1,
+        start: Math.floor(savedTime),
+        autoplay: 0
+      },
+      events: {
+        onReady: function(event) {
+          // Player is ready
+        },
+        onStateChange: function(event) {
+          // Track state changes if needed
+        }
+      }
+    });
   }
 
   // Expanded panel toggle functionality
@@ -2552,13 +2608,28 @@
     var effect = window._currentEffectData;
     if (!effect) return;
     
-    // Video container
+    // Video container - use YouTube IFrame API for control
     if (effect.video_url) {
       var ytId = extractYouTubeId(effect.video_url);
       if (ytId) {
         var videoInner = document.getElementById('exp-video-inner');
         if (videoInner) {
-          videoInner.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '?rel=0&modestbranding=1" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>';
+          // Clear any existing player
+          videoInner.innerHTML = '<div id="exp-yt-player" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>';
+          
+          // Store video ID for player initialization
+          window._expandedVideoId = ytId;
+          
+          // Load YouTube API if not already loaded
+          if (!window.YT || !window.YT.Player) {
+            var tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            var firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+          } else {
+            // API already loaded, create player directly
+            createExpandedPlayer();
+          }
         }
       } else {
         // No valid YouTube ID - hide the video container
