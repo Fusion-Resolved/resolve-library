@@ -223,7 +223,25 @@
       }
     }
     
-    // Case 3: Fall back to node_code parsing if no graph data available
+    // Case 3: Parse graph_payload if available (has highest priority for visual graph)
+    if (!hasValidData && effect.graph_payload && window.NodeSystem) {
+      try {
+        console.log('[effect-modal] Parsing graph_payload...');
+        var parsed = window.NodeSystem.parse(effect.graph_payload);
+        nodeData = window.NodeSystem.normalize(parsed);
+        hasValidData = nodeData.nodes.length > 0;
+        
+        // Auto-layout since graph_payload doesn't have positions
+        if (hasValidData && window.NodeSystem.autoLayout) {
+          console.log('[effect-modal] Auto-layout for graph_payload...');
+          window.NodeSystem.autoLayout(nodeData.nodes, { cols: 3, xGap: 50, yGap: 40 });
+        }
+      } catch (e) {
+        console.warn('[effect-modal] Failed to parse graph_payload:', e);
+      }
+    }
+    
+    // Case 4: Fall back to node_code parsing if no graph data available
     if (!hasValidData && effect.node_code && window.NodeSystem) {
       try {
         console.log('[effect-modal] Falling back to node_code parsing...');
@@ -405,10 +423,6 @@
       `;
     }
 
-    // Render node graph if graph_payload exists
-    if (effect.graph_payload) {
-      renderGraph(effect.graph_payload);
-    }
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1321,25 +1335,24 @@
     
     // Create or clear flow animation canvas INSIDE world element
     var flowCanvas = document.getElementById('flow-canvas');
+    var worldW = parseInt(world.style.width) || 1200;
+    var worldH = parseInt(world.style.height) || 800;
+    
     if (!flowCanvas) {
       flowCanvas = document.createElement('canvas');
       flowCanvas.id = 'flow-canvas';
-      // Match world dimensions
-      var worldW = parseInt(graphState.world.style.width) || 1200;
-      var worldH = parseInt(graphState.world.style.height) || 800;
       flowCanvas.width = worldW;
       flowCanvas.height = worldH;
       flowCanvas.style.cssText = 'position:absolute;top:0;left:0;width:' + worldW + 'px;height:' + worldH + 'px;pointer-events:none;z-index:5;';
-      graphState.world.appendChild(flowCanvas);
-    }
-    // Ensure canvas matches current world size
-    var currentWorldW = parseInt(graphState.world.style.width) || 1200;
-    var currentWorldH = parseInt(graphState.world.style.height) || 800;
-    if (flowCanvas.width !== currentWorldW || flowCanvas.height !== currentWorldH) {
-      flowCanvas.width = currentWorldW;
-      flowCanvas.height = currentWorldH;
-      flowCanvas.style.width = currentWorldW + 'px';
-      flowCanvas.style.height = currentWorldH + 'px';
+      world.appendChild(flowCanvas);
+    } else {
+      // Ensure canvas matches current world size
+      if (flowCanvas.width !== worldW || flowCanvas.height !== worldH) {
+        flowCanvas.width = worldW;
+        flowCanvas.height = worldH;
+        flowCanvas.style.width = worldW + 'px';
+        flowCanvas.style.height = worldH + 'px';
+      }
     }
     
     // Start flow animation
@@ -1478,16 +1491,6 @@
     }
     
     flowAnimId = requestAnimationFrame(drawFlow);
-    
-    // Update canvas size on resize
-    var vp = document.getElementById('graphVp');
-    if (vp) {
-      var ro = new ResizeObserver(function() {
-        canvas.width = vp.clientWidth;
-        canvas.height = vp.clientHeight;
-      });
-      ro.observe(vp);
-    }
   }
 
   function wireGraphEvents() {
