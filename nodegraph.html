@@ -4588,7 +4588,13 @@ async function saveGraph() {
       });
     });
     await Promise.all(patchPromises);
-    toast('Saved & synced to Supabase ✓');
+    
+    // Check if we updated the current effect
+    if (currentEffectId && isCurrentUserOwner && effectIdsToPatch.some(le => le.id === currentEffectId)) {
+      toast('Effect updated ✓ Changes will appear in effect modals');
+    } else {
+      toast('Saved & synced to Supabase ✓');
+    }
   } else {
     toast('Graph saved locally (no linked effect)');
   }
