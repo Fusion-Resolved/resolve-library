@@ -2055,14 +2055,36 @@
     
     var NW = 132, NH = 50;
     
-    // Calculate world bounds
-    var wW = 0, wH = 0;
+    // Calculate world bounds - find actual min/max of all nodes
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     nodes.forEach(function(n) {
       var nx = n.x || 0;
       var ny = n.y || 0;
-      if (nx + NW + 40 > wW) wW = nx + NW + 40;
-      if (ny + NH + 40 > wH) wH = ny + NH + 40;
+      if (nx < minX) minX = nx;
+      if (ny < minY) minY = ny;
+      if (nx + NW > maxX) maxX = nx + NW;
+      if (ny + NH > maxY) maxY = ny + NH;
     });
+    
+    // Ensure padding and minimum size, allow up to 12k for large graphs
+    var PAD = 100;
+    var MIN_SIZE = 800;
+    var MAX_SIZE = 12000;
+    var wW = Math.min(Math.max(maxX - minX + PAD * 2, MIN_SIZE), MAX_SIZE);
+    var wH = Math.min(Math.max(maxY - minY + PAD * 2, MIN_SIZE), MAX_SIZE);
+    
+    // Store bounds for animation use
+    window._expandedWorldBounds = { minX: minX, minY: minY, maxX: maxX, maxY: maxY, pad: PAD };
+    
+    // Apply offset so all coordinates are positive within the world
+    var offsetX = minX < 0 ? -minX + PAD : PAD;
+    var offsetY = minY < 0 ? -minY + PAD : PAD;
+    window._expandedRenderOffsetX = offsetX;
+    window._expandedRenderOffsetY = offsetY;
+    
+    // Adjust world size to include offset
+    wW = Math.min(Math.max(maxX + offsetX + PAD, MIN_SIZE), MAX_SIZE);
+    wH = Math.min(Math.max(maxY + offsetY + PAD, MIN_SIZE), MAX_SIZE);
     
     world.style.width = wW + 'px';
     world.style.height = wH + 'px';
@@ -2074,8 +2096,10 @@
     world.innerHTML = '';
     world.appendChild(svg);
     
-    // Draw edges
+    // Draw edges with offset
     var nodeMap = {};
+    var edgeOffX = window._expandedRenderOffsetX || 0;
+    var edgeOffY = window._expandedRenderOffsetY || 0;
     nodes.forEach(function(n) { nodeMap[n.id] = n; });
     
     edges.forEach(function(e) {
@@ -2083,10 +2107,10 @@
       var tn = nodeMap[e.to];
       if (!fn || !tn) return;
       
-      var fx = (fn.x || 0) + NW;
-      var fy = (fn.y || 0) + NH / 2;
-      var tx = tn.x || 0;
-      var ty = (tn.y || 0) + NH / 2;
+      var fx = (fn.x || 0) + NW + edgeOffX;
+      var fy = (fn.y || 0) + NH / 2 + edgeOffY;
+      var tx = (tn.x || 0) + edgeOffX;
+      var ty = (tn.y || 0) + NH / 2 + edgeOffY;
       var pull = Math.max(55, Math.abs(tx - fx) * 0.45);
       var d = 'M' + fx + ' ' + fy + ' C' + (fx + pull) + ' ' + fy + ' ' + (tx - pull) + ' ' + ty + ' ' + tx + ' ' + ty;
       
@@ -2099,10 +2123,15 @@
       svg.appendChild(path);
     });
     
-    // Draw nodes (same styling as main graph)
+    // Draw nodes (same styling as main graph) - with offset for proper positioning
+    var offX = window._expandedRenderOffsetX || 0;
+    var offY = window._expandedRenderOffsetY || 0;
+    
     nodes.forEach(function(n) {
       var card = document.createElement('div');
-      card.style.cssText = 'position:absolute;left:' + (n.x || 0) + 'px;top:' + (n.y || 0) + 'px;width:' + NW + 'px;height:' + NH + 'px;display:flex;align-items:center;gap:7px;border-radius:6px;border:1px solid ' + (n.catColor || '#6c7bff') + '55;cursor:pointer;padding:0 10px;transition:filter 0.12s,box-shadow 0.12s;background:rgba(' + parseInt((n.catColor || '#6c7bff').slice(1,3),16) + ',' + parseInt((n.catColor || '#6c7bff').slice(3,5),16) + ',' + parseInt((n.catColor || '#6c7bff').slice(5,7),16) + ',0.13);';
+      var nx = (n.x || 0) + offX;
+      var ny = (n.y || 0) + offY;
+      card.style.cssText = 'position:absolute;left:' + nx + 'px;top:' + ny + 'px;width:' + NW + 'px;height:' + NH + 'px;display:flex;align-items:center;gap:7px;border-radius:6px;border:1px solid ' + (n.catColor || '#6c7bff') + '55;cursor:pointer;padding:0 10px;transition:filter 0.12s,box-shadow 0.12s;background:rgba(' + parseInt((n.catColor || '#6c7bff').slice(1,3),16) + ',' + parseInt((n.catColor || '#6c7bff').slice(3,5),16) + ',' + parseInt((n.catColor || '#6c7bff').slice(5,7),16) + ',0.13);';
       
       var dot = document.createElement('div');
       dot.style.cssText = 'width:6px;height:6px;border-radius:50%;flex-shrink:0;background:' + (n.catColor || '#6c7bff') + ';';
@@ -2903,6 +2932,10 @@
       var nodeMap = {};
       currentNodes.forEach(function(n) { nodeMap[n.id] = n; });
       
+      // Get render offset (same as nodes and SVG)
+      var animOffX = window._expandedRenderOffsetX || 0;
+      var animOffY = window._expandedRenderOffsetY || 0;
+      
       // Global dash offset - same for all edges so they animate in sync
       var dashOffset = -(elapsed * SPEED) % PATTERN;
       
@@ -2915,10 +2948,10 @@
         var tn = nodeMap[e.to];
         if (!fn || !tn) return;
         
-        var fx = (fn.x || 0) + NW;
-        var fy = (fn.y || 0) + NH / 2;
-        var tx = tn.x || 0;
-        var ty = (tn.y || 0) + NH / 2;
+        var fx = (fn.x || 0) + NW + animOffX;
+        var fy = (fn.y || 0) + NH / 2 + animOffY;
+        var tx = (tn.x || 0) + animOffX;
+        var ty = (tn.y || 0) + NH / 2 + animOffY;
         
         var pull = Math.max(55, Math.abs(tx - fx) * 0.45);
         var c1x = fx + pull, c1y = fy;
