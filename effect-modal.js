@@ -952,6 +952,18 @@
   // Close on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      // Check if expanded graph modal is open - close it first
+      var expandedModal = document.getElementById('expanded-graph-modal');
+      if (expandedModal && expandedModal.style.display === 'flex') {
+        expandedModal.style.display = 'none';
+        // Reset main expand button text
+        var gcExpand = document.getElementById('gcExpand');
+        if (gcExpand) {
+          gcExpand.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Expand';
+        }
+        return;
+      }
+      
       const pop = document.getElementById('modal-node-popover');
       if (pop?.classList.contains('open')) {
         closeNodePop();
@@ -1560,7 +1572,16 @@
     });
     
     if (gcExpand) gcExpand.addEventListener('click', function() {
-      openExpandedGraphModal();
+      var existingModal = document.getElementById('expanded-graph-modal');
+      if (existingModal && existingModal.style.display === 'flex') {
+        // Toggle off - hide the modal
+        existingModal.style.display = 'none';
+        gcExpand.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Expand';
+      } else {
+        // Show or create the modal
+        openExpandedGraphModal();
+        gcExpand.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Close Expanded';
+      }
     });
   }
 
@@ -1590,7 +1611,14 @@
     closeBtn.style.cssText = 'background:none;border:none;color:rgba(255,255,255,0.6);font-size:18px;cursor:pointer;padding:5px 10px;transition:color 0.15s;';
     closeBtn.onmouseenter = function() { closeBtn.style.color = '#fff'; };
     closeBtn.onmouseleave = function() { closeBtn.style.color = 'rgba(255,255,255,0.6)'; };
-    closeBtn.onclick = function() { modal.style.display = 'none'; };
+    closeBtn.onclick = function() { 
+      modal.style.display = 'none'; 
+      // Reset main expand button text
+      var gcExpand = document.getElementById('gcExpand');
+      if (gcExpand) {
+        gcExpand.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Expand';
+      }
+    };
     header.appendChild(closeBtn);
     
     // Graph viewport (clone of main graph)
