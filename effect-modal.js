@@ -1734,20 +1734,19 @@
     var videoDragStartX = 0, videoDragStartY = 0;
     var videoStartX = 0, videoStartY = 0;
     
-    // Show/hide close button and drag overlay on hover
+    // Show/hide close button on hover
     videoContainer.addEventListener('mouseenter', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '1';
-      if (videoDragOverlay) videoDragOverlay.style.background = 'rgba(0,0,0,0.01)'; // Almost invisible but captures events
     });
     videoContainer.addEventListener('mouseleave', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
-      if (videoDragOverlay && !isDraggingVideo) videoDragOverlay.style.background = 'transparent';
     });
     
-    // Drag using the overlay
+    // Drag using the overlay (covering entire video area)
     if (videoDragOverlay) {
       videoDragOverlay.addEventListener('mousedown', function(e) {
-        if (e.target === videoCloseBtn || e.target.closest('#exp-video-close')) return;
+        // Don't drag if clicking close button
+        if (e.target === videoCloseBtn) return;
         isDraggingVideo = true;
         videoDragStartX = e.clientX;
         videoDragStartY = e.clientY;
@@ -1756,6 +1755,7 @@
         videoDragOverlay.style.cursor = 'grabbing';
         videoContainer.style.cursor = 'grabbing';
         e.preventDefault();
+        e.stopPropagation();
       });
     }
     
