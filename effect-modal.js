@@ -1887,15 +1887,7 @@
     
     html += '</div>';
     
-    // Update only the Nodes section content, preserving the collapsible structure
-    sections.nodes.content.innerHTML = html;
-    
-    // Auto-expand the Nodes section to show the selected node
-    if (!sections.nodes._expanded) {
-      sections.nodes.header.click();
-    }
-    
-    // Ensure panel is visible
+    // Ensure panel is visible first
     var panel = document.getElementById('expanded-node-panel');
     if (panel && panel.style.display === 'none') {
       panel.style.display = 'flex';
@@ -1912,6 +1904,17 @@
     if (controls) {
       controls.style.right = '380px';
     }
+    
+    // Expand the Nodes section first (before setting content to ensure visibility)
+    if (!sections.nodes._expanded) {
+      sections.nodes._expanded = true;
+      sections.nodes.content.style.maxHeight = 'none';
+      sections.nodes.content.style.padding = '0 16px 16px';
+      sections.nodes.header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
+    }
+    
+    // Update only the Nodes section content, preserving the collapsible structure
+    sections.nodes.content.innerHTML = html;
     
     // Render spline canvases after DOM update
     if (hasParams) {
@@ -2011,7 +2014,10 @@
     // Collapse the Nodes section instead of hiding entire panel
     var sections = window.expandedSections;
     if (sections && sections.nodes && sections.nodes._expanded) {
-      sections.nodes.header.click();
+      sections.nodes._expanded = false;
+      sections.nodes.content.style.maxHeight = '0';
+      sections.nodes.content.style.padding = '0 16px';
+      sections.nodes.header.querySelector('.exp-chevron').style.transform = 'rotate(0deg)';
     }
   }
   window.closeSidePanel = closeSidePanel;
