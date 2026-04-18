@@ -1669,6 +1669,7 @@
       '<div id="exp-video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">' +
         '<div id="exp-video-inner" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>' +
       '</div>' +
+      '<div id="exp-video-drag-overlay" style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:5;cursor:grab;"></div>' +
       '<button id="exp-video-close" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border:none;border-radius:4px;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;padding:4px 8px;opacity:0;transition:opacity 0.2s;z-index:10;">&#x2715;</button>';
     
     // Node details panel (only shows when node selected)
@@ -1726,31 +1727,37 @@
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
     
-    // Setup video container drag functionality (entire container is draggable)
+    // Setup video container drag functionality (using overlay to capture events over iframe)
     var videoCloseBtn = document.getElementById('exp-video-close');
+    var videoDragOverlay = document.getElementById('exp-video-drag-overlay');
     var isDraggingVideo = false;
     var videoDragStartX = 0, videoDragStartY = 0;
     var videoStartX = 0, videoStartY = 0;
     
-    // Show/hide close button on hover
+    // Show/hide close button and drag overlay on hover
     videoContainer.addEventListener('mouseenter', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '1';
+      if (videoDragOverlay) videoDragOverlay.style.background = 'rgba(0,0,0,0.01)'; // Almost invisible but captures events
     });
     videoContainer.addEventListener('mouseleave', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
+      if (videoDragOverlay && !isDraggingVideo) videoDragOverlay.style.background = 'transparent';
     });
     
-    // Drag on mousedown anywhere on container (except close button)
-    videoContainer.addEventListener('mousedown', function(e) {
-      if (e.target === videoCloseBtn || e.target.closest('#exp-video-close')) return;
-      isDraggingVideo = true;
-      videoDragStartX = e.clientX;
-      videoDragStartY = e.clientY;
-      videoStartX = parseInt(videoContainer.style.right) || 20;
-      videoStartY = parseInt(videoContainer.style.top) || 110;
-      videoContainer.style.cursor = 'grabbing';
-      e.preventDefault();
-    });
+    // Drag using the overlay
+    if (videoDragOverlay) {
+      videoDragOverlay.addEventListener('mousedown', function(e) {
+        if (e.target === videoCloseBtn || e.target.closest('#exp-video-close')) return;
+        isDraggingVideo = true;
+        videoDragStartX = e.clientX;
+        videoDragStartY = e.clientY;
+        videoStartX = parseInt(videoContainer.style.right) || 20;
+        videoStartY = parseInt(videoContainer.style.top) || 110;
+        videoDragOverlay.style.cursor = 'grabbing';
+        videoContainer.style.cursor = 'grabbing';
+        e.preventDefault();
+      });
+    }
     
     document.addEventListener('mousemove', function(e) {
       if (!isDraggingVideo) return;
@@ -1767,6 +1774,7 @@
     document.addEventListener('mouseup', function() {
       if (isDraggingVideo) {
         isDraggingVideo = false;
+        if (videoDragOverlay) videoDragOverlay.style.cursor = 'grab';
         videoContainer.style.cursor = 'grab';
       }
     });
