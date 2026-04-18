@@ -1922,14 +1922,18 @@
       resizeDirection = '';
     });
     
-    // Video close button - pause and save timestamp
+    // Video close button - pause and save timestamp to localStorage
     if (videoCloseBtn) {
       videoCloseBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         
-        // Pause video and save current time
+        // Pause video and save current time to localStorage
         if (window.expandedYTPlayer && window.expandedYTPlayer.pauseVideo) {
-          window._expandedVideoTime = window.expandedYTPlayer.getCurrentTime();
+          var currentTime = window.expandedYTPlayer.getCurrentTime();
+          var videoId = window._expandedVideoId;
+          if (videoId) {
+            localStorage.setItem('yt_video_time_' + videoId, currentTime.toString());
+          }
           window.expandedYTPlayer.pauseVideo();
         }
         
@@ -2441,7 +2445,7 @@
       zoomLbl.textContent = Math.round(sc * 100) + '%';
     });
     
-    // Toggle Video button - pause/resume with timestamp
+    // Toggle Video button - pause/resume with localStorage persistence
     var toggleVideoBtn = document.getElementById('exp-toggle-video');
     if (toggleVideoBtn) {
       toggleVideoBtn.addEventListener('click', function() {
@@ -2457,16 +2461,26 @@
           toggleVideoBtn.style.borderColor = 'rgba(108,123,255,0.5)';
           toggleVideoBtn.style.color = 'var(--violet-light)';
           
-          // Resume from saved timestamp if available
+          // Resume from localStorage saved timestamp
+          var videoId = window._expandedVideoId;
+          var savedTime = 0;
+          if (videoId) {
+            var stored = localStorage.getItem('yt_video_time_' + videoId);
+            if (stored) savedTime = parseFloat(stored);
+          }
+          
           if (window.expandedYTPlayer && window.expandedYTPlayer.seekTo) {
-            var savedTime = window._expandedVideoTime || 0;
             window.expandedYTPlayer.seekTo(savedTime, true);
             window.expandedYTPlayer.playVideo();
           }
         } else {
-          // Pause and save timestamp before hiding
+          // Pause and save timestamp to localStorage before hiding
           if (window.expandedYTPlayer && window.expandedYTPlayer.pauseVideo) {
-            window._expandedVideoTime = window.expandedYTPlayer.getCurrentTime();
+            var currentTime = window.expandedYTPlayer.getCurrentTime();
+            var videoId = window._expandedVideoId;
+            if (videoId) {
+              localStorage.setItem('yt_video_time_' + videoId, currentTime.toString());
+            }
             window.expandedYTPlayer.pauseVideo();
           }
           
@@ -2505,7 +2519,12 @@
       window.expandedYTPlayer.destroy();
     }
     
-    var savedTime = window._expandedVideoTime || 0;
+    // Load saved time from localStorage
+    var savedTime = 0;
+    var storedTime = localStorage.getItem('yt_video_time_' + videoId);
+    if (storedTime) {
+      savedTime = parseFloat(storedTime);
+    }
     
     // Check if player div exists
     var playerDiv = document.getElementById('exp-yt-player');
