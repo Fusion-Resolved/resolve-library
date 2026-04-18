@@ -2543,6 +2543,7 @@
   /**
    * Show detailed spline editor for a specific parameter
    * Opens a modal with full spline view and keyframe editing
+   * Traces through connected nodes to find actual keyframes
    */
   function showParamDetail(node, paramKey, param) {
     console.log('[showParamDetail] Opening detail for', paramKey, param);
@@ -2551,6 +2552,69 @@
     var existing = document.getElementById('param-detail-modal');
     if (existing) existing.remove();
 
+    // Trace through connections to find actual keyframes
+    var resolvedKeyframes = null;
+    var resolutionChain = [];
+    var maxDepth = 5; // Prevent infinite loops
+    
+    function traceKeyframes(currentNode, currentParam, depth) {
+      if (depth > maxDepth) return null;
+      if (!currentNode || !currentNode.params) return null;
+      
+      // Check if this param has direct keyframes
+      var p = currentNode.params[currentParam];
+      if (!p) {
+        // Try nested structure
+        for (var tableKey in currentNode.params) {
+          var tableGroup = currentNode.params[tableKey];
+          if (tableGroup && tableGroup.params && tableGroup.params[currentParam]) {
+            p = tableGroup.params[currentParam];
+            break;
+          }
+        }
+      }
+      
+      if (p) {
+        resolutionChain.push({ node: currentNode.fusionName || currentNode.name, param: currentParam });
+        
+        if (p.keyframes && p.keyframes.length > 0) {
+          return p.keyframes;
+        }
+        
+        // If connected, trace to source
+        if (p.sourceOp && depth < maxDepth) {
+          var sourceNode = findNodeByName(p.sourceOp);
+          if (sourceNode) {
+            // For PolyPath nodes, the Position output is driven by Displacement
+            var targetParam = (sourceNode.name === 'PolyPath') ? 'Displacement' : 'Value';
+            return traceKeyframes(sourceNode, targetParam, depth + 1);
+          }
+        }
+      }
+      
+      return null;
+    }
+    
+    function findNodeByName(name) {
+      // Look in the current effect's nodes
+      var effectData = window._currentEffectData;
+      if (!effectData || !effectData._graphData) return null;
+      
+      var graphData = typeof effectData._graphData === 'string' ? 
+        JSON.parse(effectData._graphData) : effectData._graphData;
+      
+      if (!graphData || !graphData.nodes) return null;
+      
+      return graphData.nodes.find(function(n) { 
+        return n.name === name || n.label === name || n.fusionName === name;
+      });
+    }
+    
+    // Try to resolve keyframes
+    if (param.sourceOp) {
+      resolvedKeyframes = traceKeyframes(node, paramKey, 0);
+    }
+    
     // Create modal overlay
     var overlay = document.createElement('div');
     overlay.id = 'param-detail-modal';
@@ -2563,7 +2627,9 @@
     // Header
     var isConnected = param.v === '—' && param.sourceOp;
     var isPolyline = param.type === 'polyline' || (typeof param.value === 'string' && param.value.includes('points'));
-    var paramTypeLabel = param.keyframes ? (param.keyframes.length + ' keyframes') : 
+    var hasResolvedKeyframes = resolvedKeyframes && resolvedKeyframes.length > 0;
+    var paramTypeLabel = hasResolvedKeyframes ? (resolvedKeyframes.length + ' keyframes (via connection)') : 
+                         param.keyframes ? (param.keyframes.length + ' keyframes') : 
                          isConnected ? 'Connected' : 
                          isPolyline ? 'Polyline' : 'Static';
     
@@ -2582,7 +2648,9 @@
     var content = document.createElement('div');
     content.style.cssText = 'padding:20px;flex:1;overflow:hidden;';
 
-    if (param.keyframes && param.keyframes.length > 0) {
+    if (hasResolvedKeyframes || (param.keyframes && param.keyframes.length > 0)) {
+      var kfsToShow = hasResolvedKeyframes ? resolvedKeyframes : param.keyframes;
+      
       // Canvas container
       var canvasContainer = document.createElement('div');
       canvasContainer.style.cssText = 'background:#0d0d10;border-radius:8px;border:1px solid rgba(255,255,255,0.08);height:300px;position:relative;';
@@ -2593,11 +2661,20 @@
       canvasContainer.appendChild(canvas);
       content.appendChild(canvasContainer);
 
+      // Show resolution chain if applicable
+      if (hasResolvedKeyframes && resolutionChain.length > 1) {
+        var chainDiv = document.createElement('div');
+        chainDiv.style.cssText = 'margin-bottom:12px;padding:8px 12px;background:rgba(108,123,255,0.1);border-radius:6px;font-family:var(--font-mono);font-size:10px;color:var(--violet-light);';
+        var chainText = 'Resolved via: ' + resolutionChain.map(function(c) { return c.node + '.' + c.param; }).join(' → ');
+        chainDiv.textContent = chainText;
+        content.insertBefore(chainDiv, canvasContainer);
+      }
+
       // Keyframe list
       var kfList = document.createElement('div');
       kfList.style.cssText = 'margin-top:16px;max-height:150px;overflow-y:auto;font-family:var(--font-mono);font-size:11px;';
       
-      var sortedKfs = param.keyframes.slice().sort(function(a, b) { return a.frame - b.frame; });
+      var sortedKfs = kfsToShow.slice().sort(function(a, b) { return a.frame - b.frame; });
       var kfHtml = '<div style="display:grid;grid-template-columns:80px 1fr 100px;gap:8px;padding:8px 12px;background:rgba(108,123,255,0.1);border-radius:6px;margin-bottom:8px;font-weight:600;color:var(--violet-light);">' +
         '<div>Frame</div><div>Value</div><div>Type</div></div>';
       
