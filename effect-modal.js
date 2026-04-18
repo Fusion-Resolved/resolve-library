@@ -2834,45 +2834,55 @@
     
     var NW = 132, NH = 50;
     
-    // Helper to resize canvas to fit all nodes
+    // Helper to resize canvas to fit all nodes - ensures all node positions are covered
     function resizeCanvasToFit() {
       var currentNodes = window.currentNodeData ? window.currentNodeData.nodes : nodes;
       if (!currentNodes.length) return;
       
-      var maxX = 0, maxY = 0;
+      // Find actual bounds including all node positions
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       currentNodes.forEach(function(n) {
-        var nx = (n.x || 0) + NW + 40;
-        var ny = (n.y || 0) + NH + 40;
-        if (nx > maxX) maxX = nx;
-        if (ny > maxY) maxY = ny;
+        var nx = n.x || 0;
+        var ny = n.y || 0;
+        if (nx < minX) minX = nx;
+        if (ny < minY) minY = ny;
+        if (nx + NW > maxX) maxX = nx + NW;
+        if (ny + NH > maxY) maxY = ny + NH;
       });
       
-      // Add padding and ensure minimum size
-      maxX = Math.max(maxX + 100, 1200);
-      maxY = Math.max(maxY + 100, 800);
+      // Add padding for edges and animation
+      minX = Math.max(0, minX - 50);
+      minY = Math.max(0, minY - 50);
+      maxX = maxX + 100;
+      maxY = maxY + 100;
       
-      // Resize canvas if needed (always grow, shrink only if significantly smaller)
-      var needsResize = canvas.width < maxX || canvas.height < maxY || 
-                        Math.abs(canvas.width - maxX) > 200 || Math.abs(canvas.height - maxY) > 200;
+      var neededWidth = Math.max(maxX, 1200);
+      var neededHeight = Math.max(maxY, 800);
+      
+      // Always resize if canvas is too small in either dimension
+      var needsResize = canvas.width < neededWidth || canvas.height < neededHeight;
+      
       if (needsResize) {
-        canvas.width = maxX;
-        canvas.height = maxY;
-        canvas.style.width = maxX + 'px';
-        canvas.style.height = maxY + 'px';
+        canvas.width = Math.max(canvas.width, neededWidth);
+        canvas.height = Math.max(canvas.height, neededHeight);
+        canvas.style.width = canvas.width + 'px';
+        canvas.style.height = canvas.height + 'px';
       }
       
-      // Also update world container size so CSS transform works correctly
+      // Update world container to match
       var world = canvas.parentElement;
       if (world) {
-        var currentW = parseInt(world.style.width) || 0;
-        var currentH = parseInt(world.style.height) || 0;
-        if (currentW < maxX || currentH < maxY) {
-          world.style.width = maxX + 'px';
-          world.style.height = maxY + 'px';
+        var worldW = parseInt(world.style.width) || 0;
+        var worldH = parseInt(world.style.height) || 0;
+        if (worldW < neededWidth || worldH < neededHeight) {
+          var newW = Math.max(worldW, neededWidth);
+          var newH = Math.max(worldH, neededHeight);
+          world.style.width = newW + 'px';
+          world.style.height = newH + 'px';
           var svg = world.querySelector('svg');
           if (svg) {
-            svg.setAttribute('width', maxX);
-            svg.setAttribute('height', maxY);
+            svg.setAttribute('width', newW);
+            svg.setAttribute('height', newH);
           }
         }
       }
