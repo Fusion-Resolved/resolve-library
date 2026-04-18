@@ -1207,9 +1207,9 @@
           '</div>' +
         '</div>' +
         '<div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;">' +
-          '<button class="gc-btn" id="gcIn" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">+</button>' +
-          '<button class="gc-btn" id="gcOut" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">&minus;</button>' +
-          '<button class="gc-btn gc-fit" id="gcFit" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;">FIT</button>' +
+          '<button class="gc-btn" id="gcIn" style="font-size:14px;width:28px;height:28px;">+</button>' +
+          '<button class="gc-btn" id="gcOut" style="font-size:14px;width:28px;height:28px;">&minus;</button>' +
+          '<button class="gc-btn gc-fit" id="gcFit" style="font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;">FIT</button>' +
         '</div>' +
         '<div class="graph-action-btns" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:8px;">' +
           '<button id="gcOpenEditor" style="background:rgba(6,6,13,0.85);backdrop-filter:blur(8px);border:1px solid rgba(108,123,255,0.3);border-radius:6px;color:var(--violet-light);font-family:var(--font-mono);font-size:10px;padding:6px 12px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;display:flex;align-items:center;gap:6px;">' +
