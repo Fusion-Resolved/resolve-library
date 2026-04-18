@@ -1837,23 +1837,22 @@
   }
 
   function showNodeInSidePanel(node) {
-    var panel = document.getElementById('expanded-node-panel');
+    var sections = window.expandedSections;
     var controls = document.getElementById('expanded-controls');
-    if (!panel) return;
+    if (!sections || !sections.nodes) return;
     
     var params = node.params || {};
     var hasParams = Object.keys(params).length > 0;
     
-    // Build panel content
+    // Build node details content for the Nodes section
     var html = 
-      '<div style="padding:16px;">' +
+      '<div style="padding:8px 0;">' +
         '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);">' +
           '<div style="width:10px;height:10px;border-radius:50%;background:' + (node.catColor || '#6c7bff') + ';flex-shrink:0;"></div>' +
           '<div style="min-width:0;flex:1;">' +
             '<div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (node.fusionName || node.name) + '</div>' +
             '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">' + (node.category || 'Custom') + '</div>' +
           '</div>' +
-          '<button onclick="closeSidePanel()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;padding:4px 8px;transition:color 0.15s;line-height:1;">&#x2715;</button>' +
         '</div>';
     
     if (hasParams) {
@@ -1888,12 +1887,30 @@
     
     html += '</div>';
     
-    panel.innerHTML = html;
-    panel.style.transform = 'translateX(0)';
+    // Update only the Nodes section content, preserving the collapsible structure
+    sections.nodes.content.innerHTML = html;
     
-    // Slide controls to the left to make room for panel
+    // Auto-expand the Nodes section to show the selected node
+    if (!sections.nodes._expanded) {
+      sections.nodes.header.click();
+    }
+    
+    // Ensure panel is visible
+    var panel = document.getElementById('expanded-node-panel');
+    if (panel && panel.style.display === 'none') {
+      panel.style.display = 'flex';
+      // Update toggle button state
+      var toggleBtn = document.getElementById('exp-toggle-panel');
+      if (toggleBtn) {
+        toggleBtn.style.background = 'rgba(108,123,255,0.25)';
+        toggleBtn.style.borderColor = 'rgba(108,123,255,0.5)';
+        toggleBtn.style.color = 'var(--violet-light)';
+      }
+    }
+    
+    // Position controls to accommodate panel
     if (controls) {
-      controls.style.right = '340px';
+      controls.style.right = '380px';
     }
     
     // Render spline canvases after DOM update
@@ -1991,14 +2008,10 @@
   }
 
   function closeSidePanel() {
-    var panel = document.getElementById('expanded-node-panel');
-    var controls = document.getElementById('expanded-controls');
-    if (panel) {
-      panel.style.transform = 'translateX(100%)';
-    }
-    // Move controls back to original position
-    if (controls) {
-      controls.style.right = '20px';
+    // Collapse the Nodes section instead of hiding entire panel
+    var sections = window.expandedSections;
+    if (sections && sections.nodes && sections.nodes._expanded) {
+      sections.nodes.header.click();
     }
   }
   window.closeSidePanel = closeSidePanel;
