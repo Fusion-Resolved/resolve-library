@@ -1163,9 +1163,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     const catEl = document.getElementById('fCat');
     const verEl = document.getElementById('fVer');
     
+    const stepsEl = document.getElementById('fSteps');
     console.log('[doSave] Form elements:', {
       name: nameEl ? nameEl.value : 'NOT FOUND',
       desc: descEl ? descEl.value.substring(0, 50) + '...' : 'NOT FOUND',
+      steps: stepsEl ? stepsEl.value.substring(0, 50) + (stepsEl.value.length > 50 ? '...' : '') : 'NOT FOUND',
       cat: catEl ? catEl.value : 'NOT FOUND',
       ver: verEl ? verEl.value : 'NOT FOUND'
     });
@@ -1192,7 +1194,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     const renderWeight = weightEl ? weightEl.value : '';
     
     const selfEl = document.getElementById('fSelf');
-    const stepsEl = document.getElementById('fSteps');
     const updates = {
       name: nameEl ? nameEl.value : '',
       desc: descEl ? descEl.value : '',
@@ -1246,8 +1247,10 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         // Check if values match what we sent
         const nameMatch = verifyData.name === updates.name;
         const catMatch = verifyData.cat === updates.cat;
+        const stepsMatch = verifyData.steps === updates.steps;
         console.log('[doSave] Name match:', nameMatch, 'Expected:', updates.name, 'Got:', verifyData.name);
         console.log('[doSave] Category match:', catMatch, 'Expected:', updates.cat, 'Got:', verifyData.cat);
+        console.log('[doSave] Steps match:', stepsMatch, 'Expected:', updates.steps.substring(0, 50) + (updates.steps.length > 50 ? '...' : ''), 'Got:', verifyData.steps ? verifyData.steps.substring(0, 50) + (verifyData.steps.length > 50 ? '...' : '') : 'null/undefined');
         
         if (!nameMatch || !catMatch) {
           showToast('Warning: Save may not have persisted');
@@ -1321,7 +1324,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[loadEffectData] Fetching effect:', effectId);
         const { data, error } = await supabase
           .from('effects')
-          .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, node_code, user_id')
+          .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, user_id')
           .eq('id', effectId)
           .single();
         
@@ -1407,6 +1410,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     
     // Set steps
     const stepsEl = document.getElementById('fSteps');
+    console.log('[populateForm] Steps element found:', !!stepsEl, 'Effect steps:', effect.steps ? (Array.isArray(effect.steps) ? 'array['+effect.steps.length+']' : typeof effect.steps) : 'null/undefined');
     if (stepsEl && effect.steps) {
       stepsEl.value = Array.isArray(effect.steps) ? effect.steps.join('\n') : effect.steps;
       const stepsCC = document.getElementById('stepsCC');
@@ -1415,6 +1419,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         stepsCC.textContent = stepsLen + ' / 2000';
         stepsCC.className = 'cc' + (stepsLen > 1800 ? ' warn' : '');
       }
+      console.log('[populateForm] Steps loaded, length:', stepsEl.value.length);
     }
     
     // Set category - direct value assignment (options have proper value attributes now)
