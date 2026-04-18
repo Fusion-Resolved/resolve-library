@@ -1850,25 +1850,61 @@
         var newW = startRect.width;
         var newRight = startRect.right;
         var newTop = startRect.top;
+        var containerRect = container.getBoundingClientRect();
         
-        // Handle each resize direction
-        if (resizeDirection === 'right' || resizeDirection === 'tr' || resizeDirection === 'br') {
-          newW = Math.max(MIN_W, Math.min(MAX_W, startRect.width + dx));
+        // Resize logic: expand in the direction of the drag
+        switch (resizeDirection) {
+          case 'right':
+            // Drag right = expand right (left edge stays)
+            newW = Math.max(MIN_W, Math.min(MAX_W, startRect.width + dx));
+            newRight = startRect.right - (newW - startRect.width); // Keep left stationary
+            break;
+            
+          case 'left':
+            // Drag left = expand left (right edge stays)
+            newW = Math.max(MIN_W, Math.min(MAX_W, startRect.width - dx));
+            // right stays same, width increases, so left moves left
+            break;
+            
+          case 'bottom':
+            // Just adjust height via width (maintain aspect by scaling width)
+            newW = Math.max(MIN_W, Math.min(MAX_W, startRect.width + dx));
+            newRight = startRect.right - (newW - startRect.width) / 2; // Center expand
+            break;
+            
+          case 'top':
+            newW = Math.max(MIN_W, Math.min(MAX_W, startRect.width - dy * 1.78)); // approximate 16:9 ratio
+            newTop = startRect.top + (startRect.height - newW * 0.5625);
+            break;
+            
+          case 'br': // bottom-right: expand right and down
+            newW = Math.max(MIN_W, Math.min(MAX_W, startRect.width + dx));
+            newRight = startRect.right - (newW - startRect.width); // Keep left edge, expand right
+            // Height auto-adjusts via 16:9 ratio, top stays same
+            break;
+            
+          case 'bl': // bottom-left: expand left and down  
+            newW = Math.max(MIN_W, Math.min(MAX_W, startRect.width - dx));
+            // Right edge stays same, left edge moves left
+            newRight = startRect.right;
+            break;
+            
+          case 'tr': // top-right: expand right and up
+            newW = Math.max(MIN_W, Math.min(MAX_W, startRect.width + dx));
+            newRight = startRect.right - (newW - startRect.width); // Keep left edge
+            newTop = startRect.top - (newW - startRect.width) * 0.5625; // Move top up proportionally
+            break;
+            
+          case 'tl': // top-left: expand left and up
+            newW = Math.max(MIN_W, Math.min(MAX_W, startRect.width - dx));
+            newRight = startRect.right; // Right edge stays
+            newTop = startRect.top - (newW - startRect.width) * 0.5625; // Move top up
+            break;
         }
-        if (resizeDirection === 'left' || resizeDirection === 'tl' || resizeDirection === 'bl') {
-          var proposedW = Math.max(MIN_W, Math.min(MAX_W, startRect.width - dx));
-          var widthDiff = proposedW - startRect.width;
-          newW = proposedW;
-          newRight = startRect.right - widthDiff;
-        }
-        if (resizeDirection === 'bottom' || resizeDirection === 'bl' || resizeDirection === 'br') {
-          // Height controlled by width (16:9), but we can adjust if needed
-        }
-        if (resizeDirection === 'top' || resizeDirection === 'tl' || resizeDirection === 'tr') {
-          var proposedH = Math.max(MIN_H, Math.min(MAX_H, startRect.height - dy));
-          var heightDiff = proposedH - startRect.height;
-          newTop = startRect.top + heightDiff;
-        }
+        
+        // Clamp position to keep video in bounds
+        newRight = Math.max(0, Math.min(containerRect.width - newW, newRight));
+        newTop = Math.max(50, newTop);
         
         videoContainer.style.width = newW + 'px';
         videoContainer.style.right = newRight + 'px';
