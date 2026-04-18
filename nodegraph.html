@@ -2056,6 +2056,7 @@ function undo() {
 let savedGraphs=[];try{savedGraphs=JSON.parse(localStorage.getItem('ng-graphs')||'[]');}catch{}
 let linkedEffects=[];
 let currentEffectId = null;  // ID of effect loaded via ?id=
+let currentEffectName = null;  // Name of effect loaded via ?id=
 let currentEffectOwnerId = null;  // user_id of effect owner
 let isCurrentUserOwner = false;  // true if current user owns the loaded effect
 let cpopNodeId=null;
@@ -4612,6 +4613,8 @@ function clearCanvas(){
   document.getElementById('svg-layer').querySelectorAll('.conn, .inst-conn').forEach(e=>e.remove());
   document.getElementById('svg-layer').querySelector('defs').innerHTML='';
   selConn=null;selNode=null;linkedEffects=[];renderEffList();
+  // Reset current effect info
+  currentEffectId=null;currentEffectName=null;currentEffectOwnerId=null;isCurrentUserOwner=false;updateSaveButtonVisibility();
   const _ccHint=document.getElementById('conn-hint');if(_ccHint)_ccHint.textContent='Click an arrow to select it';
   const _ccCtrl=document.getElementById('conn-ctrl');if(_ccCtrl)_ccCtrl.style.display='none';
   document.getElementById('node-color-sec').style.display = 'none';
@@ -4708,9 +4711,11 @@ function updateSaveButtonVisibility() {
   
   if (!btnSaveLib || !btnUpdateEffect) return;
   
-  // Update label with effect name if loaded
+  // Update label with effect name if loaded (use currentEffectName from DB, fallback to linkedEffects)
   if (saveLabel) {
-    if (currentEffectId) {
+    if (currentEffectId && currentEffectName) {
+      saveLabel.textContent = currentEffectName;
+    } else if (currentEffectId) {
       const eff = linkedEffects.find(function(le) { return le.id === currentEffectId; });
       saveLabel.textContent = eff ? eff.name : 'Save graph';
     } else {
@@ -5866,9 +5871,10 @@ document.getElementById('params-paste').addEventListener('paste', () => {
 
       // ── Store effect ownership info ─────────────────────────────────────────
       currentEffectId = row.id;
+      currentEffectName = row.name;
       currentEffectOwnerId = row.user_id;
       isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
-      console.log('[nodegraph] Loaded effect:', row.id, 'Owner:', row.user_id, 'Is owner:', isCurrentUserOwner);
+      console.log('[nodegraph] Loaded effect:', row.id, 'Name:', row.name, 'Owner:', row.user_id, 'Is owner:', isCurrentUserOwner);
       updateSaveButtonVisibility();
 
       // The `nodes` column is JSONB. It may be:
