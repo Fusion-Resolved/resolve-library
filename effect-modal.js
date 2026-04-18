@@ -2488,7 +2488,17 @@
   // Create YouTube player for expanded view
   function createExpandedPlayer() {
     var videoId = window._expandedVideoId;
-    if (!videoId || !window.YT || !window.YT.Player) return;
+    console.log('Creating player, videoId:', videoId);
+    if (!videoId || !window.YT || !window.YT.Player) {
+      console.log('Missing videoId or YT API:', { videoId: videoId, YT: !!window.YT });
+      return;
+    }
+    
+    // Validate video ID format (YouTube IDs are 11 characters, alphanumeric, -, _)
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      console.error('Invalid video ID format:', videoId);
+      return;
+    }
     
     // Destroy existing player if any
     if (window.expandedYTPlayer && window.expandedYTPlayer.destroy) {
@@ -2623,6 +2633,7 @@
     // Video container - use YouTube IFrame API for control
     if (effect.video_url) {
       var ytId = extractYouTubeId(effect.video_url);
+      console.log('Extracted YouTube ID:', ytId, 'from URL:', effect.video_url);
       if (ytId) {
         // Store video ID FIRST (before any player creation)
         window._expandedVideoId = ytId;
@@ -2754,8 +2765,16 @@
   
   function extractYouTubeId(url) {
     if (!url) return null;
-    var match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
-    return match ? match[1] : null;
+    var cleanUrl = url.trim();
+    var match = cleanUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?\/]+)/);
+    if (match && match[1]) {
+      var id = match[1];
+      // Validate ID is 11 characters
+      if (id.length >= 11) {
+        return id.substring(0, 11);
+      }
+    }
+    return null;
   }
 
   var expandedFlowAnimId = null;
