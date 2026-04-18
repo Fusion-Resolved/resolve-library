@@ -1727,7 +1727,7 @@
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
     
-    // Setup video container drag functionality (3px threshold, overlay only active on mousedown)
+    // Setup video container drag functionality
     var videoCloseBtn = document.getElementById('exp-video-close');
     var videoDragOverlay = document.getElementById('exp-video-drag-overlay');
     var isDraggingVideo = false;
@@ -1736,31 +1736,25 @@
     var videoDragStartX = 0, videoDragStartY = 0;
     var videoMouseStartX = 0, videoMouseStartY = 0;
     var videoStartX = 0, videoStartY = 0;
-    var VIDEO_DRAG_THRESHOLD = 3; // pixels
+    var VIDEO_DRAG_THRESHOLD = 3;
     
-    // Show/hide close button on hover (overlay stays inactive by default)
+    // Show/hide close button on hover
     videoContainer.addEventListener('mouseenter', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '1';
     });
     videoContainer.addEventListener('mouseleave', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
-      // Keep overlay disabled when leaving (unless currently dragging)
-      if (videoDragOverlay && !videoMouseDown) {
-        videoDragOverlay.style.pointerEvents = 'none';
-      }
     });
     
-    // CRITICAL: The overlay starts as inactive (pointer-events: none)
-    // We only activate it on mousedown, so clicks normally pass through to YouTube
+    // The key: overlay starts as pointer-events: none
+    // It captures events ONLY when we're actively interacting
     
-    // Use the video container itself to detect mousedown, then activate overlay
+    // Listen on the CONTAINER for mousedown (which fires even with inactive overlay above)
     videoContainer.addEventListener('mousedown', function(e) {
-      if (e.target === videoCloseBtn || e.target.closest('#exp-video-close')) return;
+      if (e.target === videoCloseBtn) return;
       
-      // Activate the overlay NOW to capture the drag
-      if (videoDragOverlay) {
-        videoDragOverlay.style.pointerEvents = 'auto';
-      }
+      // Check if we clicked on the overlay area (not the close button)
+      // The overlay is on top but inactive, so event bubbles from overlay to container
       
       videoMouseDown = true;
       hasVideoDragged = false;
@@ -1770,23 +1764,29 @@
       videoDragStartY = e.clientY;
       videoStartX = parseInt(videoContainer.style.right) || 20;
       videoStartY = parseInt(videoContainer.style.top) || 110;
-    });
+      
+      // CRITICAL: Activate overlay NOW so it captures mousemove events
+      if (videoDragOverlay) {
+        videoDragOverlay.style.pointerEvents = 'auto';
+      }
+      
+      // Don't prevent default - let the mousedown potentially reach YouTube
+      // If this becomes a drag, we'll take over. If it's a click, it already went through.
+    }, true); // Use capture phase to ensure we get the event
     
-    // Mousemove - check if we've moved enough to be a drag
+    // Global mousemove - track drag
     document.addEventListener('mousemove', function(e) {
       if (!videoMouseDown) return;
       
       var moveX = Math.abs(e.clientX - videoMouseStartX);
       var moveY = Math.abs(e.clientY - videoMouseStartY);
       
-      // If moved > 3px, this is now a drag
       if (!hasVideoDragged && (moveX > VIDEO_DRAG_THRESHOLD || moveY > VIDEO_DRAG_THRESHOLD)) {
         hasVideoDragged = true;
         isDraggingVideo = true;
         if (videoDragOverlay) videoDragOverlay.style.cursor = 'grabbing';
       }
       
-      // If we're dragging, move the video
       if (hasVideoDragged) {
         var dx = e.clientX - videoDragStartX;
         var dy = e.clientY - videoDragStartY;
@@ -1798,25 +1798,23 @@
       }
     });
     
-    // Mouseup - decide: was it a drag or a click?
+    // Global mouseup
     document.addEventListener('mouseup', function(e) {
       if (!videoMouseDown) return;
       
       videoMouseDown = false;
       
       if (!hasVideoDragged) {
-        // It was a click - disable overlay immediately to let click pass through
+        // It was a click - disable overlay so the click reaches YouTube
         if (videoDragOverlay) {
           videoDragOverlay.style.pointerEvents = 'none';
           videoDragOverlay.style.cursor = 'default';
         }
-        
-        // The native click event will now propagate to the YouTube iframe
-        // We don't need to do anything else - the browser handles the click
       } else {
-        // It was a drag - keep overlay active briefly, then check if still hovering
+        // It was a drag
         if (videoDragOverlay) {
           videoDragOverlay.style.cursor = 'default';
+          // Keep overlay active briefly, then check hover
           setTimeout(function() {
             if (!videoContainer.matches(':hover')) {
               videoDragOverlay.style.pointerEvents = 'none';
