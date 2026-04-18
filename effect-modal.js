@@ -1664,13 +1664,13 @@
     // Floating video (positioned below controls, draggable - no visible header)
     var videoContainer = document.createElement('div');
     videoContainer.id = 'exp-video-section';
-    videoContainer.style.cssText = 'position:absolute;top:110px;right:20px;width:320px;display:none;z-index:25;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,0.5);cursor:grab;';
+    videoContainer.style.cssText = 'position:absolute;top:110px;right:20px;width:320px;display:none;z-index:25;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,0.5);';
     videoContainer.innerHTML = 
       '<div id="exp-video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">' +
         '<div id="exp-video-inner" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>' +
       '</div>' +
-      '<div id="exp-video-drag-overlay" style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:5;cursor:grab;"></div>' +
-      '<button id="exp-video-close" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border:none;border-radius:4px;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;padding:4px 8px;opacity:0;transition:opacity 0.2s;z-index:10;">&#x2715;</button>';
+      '<div id="exp-video-drag-overlay" style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:5;cursor:default;pointer-events:none;"></div>' +
+      '<button id="exp-video-close" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border:none;border-radius:4px;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;padding:4px 8px;opacity:0;transition:opacity 0.2s;z-index:10;pointer-events:auto;">&#x2715;</button>';
     
     // Node details panel (only shows when node selected)
     var nodePanel = document.createElement('div');
@@ -1737,12 +1737,18 @@
     var videoStartX = 0, videoStartY = 0;
     var VIDEO_DRAG_THRESHOLD = 5; // pixels
     
-    // Show/hide close button on hover
+    // Show/hide close button on hover (overlay stays non-interactive by default)
     videoContainer.addEventListener('mouseenter', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '1';
+      // Enable overlay interaction only on hover
+      if (videoDragOverlay) videoDragOverlay.style.pointerEvents = 'auto';
     });
     videoContainer.addEventListener('mouseleave', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
+      // Disable overlay when not hovering (lets clicks through to video)
+      if (videoDragOverlay && !isDraggingVideo) {
+        videoDragOverlay.style.pointerEvents = 'none';
+      }
     });
     
     // Drag using the overlay (with threshold detection)
@@ -1772,7 +1778,6 @@
         if (moveX > VIDEO_DRAG_THRESHOLD || moveY > VIDEO_DRAG_THRESHOLD) {
           hasVideoDragged = true;
           videoDragOverlay.style.cursor = 'grabbing';
-          videoContainer.style.cursor = 'grabbing';
         }
       }
       
@@ -1791,19 +1796,13 @@
     document.addEventListener('mouseup', function() {
       if (isDraggingVideo) {
         isDraggingVideo = false;
-        if (videoDragOverlay) videoDragOverlay.style.cursor = 'grab';
-        videoContainer.style.cursor = 'grab';
-      }
-    });
-    
-    // Allow click-through to video when not dragging (by hiding overlay briefly)
-    videoDragOverlay.addEventListener('click', function(e) {
-      if (!hasVideoDragged && e.target !== videoCloseBtn) {
-        // Briefly hide overlay to allow click to pass through to video
-        videoDragOverlay.style.pointerEvents = 'none';
-        setTimeout(function() {
-          videoDragOverlay.style.pointerEvents = 'auto';
-        }, 100);
+        if (videoDragOverlay) {
+          videoDragOverlay.style.cursor = 'default';
+          // If mouse left container, disable pointer events
+          if (!videoContainer.matches(':hover')) {
+            videoDragOverlay.style.pointerEvents = 'none';
+          }
+        }
       }
     });
     
