@@ -2834,7 +2834,48 @@
     
     var NW = 132, NH = 50;
     
+    // Helper to resize canvas to fit all nodes
+    function resizeCanvasToFit() {
+      var currentNodes = window.currentNodeData ? window.currentNodeData.nodes : nodes;
+      if (!currentNodes.length) return;
+      
+      var maxX = 0, maxY = 0;
+      currentNodes.forEach(function(n) {
+        var nx = (n.x || 0) + NW + 40;
+        var ny = (n.y || 0) + NH + 40;
+        if (nx > maxX) maxX = nx;
+        if (ny > maxY) maxY = ny;
+      });
+      
+      // Add padding and ensure minimum size
+      maxX = Math.max(maxX + 100, 1200);
+      maxY = Math.max(maxY + 100, 800);
+      
+      // Resize canvas
+      if (Math.abs(canvas.width - maxX) > 50 || Math.abs(canvas.height - maxY) > 50) {
+        canvas.width = maxX;
+        canvas.height = maxY;
+        canvas.style.width = maxX + 'px';
+        canvas.style.height = maxY + 'px';
+      }
+      
+      // Also update world container size so CSS transform works correctly
+      var world = canvas.parentElement;
+      if (world && (parseInt(world.style.width) < maxX || parseInt(world.style.height) < maxY)) {
+        world.style.width = maxX + 'px';
+        world.style.height = maxY + 'px';
+        var svg = world.querySelector('svg');
+        if (svg) {
+          svg.setAttribute('width', maxX);
+          svg.setAttribute('height', maxY);
+        }
+      }
+    }
+    
     function drawFlow(ts) {
+      // Resize canvas to fit current node positions
+      resizeCanvasToFit();
+      
       var elapsed = (ts - startTime) / 1000;
       var W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
