@@ -3128,7 +3128,7 @@
     applyGraphTransform();
   }
 
-  function fitGraph() {
+  function fitExpandedGraph() {
     var vp = graphState.vp;
     if (!vp) return;
     var r = vp.getBoundingClientRect();
@@ -3139,10 +3139,15 @@
     var nodes = graphState.nodes;
     if (!nodes.length) return;
     
+    // Get the offset that was applied during rendering
+    var offX = window._expandedRenderOffsetX || 0;
+    var offY = window._expandedRenderOffsetY || 0;
+    
     var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
     nodes.forEach(function(n) {
-      var nx = n.x || 0;
-      var ny = n.y || 0;
+      // Apply same offset as rendering
+      var nx = (n.x || 0) + offX;
+      var ny = (n.y || 0) + offY;
       if (nx < mnX) mnX = nx;
       if (ny < mnY) mnY = ny;
       if (nx + NW > mxX) mxX = nx + NW;
