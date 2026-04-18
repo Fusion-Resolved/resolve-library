@@ -1902,17 +1902,24 @@
 
   function wireExpandedGraphEvents(vp, world, svg, zoomLbl) {
     var tx = 0, ty = 0, sc = 1, dragging = false, dX = 0, dY = 0;
+    var dragStartX = 0, dragStartY = 0, hasDragged = false;
     
     // Click to close panel when clicking empty canvas (but not when clicking panel itself)
     vp.addEventListener('click', function(e) {
       if (e.target.closest('div[style*="position:absolute;left:"]')) return;
       if (e.target.closest('#expanded-node-panel')) return;
-      closeSidePanel();
+      // Only close if it wasn't a drag (mouse didn't move much)
+      if (!hasDragged) {
+        closeSidePanel();
+      }
     });
     
     vp.addEventListener('mousedown', function(e) {
       if (e.target.closest('div[style*="position:absolute;left:"]')) return;
       dragging = true;
+      hasDragged = false;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
       dX = e.clientX - tx;
       dY = e.clientY - ty;
       vp.style.cursor = 'grabbing';
@@ -1920,6 +1927,10 @@
     
     document.addEventListener('mousemove', function(e) {
       if (!dragging) return;
+      // Check if mouse has moved enough to count as a drag
+      if (Math.abs(e.clientX - dragStartX) > 3 || Math.abs(e.clientY - dragStartY) > 3) {
+        hasDragged = true;
+      }
       tx = e.clientX - dX;
       ty = e.clientY - dY;
       world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
