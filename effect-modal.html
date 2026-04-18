@@ -111,10 +111,8 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 .rel-chip:hover{border-color:rgba(108,123,255,0.45);color:var(--violet-light);background:rgba(108,123,255,0.10);}
 
 /* ═══════════════════════════════════
-   STEP NAVIGATOR
+   NODE ACCORDION STYLES
    ═══════════════════════════════════ */
-.step-indicator-active{background:var(--violet) !important;}
-.node-accordion-item{transition:background var(--duration-fast);}
 .node-accordion-item:last-child{border-bottom:none !important;}
 .node-accordion-header:hover{background:rgba(255,255,255,0.05);}
 .node-accordion-content .param-row{margin-bottom:8px;font-size:11px;padding:6px;background:rgba(255,255,255,0.03);border-radius:4px;}
@@ -289,19 +287,6 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
             <div class="graph-hint" style="position:absolute;bottom:10px;right:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.18);letter-spacing:0.05em;pointer-events:none;z-index:10;">ctrl+scroll to zoom · drag to pan</div>
           </div>
           
-          <!-- Step Navigator (appears when steps exist) -->
-          <div id="step-navigator" style="display:none;background:var(--gb);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);border:1px solid var(--border-surface);border-radius:var(--radius);padding:12px;margin-bottom:12px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <span style="font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">Step <span id="step-current">1</span> of <span id="step-total">5</span></span>
-              <div style="display:flex;gap:4px;">
-                <button class="gc-btn" id="stepPrev" style="width:24px;height:24px;font-size:11px;">&#x2190;</button>
-                <button class="gc-btn" id="stepNext" style="width:24px;height:24px;font-size:11px;">&#x2192;</button>
-              </div>
-            </div>
-            <div id="step-content" style="font-size:13px;color:var(--text-secondary);line-height:1.55;min-height:40px;"></div>
-            <div style="margin-top:10px;display:flex;gap:4px;flex-wrap:wrap;" id="step-indicators"></div>
-          </div>
-
           <!-- Node Accordion List -->
           <div id="modal-node-accordion" style="background:#0f0f16;border-radius:6px;border:1px solid var(--border-surface);overflow:hidden;max-height:300px;overflow-y:auto;">
             <!-- Populated by JS - accordion items for each node -->
@@ -472,17 +457,6 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
                tag + '</span>';
       }).join('');
     }
-
-    // Steps - populate step-by-step list
-    var stepsList = document.getElementById('modal-steps');
-    if (stepsList && effect.steps) {
-      var steps = Array.isArray(effect.steps) ? effect.steps : effect.steps.split('\n').filter(function(s) { return s.trim(); });
-      stepsList.innerHTML = steps.map(function(step, idx) {
-        return '<li data-step-idx="' + idx + '"><span class="sn">' + (idx + 1) + '</span>' + step + '</li>';
-      }).join('');
-      // Store steps for step navigator
-      window._currentSteps = steps;
-    }
   }
 
   /* ════════════════════════════════
@@ -505,7 +479,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 
     var _a = await sb
       .from('effects')
-      .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, created_at, user_id, node_code, nodes')
+      .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, created_at, user_id, node_code, nodes')
       .eq('id', effectId)
       .single();
     var data = _a.data, error = _a.error;
@@ -515,9 +489,6 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
     console.log('[effect-modal] Fetched data:', data);
     console.log('[effect-modal] Data keys:', Object.keys(data || {}));
     populateModal(data);
-
-    // Initialize step navigator after data is loaded
-    initStepNavigator();
 
     // Show owner footer if current user owns this effect
     try {
@@ -1107,8 +1078,6 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
     }
     document.getElementById('theSheet').classList.add('open');
     buildGraph();
-    // Initialize step navigator (will show if steps were previously loaded)
-    initStepNavigator();
   }
   function closeSheet() {
     closePop();
@@ -1142,59 +1111,6 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
       html.setAttribute('data-theme', 'light');
       track.classList.remove('on');
       label.textContent = 'Day';
-    }
-  }
-
-  /* ════════════════════════════════
-     STEP NAVIGATOR
-     ════════════════════════════════ */
-  var _currentStepIdx = 0;
-  
-  function initStepNavigator() {
-    var stepNav = document.getElementById('step-navigator');
-    var steps = window._currentSteps;
-    if (!stepNav || !steps || steps.length === 0) { return; }
-    
-    stepNav.style.display = 'block';
-    document.getElementById('step-total').textContent = steps.length;
-    renderStep(0);
-    
-    document.getElementById('stepPrev').addEventListener('click', function() {
-      if (_currentStepIdx > 0) { renderStep(_currentStepIdx - 1); }
-    });
-    document.getElementById('stepNext').addEventListener('click', function() {
-      if (_currentStepIdx < steps.length - 1) { renderStep(_currentStepIdx + 1); }
-    });
-  }
-  
-  function renderStep(idx) {
-    var steps = window._currentSteps;
-    if (!steps || idx < 0 || idx >= steps.length) { return; }
-    _currentStepIdx = idx;
-    document.getElementById('step-current').textContent = idx + 1;
-    document.getElementById('step-content').textContent = steps[idx];
-    
-    // Update indicators
-    var indicators = document.getElementById('step-indicators');
-    indicators.innerHTML = steps.map(function(_, i) {
-      return '<span style="width:6px;height:6px;border-radius:50%;background:' + 
-        (i === idx ? 'var(--violet)' : 'var(--border-color)') + 
-        ';transition:background var(--duration-fast);"></span>';
-    }).join('');
-    
-    // Highlight corresponding node in accordion if exists
-    highlightNodeForStep(idx);
-  }
-  
-  function highlightNodeForStep(idx) {
-    // Try to find and scroll to corresponding node (simple heuristic: step index maps to node index)
-    var accordion = document.getElementById('modal-node-accordion');
-    if (!accordion) { return; }
-    var items = accordion.querySelectorAll('.node-accordion-item');
-    items.forEach(function(item) { item.classList.remove('step-indicator-active'); });
-    if (items[idx]) {
-      items[idx].classList.add('step-indicator-active');
-      items[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
 
