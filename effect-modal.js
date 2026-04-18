@@ -2125,6 +2125,36 @@
         if (panel) {
           var isHidden = panel.style.display === 'none';
           panel.style.display = isHidden ? 'flex' : 'none';
+          
+          // If showing panel, ensure at least one section is visible and expanded
+          if (isHidden) {
+            var sections = window.expandedSections;
+            if (sections) {
+              // First make sure at least one section block is visible
+              var anySectionVisible = sections.video.section.style.display !== 'none' ||
+                                      sections.steps.section.style.display !== 'none' ||
+                                      sections.nodes.section.style.display !== 'none';
+              if (!anySectionVisible && sections.nodes) {
+                sections.nodes.section.style.display = 'block';
+              }
+              
+              // Then ensure at least one section is expanded (content visible)
+              var anyExpanded = sections.video._expanded ||
+                                sections.steps._expanded ||
+                                sections.nodes._expanded;
+              if (!anyExpanded) {
+                // Expand the first available section
+                if (sections.nodes.section.style.display !== 'none') {
+                  sections.nodes.header.click();
+                } else if (sections.steps.section.style.display !== 'none') {
+                  sections.steps.header.click();
+                } else if (sections.video.section.style.display !== 'none') {
+                  sections.video.header.click();
+                }
+              }
+            }
+          }
+          
           // Move controls to accommodate panel
           if (controls) {
             controls.style.right = isHidden ? '380px' : '20px';
