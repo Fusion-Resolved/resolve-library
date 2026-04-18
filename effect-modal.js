@@ -1997,6 +1997,79 @@
     });
   }
 
+  var expandedFlowAnimId = null;
+  function startExpandedFlowAnimation(canvas, nodes, edges) {
+    if (expandedFlowAnimId) cancelAnimationFrame(expandedFlowAnimId);
+    
+    var ctx = canvas.getContext('2d');
+    var SPEED = 36;
+    var DASH_LEN = 7;
+    var DASH_GAP = 18;
+    var PATTERN = DASH_LEN + DASH_GAP;
+    var startTime = performance.now();
+    
+    var nodeMap = {};
+    nodes.forEach(function(n) { nodeMap[n.id] = n; });
+    
+    var world = document.getElementById('expanded-graph-world');
+    var NW = 132, NH = 50;
+    
+    function drawFlow(ts) {
+      var elapsed = (ts - startTime) / 1000;
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      
+      var dashOffset = -(elapsed * SPEED) % PATTERN;
+      ctx.setLineDash([DASH_LEN, DASH_GAP]);
+      ctx.lineDashOffset = dashOffset;
+      
+      // Get current transform from world element
+      var transform = world ? (world.style.transform || 'translate(0px,0px) scale(1)') : 'translate(0px,0px) scale(1)';
+      var translateMatch = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+      var scaleMatch = transform.match(/scale\(([^)]+)\)/);
+      var tx = translateMatch ? parseFloat(translateMatch[1]) : 0;
+      var ty = translateMatch ? parseFloat(translateMatch[2]) : 0;
+      var sc = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+      
+      edges.forEach(function(e) {
+        var fn = nodeMap[e.from];
+        var tn = nodeMap[e.to];
+        if (!fn || !tn) return;
+        
+        var fx = ((fn.x || 0) + NW) * sc + tx;
+        var fy = ((fn.y || 0) + NH / 2) * sc + ty;
+        var tx2 = (tn.x || 0) * sc + tx;
+        var ty2 = ((tn.y || 0) + NH / 2) * sc + ty;
+        
+        var minX = Math.min(fx, tx2) - 20, maxX = Math.max(fx, tx2) + 20;
+        var minY = Math.min(fy, ty2) - 20, maxY = Math.max(fy, ty2) + 20;
+        if (maxX < 0 || minX > W || maxY < 0 || minY > H) return;
+        
+        var pull = Math.abs(tx2 - fx) * 0.45;
+        var c1x = fx + pull, c1y = fy;
+        var c2x = tx2 - pull, c2y = ty2;
+        
+        ctx.strokeStyle = 'rgba(108,123,255,0.55)';
+        ctx.lineWidth = 1.4;
+        ctx.shadowColor = 'rgba(108,123,255,0.35)';
+        ctx.shadowBlur = 4;
+        
+        ctx.beginPath();
+        ctx.moveTo(fx, fy);
+        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx2, ty2);
+        ctx.stroke();
+        
+        ctx.shadowBlur = 0;
+      });
+      
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+      expandedFlowAnimId = requestAnimationFrame(drawFlow);
+    }
+    
+    expandedFlowAnimId = requestAnimationFrame(drawFlow);
+  }
+
   function applyGraphTransform() {
     if (graphState.world) {
       graphState.world.style.transform = 'translate(' + graphState.tx + 'px,' + graphState.ty + 'px) scale(' + graphState.sc + ')';
