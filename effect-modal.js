@@ -2826,13 +2826,71 @@
     if (expandedFlowAnimId) cancelAnimationFrame(expandedFlowAnimId);
     
     var ctx = canvas.getContext('2d');
-    var SPEED = 36;
-    var DASH_LEN = 7;
-    var DASH_GAP = 18;
-    var PATTERN = DASH_LEN + DASH_GAP;
+    var SPEED = 36; // pixels per second
     var startTime = performance.now();
     
     var NW = 132, NH = 50;
+    
+    // Helper to calculate bezier curve length using numerical integration
+    function getBezierLength(x0, y0, x1, y1, x2, y2, x3, y3, steps) {
+      steps = steps || 20;
+      var len = 0;
+      var prevX = x0, prevY = y0;
+      for (var i = 1; i <= steps; i++) {
+        var t = i / steps;
+        var mt = 1 - t;
+        // Cubic bezier formula
+        var x = mt * mt * mt * x0 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3;
+        var y = mt * mt * mt * y0 + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y3;
+        var dx = x - prevX, dy = y - prevY;
+        len += Math.sqrt(dx * dx + dy * dy);
+        prevX = x;
+        prevY = y;
+      }
+      return len;
+    }
+    
+    // Build edge data with current positions
+    function buildEdgeData() {
+      var currentNodes = window.currentNodeData ? window.currentNodeData.nodes : nodes;
+      var currentEdges = window.currentNodeData ? window.currentNodeData.edges : edges;
+      var nodeMap = {};
+      currentNodes.forEach(function(n) { nodeMap[n.id] = n; });
+      
+      var edgeData = [];
+      currentEdges.forEach(function(e) {
+        var fn = nodeMap[e.from];
+        var tn = nodeMap[e.to];
+        if (!fn || !tn) return;
+        
+        var fx = (fn.x || 0) + NW;
+        var fy = (fn.y || 0) + NH / 2;
+        var tx = tn.x || 0;
+        var ty = (tn.y || 0) + NH / 2;
+        
+        var pull = Math.max(55, Math.abs(tx - fx) * 0.45);
+        var c1x = fx + pull, c1y = fy;
+        var c2x = tx - pull, c2y = ty;
+        
+        var len = getBezierLength(fx, fy, c1x, c1y, c2x, c2y, tx, ty);
+        
+        // Dash pattern scales with path length
+        // Aim for ~10 dashes across the path
+        var dashCount = 10;
+        var dashLen = len / (dashCount * 2); // dash + gap = 2 * dashLen
+        dashLen = Math.max(3, Math.min(12, dashLen)); // clamp between 3-12px
+        
+        edgeData.push({
+          fx: fx, fy: fy, tx: tx, ty: ty,
+          c1x: c1x, c1y: c1y, c2x: c2x, c2y: c2y,
+          length: len,
+          dashLen: dashLen,
+          gapLen: dashLen
+        });
+      });
+      
+      return edgeData;
+    }
     
     // Helper to resize canvas to fit all nodes
     function resizeCanvasToFit() {
@@ -2880,32 +2938,17 @@
       var W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
       
-      var dashOffset = -(elapsed * SPEED) % PATTERN;
-      ctx.setLineDash([DASH_LEN, DASH_GAP]);
-      ctx.lineDashOffset = dashOffset;
+      // Build fresh edge data with current positions
+      var edgeData = buildEdgeData();
       
-      // Build fresh nodeMap from current data (positions may have changed)
-      var currentNodes = window.currentNodeData ? window.currentNodeData.nodes : nodes;
-      var currentEdges = window.currentNodeData ? window.currentNodeData.edges : edges;
-      var nodeMap = {};
-      currentNodes.forEach(function(n) { nodeMap[n.id] = n; });
-      
-      // Canvas is now INSIDE world element, so we draw in world coordinates directly
-      // No need to apply transform - CSS handles it automatically
-      currentEdges.forEach(function(e) {
-        var fn = nodeMap[e.from];
-        var tn = nodeMap[e.to];
-        if (!fn || !tn) return;
+      // Draw each edge with its own dash pattern based on path length
+      edgeData.forEach(function(edge) {
+        // Calculate offset based on path length - this makes all edges animate at same speed
+        var pixelsTraveled = (elapsed * SPEED) % (edge.length + edge.dashLen + edge.gapLen);
+        var dashOffset = -pixelsTraveled;
         
-        // World coordinates (same as SVG paths) - use CURRENT positions
-        var fx = (fn.x || 0) + NW;
-        var fy = (fn.y || 0) + NH / 2;
-        var tx = tn.x || 0;
-        var ty = (tn.y || 0) + NH / 2;
-        
-        var pull = Math.max(55, Math.abs(tx - fx) * 0.45);
-        var c1x = fx + pull, c1y = fy;
-        var c2x = tx - pull, c2y = ty;
+        ctx.setLineDash([edge.dashLen, edge.gapLen]);
+        ctx.lineDashOffset = dashOffset;
         
         ctx.strokeStyle = 'rgba(108,123,255,0.55)';
         ctx.lineWidth = 1.4;
@@ -2913,8 +2956,8 @@
         ctx.shadowBlur = 4;
         
         ctx.beginPath();
-        ctx.moveTo(fx, fy);
-        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx, ty);
+        ctx.moveTo(edge.fx, edge.fy);
+        ctx.bezierCurveTo(edge.c1x, edge.c1y, edge.c2x, edge.c2y, edge.tx, edge.ty);
         ctx.stroke();
         
         ctx.shadowBlur = 0;
