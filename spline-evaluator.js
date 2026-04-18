@@ -138,11 +138,14 @@
   function evaluateNodeAtFrame(node, frame) {
     const result = {};
     const params = node.params || {};
+    
+    console.log('[SplineEvaluator] evaluateNodeAtFrame, node.params keys:', Object.keys(params));
 
     // Handle nested structure: params[tableKey] = { table: "Transform", params: { ... } }
     Object.entries(params).forEach(([tableKey, tableGroup]) => {
       // Skip metadata keys at top level
       if (tableKey.endsWith('_SourceOp') || tableKey.startsWith('_')) {
+        console.log('[SplineEvaluator] Skipping metadata key:', tableKey);
         return;
       }
 
@@ -150,9 +153,13 @@
       if (tableGroup && typeof tableGroup === 'object' && tableGroup.params) {
         const tableName = tableGroup.table || 'Parameters';
         const nestedParams = tableGroup.params;
+        const nestedKeys = Object.keys(nestedParams);
+        
+        console.log('[SplineEvaluator] Processing table:', tableKey, '->', tableName, 'with params:', nestedKeys);
 
         Object.entries(nestedParams).forEach(([key, param]) => {
           if (key.endsWith('_SourceOp') || key.startsWith('_')) {
+            console.log('[SplineEvaluator] Skipping nested metadata:', key);
             return;
           }
 
@@ -171,6 +178,7 @@
               frame: frame,
               table: tableName
             };
+            console.log('[SplineEvaluator] Added animated param:', key, '=', value, 'from', tableName);
           } else {
             // Static parameter - return stored value
             const val = param.v !== undefined ? param.v : param.value;
@@ -182,10 +190,12 @@
               frame: frame,
               table: tableName
             };
+            console.log('[SplineEvaluator] Added static param:', key, '=', val, 'from', tableName);
           }
         });
       } else {
         // Handle flat structure (fallback for backward compatibility)
+        console.log('[SplineEvaluator] Processing flat param:', tableKey);
         const param = tableGroup;
         if (tableKey.endsWith('_SourceOp') || tableKey.startsWith('_')) {
           return;
@@ -218,6 +228,8 @@
         }
       }
     });
+    
+    console.log('[SplineEvaluator] Total extracted:', Object.keys(result).length, 'keys:', Object.keys(result));
 
     return result;
   }
