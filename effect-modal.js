@@ -1822,23 +1822,6 @@
         }
       });
     }
-        if (videoDragHandle) videoDragHandle.style.cursor = 'grab';
-      }
-    });
-    
-    // Video close button
-    if (videoCloseBtn) {
-      videoCloseBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        videoContainer.style.display = 'none';
-        var toggleBtn = document.getElementById('exp-toggle-video');
-        if (toggleBtn) {
-          toggleBtn.style.background = 'rgba(6,6,13,0.75)';
-          toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
-          toggleBtn.style.color = 'rgba(255,255,255,0.55)';
-        }
-      });
-    }
     
     // Setup bottom bar toggle (compact: 40px collapsed, 120px expanded)
     var bottomBarExpanded = true;
