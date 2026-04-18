@@ -1206,10 +1206,10 @@
             '<svg class="graph-svg" id="graphSvg" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible;"></svg>' +
           '</div>' +
         '</div>' +
-        '<div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;">' +
-          '<button class="gc-btn" id="gcIn" style="font-size:14px;width:28px;height:28px;">+</button>' +
-          '<button class="gc-btn" id="gcOut" style="font-size:14px;width:28px;height:28px;">&minus;</button>' +
-          '<button class="gc-btn gc-fit" id="gcFit" style="font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;">FIT</button>' +
+        '<div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:6px;">' +
+          '<button class="gc-btn" id="gcIn" style="font-size:16px;width:36px;height:36px;border-radius:8px;">+</button>' +
+          '<button class="gc-btn" id="gcOut" style="font-size:16px;width:36px;height:36px;border-radius:8px;">&minus;</button>' +
+          '<button class="gc-btn gc-fit" id="gcFit" style="font-size:10px;width:auto;padding:8px 14px;letter-spacing:0.07em;border-radius:8px;">FIT</button>' +
         '</div>' +
         '<div class="graph-action-btns" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:8px;">' +
           '<button id="gcOpenEditor" style="background:rgba(6,6,13,0.85);backdrop-filter:blur(8px);border:1px solid rgba(108,123,255,0.3);border-radius:6px;color:var(--violet-light);font-family:var(--font-mono);font-size:10px;padding:6px 12px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;display:flex;align-items:center;gap:6px;">' +
