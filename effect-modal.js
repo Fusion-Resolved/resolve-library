@@ -1727,7 +1727,7 @@
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
     
-    // Setup video container drag functionality (3px threshold, click-through on non-drag)
+    // Setup video container drag functionality (3px threshold, overlay only active on mousedown)
     var videoCloseBtn = document.getElementById('exp-video-close');
     var videoDragOverlay = document.getElementById('exp-video-drag-overlay');
     var isDraggingVideo = false;
@@ -1736,35 +1736,41 @@
     var videoDragStartX = 0, videoDragStartY = 0;
     var videoMouseStartX = 0, videoMouseStartY = 0;
     var videoStartX = 0, videoStartY = 0;
-    var VIDEO_DRAG_THRESHOLD = 3; // pixels - lower threshold for more responsive feel
+    var VIDEO_DRAG_THRESHOLD = 3; // pixels
     
-    // Show/hide close button on hover
+    // Show/hide close button on hover (overlay stays inactive by default)
     videoContainer.addEventListener('mouseenter', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '1';
-      if (videoDragOverlay) videoDragOverlay.style.pointerEvents = 'auto';
     });
     videoContainer.addEventListener('mouseleave', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
+      // Keep overlay disabled when leaving (unless currently dragging)
       if (videoDragOverlay && !videoMouseDown) {
         videoDragOverlay.style.pointerEvents = 'none';
       }
     });
     
-    // Mousedown - start tracking, but don't decide yet if it's drag or click
-    if (videoDragOverlay) {
-      videoDragOverlay.addEventListener('mousedown', function(e) {
-        if (e.target === videoCloseBtn) return;
-        videoMouseDown = true;
-        hasVideoDragged = false;
-        videoMouseStartX = e.clientX;
-        videoMouseStartY = e.clientY;
-        videoDragStartX = e.clientX;
-        videoDragStartY = e.clientY;
-        videoStartX = parseInt(videoContainer.style.right) || 20;
-        videoStartY = parseInt(videoContainer.style.top) || 110;
-        // Don't prevent default - let the click potentially go through
-      });
-    }
+    // CRITICAL: The overlay starts as inactive (pointer-events: none)
+    // We only activate it on mousedown, so clicks normally pass through to YouTube
+    
+    // Use the video container itself to detect mousedown, then activate overlay
+    videoContainer.addEventListener('mousedown', function(e) {
+      if (e.target === videoCloseBtn || e.target.closest('#exp-video-close')) return;
+      
+      // Activate the overlay NOW to capture the drag
+      if (videoDragOverlay) {
+        videoDragOverlay.style.pointerEvents = 'auto';
+      }
+      
+      videoMouseDown = true;
+      hasVideoDragged = false;
+      videoMouseStartX = e.clientX;
+      videoMouseStartY = e.clientY;
+      videoDragStartX = e.clientX;
+      videoDragStartY = e.clientY;
+      videoStartX = parseInt(videoContainer.style.right) || 20;
+      videoStartY = parseInt(videoContainer.style.top) || 110;
+    });
     
     // Mousemove - check if we've moved enough to be a drag
     document.addEventListener('mousemove', function(e) {
@@ -1798,22 +1804,28 @@
       
       videoMouseDown = false;
       
-      // If we didn't drag (moved < 3px), it was a click - let it pass through
       if (!hasVideoDragged) {
-        // Temporarily disable overlay to let click reach YouTube
+        // It was a click - disable overlay immediately to let click pass through
         if (videoDragOverlay) {
           videoDragOverlay.style.pointerEvents = 'none';
-          // Re-enable after a short delay
+          videoDragOverlay.style.cursor = 'default';
+        }
+        
+        // The native click event will now propagate to the YouTube iframe
+        // We don't need to do anything else - the browser handles the click
+      } else {
+        // It was a drag - keep overlay active briefly, then check if still hovering
+        if (videoDragOverlay) {
+          videoDragOverlay.style.cursor = 'default';
           setTimeout(function() {
-            if (videoContainer.matches(':hover')) {
-              videoDragOverlay.style.pointerEvents = 'auto';
+            if (!videoContainer.matches(':hover')) {
+              videoDragOverlay.style.pointerEvents = 'none';
             }
-          }, 50);
+          }, 100);
         }
       }
       
       isDraggingVideo = false;
-      if (videoDragOverlay) videoDragOverlay.style.cursor = 'default';
     });
     
     // Video close button
