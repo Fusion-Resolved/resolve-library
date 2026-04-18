@@ -1661,16 +1661,18 @@
     container.appendChild(controls);
     container.appendChild(zoomLbl);
     
-    // Floating video (positioned below controls, draggable - no visible header)
+    // Floating video with visible drag handle at top
     var videoContainer = document.createElement('div');
     videoContainer.id = 'exp-video-section';
     videoContainer.style.cssText = 'position:absolute;top:110px;right:20px;width:320px;display:none;z-index:25;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,0.5);';
     videoContainer.innerHTML = 
+      '<div id="exp-video-drag-handle" style="height:24px;background:rgba(255,255,255,0.1);border-bottom:1px solid rgba(255,255,255,0.1);cursor:grab;display:flex;align-items:center;justify-content:center;user-select:none;">' +
+        '<div style="width:40px;height:4px;background:rgba(255,255,255,0.3);border-radius:2px;"></div>' +
+      '</div>' +
       '<div id="exp-video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">' +
         '<div id="exp-video-inner" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>' +
       '</div>' +
-      '<div id="exp-video-drag-overlay" style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:5;cursor:default;pointer-events:none;"></div>' +
-      '<button id="exp-video-close" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border:none;border-radius:4px;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;padding:4px 8px;opacity:0;transition:opacity 0.2s;z-index:10;pointer-events:auto;">&#x2715;</button>';
+      '<button id="exp-video-close" style="position:absolute;top:28px;right:8px;background:rgba(0,0,0,0.5);border:none;border-radius:4px;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;padding:4px 8px;opacity:0;transition:opacity 0.2s;z-index:10;">&#x2715;</button>';
     
     // Node details panel (only shows when node selected)
     var nodePanel = document.createElement('div');
@@ -1727,16 +1729,12 @@
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
     
-    // Setup video container drag functionality
+    // Setup video container drag functionality using the drag handle
     var videoCloseBtn = document.getElementById('exp-video-close');
-    var videoDragOverlay = document.getElementById('exp-video-drag-overlay');
+    var videoDragHandle = document.getElementById('exp-video-drag-handle');
     var isDraggingVideo = false;
-    var hasVideoDragged = false;
-    var videoMouseDown = false;
     var videoDragStartX = 0, videoDragStartY = 0;
-    var videoMouseStartX = 0, videoMouseStartY = 0;
     var videoStartX = 0, videoStartY = 0;
-    var VIDEO_DRAG_THRESHOLD = 3;
     
     // Show/hide close button on hover
     videoContainer.addEventListener('mouseenter', function() {
@@ -1746,98 +1744,38 @@
       if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
     });
     
-    // The key: overlay starts as pointer-events: none
-    // It captures events ONLY when we're actively interacting
-    
-    // Listen on the CONTAINER for mousedown (which fires even with inactive overlay above)
-    videoContainer.addEventListener('mousedown', function(e) {
-      console.log('[Video Drag] mousedown fired on container', 'target:', e.target.id || e.target.tagName);
-      
-      if (e.target === videoCloseBtn) {
-        console.log('[Video Drag] Clicked close button, ignoring');
-        return;
-      }
-      
-      videoMouseDown = true;
-      hasVideoDragged = false;
-      videoMouseStartX = e.clientX;
-      videoMouseStartY = e.clientY;
-      videoDragStartX = e.clientX;
-      videoDragStartY = e.clientY;
-      videoStartX = parseInt(videoContainer.style.right) || 20;
-      videoStartY = parseInt(videoContainer.style.top) || 110;
-      
-      console.log('[Video Drag] Starting tracking, position:', videoStartX, videoStartY);
-      
-      // CRITICAL: Activate overlay NOW so it captures mousemove events
-      if (videoDragOverlay) {
-        videoDragOverlay.style.pointerEvents = 'auto';
-        console.log('[Video Drag] Overlay activated');
-      }
-      
-    }, true); // Use capture phase to ensure we get the event
-    
-    // Global mousemove - track drag
-    document.addEventListener('mousemove', function(e) {
-      if (!videoMouseDown) return;
-      
-      var moveX = Math.abs(e.clientX - videoMouseStartX);
-      var moveY = Math.abs(e.clientY - videoMouseStartY);
-      
-      if (!hasVideoDragged) {
-        console.log('[Video Drag] mousemove, delta:', moveX, moveY, 'threshold:', VIDEO_DRAG_THRESHOLD);
-      }
-      
-      if (!hasVideoDragged && (moveX > VIDEO_DRAG_THRESHOLD || moveY > VIDEO_DRAG_THRESHOLD)) {
-        hasVideoDragged = true;
+    // Drag using the handle only (simple and reliable)
+    if (videoDragHandle) {
+      videoDragHandle.addEventListener('mousedown', function(e) {
+        e.preventDefault(); // Prevent text selection
         isDraggingVideo = true;
-        console.log('[Video Drag] DRAG STARTED!');
-        if (videoDragOverlay) videoDragOverlay.style.cursor = 'grabbing';
-      }
+        videoDragStartX = e.clientX;
+        videoDragStartY = e.clientY;
+        videoStartX = parseInt(videoContainer.style.right) || 20;
+        videoStartY = parseInt(videoContainer.style.top) || 110;
+        videoDragHandle.style.cursor = 'grabbing';
+      });
+    }
+    
+    // Global mousemove - move video when dragging
+    document.addEventListener('mousemove', function(e) {
+      if (!isDraggingVideo) return;
       
-      if (hasVideoDragged) {
-        var dx = e.clientX - videoDragStartX;
-        var dy = e.clientY - videoDragStartY;
-        var containerRect = container.getBoundingClientRect();
-        var newRight = Math.max(0, Math.min(containerRect.width - 320, videoStartX - dx));
-        var newTop = Math.max(50, Math.min(containerRect.height - 200, videoStartY + dy));
-        videoContainer.style.right = newRight + 'px';
-        videoContainer.style.top = newTop + 'px';
-        console.log('[Video Drag] Moving to:', newRight, newTop);
-      }
+      var dx = e.clientX - videoDragStartX;
+      var dy = e.clientY - videoDragStartY;
+      var containerRect = container.getBoundingClientRect();
+      var newRight = Math.max(0, Math.min(containerRect.width - 320, videoStartX - dx));
+      var newTop = Math.max(50, Math.min(containerRect.height - 200, videoStartY + dy));
+      videoContainer.style.right = newRight + 'px';
+      videoContainer.style.top = newTop + 'px';
     });
     
-    // Global mouseup
-    document.addEventListener('mouseup', function(e) {
-      if (!videoMouseDown) {
-        console.log('[Video Drag] mouseup but videoMouseDown is false');
-        return;
+    // Global mouseup - stop dragging
+    document.addEventListener('mouseup', function() {
+      if (isDraggingVideo) {
+        isDraggingVideo = false;
+        if (videoDragHandle) videoDragHandle.style.cursor = 'grab';
       }
-      
-      videoMouseDown = false;
-      
-      console.log('[Video Drag] mouseup, was drag:', hasVideoDragged);
-      
-      if (!hasVideoDragged) {
-        // It was a click - disable overlay so the click reaches YouTube
-        if (videoDragOverlay) {
-          videoDragOverlay.style.pointerEvents = 'none';
-          videoDragOverlay.style.cursor = 'default';
-        }
-      } else {
-        // It was a drag
-        if (videoDragOverlay) {
-          videoDragOverlay.style.cursor = 'default';
-          // Keep overlay active briefly, then check hover
-          setTimeout(function() {
-            if (!videoContainer.matches(':hover')) {
-              videoDragOverlay.style.pointerEvents = 'none';
-            }
-          }, 100);
-        }
-      }
-      
-      isDraggingVideo = false;
     });
     
     // Video close button
