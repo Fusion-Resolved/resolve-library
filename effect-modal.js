@@ -2854,14 +2854,21 @@
     function buildEdgeData() {
       var currentNodes = window.currentNodeData ? window.currentNodeData.nodes : nodes;
       var currentEdges = window.currentNodeData ? window.currentNodeData.edges : edges;
+      
+      // Debug logging
+      console.log('Building edge data, nodes:', currentNodes.length, 'edges:', currentEdges.length);
+      
       var nodeMap = {};
       currentNodes.forEach(function(n) { nodeMap[n.id] = n; });
       
       var edgeData = [];
-      currentEdges.forEach(function(e) {
+      currentEdges.forEach(function(e, i) {
         var fn = nodeMap[e.from];
         var tn = nodeMap[e.to];
-        if (!fn || !tn) return;
+        if (!fn || !tn) {
+          console.log('Missing node for edge', i, 'from:', e.from, 'to:', e.to, 'fn:', fn, 'tn:', tn);
+          return;
+        }
         
         var fx = (fn.x || 0) + NW;
         var fy = (fn.y || 0) + NH / 2;
@@ -2889,6 +2896,7 @@
         });
       });
       
+      console.log('Built edge data:', edgeData.length, 'edges');
       return edgeData;
     }
     
@@ -2909,8 +2917,10 @@
       maxX = Math.max(maxX + 100, 1200);
       maxY = Math.max(maxY + 100, 800);
       
-      // Resize canvas
-      if (Math.abs(canvas.width - maxX) > 50 || Math.abs(canvas.height - maxY) > 50) {
+      // Resize canvas if needed (always grow, shrink only if significantly smaller)
+      var needsResize = canvas.width < maxX || canvas.height < maxY || 
+                        Math.abs(canvas.width - maxX) > 200 || Math.abs(canvas.height - maxY) > 200;
+      if (needsResize) {
         canvas.width = maxX;
         canvas.height = maxY;
         canvas.style.width = maxX + 'px';
@@ -2919,13 +2929,17 @@
       
       // Also update world container size so CSS transform works correctly
       var world = canvas.parentElement;
-      if (world && (parseInt(world.style.width) < maxX || parseInt(world.style.height) < maxY)) {
-        world.style.width = maxX + 'px';
-        world.style.height = maxY + 'px';
-        var svg = world.querySelector('svg');
-        if (svg) {
-          svg.setAttribute('width', maxX);
-          svg.setAttribute('height', maxY);
+      if (world) {
+        var currentW = parseInt(world.style.width) || 0;
+        var currentH = parseInt(world.style.height) || 0;
+        if (currentW < maxX || currentH < maxY) {
+          world.style.width = maxX + 'px';
+          world.style.height = maxY + 'px';
+          var svg = world.querySelector('svg');
+          if (svg) {
+            svg.setAttribute('width', maxX);
+            svg.setAttribute('height', maxY);
+          }
         }
       }
     }
@@ -2941,8 +2955,13 @@
       // Build fresh edge data with current positions
       var edgeData = buildEdgeData();
       
+      // Debug: log if no edges
+      if (edgeData.length === 0) {
+        console.log('No edges to animate');
+      }
+      
       // Draw each edge with its own dash pattern based on path length
-      edgeData.forEach(function(edge) {
+      edgeData.forEach(function(edge, i) {
         // Calculate offset based on path length - this makes all edges animate at same speed
         var pixelsTraveled = (elapsed * SPEED) % (edge.length + edge.dashLen + edge.gapLen);
         var dashOffset = -pixelsTraveled;
