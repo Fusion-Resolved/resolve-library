@@ -1164,7 +1164,17 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     const verEl = document.getElementById('fVer');
     
     const stepsEl = document.getElementById('fSteps');
-    console.log('[doSave] Form elements:', {
+    console.log('[doSave] Form elements found:', {
+      fName: !!nameEl,
+      fDesc: !!descEl,
+      fSteps: !!stepsEl,
+      fCat: !!catEl,
+      fVer: !!verEl
+    });
+    if (!stepsEl) {
+      console.error('[doSave] CRITICAL: fSteps element not found in DOM!');
+    }
+    console.log('[doSave] Form values:', {
       name: nameEl ? nameEl.value : 'NOT FOUND',
       desc: descEl ? descEl.value.substring(0, 50) + '...' : 'NOT FOUND',
       steps: stepsEl ? stepsEl.value.substring(0, 50) + (stepsEl.value.length > 50 ? '...' : '') : 'NOT FOUND',
@@ -1568,6 +1578,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   }
 
   /* ── INIT ── */
+  console.log('[init] edit-effect-owner.html v1.1 - Steps field added');
   function init () {
     edCanvas  = document.getElementById('edCanvas');
     luaCanvas = document.getElementById('luaCanvas');
