@@ -759,33 +759,42 @@
     var vp = graphState.vp || viewport;
     var wrld = graphState.world || world;
     
+    console.log('[fitGraph] vp:', vp ? 'found' : 'missing', 'world:', wrld ? 'found' : 'missing');
+    
     if (!vp || !wrld) {
       console.log('[fitGraph] Missing viewport or world element');
       return;
     }
     
     var vr = vp.getBoundingClientRect();
-    var pad = 10; // Reduced padding for tighter fit
+    console.log('[fitGraph] Viewport size:', vr.width, 'x', vr.height);
+    
+    var pad = 10;
     var nodes = wrld.querySelectorAll('.gn-card');
+    console.log('[fitGraph] Node count:', nodes.length);
+    
     if (!nodes || nodes.length === 0) {
       console.log('[fitGraph] No nodes found');
       return;
     }
 
     var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
-    nodes.forEach(function(n) {
+    nodes.forEach(function(n, i) {
       var x = parseFloat(n.style.left) || 0;
       var y = parseFloat(n.style.top) || 0;
       if (x < mnX) mnX = x;
       if (y < mnY) mnY = y;
       if (x + NW > mxX) mxX = x + NW;
       if (y + NH > mxY) mxY = y + NH;
+      if (i < 3) console.log('[fitGraph] Node', i, 'pos:', x, y);
     });
 
     var gw = mxX - mnX;
     var gh = mxY - mnY;
     
-    // Ensure minimum dimensions to prevent division by zero
+    console.log('[fitGraph] Bounds:', mnX, mnY, mxX, mxY, 'Content size:', gw, gh);
+    
+    // Ensure minimum dimensions
     gw = Math.max(gw, NW);
     gh = Math.max(gh, NH);
     
@@ -796,7 +805,7 @@
     // Calculate scale to fit content in viewport
     var scaleX = availW / gw;
     var scaleY = availH / gh;
-    var newSc = Math.min(scaleX, scaleY, 1.5); // Max 150% zoom
+    var newSc = Math.min(scaleX, scaleY, 1.5);
     
     // Clamp to reasonable limits
     newSc = clampScale(Math.max(newSc, 0.1));
@@ -805,22 +814,23 @@
     var newTx = (vr.width - gw * newSc) / 2 - mnX * newSc;
     var newTy = (vr.height - gh * newSc) / 2 - mnY * newSc;
     
-    console.log('[fitGraph] Bounds:', mnX, mnY, mxX, mxY, 'Size:', gw, gh, 'Scale:', newSc, 'Translate:', newTx, newTy);
+    console.log('[fitGraph] Scale:', newSc, 'Translate:', newTx, newTy);
     
     // Update graphState
     graphState.sc = newSc;
     graphState.tx = newTx;
     graphState.ty = newTy;
     
-    // Update module-level variables for compatibility
+    // Update module-level variables
     sc = newSc;
     tx = newTx;
     ty = newTy;
     
     // Apply transform
     if (wrld) {
-      wrld.style.transform = 'translate(' + newTx + 'px,' + newTy + 'px) scale(' + newSc + ')';
+      wrld.style.transform = 'translate(' + newTx.toFixed(2) + 'px,' + newTy.toFixed(2) + 'px) scale(' + newSc.toFixed(4) + ')';
       wrld.style.transformOrigin = '0 0';
+      console.log('[fitGraph] Applied transform');
     }
     
     // Update zoom label
@@ -1281,7 +1291,12 @@
     
     buildGraphDOM();
     wireGraphEvents();
-    fitGraph();
+    
+    // Delay fit to ensure DOM is fully rendered
+    setTimeout(function() {
+      console.log('[initGraphViewport] Calling fitGraph after delay');
+      fitGraph();
+    }, 50);
   }
 
   function createGraphContainer() {
@@ -2545,6 +2560,10 @@
       var nodes = window.currentNodeData ? window.currentNodeData.nodes : [];
       if (!nodes.length) return;
       
+      // Get the offset that was applied during rendering
+      var offX = window._expandedRenderOffsetX || 0;
+      var offY = window._expandedRenderOffsetY || 0;
+      
       // Check if side panel is open and adjust available width
       var panel = document.getElementById('expanded-node-panel');
       var isPanelOpen = panel && panel.style.display !== 'none';
@@ -2554,8 +2573,9 @@
       var NW = 132, NH = 50;
       var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
       nodes.forEach(function(n) {
-        var nx = n.x || 0;
-        var ny = n.y || 0;
+        // Apply same offset as rendering
+        var nx = (n.x || 0) + offX;
+        var ny = (n.y || 0) + offY;
         if (nx < mnX) mnX = nx;
         if (ny < mnY) mnY = ny;
         if (nx + NW > mxX) mxX = nx + NW;
@@ -2564,11 +2584,19 @@
       
       var contentW = mxX - mnX;
       var contentH = mxY - mnY;
-      sc = Math.max(0.15, Math.min(3, Math.min((availableWidth - pad * 2) / contentW, (r.height - pad * 2) / contentH)));
-      tx = (availableWidth - contentW * sc) / 2 - mnX * sc + (isPanelOpen ? 0 : panelWidth / 2);
-      ty = (r.height - contentH * sc) / 2 - mnY * sc;
-      world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
-      zoomLbl.textContent = Math.round(sc * 100) + '%';
+      
+      // Ensure minimum dimensions
+      contentW = Math.max(contentW, NW);
+      contentH = Math.max(contentH, NH);
+      
+      var newSc = Math.max(0.15, Math.min(3, Math.min((availableWidth - pad * 2) / contentW, (r.height - pad * 2) / contentH)));
+      var newTx = (availableWidth - contentW * newSc) / 2 - mnX * newSc + (isPanelOpen ? 0 : panelWidth / 2);
+      var newTy = (r.height - contentH * newSc) / 2 - mnY * newSc;
+      
+      console.log('[exp-fit] Scale:', newSc, 'Translate:', newTx, newTy, 'Content:', contentW, contentH);
+      
+      world.style.transform = 'translate(' + newTx.toFixed(2) + 'px,' + newTy.toFixed(2) + 'px) scale(' + newSc.toFixed(4) + ')';
+      zoomLbl.textContent = Math.round(newSc * 100) + '%';
     });
     
     // Toggle Video button - pause/resume with localStorage persistence
