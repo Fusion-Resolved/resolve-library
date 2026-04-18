@@ -1657,45 +1657,45 @@
     container.appendChild(controls);
     container.appendChild(zoomLbl);
     
-    // Right side panel with collapsible sections
+    // Right side panel with collapsible sections (Video + Nodes only)
     var sidePanel = document.createElement('div');
     sidePanel.id = 'expanded-node-panel';
-    sidePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:0;width:360px;background:rgba(15,15,22,0.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:25;overflow:hidden;display:flex;flex-direction:column;';
+    sidePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:80px;width:360px;background:rgba(15,15,22,0.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:25;overflow:hidden;display:flex;flex-direction:column;';
     
     // Video section (collapsible, fixed height - no flex)
-    var videoSection = createCollapsibleSection('video', 'Video Tutorial', '<svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>', false, false);
+    var videoSection = createCollapsibleSection('video', 'Video Tutorial', '<svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>', true, false);
     videoSection.content.innerHTML = '<div id="exp-video-container" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;"></div>';
-    
-    // Steps section (collapsible, flexible - fills space)
-    var stepsSection = createCollapsibleSection('steps', 'Step-by-Step', '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>', true, true);
-    stepsSection.content.innerHTML = 
-      '<div style="display:flex;flex-direction:column;height:100%;">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">' +
-          '<span id="exp-step-counter" style="font-size:12px;color:var(--text-primary);">Step 1 of 5</span>' +
-          '<div style="display:flex;gap:6px;">' +
-            '<button id="exp-step-prev" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:11px;width:28px;height:28px;cursor:pointer;">&#x2190;</button>' +
-            '<button id="exp-step-next" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:11px;width:28px;height:28px;cursor:pointer;">&#x2192;</button>' +
-          '</div>' +
-        '</div>' +
-        '<div id="exp-step-content" style="font-size:14px;color:var(--text-secondary);line-height:1.6;padding:12px;background:rgba(6,6,13,0.5);border-radius:8px;border:1px solid rgba(255,255,255,0.08);flex:1;overflow-y:auto;"></div>' +
-        '<div id="exp-step-dots" style="display:flex;gap:4px;justify-content:center;margin-top:12px;flex-wrap:wrap;flex-shrink:0;"></div>' +
-      '</div>';
     
     // Nodes section (collapsible, flexible - fills space)
     var nodesSection = createCollapsibleSection('nodes', 'Node Details', '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>', true, true);
     nodesSection.content.innerHTML = '<div style="display:flex;flex-direction:column;height:100%;"><div style="flex:1;overflow-y:auto;padding:16px;"><div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--font-mono);">Select a node to view parameters</div></div></div>';
     
     sidePanel.appendChild(videoSection.section);
-    sidePanel.appendChild(stepsSection.section);
     sidePanel.appendChild(nodesSection.section);
+    
+    // Bottom bar for step navigation
+    var bottomBar = document.createElement('div');
+    bottomBar.id = 'expanded-bottom-bar';
+    bottomBar.style.cssText = 'position:absolute;bottom:0;left:0;right:360px;height:80px;background:rgba(15,15,22,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.08);z-index:26;display:flex;align-items:center;padding:0 20px;gap:16px;';
+    bottomBar.innerHTML = 
+      '<button id="exp-step-prev-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:14px;width:36px;height:36px;cursor:pointer;flex-shrink:0;">&#x2190;</button>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Step <span id="exp-step-current-bottom">1</span> of <span id="exp-step-total-bottom">5</span></div>' +
+        '<div id="exp-step-content-bottom" style="font-size:14px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Loading...</div>' +
+      '</div>' +
+      '<button id="exp-step-next-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:14px;width:36px;height:36px;cursor:pointer;flex-shrink:0;">&#x2192;</button>' +
+      '<div id="exp-step-dots-bottom" style="display:flex;gap:4px;flex-shrink:0;"></div>';
+    
     container.appendChild(sidePanel);
+    container.appendChild(bottomBar);
     
     modal.appendChild(container);
     document.body.appendChild(modal);
     
     // Store references for later use
     window.expandedNodePanel = sidePanel;
-    window.expandedSections = { video: videoSection, steps: stepsSection, nodes: nodesSection };
+    window.expandedBottomBar = bottomBar;
+    window.expandedSections = { video: videoSection, nodes: nodesSection };
     
     // Setup toggle functionality
     setupExpandedToggles();
@@ -2159,8 +2159,6 @@
               // First make sure at least one section block is visible
               var anySectionVisible = sections.video.section.style.display !== 'none' &&
                                       getComputedStyle(sections.video.section).display !== 'none' ||
-                                      sections.steps.section.style.display !== 'none' &&
-                                      getComputedStyle(sections.steps.section).display !== 'none' ||
                                       sections.nodes.section.style.display !== 'none' &&
                                       getComputedStyle(sections.nodes.section).display !== 'none';
               
@@ -2171,16 +2169,17 @@
               
               // Then ensure at least one section is expanded (content visible)
               var anyExpanded = sections.video._expanded ||
-                                sections.steps._expanded ||
                                 sections.nodes._expanded;
               if (!anyExpanded) {
                 // Expand the first available visible section
                 if (sections.nodes.section.style.display !== 'none') {
-                  sections.nodes.header.click();
-                } else if (sections.steps.section.style.display !== 'none') {
-                  sections.steps.header.click();
+                  sections.nodes._expanded = true;
+                  sections.nodes.content.style.maxHeight = 'none';
+                  sections.nodes.header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
                 } else if (sections.video.section.style.display !== 'none') {
-                  sections.video.header.click();
+                  sections.video._expanded = true;
+                  sections.video.content.style.maxHeight = 'none';
+                  sections.video.header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
                 }
               }
             }
@@ -2263,9 +2262,9 @@
   }
   
   function setupExpandedToggles() {
-    // Step navigation is wired separately
-    var prevBtn = document.getElementById('exp-step-prev');
-    var nextBtn = document.getElementById('exp-step-next');
+    // Step navigation for bottom bar
+    var prevBtn = document.getElementById('exp-step-prev-bottom');
+    var nextBtn = document.getElementById('exp-step-next-bottom');
     
     if (prevBtn) {
       prevBtn.addEventListener('click', function() {
@@ -2301,7 +2300,6 @@
         if (videoContainer) {
           videoContainer.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '?rel=0&modestbranding=1" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>';
         }
-        // Keep section visible but collapsed by default
       } else {
         // No valid YouTube ID - hide the section
         sections.video.section.style.display = 'none';
@@ -2311,36 +2309,34 @@
       sections.video.section.style.display = 'none';
     }
     
-    // Steps section
-    if (effect.steps) {
+    // Steps - populate bottom bar
+    var bottomBar = document.getElementById('expanded-bottom-bar');
+    if (effect.steps && bottomBar) {
       _expandedStepsData = Array.isArray(effect.steps) ? effect.steps : effect.steps.split('\n').filter(function(s) { return s.trim(); });
       if (_expandedStepsData.length > 0) {
         renderExpandedStep(0);
-        // Keep section visible, collapsed by default unless it's the only content
-        if (!effect.video_url && (!window.currentNodeData || !window.currentNodeData.nodes.length)) {
-          // Auto-expand if it's the only content
-          sections.video.section.style.display = 'none';
-          sections.nodes.section.style.display = 'none';
-          sections.steps.header.click();
-        }
+        bottomBar.style.display = 'flex';
       } else {
-        sections.steps.section.style.display = 'none';
+        bottomBar.style.display = 'none';
       }
-    } else {
-      sections.steps.section.style.display = 'none';
+    } else if (bottomBar) {
+      bottomBar.style.display = 'none';
     }
     
     // Nodes section - always visible if we have node data
     if (!window.currentNodeData || !window.currentNodeData.nodes.length) {
       sections.nodes.section.style.display = 'none';
-    } else if (!effect.video_url && (!effect.steps || !_expandedStepsData.length)) {
-      // Auto-expand nodes if it's the only content
-      sections.nodes.header.click();
+    } else if (!effect.video_url) {
+      // Auto-expand nodes if video is not available
+      if (!sections.nodes._expanded) {
+        sections.nodes._expanded = true;
+        sections.nodes.content.style.maxHeight = 'none';
+        sections.nodes.header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
+      }
     }
     
-    // Check if any sections are visible, if not hide the entire panel and adjust controls
+    // Check if any side panel sections are visible, if not hide the panel and adjust controls
     var anyVisible = sections.video.section.style.display !== 'none' ||
-                     sections.steps.section.style.display !== 'none' ||
                      sections.nodes.section.style.display !== 'none';
     var panel = document.getElementById('expanded-node-panel');
     var controls = document.getElementById('expanded-controls');
@@ -2348,11 +2344,24 @@
     
     if (!anyVisible && panel) {
       panel.style.display = 'none';
-      if (controls) controls.style.right = '20px';
+      // If bottom bar is visible, keep controls in appropriate position
+      var bottomBar = document.getElementById('expanded-bottom-bar');
+      var bottomBarVisible = bottomBar && bottomBar.style.display !== 'none';
+      if (controls) controls.style.right = bottomBarVisible ? '20px' : '20px';
       if (toggleBtn) {
         toggleBtn.style.background = 'rgba(6,6,13,0.75)';
         toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
         toggleBtn.style.color = 'rgba(255,255,255,0.55)';
+      }
+    }
+    
+    // Adjust side panel position if bottom bar is hidden
+    var bottomBar = document.getElementById('expanded-bottom-bar');
+    if (bottomBar && panel) {
+      if (bottomBar.style.display === 'none') {
+        panel.style.bottom = '0';
+      } else {
+        panel.style.bottom = '80px';
       }
     }
   }
@@ -2360,12 +2369,14 @@
   function renderExpandedStep(idx) {
     if (!_expandedStepsData.length || idx < 0 || idx >= _expandedStepsData.length) return;
     
-    var content = document.getElementById('exp-step-content');
-    var counter = document.getElementById('exp-step-counter');
-    var dots = document.getElementById('exp-step-dots');
+    var content = document.getElementById('exp-step-content-bottom');
+    var current = document.getElementById('exp-step-current-bottom');
+    var total = document.getElementById('exp-step-total-bottom');
+    var dots = document.getElementById('exp-step-dots-bottom');
     
     if (content) content.textContent = _expandedStepsData[idx];
-    if (counter) counter.textContent = 'Step ' + (idx + 1) + ' of ' + _expandedStepsData.length;
+    if (current) current.textContent = idx + 1;
+    if (total) total.textContent = _expandedStepsData.length;
     
     if (dots) {
       dots.innerHTML = _expandedStepsData.map(function(_, i) {
@@ -2374,8 +2385,8 @@
     }
     
     // Update button states
-    var prevBtn = document.getElementById('exp-step-prev');
-    var nextBtn = document.getElementById('exp-step-next');
+    var prevBtn = document.getElementById('exp-step-prev-bottom');
+    var nextBtn = document.getElementById('exp-step-next-bottom');
     if (prevBtn) prevBtn.style.opacity = idx === 0 ? '0.4' : '1';
     if (nextBtn) nextBtn.style.opacity = idx === _expandedStepsData.length - 1 ? '0.4' : '1';
   }
