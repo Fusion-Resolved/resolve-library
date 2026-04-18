@@ -1666,16 +1666,21 @@
     sidePanel.id = 'expanded-node-panel';
     sidePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:80px;width:360px;background:rgba(15,15,22,0.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:25;overflow:hidden;display:flex;flex-direction:column;';
     
-    // Video section (collapsible, fixed height - no flex)
-    var videoSection = createCollapsibleSection('video', 'Video Tutorial', '<svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>', true, false);
-    videoSection.content.innerHTML = '<div id="exp-video-container" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;"></div>';
+    // Video container (no header, just the video)
+    var videoContainer = document.createElement('div');
+    videoContainer.id = 'exp-video-section';
+    videoContainer.style.cssText = 'flex:0 0 auto;display:none;'; // Hidden by default
+    videoContainer.innerHTML = '<div id="exp-video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;margin:16px;"></div>';
     
     // Nodes section (collapsible, flexible - fills space)
     var nodesSection = createCollapsibleSection('nodes', 'Node Details', '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>', true, true);
     nodesSection.content.innerHTML = '<div style="display:flex;flex-direction:column;height:100%;"><div style="flex:1;overflow-y:auto;padding:16px;"><div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--font-mono);">Select a node to view parameters</div></div></div>';
     
-    sidePanel.appendChild(videoSection.section);
+    sidePanel.appendChild(videoContainer);
     sidePanel.appendChild(nodesSection.section);
+    
+    // Store reference to video container for toggling
+    window.expandedVideoContainer = videoContainer;
     
     // Bottom bar for step navigation (collapsible, compact)
     var bottomBar = document.createElement('div');
@@ -1722,7 +1727,8 @@
     window.expandedBottomBar = bottomBar;
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
-    window.expandedSections = { video: videoSection, nodes: nodesSection };
+    window.expandedVideoContainer = videoContainer;
+    window.expandedSections = { nodes: nodesSection };
     
     // Setup bottom bar toggle (compact: 40px collapsed, 120px expanded)
     var bottomBarExpanded = true;
@@ -1782,12 +1788,15 @@
       controls.style.right = '20px';
     }
     
-    // Update toggle button to "off" state and hide video section
-    if (toggleBtn && sections && sections.video) {
+    // Update toggle button to "off" state and hide video container
+    if (toggleBtn) {
       toggleBtn.style.background = 'rgba(6,6,13,0.75)';
       toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
       toggleBtn.style.color = 'rgba(255,255,255,0.55)';
-      sections.video.section.style.display = 'none';
+    }
+    var videoContainer = document.getElementById('exp-video-section');
+    if (videoContainer) {
+      videoContainer.style.display = 'none';
     }
     
     // Auto-fit graph to use full screen width
@@ -2237,21 +2246,18 @@
     var toggleVideoBtn = document.getElementById('exp-toggle-video');
     if (toggleVideoBtn) {
       toggleVideoBtn.addEventListener('click', function() {
-        var sections = window.expandedSections;
+        var videoContainer = document.getElementById('exp-video-section');
         var panel = document.getElementById('expanded-node-panel');
         var controls = document.getElementById('expanded-controls');
         
-        if (!sections || !sections.video) return;
+        if (!videoContainer) return;
         
-        // Toggle video section visibility
-        var isHidden = sections.video.section.style.display === 'none';
+        // Toggle video container visibility
+        var isHidden = videoContainer.style.display === 'none';
         
         if (isHidden) {
-          // Show video section
-          sections.video.section.style.display = 'block';
-          sections.video._expanded = true;
-          sections.video.content.style.maxHeight = 'none';
-          sections.video.header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
+          // Show video container
+          videoContainer.style.display = 'block';
           
           // Show panel if hidden
           if (panel) panel.style.display = 'flex';
@@ -2264,11 +2270,12 @@
           toggleVideoBtn.style.borderColor = 'rgba(108,123,255,0.5)';
           toggleVideoBtn.style.color = 'var(--violet-light)';
         } else {
-          // Hide video section
-          sections.video.section.style.display = 'none';
+          // Hide video container
+          videoContainer.style.display = 'none';
           
           // If nodes section is also hidden/empty, hide entire panel
-          if (sections.nodes.section.style.display === 'none') {
+          var nodesSection = document.getElementById('exp-section-nodes');
+          if (!nodesSection || nodesSection.style.display === 'none') {
             if (panel) panel.style.display = 'none';
             if (controls) controls.style.right = '20px';
           } else {
@@ -2384,21 +2391,23 @@
     var sections = window.expandedSections;
     if (!sections) return;
     
-    // Video section
+    // Video container
     if (effect.video_url) {
       var ytId = extractYouTubeId(effect.video_url);
       if (ytId) {
-        var videoContainer = document.getElementById('exp-video-container');
-        if (videoContainer) {
-          videoContainer.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '?rel=0&modestbranding=1" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>';
+        var videoWrapper = document.getElementById('exp-video-wrapper');
+        if (videoWrapper) {
+          videoWrapper.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '?rel=0&modestbranding=1" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>';
         }
       } else {
-        // No valid YouTube ID - hide the section
-        sections.video.section.style.display = 'none';
+        // No valid YouTube ID - hide the video container
+        var videoContainer = document.getElementById('exp-video-section');
+        if (videoContainer) videoContainer.style.display = 'none';
       }
     } else {
-      // No video URL - hide the section entirely
-      sections.video.section.style.display = 'none';
+      // No video URL - hide the video container entirely
+      var videoContainer = document.getElementById('exp-video-section');
+      if (videoContainer) videoContainer.style.display = 'none';
     }
     
     // Steps - populate bottom bar
@@ -2428,8 +2437,10 @@
     }
     
     // Check if any side panel sections are visible, update Video button state
-    var anyVisible = sections.video.section.style.display !== 'none' ||
-                     sections.nodes.section.style.display !== 'none';
+    var videoContainer = document.getElementById('exp-video-section');
+    var videoVisible = videoContainer && videoContainer.style.display !== 'none';
+    var nodesVisible = sections.nodes.section.style.display !== 'none';
+    var anyVisible = videoVisible || nodesVisible;
     var panel = document.getElementById('expanded-node-panel');
     var controls = document.getElementById('expanded-controls');
     var toggleBtn = document.getElementById('exp-toggle-video');
@@ -2442,9 +2453,9 @@
       if (controls) controls.style.right = bottomBarVisible ? '20px' : '20px';
     }
     
-    // Update Video button state based on video section visibility
+    // Update Video button state based on video container visibility
     if (toggleBtn) {
-      if (sections.video.section.style.display === 'none') {
+      if (!videoVisible) {
         toggleBtn.style.background = 'rgba(6,6,13,0.75)';
         toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
         toggleBtn.style.color = 'rgba(255,255,255,0.55)';
