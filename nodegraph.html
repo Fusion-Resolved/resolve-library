@@ -4709,17 +4709,22 @@ function updateSaveButtonVisibility() {
   const btnUpdateEffect = document.getElementById('btn-update-effect');
   const saveLabel = document.getElementById('save-graph-label');
   
+  console.log('[nodegraph] updateSaveButtonVisibility called, saveLabel:', saveLabel, 'currentEffectName:', currentEffectName);
+  
   if (!btnSaveLib || !btnUpdateEffect) return;
   
   // Update label with effect name if loaded (use currentEffectName from DB, fallback to linkedEffects)
   if (saveLabel) {
     if (currentEffectId && currentEffectName) {
       saveLabel.textContent = currentEffectName;
+      console.log('[nodegraph] Set label to currentEffectName:', currentEffectName);
     } else if (currentEffectId) {
       const eff = linkedEffects.find(function(le) { return le.id === currentEffectId; });
       saveLabel.textContent = eff ? eff.name : 'Save graph';
+      console.log('[nodegraph] Set label from linkedEffects:', eff ? eff.name : 'Save graph');
     } else {
       saveLabel.textContent = 'Save graph';
+      console.log('[nodegraph] Set label to default: Save graph');
     }
   }
   
@@ -5875,7 +5880,11 @@ document.getElementById('params-paste').addEventListener('paste', () => {
       currentEffectOwnerId = row.user_id;
       isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
       console.log('[nodegraph] Loaded effect:', row.id, 'Name:', row.name, 'Owner:', row.user_id, 'Is owner:', isCurrentUserOwner);
-      updateSaveButtonVisibility();
+      // Update UI with a slight delay to ensure DOM is ready
+      setTimeout(function() {
+        updateSaveButtonVisibility();
+        console.log('[nodegraph] Updated save button, currentEffectName:', currentEffectName);
+      }, 50);
 
       // The `nodes` column is JSONB. It may be:
       //   a) A full graph object (schemaVersion >= 2) — saved by this system
@@ -5893,6 +5902,12 @@ document.getElementById('params-paste').addEventListener('paste', () => {
         }
         setTimeout(function() {
           _deserializeAndLoad(nodesData);
+          // Restore effect info after clearCanvas() in _deserializeAndLoad
+          currentEffectId = row.id;
+          currentEffectName = row.name;
+          currentEffectOwnerId = row.user_id;
+          isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
+          updateSaveButtonVisibility();
           if (svName) svName.value = nodesData.name || row.name;
           if (svName) svName.placeholder = 'Graph name…';
           toast('Graph loaded from Supabase ✓');
@@ -5916,6 +5931,12 @@ document.getElementById('params-paste').addEventListener('paste', () => {
             }
           });
           updAllPS(); renderAllConns();
+          // Restore effect info after operations that may have cleared it
+          currentEffectId = row.id;
+          currentEffectName = row.name;
+          currentEffectOwnerId = row.user_id;
+          isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
+          updateSaveButtonVisibility();
           if (svName) svName.value = row.name;
           toast('Nodes loaded (legacy format) — save to upgrade');
         }, 100);
@@ -5925,6 +5946,12 @@ document.getElementById('params-paste').addEventListener('paste', () => {
           linkedEffects.push({ id: row.id, name: row.name });
         }
         renderEffList();
+        // Restore effect info
+        currentEffectId = row.id;
+        currentEffectName = row.name;
+        currentEffectOwnerId = row.user_id;
+        isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
+        updateSaveButtonVisibility();
         if (svName) svName.value = row.name;
         if (svName) svName.placeholder = 'Graph name…';
         toast('No graph data yet — canvas ready, effect linked');
@@ -5940,13 +5967,34 @@ document.getElementById('params-paste').addEventListener('paste', () => {
   } else if (graphId) {
     // ── Path 2: Load from localStorage by graph ID ─────────────────────────
     const g = savedGraphs.find(x => x.id === graphId);
-    if (g) { setTimeout(function() { loadGraph(g); toast('Graph loaded'); }, 100); }
+    if (g) { 
+      setTimeout(function() { 
+        loadGraph(g); 
+        // Set effect info if this graph is linked to an effect
+        if (g.linkedEffects && g.linkedEffects.length > 0) {
+          currentEffectId = g.linkedEffects[0].id;
+          currentEffectName = g.linkedEffects[0].name;
+          updateSaveButtonVisibility();
+        }
+        toast('Graph loaded'); 
+      }, 100); 
+    }
 
   } else if (effId) {
     // ── Path 3: Find graph linked to this effect in localStorage ───────────
     const g = savedGraphs.find(x => (x.linkedEffects || []).some(le => le.id === effId));
     if (g) {
-      setTimeout(function() { loadGraph(g); toast('Graph loaded'); }, 100);
+      setTimeout(function() { 
+        loadGraph(g); 
+        // Set effect info from the graph's linked effects
+        const linkedEff = g.linkedEffects.find(function(le) { return le.id === effId; });
+        if (linkedEff) {
+          currentEffectId = linkedEff.id;
+          currentEffectName = linkedEff.name;
+          updateSaveButtonVisibility();
+        }
+        toast('Graph loaded'); 
+      }, 100);
     } else {
       // ── Path 3b: localStorage miss → fetch graph_payload from Supabase ──
       // Checks every known column name so older and newer DB rows both work.
@@ -5966,6 +6014,11 @@ document.getElementById('params-paste').addEventListener('paste', () => {
         const row  = Array.isArray(rows) ? rows[0] : null;
         if (row) {
           console.log('[nodegraph] Path 3b — Supabase row:', row);
+          // Store effect info for save button label
+          currentEffectId = row.id;
+          currentEffectName = row.name;
+          currentEffectOwnerId = row.user_id;
+          isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
           // Accept payload from any of the three known column names (newest → oldest)
           const payload = row.graph_payload || row.nodeCode || row.node_code;
           if (payload) {
@@ -5976,6 +6029,7 @@ document.getElementById('params-paste').addEventListener('paste', () => {
                 linkedEffects.push({ id: row.id, name: row.name });
               }
               renderEffList();
+              updateSaveButtonVisibility();
               toast('Graph loaded from Supabase ✓');
             }, 100);
           } else {
