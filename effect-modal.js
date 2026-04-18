@@ -1625,10 +1625,10 @@
     };
     header.appendChild(closeBtn);
     
-    // Graph viewport (clone of main graph) - bottom adjusts for step bar
+    // Graph viewport (clone of main graph) - bottom adjusts for compact step bar (40px)
     var viewport = document.createElement('div');
     viewport.id = 'expanded-graph-vp';
-    viewport.style.cssText = 'position:absolute;top:50px;left:0;right:0;bottom:56px;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;overflow:hidden;cursor:grab;';
+    viewport.style.cssText = 'position:absolute;top:50px;left:0;right:0;bottom:40px;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;overflow:hidden;cursor:grab;';
     
     var world = document.createElement('div');
     world.id = 'expanded-graph-world';
@@ -1677,35 +1677,35 @@
     sidePanel.appendChild(videoSection.section);
     sidePanel.appendChild(nodesSection.section);
     
-    // Bottom bar for step navigation (collapsible)
+    // Bottom bar for step navigation (collapsible, compact)
     var bottomBar = document.createElement('div');
     bottomBar.id = 'expanded-bottom-bar';
     bottomBar.style.cssText = 'position:absolute;bottom:0;left:0;right:360px;background:rgba(15,15,22,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.08);z-index:26;display:flex;flex-direction:column;transition:height 0.3s ease;';
     
-    // Header (clickable to toggle)
+    // Header (clickable to toggle) - compact 40px height
     var bottomBarHeader = document.createElement('div');
     bottomBarHeader.id = 'exp-bottom-bar-header';
-    bottomBarHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 20px;cursor:pointer;user-select:none;height:56px;box-sizing:border-box;';
+    bottomBarHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 16px;cursor:pointer;user-select:none;height:40px;box-sizing:border-box;';
     bottomBarHeader.innerHTML = 
-      '<div style="display:flex;align-items:center;gap:12px;">' +
-        '<svg class="exp-bottom-chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.5);transition:transform 0.2s;"><polyline points="18 15 12 9 6 15"/></svg>' +
-        '<span style="font-size:12px;color:var(--text-primary);font-weight:500;">Step-by-Step</span>' +
-        '<span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,0.5);"><span id="exp-step-current-header">1</span> / <span id="exp-step-total-header">5</span></span>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<svg class="exp-bottom-chevron" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.5);transition:transform 0.2s;"><polyline points="18 15 12 9 6 15"/></svg>' +
+        '<span style="font-size:11px;color:var(--text-primary);font-weight:500;">Steps</span>' +
+        '<span style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.5);"><span id="exp-step-current-header">1</span>/<span id="exp-step-total-header">5</span></span>' +
       '</div>' +
-      '<div id="exp-step-preview" style="font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;">Loading...</div>';
+      '<div id="exp-step-preview" style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px;">Loading...</div>';
     
-    // Content (collapsible)
+    // Content (collapsible) - compact 80px height
     var bottomBarContent = document.createElement('div');
     bottomBarContent.id = 'exp-bottom-bar-content';
     bottomBarContent.style.cssText = 'overflow:hidden;transition:max-height 0.3s ease;';
     bottomBarContent.innerHTML = 
-      '<div style="display:flex;align-items:center;padding:0 20px 20px;gap:16px;">' +
-        '<button id="exp-step-prev-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:14px;width:36px;height:36px;cursor:pointer;flex-shrink:0;">&#x2190;</button>' +
+      '<div style="display:flex;align-items:center;padding:0 16px 12px;gap:12px;">' +
+        '<button id="exp-step-prev-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:12px;width:28px;height:28px;cursor:pointer;flex-shrink:0;">&#x2190;</button>' +
         '<div style="flex:1;min-width:0;">' +
-          '<div id="exp-step-content-bottom" style="font-size:14px;color:var(--text-secondary);line-height:1.6;max-height:100px;overflow-y:auto;">Loading...</div>' +
+          '<div id="exp-step-content-bottom" style="font-size:12px;color:var(--text-secondary);line-height:1.5;max-height:60px;overflow-y:auto;">Loading...</div>' +
         '</div>' +
-        '<button id="exp-step-next-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:14px;width:36px;height:36px;cursor:pointer;flex-shrink:0;">&#x2192;</button>' +
-        '<div id="exp-step-dots-bottom" style="display:flex;gap:4px;flex-shrink:0;"></div>' +
+        '<button id="exp-step-next-bottom" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:12px;width:28px;height:28px;cursor:pointer;flex-shrink:0;">&#x2192;</button>' +
+        '<div id="exp-step-dots-bottom" style="display:flex;gap:3px;flex-shrink:0;"></div>' +
       '</div>';
     
     bottomBar.appendChild(bottomBarHeader);
@@ -1724,19 +1724,19 @@
     window.expandedBottomBarHeader = bottomBarHeader;
     window.expandedSections = { video: videoSection, nodes: nodesSection };
     
-    // Setup bottom bar toggle
+    // Setup bottom bar toggle (compact: 40px collapsed, 120px expanded)
     var bottomBarExpanded = true;
     bottomBarHeader.addEventListener('click', function() {
       bottomBarExpanded = !bottomBarExpanded;
       var viewport = document.getElementById('expanded-graph-vp');
       if (bottomBarExpanded) {
-        bottomBarContent.style.maxHeight = '150px';
+        bottomBarContent.style.maxHeight = '80px';
         bottomBarHeader.querySelector('.exp-bottom-chevron').style.transform = 'rotate(180deg)';
-        if (viewport) viewport.style.bottom = '176px';
+        if (viewport) viewport.style.bottom = '120px';
       } else {
         bottomBarContent.style.maxHeight = '0';
         bottomBarHeader.querySelector('.exp-bottom-chevron').style.transform = 'rotate(0deg)';
-        if (viewport) viewport.style.bottom = '56px';
+        if (viewport) viewport.style.bottom = '40px';
       }
       // Recalculate fit after toggle
       var fitBtn = document.getElementById('exp-fit');
@@ -2460,15 +2460,15 @@
       }
     }
     
-    // Adjust side panel position if bottom bar is hidden
+    // Adjust side panel position based on bottom bar state
     var bottomBar = document.getElementById('expanded-bottom-bar');
     var bottomBarContent = document.getElementById('exp-bottom-bar-content');
     if (bottomBar && panel) {
       if (bottomBar.style.display === 'none') {
         panel.style.bottom = '0';
       } else {
-        // Calculate bottom bar height based on collapsed/expanded state
-        var barHeight = bottomBarContent && bottomBarContent.style.maxHeight !== '0' ? 176 : 56;
+        // Calculate bottom bar height based on collapsed/expanded state (40px or 120px)
+        var barHeight = bottomBarContent && bottomBarContent.style.maxHeight !== '0' ? 120 : 40;
         panel.style.bottom = barHeight + 'px';
       }
     }
@@ -2497,9 +2497,9 @@
       var dotsHtml = '';
       
       if (totalSteps <= maxVisible) {
-        // Show all dots if fewer than max
+        // Show all dots if fewer than max (compact 5px dots)
         dotsHtml = _expandedStepsData.map(function(_, i) {
-          return '<span style="width:6px;height:6px;border-radius:50%;background:' + (i === idx ? 'var(--violet)' : 'rgba(255,255,255,0.2)') + ';transition:background 0.15s;flex-shrink:0;"></span>';
+          return '<span style="width:5px;height:5px;border-radius:50%;background:' + (i === idx ? 'var(--violet)' : 'rgba(255,255,255,0.2)') + ';transition:background 0.15s;flex-shrink:0;"></span>';
         }).join('');
       } else {
         // Show sliding window with ellipses
@@ -2513,17 +2513,17 @@
         
         // Leading ellipsis
         if (start > 0) {
-          dotsHtml += '<span style="font-size:10px;color:rgba(255,255,255,0.3);margin:0 2px;">…</span>';
+          dotsHtml += '<span style="font-size:9px;color:rgba(255,255,255,0.3);margin:0 2px;">…</span>';
         }
         
-        // Visible dots
+        // Visible dots (compact 5px)
         for (var i = start; i < end; i++) {
-          dotsHtml += '<span style="width:6px;height:6px;border-radius:50%;background:' + (i === idx ? 'var(--violet)' : 'rgba(255,255,255,0.2)') + ';transition:background 0.15s;flex-shrink:0;"></span>';
+          dotsHtml += '<span style="width:5px;height:5px;border-radius:50%;background:' + (i === idx ? 'var(--violet)' : 'rgba(255,255,255,0.2)') + ';transition:background 0.15s;flex-shrink:0;"></span>';
         }
         
         // Trailing ellipsis
         if (end < totalSteps) {
-          dotsHtml += '<span style="font-size:10px;color:rgba(255,255,255,0.3);margin:0 2px;">…</span>';
+          dotsHtml += '<span style="font-size:9px;color:rgba(255,255,255,0.3);margin:0 2px;">…</span>';
         }
       }
       
