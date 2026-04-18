@@ -2335,10 +2335,25 @@
     var controls = document.getElementById('expanded-controls');
     if (!nodePanel || !nodeContent) return;
     
+    // Get animation range for this node
+    var frameRange = { start: 0, end: 100 };
+    var allKeyframes = [];
     var params = node.params || {};
-    var hasParams = Object.keys(params).length > 0;
     
-    // Build node details content
+    Object.values(params).forEach(function(param) {
+      if (param.keyframes && param.keyframes.length > 0) {
+        param.keyframes.forEach(function(kf) {
+          allKeyframes.push(kf.frame);
+          frameRange.start = Math.min(frameRange.start, kf.frame);
+          frameRange.end = Math.max(frameRange.end, kf.frame);
+        });
+      }
+    });
+    
+    var hasParams = Object.keys(params).length > 0;
+    var hasAnimation = allKeyframes.length > 0;
+    
+    // Build node details content with timeline integration
     var html = 
       '<div style="padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px;">' +
         '<div style="display:flex;align-items:center;gap:10px;">' +
@@ -2350,29 +2365,19 @@
         '</div>' +
       '</div>';
     
+    // Add timeline component if animation exists
+    if (hasAnimation) {
+      html += 
+        '<div id="timeline-container-' + node.id + '" style="margin-bottom:16px;"></div>' +
+        '<div id="value-display-' + node.id + '" style="margin-bottom:16px;"></div>';
+    }
+    
     if (hasParams) {
       html += '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;">Parameters</div>';
-      html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+      html += '<div id="param-list-' + node.id + '" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;">';
       
-      Object.entries(params).forEach(function([key, param]) {
-        var val = param.value !== undefined ? param.value : param;
-        var hasKeyframes = param.keyframes && param.keyframes.length > 0;
-        
-        html += 
-          '<div style="padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.05);">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
-              '<span style="font-family:var(--font-mono);font-size:10px;color:var(--violet-light);">' + key + '</span>' +
-              '<span style="font-family:var(--font-mono);font-size:10px;color:var(--teal);padding:2px 6px;background:rgba(15,168,136,0.08);border-radius:3px;border:1px solid rgba(15,168,136,0.2);">' + val + '</span>' +
-            '</div>';
-        
-        if (hasKeyframes) {
-          html += '<div style="margin-top:8px;height:60px;position:relative;">';
-          html += '<canvas id="spline-' + node.id + '-' + key + '" style="width:100%;height:60px;border-radius:4px;background:rgba(0,0,0,0.3);"></canvas>';
-          html += '</div>';
-        }
-        
-        html += '</div>';
-      });
+      // Parameters will be rendered by value display component
+      html += '<div style="padding:20px;text-align:center;font-size:12px;color:rgba(255,255,255,0.4);">Loading parameters...</div>';
       
       html += '</div>';
     } else {
@@ -2389,6 +2394,53 @@
     if (controls) {
       controls.style.right = '380px';
     }
+    
+    // Initialize new components if animation exists
+    if (hasAnimation && window.TimelineScrubber && window.ParameterValueDisplay) {
+      var timelineContainer = document.getElementById('timeline-container-' + node.id);
+      var valueContainer = document.getElementById('value-display-' + node.id);
+      var paramList = document.getElementById('param-list-' + node.id);
+      
+      if (timelineContainer && valueContainer) {
+        // Create timeline scrubber
+        var timeline = new window.TimelineScrubber(timelineContainer, {
+          startFrame: Math.floor(frameRange.start),
+          endFrame: Math.ceil(frameRange.end),
+          currentFrame: Math.floor(frameRange.start),
+          keyframes: allKeyframes,
+          onFrameChange: function(frame) {
+            // Update value display when frame changes
+            valueDisplay.setFrame(frame);
+          }
+        });
+        
+        // Create value display
+        var valueDisplay = new window.ParameterValueDisplay(valueContainer, {
+          node: node,
+          currentFrame: Math.floor(frameRange.start),
+          onParamClick: function(key, param) {
+            // Show detailed spline view for clicked parameter
+            showParamDetail(node, key, param);
+          }
+        });
+        
+        // Store references for cleanup
+        nodePanel._timeline = timeline;
+        nodePanel._valueDisplay = valueDisplay;
+      }
+    }
+    
+    // Fallback: render spline canvases for original implementation
+    setTimeout(function() {
+      Object.entries(params).forEach(function([key, param]) {
+        if (param.keyframes && param.keyframes.length > 0) {
+          var canvas = document.getElementById('spline-' + node.id + '-' + key);
+          if (canvas && window.renderSplineToCanvas) {
+            window.renderSplineToCanvas(canvas, param.keyframes);
+          }
+        }
+      });
+    }, 50);
     
     // Render spline canvases after DOM update
     if (hasParams) {
