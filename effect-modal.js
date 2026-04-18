@@ -2246,11 +2246,10 @@
           togglePanelBtn.style.background = isActive ? 'rgba(108,123,255,0.25)' : 'rgba(6,6,13,0.75)';
           togglePanelBtn.style.borderColor = isActive ? 'rgba(108,123,255,0.5)' : 'rgba(255,255,255,0.1)';
           togglePanelBtn.style.color = isActive ? 'var(--violet-light)' : 'rgba(255,255,255,0.55)';
-          // Auto-fit graph after toggle
-          setTimeout(function() {
-            var fitBtn = document.getElementById('exp-fit');
-            if (fitBtn) fitBtn.click();
-          }, 260);
+          
+          // Auto-fit graph immediately (will animate smoothly with CSS transition)
+          var fitBtn = document.getElementById('exp-fit');
+          if (fitBtn) fitBtn.click();
         }
       });
     }
@@ -2300,11 +2299,9 @@
         }
         header.querySelector('.exp-chevron').style.transform = 'rotate(0deg)';
       }
-      // Recalculate fit after toggle
-      setTimeout(function() {
-        var fitBtn = document.getElementById('exp-fit');
-        if (fitBtn) fitBtn.click();
-      }, 260);
+      // Recalculate fit immediately (will animate smoothly)
+      var fitBtn = document.getElementById('exp-fit');
+      if (fitBtn) fitBtn.click();
     });
     
     section.appendChild(header);
