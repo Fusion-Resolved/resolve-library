@@ -1769,6 +1769,7 @@
     var resizeDirection = '';
     var startX = 0, startY = 0;
     var startRect = {};
+    var resizeOverlay = null; // Overlay to capture events during resize
     
     // MIN/MAX sizes
     var MIN_W = 200, MAX_W = 700;
@@ -1790,12 +1791,31 @@
       };
     }
     
+    // Create resize overlay to capture mouse events during drag
+    function createResizeOverlay() {
+      if (resizeOverlay) return;
+      resizeOverlay = document.createElement('div');
+      resizeOverlay.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:inherit;user-select:none;-webkit-user-select:none;';
+      document.body.appendChild(resizeOverlay);
+      document.body.style.userSelect = 'none'; // Prevent text selection
+    }
+    
+    function removeResizeOverlay() {
+      if (resizeOverlay) {
+        resizeOverlay.remove();
+        resizeOverlay = null;
+      }
+      document.body.style.userSelect = ''; // Restore text selection
+    }
+    
     // Setup drag (top strip)
     if (dragZone) {
       dragZone.addEventListener('mousedown', function(e) {
         e.preventDefault();
         isDragging = true;
+        createResizeOverlay();
         dragZone.style.cursor = 'grabbing';
+        if (resizeOverlay) resizeOverlay.style.cursor = 'grabbing';
         startX = e.clientX;
         startY = e.clientY;
         var rect = getVideoRect();
@@ -1810,6 +1830,8 @@
       el.addEventListener('mousedown', function(e) {
         e.preventDefault();
         isResizing = true;
+        createResizeOverlay();
+        if (resizeOverlay) resizeOverlay.style.cursor = el.style.cursor;
         resizeDirection = edge;
         startX = e.clientX;
         startY = e.clientY;
@@ -1825,6 +1847,8 @@
       el.addEventListener('mousedown', function(e) {
         e.preventDefault();
         isResizing = true;
+        createResizeOverlay();
+        if (resizeOverlay) resizeOverlay.style.cursor = el.style.cursor;
         resizeDirection = corner; // 'tl', 'tr', 'bl', 'br'
         startX = e.clientX;
         startY = e.clientY;
@@ -1834,7 +1858,7 @@
     });
     
     // Global mousemove
-    document.addEventListener('mousemove', function(e) {
+    window.addEventListener('mousemove', function(e) {
       if (isDragging) {
         var dx = startX - e.clientX;
         var dy = e.clientY - startY;
@@ -1912,14 +1936,15 @@
       }
     });
     
-    // Global mouseup
-    document.addEventListener('mouseup', function() {
+    // Global mouseup - always clean up
+    window.addEventListener('mouseup', function() {
       if (isDragging && dragZone) {
         dragZone.style.cursor = 'grab';
       }
       isDragging = false;
       isResizing = false;
       resizeDirection = '';
+      removeResizeOverlay();
     });
     
     // Video close button - pause and save timestamp to localStorage
