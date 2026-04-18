@@ -1303,6 +1303,20 @@
       svgEl.appendChild(path);
     });
     
+    // Create or clear flow animation canvas
+    var flowCanvas = document.getElementById('flow-canvas');
+    if (!flowCanvas) {
+      flowCanvas = document.createElement('canvas');
+      flowCanvas.id = 'flow-canvas';
+      flowCanvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:5;';
+      vp.appendChild(flowCanvas);
+    }
+    flowCanvas.width = vp.clientWidth;
+    flowCanvas.height = vp.clientHeight;
+    
+    // Start flow animation
+    startFlowAnimation(flowCanvas, nodes, edges);
+    
     // Draw node cards
     nodes.forEach(function(n) {
       var card = document.createElement('div');
@@ -1367,6 +1381,90 @@
       
       world.appendChild(card);
     });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     FLOW ANIMATION — Animated dashed lines on canvas overlay
+     Draws animated dashes along every connection edge
+     Technique: ctx.setLineDash([DASH, GAP]) + animated lineDashOffset
+     ══════════════════════════════════════════════════════════════════ */
+  var flowAnimId = null;
+  function startFlowAnimation(canvas, nodes, edges) {
+    if (flowAnimId) cancelAnimationFrame(flowAnimId);
+    
+    var ctx = canvas.getContext('2d');
+    var SPEED = 36;      // px/s
+    var DASH_LEN = 7;  // solid dash segment length
+    var DASH_GAP = 18; // gap between dashes
+    var PATTERN = DASH_LEN + DASH_GAP;
+    var startTime = performance.now();
+    
+    var nodeMap = {};
+    nodes.forEach(function(n) { nodeMap[n.id] = n; });
+    
+    function drawFlow(ts) {
+      var elapsed = (ts - startTime) / 1000;
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      
+      var dashOffset = -(elapsed * SPEED) % PATTERN;
+      ctx.setLineDash([DASH_LEN, DASH_GAP]);
+      ctx.lineDashOffset = dashOffset;
+      
+      // Apply current transform to get screen coords
+      var sc = graphState.sc || 1;
+      var tx = graphState.tx || 0;
+      var ty = graphState.ty || 0;
+      
+      edges.forEach(function(e) {
+        var fn = nodeMap[e.from];
+        var tn = nodeMap[e.to];
+        if (!fn || !tn) return;
+        
+        // Convert world coords to screen coords
+        var fx = ((fn.x || 0) + NW) * sc + tx;
+        var fy = ((fn.y || 0) + NH / 2) * sc + ty;
+        var tx2 = (tn.x || 0) * sc + tx;
+        var ty2 = ((tn.y || 0) + NH / 2) * sc + ty;
+        
+        // Off-screen culling
+        var minX = Math.min(fx, tx2) - 20, maxX = Math.max(fx, tx2) + 20;
+        var minY = Math.min(fy, ty2) - 20, maxY = Math.max(fy, ty2) + 20;
+        if (maxX < 0 || minX > W || maxY < 0 || minY > H) return;
+        
+        var pull = Math.abs(tx2 - fx) * 0.45;
+        var c1x = fx + pull, c1y = fy;
+        var c2x = tx2 - pull, c2y = ty2;
+        
+        ctx.strokeStyle = 'rgba(108,123,255,0.55)';
+        ctx.lineWidth = 1.4;
+        ctx.shadowColor = 'rgba(108,123,255,0.35)';
+        ctx.shadowBlur = 4;
+        
+        ctx.beginPath();
+        ctx.moveTo(fx, fy);
+        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx2, ty2);
+        ctx.stroke();
+        
+        ctx.shadowBlur = 0;
+      });
+      
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+      flowAnimId = requestAnimationFrame(drawFlow);
+    }
+    
+    flowAnimId = requestAnimationFrame(drawFlow);
+    
+    // Update canvas size on resize
+    var vp = document.getElementById('graphVp');
+    if (vp) {
+      var ro = new ResizeObserver(function() {
+        canvas.width = vp.clientWidth;
+        canvas.height = vp.clientHeight;
+      });
+      ro.observe(vp);
+    }
   }
 
   function wireGraphEvents() {
@@ -1585,6 +1683,20 @@
       world.appendChild(card);
     });
     
+    // Add flow animation canvas for expanded view
+    var vp = document.getElementById('expanded-graph-vp');
+    if (vp) {
+      var flowCanvas = document.createElement('canvas');
+      flowCanvas.id = 'expanded-flow-canvas';
+      flowCanvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:5;';
+      flowCanvas.width = vp.clientWidth;
+      flowCanvas.height = vp.clientHeight;
+      vp.appendChild(flowCanvas);
+      
+      // Start flow animation for expanded view
+      startExpandedFlowAnimation(flowCanvas, nodes, edges);
+    }
+    
     // Auto-fit
     var vp = document.getElementById('expanded-graph-vp');
     if (vp) {
@@ -1612,6 +1724,79 @@
       world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
       zoomLbl.textContent = Math.round(sc * 100) + '%';
     }
+  }
+
+  var expandedFlowAnimId = null;
+  function startExpandedFlowAnimation(canvas, nodes, edges) {
+    if (expandedFlowAnimId) cancelAnimationFrame(expandedFlowAnimId);
+    
+    var ctx = canvas.getContext('2d');
+    var SPEED = 36;
+    var DASH_LEN = 7;
+    var DASH_GAP = 18;
+    var PATTERN = DASH_LEN + DASH_GAP;
+    var startTime = performance.now();
+    
+    var nodeMap = {};
+    nodes.forEach(function(n) { nodeMap[n.id] = n; });
+    
+    var world = document.getElementById('expanded-graph-world');
+    var NW = 132, NH = 50;
+    
+    function drawFlow(ts) {
+      var elapsed = (ts - startTime) / 1000;
+      var W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      
+      var dashOffset = -(elapsed * SPEED) % PATTERN;
+      ctx.setLineDash([DASH_LEN, DASH_GAP]);
+      ctx.lineDashOffset = dashOffset;
+      
+      // Get current transform from world element
+      var transform = world.style.transform || 'translate(0px,0px) scale(1)';
+      var translateMatch = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+      var scaleMatch = transform.match(/scale\(([^)]+)\)/);
+      var tx = translateMatch ? parseFloat(translateMatch[1]) : 0;
+      var ty = translateMatch ? parseFloat(translateMatch[2]) : 0;
+      var sc = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+      
+      edges.forEach(function(e) {
+        var fn = nodeMap[e.from];
+        var tn = nodeMap[e.to];
+        if (!fn || !tn) return;
+        
+        var fx = ((fn.x || 0) + NW) * sc + tx;
+        var fy = ((fn.y || 0) + NH / 2) * sc + ty;
+        var tx2 = (tn.x || 0) * sc + tx;
+        var ty2 = ((tn.y || 0) + NH / 2) * sc + ty;
+        
+        var minX = Math.min(fx, tx2) - 20, maxX = Math.max(fx, tx2) + 20;
+        var minY = Math.min(fy, ty2) - 20, maxY = Math.max(fy, ty2) + 20;
+        if (maxX < 0 || minX > W || maxY < 0 || minY > H) return;
+        
+        var pull = Math.abs(tx2 - fx) * 0.45;
+        var c1x = fx + pull, c1y = fy;
+        var c2x = tx2 - pull, c2y = ty2;
+        
+        ctx.strokeStyle = 'rgba(108,123,255,0.55)';
+        ctx.lineWidth = 1.4;
+        ctx.shadowColor = 'rgba(108,123,255,0.35)';
+        ctx.shadowBlur = 4;
+        
+        ctx.beginPath();
+        ctx.moveTo(fx, fy);
+        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx2, ty2);
+        ctx.stroke();
+        
+        ctx.shadowBlur = 0;
+      });
+      
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+      expandedFlowAnimId = requestAnimationFrame(drawFlow);
+    }
+    
+    expandedFlowAnimId = requestAnimationFrame(drawFlow);
   }
 
   function wireExpandedGraphEvents(vp, world, svg, zoomLbl) {
