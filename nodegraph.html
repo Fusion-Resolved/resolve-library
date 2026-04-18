@@ -1528,7 +1528,8 @@ var FUSION_NODES_UNIQUE = FUSION_NODES;
         <div class="rp-sec-body">
         <div class="rp-lbl" style="margin-bottom:5px">Save graph</div>
         <input class="sv-inp" id="sv-name" type="text" placeholder="Graph name…">
-        <button class="sv-btn" onclick="saveGraph()">Save to library</button>
+        <button class="sv-btn" id="btn-save-lib" onclick="saveGraph()">Save to library</button>
+        <button class="sv-btn" id="btn-update-effect" onclick="saveGraph()" style="display:none;background:rgba(108,123,255,0.2);border-color:rgba(108,123,255,0.5);color:var(--violet-light);">Update Effect</button>
         <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
           <div class="rp-lbl" style="margin-bottom:6px">Save as effect</div>
           <div style="font-size:8px;font-family:var(--font-mono);color:var(--muted);margin-bottom:8px;line-height:1.5;">Opens the Add Effect form pre-filled with this node graph attached.</div>
@@ -2051,6 +2052,9 @@ function undo() {
 }
 let savedGraphs=[];try{savedGraphs=JSON.parse(localStorage.getItem('ng-graphs')||'[]');}catch{}
 let linkedEffects=[];
+let currentEffectId = null;  // ID of effect loaded via ?id=
+let currentEffectOwnerId = null;  // user_id of effect owner
+let isCurrentUserOwner = false;  // true if current user owns the loaded effect
 let cpopNodeId=null;
 
 /* GRID */
@@ -4536,21 +4540,33 @@ async function saveGraph() {
   // ── 2. Supabase PATCH — write full graph JSONB to Supabase ───────────────
   // Build the full list of effect IDs to patch:
   //   a) All manually linked effects (from the "Link to Effect" dropdown)
-  //   b) The ?id= effect from the URL (the "primary" effect — always patched)
+  //   b) The ?id= effect from the URL (the "primary" effect — always patched IF owner)
   const nodeNames = nodes.map(function(n) { return n.name; });
   const patchPayload = {
     nodes: graphObj,                   // full JSONB graph — ALL data preserved
     node_code: nodeNames.join(', '),   // human-readable node list as backup
   };
 
-  // Collect IDs: start with linked effects, then add URL ?id= if not already present
+  // Collect IDs: start with linked effects, then add URL ?id= if owner
   const _urlEffectId = (new URLSearchParams(window.location.search)).get('id');
-  const effectIdsToPatch = linkedEffects.map(function(le) { return { id: le.id, name: le.name }; });
-  if (_urlEffectId && !effectIdsToPatch.some(function(le) { return le.id === _urlEffectId; })) {
-    // Pre-populate name from linkedEffects or fall back to the sv-name value
-    const urlName = linkedEffects.find(function(le){ return le.id === _urlEffectId; })
-                 ? null : name;
-    effectIdsToPatch.push({ id: _urlEffectId, name: urlName || name });
+  let effectIdsToPatch = linkedEffects.map(function(le) { return { id: le.id, name: le.name }; });
+  
+  // If there's a URL effect ID, only include it if user is owner
+  if (_urlEffectId) {
+    if (currentEffectId === _urlEffectId && isCurrentUserOwner) {
+      // User is owner - can update
+      if (!effectIdsToPatch.some(function(le) { return le.id === _urlEffectId; })) {
+        const urlName = linkedEffects.find(function(le){ return le.id === _urlEffectId; })
+                     ? null : name;
+        effectIdsToPatch.push({ id: _urlEffectId, name: urlName || name });
+      }
+    } else if (currentEffectId === _urlEffectId && !isCurrentUserOwner) {
+      // User is NOT owner - skip updating this effect, warn user
+      console.log('[saveGraph] Skipping update of effect', _urlEffectId, '- not owner');
+      toast('Cannot update: you are not the owner. Save to library instead.');
+      // Remove any existing reference to this effect from patch list
+      effectIdsToPatch = effectIdsToPatch.filter(function(le) { return le.id !== _urlEffectId; });
+    }
   }
 
   if (effectIdsToPatch.length) {
@@ -4675,6 +4691,32 @@ function renderEffList(){
     l.appendChild(it);
   });
 }
+
+function updateSaveButtonVisibility() {
+  const btnSaveLib = document.getElementById('btn-save-lib');
+  const btnUpdateEffect = document.getElementById('btn-update-effect');
+  
+  if (!btnSaveLib || !btnUpdateEffect) return;
+  
+  if (currentEffectId && isCurrentUserOwner) {
+    // Owner of loaded effect - show "Update Effect" button
+    btnSaveLib.style.display = 'none';
+    btnUpdateEffect.style.display = 'block';
+    btnUpdateEffect.textContent = 'Update Effect';
+    console.log('[nodegraph] Save mode: UPDATE (owner)');
+  } else if (currentEffectId && !isCurrentUserOwner) {
+    // Not owner - can only save to library (fork), not update original
+    btnSaveLib.style.display = 'block';
+    btnUpdateEffect.style.display = 'none';
+    console.log('[nodegraph] Save mode: FORK (not owner)');
+  } else {
+    // No effect loaded - normal library save
+    btnSaveLib.style.display = 'block';
+    btnUpdateEffect.style.display = 'none';
+    console.log('[nodegraph] Save mode: LIBRARY (no effect loaded)');
+  }
+}
+
 function effSearch(){
   const q=document.getElementById('eff-inp').value.toLowerCase().trim();
   const dd=document.getElementById('eff-dd');
@@ -5783,7 +5825,7 @@ document.getElementById('params-paste').addEventListener('paste', () => {
 
     try {
       const res = await fetch(
-        _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(effectId) + '&select=id,name,nodes',
+        _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(effectId) + '&select=id,name,nodes,user_id',
         {
           headers: {
             'apikey':        _NG_SB_KEY,
@@ -5801,6 +5843,13 @@ document.getElementById('params-paste').addEventListener('paste', () => {
         if (svName) svName.placeholder = 'Graph name…';
         return;
       }
+
+      // ── Store effect ownership info ─────────────────────────────────────────
+      currentEffectId = row.id;
+      currentEffectOwnerId = row.user_id;
+      isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
+      console.log('[nodegraph] Loaded effect:', row.id, 'Owner:', row.user_id, 'Is owner:', isCurrentUserOwner);
+      updateSaveButtonVisibility();
 
       // The `nodes` column is JSONB. It may be:
       //   a) A full graph object (schemaVersion >= 2) — saved by this system
