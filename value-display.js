@@ -167,10 +167,7 @@
     }
 
     update() {
-      console.log('[ValueDisplay] update() called', this.options.node?.id, 'frame:', this.options.currentFrame);
-      
       if (!this.options.node) {
-        console.log('[ValueDisplay] No node, showing empty');
         this.showEmpty('No node selected');
         return;
       }
@@ -188,12 +185,9 @@
       const values = window.SplineEvaluator 
         ? window.SplineEvaluator.evaluateNodeAtFrame(node, frame)
         : this.getRawValues(node);
-      
-      console.log('[ValueDisplay] Values count:', Object.keys(values).length);
 
       // Group by table
       const grouped = this.groupByTable(values, node);
-      console.log('[ValueDisplay] Groups:', Object.keys(grouped));
 
       // Render groups
       Object.entries(grouped).forEach(([tableName, params]) => {
@@ -211,10 +205,7 @@
       });
 
       if (this.list.children.length === 0) {
-        console.log('[ValueDisplay] No children, showing empty');
         this.showEmpty('No parameters available');
-      } else {
-        console.log('[ValueDisplay] Rendered', this.list.children.length, 'items');
       }
     }
 
@@ -223,30 +214,26 @@
       const values = {};
       const params = node.params || {};
       
-      console.log('[ValueDisplay] getRawValues, params:', Object.keys(params));
-      
       Object.entries(params).forEach(([tableKey, tableGroup]) => {
-        console.log('[ValueDisplay] Processing tableKey:', tableKey, 'type:', typeof tableGroup, 'hasParams:', tableGroup?.params ? 'yes' : 'no');
-        
         // Handle nested structure: { "0": { table: "Transform", params: { ... } } }
         if (tableGroup && typeof tableGroup === 'object' && tableGroup.params && Object.keys(tableGroup.params).length > 0) {
           const tableName = tableGroup.table || 'Parameters';
           const nestedParams = tableGroup.params;
           
-          console.log('[ValueDisplay] Nested structure detected, table:', tableName, 'nested keys:', Object.keys(nestedParams));
-          
           Object.entries(nestedParams).forEach(([key, param]) => {
             if (key.endsWith('_SourceOp') || key.startsWith('_')) return;
             
             const val = param?.v !== undefined ? param.v : param?.value;
-            console.log('[ValueDisplay] Param', key, 'in', tableName, ':', val);
+            const isConnected = val === '—' && param?.sourceOp;
             
             values[key] = {
-              value: val,
+              value: isConnected ? `← ${param.sourceOp}` : val,
               raw: param?.raw || String(val),
               animated: !!(param?.keyframes && param.keyframes.length > 0),
               table: tableName,
-              frame: this.options.currentFrame
+              frame: this.options.currentFrame,
+              sourceOp: param?.sourceOp || null,
+              isConnected: isConnected
             };
           });
         } else {
@@ -255,30 +242,29 @@
           
           // Skip if tableGroup is clearly a table wrapper (has 'table' property but no 'params')
           if (tableGroup && typeof tableGroup === 'object' && tableGroup.table && !tableGroup.params) {
-            console.log('[ValueDisplay] Skipping table wrapper without params:', tableKey);
             return;
           }
           
           const val = tableGroup?.v !== undefined ? tableGroup.v : tableGroup?.value;
-          console.log('[ValueDisplay] Flat param', tableKey, ':', val);
+          const isConnected = val === '—' && tableGroup?.sourceOp;
           
           // Skip if no valid value
-          if (val === undefined || val === null) {
-            console.log('[ValueDisplay] Skipping', tableKey, '- no value');
+          if ((val === undefined || val === null) && !isConnected) {
             return;
           }
           
           values[tableKey] = {
-            value: val,
+            value: isConnected ? `← ${tableGroup.sourceOp}` : val,
             raw: tableGroup?.raw || String(val),
             animated: !!(tableGroup?.keyframes && tableGroup.keyframes.length > 0),
             table: 'Parameters',
-            frame: this.options.currentFrame
+            frame: this.options.currentFrame,
+            sourceOp: tableGroup?.sourceOp || null,
+            isConnected: isConnected
           };
         }
       });
       
-      console.log('[ValueDisplay] Extracted values:', Object.keys(values));
       return values;
     }
 
@@ -347,6 +333,13 @@
         anim.textContent = '◆';
         anim.title = 'Animated';
         valueContainer.appendChild(anim);
+      } else if (value.isConnected) {
+        const badge = document.createElement('span');
+        badge.className = 'value-static-badge';
+        badge.style.cssText = 'background:rgba(108,123,255,0.2);color:var(--violet-light);';
+        badge.textContent = 'connected';
+        badge.title = 'Connected to: ' + value.sourceOp;
+        valueContainer.appendChild(badge);
       } else {
         const badge = document.createElement('span');
         badge.className = 'value-static-badge';

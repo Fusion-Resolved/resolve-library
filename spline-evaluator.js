@@ -138,17 +138,101 @@
   function evaluateNodeAtFrame(node, frame) {
     const result = {};
     const params = node.params || {};
-    
-    console.log('[SplineEvaluator] evaluateNodeAtFrame, node.params keys:', Object.keys(params));
-    console.log('[SplineEvaluator] Full node.params:', JSON.stringify(params, null, 2).slice(0, 2000));
 
     // Handle nested structure: params[tableKey] = { table: "Transform", params: { ... } }
     Object.entries(params).forEach(([tableKey, tableGroup]) => {
       // Skip metadata keys at top level
       if (tableKey.endsWith('_SourceOp') || tableKey.startsWith('_')) {
-        console.log('[SplineEvaluator] Skipping metadata key:', tableKey);
         return;
       }
+
+      // Check if this is a nested table structure
+      if (tableGroup && typeof tableGroup === 'object' && tableGroup.params) {
+        const tableName = tableGroup.table || 'Parameters';
+        const nestedParams = tableGroup.params;
+
+        Object.entries(nestedParams).forEach(([key, param]) => {
+          if (key.endsWith('_SourceOp') || key.startsWith('_')) {
+            return;
+          }
+
+          const hasKeyframes = param.keyframes && param.keyframes.length > 0;
+          
+          if (hasKeyframes) {
+            // Evaluate the animated parameter
+            const value = evaluateSpline(param.keyframes, frame);
+            const { prev } = findSurroundingKeyframes(param.keyframes, frame);
+            
+            result[key] = {
+              value: value,
+              raw: value.toFixed(3),
+              animated: true,
+              keyframeIndex: prev ? param.keyframes.indexOf(prev) : -1,
+              frame: frame,
+              table: tableName,
+              sourceOp: param.sourceOp || null,
+              isConnected: false
+            };
+          } else {
+            // Static parameter - return stored value
+            const val = param.v !== undefined ? param.v : param.value;
+            const isConnected = val === '—' && param.sourceOp;
+            
+            result[key] = {
+              value: isConnected ? `← ${param.sourceOp}` : val,
+              raw: param.raw || String(val),
+              animated: false,
+              keyframeIndex: -1,
+              frame: frame,
+              table: tableName,
+              sourceOp: param.sourceOp || null,
+              isConnected: isConnected
+            };
+          }
+        });
+      } else {
+        // Handle flat structure (fallback for backward compatibility)
+        const param = tableGroup;
+        if (tableKey.endsWith('_SourceOp') || tableKey.startsWith('_')) {
+          return;
+        }
+
+        const hasKeyframes = param.keyframes && param.keyframes.length > 0;
+        
+        if (hasKeyframes) {
+          const value = evaluateSpline(param.keyframes, frame);
+          const { prev } = findSurroundingKeyframes(param.keyframes, frame);
+          
+          result[tableKey] = {
+            value: value,
+            raw: value.toFixed(3),
+            animated: true,
+            keyframeIndex: prev ? param.keyframes.indexOf(prev) : -1,
+            frame: frame,
+            table: 'Parameters',
+            sourceOp: param.sourceOp || null,
+            isConnected: false
+          };
+        } else {
+          const val = param.v !== undefined ? param.v : param.value;
+          const isConnected = val === '—' && param.sourceOp;
+          
+          result[tableKey] = {
+            value: isConnected ? `← ${param.sourceOp}` : val,
+            raw: param.raw || String(val),
+            animated: false,
+            keyframeIndex: -1,
+            frame: frame,
+            table: 'Parameters',
+            sourceOp: param.sourceOp || null,
+            isConnected: isConnected
+          };
+        }
+      }
+    });
+
+    return result;
+  }
 
       // Check if this is a nested table structure
       if (tableGroup && typeof tableGroup === 'object' && tableGroup.params) {
@@ -184,15 +268,18 @@
           } else {
             // Static parameter - return stored value
             const val = param.v !== undefined ? param.v : param.value;
+            const isConnected = val === '—' && param.sourceOp;
+            
             result[key] = {
-              value: val,
+              value: isConnected ? `← ${param.sourceOp}` : val,
               raw: param.raw || String(val),
               animated: false,
               keyframeIndex: -1,
               frame: frame,
-              table: tableName
+              table: tableName,
+              sourceOp: param.sourceOp || null,
+              isConnected: isConnected
             };
-            console.log('[SplineEvaluator] Added static param:', key, '=', val, 'from', tableName);
           }
         });
       } else {
@@ -219,13 +306,17 @@
           };
         } else {
           const val = param.v !== undefined ? param.v : param.value;
+          const isConnected = val === '—' && param.sourceOp;
+          
           result[tableKey] = {
-            value: val,
+            value: isConnected ? `← ${param.sourceOp}` : val,
             raw: param.raw || String(val),
             animated: false,
             keyframeIndex: -1,
             frame: frame,
-            table: 'Parameters'
+            table: 'Parameters',
+            sourceOp: param.sourceOp || null,
+            isConnected: isConnected
           };
         }
       }
