@@ -4591,8 +4591,8 @@ async function saveGraph() {
       console.log('[saveGraph] Using Supabase JS client for update...');
       
       try {
-        // Use Supabase JS client instead of raw fetch
-        const { data, error } = await supabase
+        // Use Supabase JS client instead of raw fetch - use _supabase (the global with underscore)
+        const { data, error } = await _supabase
           .from('effects')
           .update({
             nodes: patchPayload.nodes,
@@ -4609,7 +4609,7 @@ async function saveGraph() {
         console.log('[saveGraph] Supabase update successful:', data);
         
         // Verify immediately
-        const { data: verifyData, error: verifyError } = await supabase
+        const { data: verifyData, error: verifyError } = await _supabase
           .from('effects')
           .select('nodes')
           .eq('id', le.id)
