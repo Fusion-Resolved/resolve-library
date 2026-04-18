@@ -1641,15 +1641,15 @@
     world.appendChild(svg);
     viewport.appendChild(world);
     
-    // Controls
+    // Controls (start with video button in "off" state and controls at right edge)
     var controls = document.createElement('div');
     controls.id = 'expanded-controls';
-    controls.style.cssText = 'position:absolute;top:70px;right:380px;z-index:20;display:flex;gap:4px;transition:right 0.25s ease;';
+    controls.style.cssText = 'position:absolute;top:70px;right:20px;z-index:20;display:flex;gap:4px;transition:right 0.25s ease;';
     controls.innerHTML = 
       '<button id="exp-zoom-in" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">+</button>' +
       '<button id="exp-zoom-out" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">&minus;</button>' +
       '<button id="exp-fit" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;">FIT</button>' +
-      '<button id="exp-toggle-panel" style="background:rgba(108,123,255,0.25);backdrop-filter:blur(8px);border:1px solid rgba(108,123,255,0.5);border-radius:6px;color:var(--violet-light);font-family:var(--font-mono);font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;display:flex;align-items:center;gap:4px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>Panel</button>';
+      '<button id="exp-toggle-video" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;display:flex;align-items:center;gap:4px;"><svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>Video</button>';
     
     var zoomLbl = document.createElement('div');
     zoomLbl.id = 'exp-zoom-lbl';
@@ -1768,8 +1768,9 @@
   function hideSidePanelAndFitGraph() {
     var panel = document.getElementById('expanded-node-panel');
     var controls = document.getElementById('expanded-controls');
-    var toggleBtn = document.getElementById('exp-toggle-panel');
+    var toggleBtn = document.getElementById('exp-toggle-video');
     var fitBtn = document.getElementById('exp-fit');
+    var sections = window.expandedSections;
     
     // Hide side panel
     if (panel) {
@@ -1781,11 +1782,12 @@
       controls.style.right = '20px';
     }
     
-    // Update toggle button to "off" state
-    if (toggleBtn) {
+    // Update toggle button to "off" state and hide video section
+    if (toggleBtn && sections && sections.video) {
       toggleBtn.style.background = 'rgba(6,6,13,0.75)';
       toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
       toggleBtn.style.color = 'rgba(255,255,255,0.55)';
+      sections.video.section.style.display = 'none';
     }
     
     // Auto-fit graph to use full screen width
@@ -1980,13 +1982,6 @@
     var panel = document.getElementById('expanded-node-panel');
     if (panel && panel.style.display === 'none') {
       panel.style.display = 'flex';
-      // Update toggle button state
-      var toggleBtn = document.getElementById('exp-toggle-panel');
-      if (toggleBtn) {
-        toggleBtn.style.background = 'rgba(108,123,255,0.25)';
-        toggleBtn.style.borderColor = 'rgba(108,123,255,0.5)';
-        toggleBtn.style.color = 'var(--violet-light)';
-      }
     }
     
     // Position controls to accommodate panel
@@ -2238,65 +2233,57 @@
       zoomLbl.textContent = Math.round(sc * 100) + '%';
     });
     
-    // Toggle side panel button
-    var togglePanelBtn = document.getElementById('exp-toggle-panel');
-    if (togglePanelBtn) {
-      togglePanelBtn.addEventListener('click', function() {
+    // Toggle Video button
+    var toggleVideoBtn = document.getElementById('exp-toggle-video');
+    if (toggleVideoBtn) {
+      toggleVideoBtn.addEventListener('click', function() {
+        var sections = window.expandedSections;
         var panel = document.getElementById('expanded-node-panel');
         var controls = document.getElementById('expanded-controls');
-        if (panel) {
-          // Check if panel is hidden - default is visible (flex)
-          var isHidden = panel.style.display === 'none' || getComputedStyle(panel).display === 'none';
-          var newDisplay = isHidden ? 'flex' : 'none';
-          panel.style.display = newDisplay;
+        
+        if (!sections || !sections.video) return;
+        
+        // Toggle video section visibility
+        var isHidden = sections.video.section.style.display === 'none';
+        
+        if (isHidden) {
+          // Show video section
+          sections.video.section.style.display = 'block';
+          sections.video._expanded = true;
+          sections.video.content.style.maxHeight = 'none';
+          sections.video.header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
           
-          // If showing panel, ensure at least one section is visible and expanded
-          if (newDisplay === 'flex') {
-            var sections = window.expandedSections;
-            if (sections) {
-              // First make sure at least one section block is visible
-              var anySectionVisible = sections.video.section.style.display !== 'none' &&
-                                      getComputedStyle(sections.video.section).display !== 'none' ||
-                                      sections.nodes.section.style.display !== 'none' &&
-                                      getComputedStyle(sections.nodes.section).display !== 'none';
-              
-              if (!anySectionVisible) {
-                // Show nodes section as fallback, or whichever has content
-                if (sections.nodes) sections.nodes.section.style.display = 'block';
-              }
-              
-              // Then ensure at least one section is expanded (content visible)
-              var anyExpanded = sections.video._expanded ||
-                                sections.nodes._expanded;
-              if (!anyExpanded) {
-                // Expand the first available visible section
-                if (sections.nodes.section.style.display !== 'none') {
-                  sections.nodes._expanded = true;
-                  sections.nodes.content.style.maxHeight = 'none';
-                  sections.nodes.header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
-                } else if (sections.video.section.style.display !== 'none') {
-                  sections.video._expanded = true;
-                  sections.video.content.style.maxHeight = 'none';
-                  sections.video.header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
-                }
-              }
-            }
+          // Show panel if hidden
+          if (panel) panel.style.display = 'flex';
+          
+          // Move controls
+          if (controls) controls.style.right = '380px';
+          
+          // Update button state
+          toggleVideoBtn.style.background = 'rgba(108,123,255,0.25)';
+          toggleVideoBtn.style.borderColor = 'rgba(108,123,255,0.5)';
+          toggleVideoBtn.style.color = 'var(--violet-light)';
+        } else {
+          // Hide video section
+          sections.video.section.style.display = 'none';
+          
+          // If nodes section is also hidden/empty, hide entire panel
+          if (sections.nodes.section.style.display === 'none') {
+            if (panel) panel.style.display = 'none';
+            if (controls) controls.style.right = '20px';
+          } else {
+            if (controls) controls.style.right = '380px';
           }
           
-          // Move controls to accommodate panel
-          if (controls) {
-            controls.style.right = newDisplay === 'flex' ? '380px' : '20px';
-          }
-          // Update button visual state
-          var isActive = newDisplay === 'flex';
-          togglePanelBtn.style.background = isActive ? 'rgba(108,123,255,0.25)' : 'rgba(6,6,13,0.75)';
-          togglePanelBtn.style.borderColor = isActive ? 'rgba(108,123,255,0.5)' : 'rgba(255,255,255,0.1)';
-          togglePanelBtn.style.color = isActive ? 'var(--violet-light)' : 'rgba(255,255,255,0.55)';
-          
-          // Auto-fit graph immediately (will animate smoothly with CSS transition)
-          var fitBtn = document.getElementById('exp-fit');
-          if (fitBtn) fitBtn.click();
+          // Update button state
+          toggleVideoBtn.style.background = 'rgba(6,6,13,0.75)';
+          toggleVideoBtn.style.borderColor = 'rgba(255,255,255,0.1)';
+          toggleVideoBtn.style.color = 'rgba(255,255,255,0.55)';
         }
+        
+        // Auto-fit graph
+        var fitBtn = document.getElementById('exp-fit');
+        if (fitBtn) fitBtn.click();
       });
     }
   }
@@ -2440,12 +2427,12 @@
       }
     }
     
-    // Check if any side panel sections are visible, if not hide the panel and adjust controls
+    // Check if any side panel sections are visible, update Video button state
     var anyVisible = sections.video.section.style.display !== 'none' ||
                      sections.nodes.section.style.display !== 'none';
     var panel = document.getElementById('expanded-node-panel');
     var controls = document.getElementById('expanded-controls');
-    var toggleBtn = document.getElementById('exp-toggle-panel');
+    var toggleBtn = document.getElementById('exp-toggle-video');
     
     if (!anyVisible && panel) {
       panel.style.display = 'none';
@@ -2453,10 +2440,18 @@
       var bottomBar = document.getElementById('expanded-bottom-bar');
       var bottomBarVisible = bottomBar && bottomBar.style.display !== 'none';
       if (controls) controls.style.right = bottomBarVisible ? '20px' : '20px';
-      if (toggleBtn) {
+    }
+    
+    // Update Video button state based on video section visibility
+    if (toggleBtn) {
+      if (sections.video.section.style.display === 'none') {
         toggleBtn.style.background = 'rgba(6,6,13,0.75)';
         toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
         toggleBtn.style.color = 'rgba(255,255,255,0.55)';
+      } else {
+        toggleBtn.style.background = 'rgba(108,123,255,0.25)';
+        toggleBtn.style.borderColor = 'rgba(108,123,255,0.5)';
+        toggleBtn.style.color = 'var(--violet-light)';
       }
     }
     
