@@ -4528,9 +4528,17 @@ async function saveGraph() {
   const name = document.getElementById('sv-name').value.trim();
   if (!name) { document.getElementById('sv-name').focus(); return; }
 
+  console.log('[saveGraph] Starting save...');
+  console.log('[saveGraph] currentEffectId:', currentEffectId);
+  console.log('[saveGraph] currentEffectOwnerId:', currentEffectOwnerId);
+  console.log('[saveGraph] isCurrentUserOwner:', isCurrentUserOwner);
+  console.log('[saveGraph] window.CURRENT_USER_ID:', window.CURRENT_USER_ID);
+
   const graphObj = _serializeGraph();
   graphObj.name = name;
   graphObj.id   = Date.now().toString();
+  
+  console.log('[saveGraph] Serialized graph:', graphObj.nodes.length, 'nodes,', graphObj.conns.length, 'connections');
 
   // ── 1. Persist to localStorage (local library list) ─────────────────────
   savedGraphs = savedGraphs.filter(x => x.name !== name);
@@ -4538,42 +4546,51 @@ async function saveGraph() {
   localStorage.setItem('ng-graphs', JSON.stringify(savedGraphs));
 
   // ── 2. Supabase PATCH — write full graph JSONB to Supabase ───────────────
-  // Build the full list of effect IDs to patch:
-  //   a) All manually linked effects (from the "Link to Effect" dropdown)
-  //   b) The ?id= effect from the URL (the "primary" effect — always patched IF owner)
   const nodeNames = nodes.map(function(n) { return n.name; });
   const patchPayload = {
-    nodes: graphObj,                   // full JSONB graph — ALL data preserved
-    node_code: nodeNames.join(', '),   // human-readable node list as backup
+    nodes: graphObj,
+    node_code: nodeNames.join(', '),
   };
+  
+  console.log('[saveGraph] PATCH payload:', JSON.stringify(patchPayload).substring(0, 200) + '...');
 
   // Collect IDs: start with linked effects, then add URL ?id= if owner
   const _urlEffectId = (new URLSearchParams(window.location.search)).get('id');
+  console.log('[saveGraph] URL effect ID:', _urlEffectId);
+  
   let effectIdsToPatch = linkedEffects.map(function(le) { return { id: le.id, name: le.name }; });
+  console.log('[saveGraph] linkedEffects:', linkedEffects);
   
   // If there's a URL effect ID, only include it if user is owner
   if (_urlEffectId) {
+    console.log('[saveGraph] Checking ownership for URL effect...');
     if (currentEffectId === _urlEffectId && isCurrentUserOwner) {
-      // User is owner - can update
+      console.log('[saveGraph] User IS owner - adding to patch list');
       if (!effectIdsToPatch.some(function(le) { return le.id === _urlEffectId; })) {
         const urlName = linkedEffects.find(function(le){ return le.id === _urlEffectId; })
                      ? null : name;
         effectIdsToPatch.push({ id: _urlEffectId, name: urlName || name });
       }
     } else if (currentEffectId === _urlEffectId && !isCurrentUserOwner) {
-      // User is NOT owner - skip updating this effect, warn user
-      console.log('[saveGraph] Skipping update of effect', _urlEffectId, '- not owner');
+      console.log('[saveGraph] User is NOT owner - skipping update');
       toast('Cannot update: you are not the owner. Save to library instead.');
-      // Remove any existing reference to this effect from patch list
       effectIdsToPatch = effectIdsToPatch.filter(function(le) { return le.id !== _urlEffectId; });
+    } else {
+      console.log('[saveGraph] Ownership check failed: currentEffectId=', currentEffectId, '_urlEffectId=', _urlEffectId);
     }
   }
+  
+  console.log('[saveGraph] Effects to patch:', effectIdsToPatch.map(e => e.id));
 
   if (effectIdsToPatch.length) {
-    const patchPromises = effectIdsToPatch.map(function(le) {
-      return fetch(
-        _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(le.id),
-        {
+    console.log('[saveGraph] Sending PATCH requests...');
+    
+    const patchPromises = effectIdsToPatch.map(async function(le) {
+      const url = _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(le.id);
+      console.log('[saveGraph] PATCH URL:', url);
+      
+      try {
+        const response = await fetch(url, {
           method: 'PATCH',
           headers: {
             'apikey':        _NG_SB_KEY,
@@ -4582,20 +4599,61 @@ async function saveGraph() {
             'Prefer':        'return=minimal',
           },
           body: JSON.stringify(patchPayload),
+        });
+        
+        console.log('[saveGraph] Response status for', le.id, ':', response.status, response.statusText);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[saveGraph] PATCH failed for effect', le.id, ':', response.status, errorText);
+          return { id: le.id, success: false, error: errorText };
         }
-      ).catch(function(err) {
-        console.error('[saveGraph] Supabase PATCH failed for effect', le.id, err);
-      });
+        
+        console.log('[saveGraph] PATCH successful for effect', le.id);
+        return { id: le.id, success: true };
+      } catch (err) {
+        console.error('[saveGraph] PATCH error for effect', le.id, ':', err);
+        return { id: le.id, success: false, error: err.message };
+      }
     });
-    await Promise.all(patchPromises);
     
-    // Check if we updated the current effect
-    if (currentEffectId && isCurrentUserOwner && effectIdsToPatch.some(le => le.id === currentEffectId)) {
-      toast('Effect updated ✓ Changes will appear in effect modals');
+    const results = await Promise.all(patchPromises);
+    console.log('[saveGraph] All PATCH results:', results);
+    
+    const allSuccess = results.every(r => r.success);
+    
+    if (allSuccess) {
+      toast('Effect updated ✓ Saved to Supabase');
+      
+      // Verify the save worked by fetching back
+      setTimeout(async function() {
+        try {
+          const verifyRes = await fetch(
+            _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(effectIdsToPatch[0].id) + '&select=nodes',
+            {
+              headers: {
+                'apikey': _NG_SB_KEY,
+                'Authorization': 'Bearer ' + _NG_SB_KEY,
+              }
+            }
+          );
+          const verifyData = await verifyRes.json();
+          console.log('[saveGraph] Verification fetch:', verifyData);
+          if (verifyData && verifyData[0] && verifyData[0].nodes) {
+            const savedNodeCount = verifyData[0].nodes.nodes ? verifyData[0].nodes.nodes.length : 'legacy format';
+            console.log('[saveGraph] Verified: nodes saved =', savedNodeCount);
+          } else {
+            console.error('[saveGraph] Verification FAILED: no nodes data returned');
+          }
+        } catch (err) {
+          console.error('[saveGraph] Verification error:', err);
+        }
+      }, 500);
     } else {
-      toast('Saved & synced to Supabase ✓');
+      toast('Update failed - check console for errors');
     }
   } else {
+    console.log('[saveGraph] No effects to patch');
     toast('Graph saved locally (no linked effect)');
   }
 
