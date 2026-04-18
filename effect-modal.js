@@ -1999,6 +1999,11 @@
       var nodes = window.currentNodeData ? window.currentNodeData.nodes : [];
       if (!nodes.length) return;
       
+      // Check if side panel is open and adjust available width
+      var panel = document.getElementById('expanded-node-panel');
+      var isPanelOpen = panel && panel.style.transform === 'translateX(0px)';
+      var availableWidth = isPanelOpen ? r.width - 320 : r.width;
+      
       var NW = 132, NH = 50;
       var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
       nodes.forEach(function(n) {
@@ -2012,8 +2017,8 @@
       
       var contentW = mxX - mnX;
       var contentH = mxY - mnY;
-      sc = Math.max(0.15, Math.min(3, Math.min((r.width - pad * 2) / contentW, (r.height - pad * 2) / contentH)));
-      tx = (r.width - contentW * sc) / 2 - mnX * sc;
+      sc = Math.max(0.15, Math.min(3, Math.min((availableWidth - pad * 2) / contentW, (r.height - pad * 2) / contentH)));
+      tx = (availableWidth - contentW * sc) / 2 - mnX * sc;
       ty = (r.height - contentH * sc) / 2 - mnY * sc;
       world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
       zoomLbl.textContent = Math.round(sc * 100) + '%';
