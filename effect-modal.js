@@ -1661,31 +1661,22 @@
     container.appendChild(controls);
     container.appendChild(zoomLbl);
     
-    // Right side panel with collapsible sections (Video + Nodes only)
-    var sidePanel = document.createElement('div');
-    sidePanel.id = 'expanded-node-panel';
-    sidePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:80px;width:360px;background:rgba(15,15,22,0.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:25;overflow:hidden;display:flex;flex-direction:column;';
-    
-    // Video container (no header, just the video)
+    // Floating video (no panel - just the video embed, positioned absolutely)
     var videoContainer = document.createElement('div');
     videoContainer.id = 'exp-video-section';
-    videoContainer.style.cssText = 'flex:0 0 auto;display:none;'; // Hidden by default
-    videoContainer.innerHTML = '<div id="exp-video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;margin:16px;"></div>';
+    videoContainer.style.cssText = 'position:absolute;top:70px;right:20px;width:320px;display:none;z-index:25;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,0.5);';
+    videoContainer.innerHTML = '<div id="exp-video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;"><div id="exp-video-inner" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div></div>';
     
-    // Nodes section (collapsible, flexible - fills space)
-    var nodesSection = createCollapsibleSection('nodes', 'Node Details', '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>', true, true);
-    nodesSection.content.innerHTML = '<div style="display:flex;flex-direction:column;height:100%;"><div style="flex:1;overflow-y:auto;padding:16px;"><div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--font-mono);">Select a node to view parameters</div></div></div>';
+    // Node details panel (only shows when node selected)
+    var nodePanel = document.createElement('div');
+    nodePanel.id = 'exp-node-panel';
+    nodePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:80px;width:360px;background:rgba(15,15,22,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:24;overflow-y:auto;display:none;';
+    nodePanel.innerHTML = '<div id="exp-node-content" style="padding:16px;"><div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--font-mono);">Select a node to view parameters</div></div>';
     
-    sidePanel.appendChild(videoContainer);
-    sidePanel.appendChild(nodesSection.section);
-    
-    // Store reference to video container for toggling
-    window.expandedVideoContainer = videoContainer;
-    
-    // Bottom bar for step navigation (collapsible, compact)
+    // Bottom bar for step navigation (collapsible, compact, full width)
     var bottomBar = document.createElement('div');
     bottomBar.id = 'expanded-bottom-bar';
-    bottomBar.style.cssText = 'position:absolute;bottom:0;left:0;right:360px;background:rgba(15,15,22,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.08);z-index:26;display:flex;flex-direction:column;transition:height 0.3s ease;';
+    bottomBar.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:rgba(15,15,22,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.08);z-index:26;display:flex;flex-direction:column;transition:height 0.3s ease;';
     
     // Header (clickable to toggle) - compact 40px height
     var bottomBarHeader = document.createElement('div');
@@ -1716,19 +1707,20 @@
     bottomBar.appendChild(bottomBarHeader);
     bottomBar.appendChild(bottomBarContent);
     
-    container.appendChild(sidePanel);
+    // Add elements to container
+    container.appendChild(videoContainer);
+    container.appendChild(nodePanel);
     container.appendChild(bottomBar);
     
     modal.appendChild(container);
     document.body.appendChild(modal);
     
     // Store references for later use
-    window.expandedNodePanel = sidePanel;
+    window.expandedVideoContainer = videoContainer;
+    window.expandedNodePanel = nodePanel;
     window.expandedBottomBar = bottomBar;
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
-    window.expandedVideoContainer = videoContainer;
-    window.expandedSections = { nodes: nodesSection };
     
     // Setup bottom bar toggle (compact: 40px collapsed, 120px expanded)
     var bottomBarExpanded = true;
@@ -1934,29 +1926,28 @@
   }
 
   function showNodeInSidePanel(node) {
-    var sections = window.expandedSections;
+    var nodePanel = document.getElementById('exp-node-panel');
+    var nodeContent = document.getElementById('exp-node-content');
     var controls = document.getElementById('expanded-controls');
-    if (!sections || !sections.nodes) return;
+    if (!nodePanel || !nodeContent) return;
     
     var params = node.params || {};
     var hasParams = Object.keys(params).length > 0;
     
-    // Build node details content for the Nodes section - wrapped in flex container for scrolling
+    // Build node details content
     var html = 
-      '<div style="display:flex;flex-direction:column;height:100%;">' +
-        '<div style="flex-shrink:0;">' +
-          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);">' +
-            '<div style="width:10px;height:10px;border-radius:50%;background:' + (node.catColor || '#6c7bff') + ';flex-shrink:0;"></div>' +
-            '<div style="min-width:0;flex:1;">' +
-              '<div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (node.fusionName || node.name) + '</div>' +
-              '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">' + (node.category || 'Custom') + '</div>' +
-            '</div>' +
+      '<div style="padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<div style="width:10px;height:10px;border-radius:50%;background:' + (node.catColor || '#6c7bff') + ';flex-shrink:0;"></div>' +
+          '<div style="min-width:0;flex:1;">' +
+            '<div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (node.fusionName || node.name) + '</div>' +
+            '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">' + (node.category || 'Custom') + '</div>' +
           '</div>' +
-          '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;">Parameters</div>' +
-        '</div>';
+        '</div>' +
+      '</div>';
     
     if (hasParams) {
-      html += '<div style="flex:1;overflow-y:auto;min-height:0;">';
+      html += '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;">Parameters</div>';
       html += '<div style="display:flex;flex-direction:column;gap:8px;">';
       
       Object.entries(params).forEach(function([key, param]) {
@@ -1971,11 +1962,44 @@
             '</div>';
         
         if (hasKeyframes) {
-          // Add mini spline visualization
           html += '<div style="margin-top:8px;height:60px;position:relative;">';
           html += '<canvas id="spline-' + node.id + '-' + key + '" style="width:100%;height:60px;border-radius:4px;background:rgba(0,0,0,0.3);"></canvas>';
           html += '</div>';
         }
+        
+        html += '</div>';
+      });
+      
+      html += '</div>';
+    } else {
+      html += '<div style="padding:20px;text-align:center;font-size:12px;color:rgba(255,255,255,0.4);">No parameters</div>';
+    }
+    
+    // Show the panel
+    nodePanel.style.display = 'block';
+    
+    // Update content
+    nodeContent.innerHTML = html;
+    
+    // Position controls to accommodate panel
+    if (controls) {
+      controls.style.right = '380px';
+    }
+    
+    // Render spline canvases after DOM update
+    if (hasParams) {
+      setTimeout(function() {
+        Object.entries(params).forEach(function([key, param]) {
+          if (param.keyframes && param.keyframes.length > 0) {
+            var canvas = document.getElementById('spline-' + node.id + '-' + key);
+            if (canvas) {
+              drawMiniSpline(canvas, param);
+            }
+          }
+        });
+      }, 50);
+    }
+  }
         
         html += '</div>';
       });
@@ -2104,13 +2128,14 @@
   }
 
   function closeSidePanel() {
-    // Collapse the Nodes section instead of hiding entire panel
-    var sections = window.expandedSections;
-    if (sections && sections.nodes && sections.nodes._expanded) {
-      sections.nodes._expanded = false;
-      sections.nodes.content.style.maxHeight = '0';
-      sections.nodes.content.style.padding = '0 16px';
-      sections.nodes.header.querySelector('.exp-chevron').style.transform = 'rotate(0deg)';
+    // Hide the node panel and reset controls
+    var nodePanel = document.getElementById('exp-node-panel');
+    var controls = document.getElementById('expanded-controls');
+    if (nodePanel) {
+      nodePanel.style.display = 'none';
+    }
+    if (controls) {
+      controls.style.right = '20px';
     }
   }
   window.closeSidePanel = closeSidePanel;
@@ -2242,55 +2267,27 @@
       zoomLbl.textContent = Math.round(sc * 100) + '%';
     });
     
-    // Toggle Video button
+    // Toggle Video button (just toggles the floating video, doesn't affect node panel)
     var toggleVideoBtn = document.getElementById('exp-toggle-video');
     if (toggleVideoBtn) {
       toggleVideoBtn.addEventListener('click', function() {
         var videoContainer = document.getElementById('exp-video-section');
-        var panel = document.getElementById('expanded-node-panel');
-        var controls = document.getElementById('expanded-controls');
-        
         if (!videoContainer) return;
         
         // Toggle video container visibility
         var isHidden = videoContainer.style.display === 'none';
         
         if (isHidden) {
-          // Show video container
           videoContainer.style.display = 'block';
-          
-          // Show panel if hidden
-          if (panel) panel.style.display = 'flex';
-          
-          // Move controls
-          if (controls) controls.style.right = '380px';
-          
-          // Update button state
           toggleVideoBtn.style.background = 'rgba(108,123,255,0.25)';
           toggleVideoBtn.style.borderColor = 'rgba(108,123,255,0.5)';
           toggleVideoBtn.style.color = 'var(--violet-light)';
         } else {
-          // Hide video container
           videoContainer.style.display = 'none';
-          
-          // If nodes section is also hidden/empty, hide entire panel
-          var nodesSection = document.getElementById('exp-section-nodes');
-          if (!nodesSection || nodesSection.style.display === 'none') {
-            if (panel) panel.style.display = 'none';
-            if (controls) controls.style.right = '20px';
-          } else {
-            if (controls) controls.style.right = '380px';
-          }
-          
-          // Update button state
           toggleVideoBtn.style.background = 'rgba(6,6,13,0.75)';
           toggleVideoBtn.style.borderColor = 'rgba(255,255,255,0.1)';
           toggleVideoBtn.style.color = 'rgba(255,255,255,0.55)';
         }
-        
-        // Auto-fit graph
-        var fitBtn = document.getElementById('exp-fit');
-        if (fitBtn) fitBtn.click();
       });
     }
   }
@@ -2388,16 +2385,13 @@
     var effect = window._currentEffectData;
     if (!effect) return;
     
-    var sections = window.expandedSections;
-    if (!sections) return;
-    
     // Video container
     if (effect.video_url) {
       var ytId = extractYouTubeId(effect.video_url);
       if (ytId) {
-        var videoWrapper = document.getElementById('exp-video-wrapper');
-        if (videoWrapper) {
-          videoWrapper.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '?rel=0&modestbranding=1" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>';
+        var videoInner = document.getElementById('exp-video-inner');
+        if (videoInner) {
+          videoInner.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '?rel=0&modestbranding=1" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>';
         }
       } else {
         // No valid YouTube ID - hide the video container
@@ -2424,46 +2418,12 @@
       bottomBar.style.display = 'none';
     }
     
-    // Nodes section - always visible if we have node data
-    if (!window.currentNodeData || !window.currentNodeData.nodes.length) {
-      sections.nodes.section.style.display = 'none';
-    } else if (!effect.video_url) {
-      // Auto-expand nodes if video is not available
-      if (!sections.nodes._expanded) {
-        sections.nodes._expanded = true;
-        sections.nodes.content.style.maxHeight = 'none';
-        sections.nodes.header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
-      }
-    }
-    
-    // Check if any side panel sections are visible, update Video button state
-    var videoContainer = document.getElementById('exp-video-section');
-    var videoVisible = videoContainer && videoContainer.style.display !== 'none';
-    var nodesVisible = sections.nodes.section.style.display !== 'none';
-    var anyVisible = videoVisible || nodesVisible;
-    var panel = document.getElementById('expanded-node-panel');
-    var controls = document.getElementById('expanded-controls');
+    // Update Video button state (video hidden by default)
     var toggleBtn = document.getElementById('exp-toggle-video');
-    
-    if (!anyVisible && panel) {
-      panel.style.display = 'none';
-      // If bottom bar is visible, keep controls in appropriate position
-      var bottomBar = document.getElementById('expanded-bottom-bar');
-      var bottomBarVisible = bottomBar && bottomBar.style.display !== 'none';
-      if (controls) controls.style.right = bottomBarVisible ? '20px' : '20px';
-    }
-    
-    // Update Video button state based on video container visibility
     if (toggleBtn) {
-      if (!videoVisible) {
-        toggleBtn.style.background = 'rgba(6,6,13,0.75)';
-        toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
-        toggleBtn.style.color = 'rgba(255,255,255,0.55)';
-      } else {
-        toggleBtn.style.background = 'rgba(108,123,255,0.25)';
-        toggleBtn.style.borderColor = 'rgba(108,123,255,0.5)';
-        toggleBtn.style.color = 'var(--violet-light)';
-      }
+      toggleBtn.style.background = 'rgba(6,6,13,0.75)';
+      toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
+      toggleBtn.style.color = 'rgba(255,255,255,0.55)';
     }
     
     // Adjust side panel position based on bottom bar state
