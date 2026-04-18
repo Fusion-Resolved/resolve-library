@@ -80,6 +80,11 @@
         return;
       }
 
+      console.log('[Effect Modal] Fetched effect:', effect.id, 'nodes:', effect.nodes ? typeof effect.nodes : 'missing');
+      if (effect.nodes) {
+        console.log('[Effect Modal] nodes data:', typeof effect.nodes === 'object' ? 'object' : effect.nodes.substring(0, 100));
+      }
+
       populateModal(effect);
       showModal();
       console.log('[Effect Modal] Opened effect:', effect.name);
@@ -175,6 +180,7 @@
     if (!hasValidData && effect.nodes && window.NodeSystem) {
       try {
         var rawNodes = effect.nodes;
+        console.log('[effect-modal] effect.nodes raw type:', typeof rawNodes, 'isArray:', Array.isArray(rawNodes));
         // If nodes is a string, parse it (Supabase sometimes returns JSONB as string)
         if (typeof rawNodes === 'string') {
           try {
@@ -185,6 +191,7 @@
           }
         }
         // Check if it's a full graph object (has schemaVersion or nodes array)
+        console.log('[effect-modal] After parsing - type:', typeof rawNodes, 'schemaVersion:', rawNodes.schemaVersion, 'nodes array:', rawNodes.nodes ? rawNodes.nodes.length : 'none');
         if (rawNodes && typeof rawNodes === 'object' && !Array.isArray(rawNodes)
             && (rawNodes.nodes || rawNodes.schemaVersion)) {
           console.log('[effect-modal] Using effect.nodes (JSONB) with', rawNodes.nodes.length, 'nodes');
