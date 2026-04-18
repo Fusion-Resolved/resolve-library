@@ -340,6 +340,14 @@
         badge.textContent = 'connected';
         badge.title = 'Connected to: ' + value.sourceOp;
         valueContainer.appendChild(badge);
+      } else if (typeof value.value === 'string' && value.value.includes('points')) {
+        // Polyline or similar complex type
+        const badge = document.createElement('span');
+        badge.className = 'value-static-badge';
+        badge.style.cssText = 'background:rgba(160,174,255,0.15);color:#a0aeff;';
+        badge.textContent = 'path';
+        badge.title = 'Polyline with ' + value.value;
+        valueContainer.appendChild(badge);
       } else {
         const badge = document.createElement('span');
         badge.className = 'value-static-badge';

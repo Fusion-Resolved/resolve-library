@@ -309,12 +309,34 @@
       const { content: pbody, endIdx } = extractBlock(inputsContent, bodyStart);
       i = endIdx;
 
-      // Extract Value
-      const valueMatch = pbody.match(/\bValue\s*=\s*([^{},\n]+|FuID\s*\{[^}]+\}|\{[^}]*\})/);
-      let rawVal = valueMatch ? valueMatch[1].trim() : '';
+      // Extract Value using balanced brace parsing
+      let rawVal = '';
+      const valueIdx = pbody.search(/\bValue\s*=\s*/);
+      if (valueIdx !== -1) {
+        const afterValue = valueIdx + pbody.slice(valueIdx).match(/\bValue\s*=\s*/)[0].length;
+        // Check if it's a complex nested structure
+        if (pbody[afterValue] === '{') {
+          const extracted = extractBlock(pbody, afterValue + 1);
+          rawVal = '{' + extracted.content + '}';
+        } else {
+          // Simple value - extract until comma or newline
+          const simpleMatch = pbody.slice(afterValue).match(/^([^,\n]+)/);
+          rawVal = simpleMatch ? simpleMatch[1].trim() : '';
+        }
+      }
+      
       let formattedVal = formatFuID(rawVal);
       let keyframes = null;
       let type = 'value';
+
+      // Check for Polyline and show point count
+      const polylineM = rawVal.match(/Polyline\s*\{/);
+      if (polylineM) {
+        const pointMatches = rawVal.match(/\{\s*Linear|X\s*=/g);
+        const pointCount = pointMatches ? pointMatches.length : 0;
+        formattedVal = pointCount + ' points';
+        type = 'polyline';
+      }
 
       // Check for spline reference
       const bezierM = rawVal.match(/BezierSpline\s*\{\s*Name\s*=\s*"([^"]+)"/);

@@ -2561,13 +2561,19 @@
     modal.style.cssText = 'background:#141419;border:1px solid rgba(108,123,255,0.3);border-radius:12px;width:90%;max-width:700px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.5);';
 
     // Header
+    var isConnected = param.v === '—' && param.sourceOp;
+    var isPolyline = param.type === 'polyline' || (typeof param.value === 'string' && param.value.includes('points'));
+    var paramTypeLabel = param.keyframes ? (param.keyframes.length + ' keyframes') : 
+                         isConnected ? 'Connected' : 
+                         isPolyline ? 'Polyline' : 'Static';
+    
     var header = document.createElement('div');
     header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);';
     header.innerHTML = 
       '<div>' +
         '<div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:#fff;">' + escapeHtml(paramKey) + '</div>' +
         '<div style="font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">' + 
-          (node.fusionName || node.name) + ' • ' + (param.keyframes ? param.keyframes.length + ' keyframes' : 'Static') + 
+          (node.fusionName || node.name) + ' • ' + paramTypeLabel + 
         '</div>' +
       '</div>' +
       '<button id="param-detail-close" style="background:none;border:none;color:rgba(255,255,255,0.6);cursor:pointer;font-size:20px;padding:4px 8px;border-radius:4px;transition:all 0.15s;">&#x2715;</button>';
@@ -2612,16 +2618,47 @@
       setTimeout(function() {
         drawParamDetailSpline(canvas, sortedKfs);
       }, 10);
-    } else {
-      content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">' +
-        '<div style="font-size:48px;margin-bottom:16px;">&#x23F8;</div>' +
-        '<div style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Static Parameter</div>' +
-        '<div style="font-size:13px;">This parameter has no animation keyframes.</div>' +
-        '<div style="font-family:var(--font-mono);font-size:14px;margin-top:16px;padding:12px 20px;background:rgba(108,123,255,0.1);border-radius:6px;display:inline-block;color:#fff;">' +
-          'Value: ' + (param.v !== undefined ? param.v : param.value !== undefined ? param.value : 'N/A') +
-        '</div>' +
-      '</div>';
-    }
+      } else {
+        // Check if this is a connected parameter
+        var isConnected = param.v === '—' && param.sourceOp;
+        var isPolyline = param.type === 'polyline' || (typeof param.value === 'string' && param.value.includes('points'));
+        
+        if (isConnected) {
+          content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">' +
+            '<div style="font-size:48px;margin-bottom:16px;">&#x2190;</div>' +
+            '<div style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Connected Parameter</div>' +
+            '<div style="font-size:13px;">This parameter receives its value from another node.</div>' +
+            '<div style="font-family:var(--font-mono);font-size:14px;margin-top:16px;padding:12px 20px;background:rgba(108,123,255,0.1);border-radius:6px;display:inline-block;color:#fff;">' +
+              'Source: <span style="color:var(--violet-light);">' + escapeHtml(param.sourceOp) + '</span>' +
+            '</div>' +
+            '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:12px;">' +
+              'Click on the <strong>' + escapeHtml(param.sourceOp) + '</strong> node to see its output values.' +
+            '</div>' +
+          '</div>';
+        } else if (isPolyline) {
+          content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">' +
+            '<div style="font-size:48px;margin-bottom:16px;">&#x27F3;</div>' +
+            '<div style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Polyline Path</div>' +
+            '<div style="font-size:13px;">This parameter contains a path with control points.</div>' +
+            '<div style="font-family:var(--font-mono);font-size:14px;margin-top:16px;padding:12px 20px;background:rgba(160,174,255,0.15);border-radius:6px;display:inline-block;color:#fff;">' +
+              escapeHtml(param.value) +
+            '</div>' +
+            '<div style="margin-top:16px;padding:12px 16px;background:rgba(255,255,255,0.05);border-radius:6px;max-width:400px;margin-left:auto;margin-right:auto;">' +
+              '<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px;">Raw Data:</div>' +
+              '<pre style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,0.4);margin:0;white-space:pre-wrap;word-break:break-all;text-align:left;max-height:150px;overflow-y:auto;">' + escapeHtml(param.raw || 'N/A') + '</pre>' +
+            '</div>' +
+          '</div>';
+        } else {
+          content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">' +
+            '<div style="font-size:48px;margin-bottom:16px;">&#x23F8;</div>' +
+            '<div style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Static Parameter</div>' +
+            '<div style="font-size:13px;">This parameter has no animation keyframes.</div>' +
+            '<div style="font-family:var(--font-mono);font-size:14px;margin-top:16px;padding:12px 20px;background:rgba(108,123,255,0.1);border-radius:6px;display:inline-block;color:#fff;">' +
+              'Value: ' + (param.v !== undefined ? param.v : param.value !== undefined ? param.value : 'N/A') +
+            '</div>' +
+          '</div>';
+        }
+      }
 
     // Assemble modal
     modal.appendChild(header);
