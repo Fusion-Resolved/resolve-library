@@ -2266,8 +2266,12 @@
     var prevBtn = document.getElementById('exp-step-prev-bottom');
     var nextBtn = document.getElementById('exp-step-next-bottom');
     
+    console.log('[setupExpandedToggles] Step buttons found:', { prevBtn: !!prevBtn, nextBtn: !!nextBtn });
+    
     if (prevBtn) {
-      prevBtn.addEventListener('click', function() {
+      prevBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        console.log('[prevBtn] clicked, current step:', _expandedCurrentStep);
         if (_expandedCurrentStep > 0) {
           _expandedCurrentStep--;
           renderExpandedStep(_expandedCurrentStep);
@@ -2276,7 +2280,9 @@
     }
     
     if (nextBtn) {
-      nextBtn.addEventListener('click', function() {
+      nextBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        console.log('[nextBtn] clicked, current step:', _expandedCurrentStep, 'total:', _expandedStepsData.length);
         if (_expandedCurrentStep < _expandedStepsData.length - 1) {
           _expandedCurrentStep++;
           renderExpandedStep(_expandedCurrentStep);
@@ -2311,8 +2317,10 @@
     
     // Steps - populate bottom bar
     var bottomBar = document.getElementById('expanded-bottom-bar');
+    console.log('[populateExpandedPanelData] Steps data:', effect.steps, 'bottomBar:', !!bottomBar);
     if (effect.steps && bottomBar) {
       _expandedStepsData = Array.isArray(effect.steps) ? effect.steps : effect.steps.split('\n').filter(function(s) { return s.trim(); });
+      console.log('[populateExpandedPanelData] Parsed steps:', _expandedStepsData.length);
       if (_expandedStepsData.length > 0) {
         renderExpandedStep(0);
         bottomBar.style.display = 'flex';
@@ -2367,7 +2375,11 @@
   }
   
   function renderExpandedStep(idx) {
-    if (!_expandedStepsData.length || idx < 0 || idx >= _expandedStepsData.length) return;
+    console.log('[renderExpandedStep] Rendering step:', idx, 'of', _expandedStepsData.length);
+    if (!_expandedStepsData.length || idx < 0 || idx >= _expandedStepsData.length) {
+      console.log('[renderExpandedStep] Invalid index or no data');
+      return;
+    }
     
     var content = document.getElementById('exp-step-content-bottom');
     var current = document.getElementById('exp-step-current-bottom');
