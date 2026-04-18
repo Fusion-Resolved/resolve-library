@@ -1769,6 +1769,7 @@
     var resizeDirection = '';
     var startX = 0, startY = 0;
     var startRect = {};
+    var resizeOverlay = null; // Overlay to capture events during resize
     
     // MIN/MAX sizes
     var MIN_W = 200, MAX_W = 700;
@@ -1790,12 +1791,31 @@
       };
     }
     
+    // Create resize overlay to capture mouse events during drag
+    function createResizeOverlay() {
+      if (resizeOverlay) return;
+      resizeOverlay = document.createElement('div');
+      resizeOverlay.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:inherit;user-select:none;-webkit-user-select:none;';
+      document.body.appendChild(resizeOverlay);
+      document.body.style.userSelect = 'none'; // Prevent text selection
+    }
+    
+    function removeResizeOverlay() {
+      if (resizeOverlay) {
+        resizeOverlay.remove();
+        resizeOverlay = null;
+      }
+      document.body.style.userSelect = ''; // Restore text selection
+    }
+    
     // Setup drag (top strip)
     if (dragZone) {
       dragZone.addEventListener('mousedown', function(e) {
         e.preventDefault();
         isDragging = true;
+        createResizeOverlay();
         dragZone.style.cursor = 'grabbing';
+        if (resizeOverlay) resizeOverlay.style.cursor = 'grabbing';
         startX = e.clientX;
         startY = e.clientY;
         var rect = getVideoRect();
@@ -1810,6 +1830,8 @@
       el.addEventListener('mousedown', function(e) {
         e.preventDefault();
         isResizing = true;
+        createResizeOverlay();
+        if (resizeOverlay) resizeOverlay.style.cursor = el.style.cursor;
         resizeDirection = edge;
         startX = e.clientX;
         startY = e.clientY;
@@ -1825,6 +1847,8 @@
       el.addEventListener('mousedown', function(e) {
         e.preventDefault();
         isResizing = true;
+        createResizeOverlay();
+        if (resizeOverlay) resizeOverlay.style.cursor = el.style.cursor;
         resizeDirection = corner; // 'tl', 'tr', 'bl', 'br'
         startX = e.clientX;
         startY = e.clientY;
@@ -1834,7 +1858,7 @@
     });
     
     // Global mousemove
-    document.addEventListener('mousemove', function(e) {
+    window.addEventListener('mousemove', function(e) {
       if (isDragging) {
         var dx = startX - e.clientX;
         var dy = e.clientY - startY;
@@ -1912,24 +1936,29 @@
       }
     });
     
-    // Global mouseup
-    document.addEventListener('mouseup', function() {
+    // Global mouseup - always clean up
+    window.addEventListener('mouseup', function() {
       if (isDragging && dragZone) {
         dragZone.style.cursor = 'grab';
       }
       isDragging = false;
       isResizing = false;
       resizeDirection = '';
+      removeResizeOverlay();
     });
     
-    // Video close button - pause and save timestamp
+    // Video close button - pause and save timestamp to localStorage
     if (videoCloseBtn) {
       videoCloseBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         
-        // Pause video and save current time
+        // Pause video and save current time to localStorage
         if (window.expandedYTPlayer && window.expandedYTPlayer.pauseVideo) {
-          window._expandedVideoTime = window.expandedYTPlayer.getCurrentTime();
+          var currentTime = window.expandedYTPlayer.getCurrentTime();
+          var videoId = window._expandedVideoId;
+          if (videoId) {
+            localStorage.setItem('yt_video_time_' + videoId, currentTime.toString());
+          }
           window.expandedYTPlayer.pauseVideo();
         }
         
@@ -2026,57 +2055,27 @@
     
     var NW = 132, NH = 50;
     
-    // Calculate world bounds - include ALL node positions (negative and positive)
-    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    // Calculate world bounds
+    var wW = 0, wH = 0;
     nodes.forEach(function(n) {
       var nx = n.x || 0;
       var ny = n.y || 0;
-      if (nx < minX) minX = nx;
-      if (ny < minY) minY = ny;
-      if (nx + NW > maxX) maxX = nx + NW;
-      if (ny + NH > maxY) maxY = ny + NH;
+      if (nx + NW + 40 > wW) wW = nx + NW + 40;
+      if (ny + NH + 40 > wH) wH = ny + NH + 40;
     });
-    
-    // Calculate offset to ensure all coordinates are positive (canvas starts at 0,0)
-    var offsetX = minX < 0 ? -minX + 50 : 50;
-    var offsetY = minY < 0 ? -minY + 50 : 50;
-    
-    // World size must cover from 0 to max+offset
-    // For hundreds of nodes, allow larger canvas but warn about performance
-    var MAX_CANVAS_SIZE = 12000; // 12000px for large node graphs (~125 nodes at 100px spacing)
-    var wW = Math.min(Math.max(maxX + offsetX + 100, 1200), MAX_CANVAS_SIZE);
-    var wH = Math.min(Math.max(maxY + offsetY + 100, 800), MAX_CANVAS_SIZE);
-    
-    // Warn if nodes exceed canvas capacity
-    if (maxX + offsetX + 100 > MAX_CANVAS_SIZE || maxY + offsetY + 100 > MAX_CANVAS_SIZE) {
-      console.warn('Node graph exceeds maximum canvas size (' + MAX_CANVAS_SIZE + 'px). Some nodes may be clipped. Consider zooming out or reorganizing nodes.');
-    }
-    
-    // Store offset for use in rendering (don't modify node data!)
-    window._expandedRenderOffsetX = offsetX;
-    window._expandedRenderOffsetY = offsetY;
     
     world.style.width = wW + 'px';
     world.style.height = wH + 'px';
     svg.setAttribute('width', wW);
     svg.setAttribute('height', wH);
     
-    // Build spatial index for fast node lookup (for virtualization)
-    window._expandedNodeSpatialIndex = buildSpatialIndex(nodes, NW, NH, offX, offY);
-    
-    // Store node data globally for access by animation
-    window._expandedCurrentNodes = nodes;
-    window._expandedCurrentEdges = edges;
-    
     // Clear existing
     svg.innerHTML = '';
     world.innerHTML = '';
     world.appendChild(svg);
     
-    // Draw edges with offset
+    // Draw edges
     var nodeMap = {};
-    var offX = window._expandedRenderOffsetX || 0;
-    var offY = window._expandedRenderOffsetY || 0;
     nodes.forEach(function(n) { nodeMap[n.id] = n; });
     
     edges.forEach(function(e) {
@@ -2084,10 +2083,10 @@
       var tn = nodeMap[e.to];
       if (!fn || !tn) return;
       
-      var fx = (fn.x || 0) + NW + offX;
-      var fy = (fn.y || 0) + NH / 2 + offY;
-      var tx = (tn.x || 0) + offX;
-      var ty = (tn.y || 0) + NH / 2 + offY;
+      var fx = (fn.x || 0) + NW;
+      var fy = (fn.y || 0) + NH / 2;
+      var tx = tn.x || 0;
+      var ty = (tn.y || 0) + NH / 2;
       var pull = Math.max(55, Math.abs(tx - fx) * 0.45);
       var d = 'M' + fx + ' ' + fy + ' C' + (fx + pull) + ' ' + fy + ' ' + (tx - pull) + ' ' + ty + ' ' + tx + ' ' + ty;
       
@@ -2100,167 +2099,36 @@
       svg.appendChild(path);
     });
     
-    // Draw nodes with virtualization (only render visible ones)
-    // For 500+ nodes, this is critical for performance
-    var renderedNodes = {}; // Track which nodes are currently rendered
-    var nodeContainer = document.createElement('div');
-    nodeContainer.id = 'exp-node-container';
-    nodeContainer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
-    world.appendChild(nodeContainer);
-    
-    // Function to render visible nodes based on current viewport
-    function renderVisibleNodes() {
-      var vp = document.getElementById('expanded-graph-vp');
-      if (!vp) return;
+    // Draw nodes (same styling as main graph)
+    nodes.forEach(function(n) {
+      var card = document.createElement('div');
+      card.style.cssText = 'position:absolute;left:' + (n.x || 0) + 'px;top:' + (n.y || 0) + 'px;width:' + NW + 'px;height:' + NH + 'px;display:flex;align-items:center;gap:7px;border-radius:6px;border:1px solid ' + (n.catColor || '#6c7bff') + '55;cursor:pointer;padding:0 10px;transition:filter 0.12s,box-shadow 0.12s;background:rgba(' + parseInt((n.catColor || '#6c7bff').slice(1,3),16) + ',' + parseInt((n.catColor || '#6c7bff').slice(3,5),16) + ',' + parseInt((n.catColor || '#6c7bff').slice(5,7),16) + ',0.13);';
       
-      // Get current transform
-      var transform = window.getComputedStyle(world).transform;
-      var match = transform.match(/matrix\(([^,]+),[^,]+,[^,]+,([^,]+),([^,]+),([^)]+)\)/);
-      if (!match) return;
+      var dot = document.createElement('div');
+      dot.style.cssText = 'width:6px;height:6px;border-radius:50%;flex-shrink:0;background:' + (n.catColor || '#6c7bff') + ';';
       
-      var scale = parseFloat(match[2]);
-      var tx = parseFloat(match[3]);
-      var ty = parseFloat(match[4]);
-      var vpRect = vp.getBoundingClientRect();
+      var labels = document.createElement('div');
+      labels.style.cssText = 'min-width:0;flex:1;';
+      var typeLabel = document.createElement('div');
+      typeLabel.style.cssText = 'font-family:var(--font-mono,monospace);font-size:7.5px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.38);line-height:1;margin-bottom:3px;';
+      typeLabel.textContent = n.category || 'Custom';
+      var nameLabel = document.createElement('div');
+      nameLabel.style.cssText = 'font-family:var(--font-display,sans-serif);font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1;';
+      nameLabel.textContent = n.fusionName || n.name;
+      labels.appendChild(typeLabel);
+      labels.appendChild(nameLabel);
       
-      // Calculate visible bounds with padding
-      var pad = 100;
-      var visibleMinX = (-tx - pad) / scale;
-      var visibleMinY = (-ty - pad) / scale;
-      var visibleMaxX = (-tx + vpRect.width + pad) / scale;
-      var visibleMaxY = (-ty + vpRect.height + pad) / scale;
+      card.appendChild(dot);
+      card.appendChild(labels);
       
-      // Use spatial index to find visible nodes
-      var spatialIndex = window._expandedNodeSpatialIndex;
-      var visibleNodeItems = spatialIndex ? 
-        spatialIndex.getNodesInRect(visibleMinX, visibleMinY, visibleMaxX, visibleMaxY) :
-        nodes.map(function(n, i) { return { node: n, idx: i, x: (n.x || 0) + offX, y: (n.y || 0) + offY, w: NW, h: NH }; });
-      
-      // Determine render mode based on zoom
-      // < 30% zoom: tiny dots (clustered view)
-      // 30-70%: simple boxes  
-      // > 70%: full nodes
-      var renderMode = scale < 0.3 ? 'minimal' : scale < 0.7 ? 'simple' : 'full';
-      
-      // Track which nodes should be visible
-      var visibleNodeIds = {};
-      visibleNodeItems.forEach(function(item) {
-        visibleNodeIds[item.node.id || item.idx] = true;
-      });
-      
-      // Remove nodes that are no longer visible
-      Object.keys(renderedNodes).forEach(function(nodeId) {
-        if (!visibleNodeIds[nodeId]) {
-          var el = renderedNodes[nodeId];
-          if (el && el.parentNode) el.parentNode.removeChild(el);
-          delete renderedNodes[nodeId];
-        }
-      });
-      
-      // Add newly visible nodes
-      visibleNodeItems.forEach(function(item) {
-        var nodeId = item.node.id || item.idx;
-        if (renderedNodes[nodeId]) {
-          // Update position if needed (node was already rendered)
-          var el = renderedNodes[nodeId];
-          if (el._renderMode !== renderMode) {
-            // Re-render with new mode
-            el.parentNode.removeChild(el);
-            delete renderedNodes[nodeId];
-          } else {
-            // Just update position
-            el.style.left = item.x + 'px';
-            el.style.top = item.y + 'px';
-            return;
-          }
-        }
-        
-        // Create new node element
-        var el = createNodeElement(item.node, item.x, item.y, renderMode, NW, NH, offX, offY);
-        el._renderMode = renderMode;
-        el._nodeId = nodeId;
-        nodeContainer.appendChild(el);
-        renderedNodes[nodeId] = el;
-      });
-    }
-    
-    // Create node element based on render mode
-    function createNodeElement(n, nx, ny, mode, NW, NH, offX, offY) {
-      var el = document.createElement('div');
-      el.style.position = 'absolute';
-      el.style.left = nx + 'px';
-      el.style.top = ny + 'px';
-      el.style.pointerEvents = 'auto';
-      
-      if (mode === 'minimal') {
-        // Tiny dot for zoomed out view
-        el.style.width = '6px';
-        el.style.height = '6px';
-        el.style.borderRadius = '50%';
-        el.style.background = n.catColor || '#6c7bff';
-        el.style.boxShadow = '0 0 4px ' + (n.catColor || '#6c7bff');
-      } else if (mode === 'simple') {
-        // Small box with just color indicator
-        el.style.width = NW + 'px';
-        el.style.height = '8px';
-        el.style.borderRadius = '2px';
-        el.style.background = n.catColor || '#6c7bff';
-        el.style.opacity = '0.6';
-      } else {
-        // Full node card
-        el.style.width = NW + 'px';
-        el.style.height = NH + 'px';
-        el.style.display = 'flex';
-        el.style.alignItems = 'center';
-        el.style.gap = '7px';
-        el.style.borderRadius = '6px';
-        el.style.border = '1px solid ' + (n.catColor || '#6c7bff') + '55';
-        el.style.cursor = 'pointer';
-        el.style.padding = '0 10px';
-        el.style.transition = 'filter 0.12s,box-shadow 0.12s';
-        el.style.background = 'rgba(' + parseInt((n.catColor || '#6c7bff').slice(1,3),16) + ',' + parseInt((n.catColor || '#6c7bff').slice(3,5),16) + ',' + parseInt((n.catColor || '#6c7bff').slice(5,7),16) + ',0.13)';
-        
-        var dot = document.createElement('div');
-        dot.style.cssText = 'width:6px;height:6px;border-radius:50%;flex-shrink:0;background:' + (n.catColor || '#6c7bff') + ';';
-        
-        var labels = document.createElement('div');
-        labels.style.cssText = 'min-width:0;flex:1;';
-        var typeLabel = document.createElement('div');
-        typeLabel.style.cssText = 'font-family:var(--font-mono,monospace);font-size:7.5px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.38);line-height:1;margin-bottom:3px;';
-        typeLabel.textContent = n.category || 'Custom';
-        var nameLabel = document.createElement('div');
-        nameLabel.style.cssText = 'font-family:var(--font-display,sans-serif);font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1;';
-        nameLabel.textContent = n.fusionName || n.name;
-        labels.appendChild(typeLabel);
-        labels.appendChild(nameLabel);
-        
-        el.appendChild(dot);
-        el.appendChild(labels);
-      }
-      
-      // Click handler
-      el.addEventListener('click', function(ev) {
+      // Click handler to show node details in side panel
+      card.addEventListener('click', function(ev) {
         ev.stopPropagation();
         showNodeInSidePanel(n);
       });
       
-      return el;
-    }
-    
-    // Initial render
-    renderVisibleNodes();
-    
-    // Re-render on transform changes (zoom/pan)
-    var lastTransform = '';
-    function checkTransform() {
-      var current = world.style.transform;
-      if (current !== lastTransform) {
-        lastTransform = current;
-        renderVisibleNodes();
-      }
-      requestAnimationFrame(checkTransform);
-    }
-    checkTransform();
+      world.appendChild(card);
+    });
     
     // Add flow animation canvas INSIDE world element (inherits CSS transform)
     if (world) {
@@ -2305,58 +2173,6 @@
       world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
       zoomLbl.textContent = Math.round(sc * 100) + '%';
     }
-  }
-
-  // Build spatial index for fast node lookup (grid-based for 500+ nodes)
-  function buildSpatialIndex(nodes, nodeW, nodeH, offsetX, offsetY) {
-    var cellSize = 300; // 300px cells
-    var grid = {};
-    
-    nodes.forEach(function(n, idx) {
-      var nx = (n.x || 0) + offsetX;
-      var ny = (n.y || 0) + offsetY;
-      var cellX = Math.floor(nx / cellSize);
-      var cellY = Math.floor(ny / cellSize);
-      var key = cellX + ',' + cellY;
-      
-      if (!grid[key]) grid[key] = [];
-      grid[key].push({
-        node: n,
-        idx: idx,
-        x: nx,
-        y: ny,
-        w: nodeW,
-        h: nodeH
-      });
-    });
-    
-    return {
-      cellSize: cellSize,
-      grid: grid,
-      getNodesInRect: function(minX, minY, maxX, maxY) {
-        var result = [];
-        var startCellX = Math.floor(minX / cellSize);
-        var startCellY = Math.floor(minY / cellSize);
-        var endCellX = Math.floor(maxX / cellSize);
-        var endCellY = Math.floor(maxY / cellSize);
-        
-        for (var cx = startCellX; cx <= endCellX; cx++) {
-          for (var cy = startCellY; cy <= endCellY; cy++) {
-            var key = cx + ',' + cy;
-            var cell = grid[key];
-            if (cell) {
-              cell.forEach(function(item) {
-                if (item.x < maxX && item.x + item.w > minX &&
-                    item.y < maxY && item.y + item.h > minY) {
-                  result.push(item);
-                }
-              });
-            }
-          }
-        }
-        return result;
-      }
-    };
   }
 
   function showNodeInSidePanel(node) {
@@ -2654,7 +2470,7 @@
       zoomLbl.textContent = Math.round(sc * 100) + '%';
     });
     
-    // Toggle Video button - pause/resume with timestamp
+    // Toggle Video button - pause/resume with localStorage persistence
     var toggleVideoBtn = document.getElementById('exp-toggle-video');
     if (toggleVideoBtn) {
       toggleVideoBtn.addEventListener('click', function() {
@@ -2670,16 +2486,26 @@
           toggleVideoBtn.style.borderColor = 'rgba(108,123,255,0.5)';
           toggleVideoBtn.style.color = 'var(--violet-light)';
           
-          // Resume from saved timestamp if available
+          // Resume from localStorage saved timestamp
+          var videoId = window._expandedVideoId;
+          var savedTime = 0;
+          if (videoId) {
+            var stored = localStorage.getItem('yt_video_time_' + videoId);
+            if (stored) savedTime = parseFloat(stored);
+          }
+          
           if (window.expandedYTPlayer && window.expandedYTPlayer.seekTo) {
-            var savedTime = window._expandedVideoTime || 0;
             window.expandedYTPlayer.seekTo(savedTime, true);
             window.expandedYTPlayer.playVideo();
           }
         } else {
-          // Pause and save timestamp before hiding
+          // Pause and save timestamp to localStorage before hiding
           if (window.expandedYTPlayer && window.expandedYTPlayer.pauseVideo) {
-            window._expandedVideoTime = window.expandedYTPlayer.getCurrentTime();
+            var currentTime = window.expandedYTPlayer.getCurrentTime();
+            var videoId = window._expandedVideoId;
+            if (videoId) {
+              localStorage.setItem('yt_video_time_' + videoId, currentTime.toString());
+            }
             window.expandedYTPlayer.pauseVideo();
           }
           
@@ -2718,7 +2544,12 @@
       window.expandedYTPlayer.destroy();
     }
     
-    var savedTime = window._expandedVideoTime || 0;
+    // Load saved time from localStorage
+    var savedTime = 0;
+    var storedTime = localStorage.getItem('yt_video_time_' + videoId);
+    if (storedTime) {
+      savedTime = parseFloat(storedTime);
+    }
     
     // Check if player div exists
     var playerDiv = document.getElementById('exp-yt-player');
@@ -2995,121 +2826,116 @@
     if (expandedFlowAnimId) cancelAnimationFrame(expandedFlowAnimId);
     
     var ctx = canvas.getContext('2d');
-    var SPEED = 36;
-    var DASH_LEN = 7;
-    var DASH_GAP = 18;
-    var PATTERN = DASH_LEN + DASH_GAP;
+    var SPEED = 30; // pixels per second
+    var DASH_LEN = 6;
+    var GAP_LEN = 14;
+    var PATTERN = DASH_LEN + GAP_LEN;
     var startTime = performance.now();
     
-    var nodeMap = {};
-    nodes.forEach(function(n) { nodeMap[n.id] = n; });
-    
     var NW = 132, NH = 50;
-    var offX = window._expandedRenderOffsetX || 0;
-    var offY = window._expandedRenderOffsetY || 0;
+    
+    // Helper to resize canvas to fit all nodes - ensures all node positions are covered
+    function resizeCanvasToFit() {
+      var currentNodes = window.currentNodeData ? window.currentNodeData.nodes : nodes;
+      if (!currentNodes.length) return;
+      
+      // Find actual bounds including all node positions
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      currentNodes.forEach(function(n) {
+        var nx = n.x || 0;
+        var ny = n.y || 0;
+        if (nx < minX) minX = nx;
+        if (ny < minY) minY = ny;
+        if (nx + NW > maxX) maxX = nx + NW;
+        if (ny + NH > maxY) maxY = ny + NH;
+      });
+      
+      // Add padding for edges and animation
+      minX = Math.max(0, minX - 50);
+      minY = Math.max(0, minY - 50);
+      maxX = maxX + 100;
+      maxY = maxY + 100;
+      
+      var neededWidth = Math.max(maxX, 1200);
+      var neededHeight = Math.max(maxY, 800);
+      
+      // Always resize if canvas is too small in either dimension
+      var needsResize = canvas.width < neededWidth || canvas.height < neededHeight;
+      
+      if (needsResize) {
+        canvas.width = Math.max(canvas.width, neededWidth);
+        canvas.height = Math.max(canvas.height, neededHeight);
+        canvas.style.width = canvas.width + 'px';
+        canvas.style.height = canvas.height + 'px';
+      }
+      
+      // Update world container to match
+      var world = canvas.parentElement;
+      if (world) {
+        var worldW = parseInt(world.style.width) || 0;
+        var worldH = parseInt(world.style.height) || 0;
+        if (worldW < neededWidth || worldH < neededHeight) {
+          var newW = Math.max(worldW, neededWidth);
+          var newH = Math.max(worldH, neededHeight);
+          world.style.width = newW + 'px';
+          world.style.height = newH + 'px';
+          var svg = world.querySelector('svg');
+          if (svg) {
+            svg.setAttribute('width', newW);
+            svg.setAttribute('height', newH);
+          }
+        }
+      }
+    }
     
     function drawFlow(ts) {
+      // Resize canvas to fit current node positions
+      resizeCanvasToFit();
+      
       var elapsed = (ts - startTime) / 1000;
       var W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
       
-      // Get viewport transform to calculate visible bounds for culling
-      var world = canvas.parentElement;
-      var vp = world ? world.parentElement : null;
-      var viewportCull = false;
-      var visibleMinX, visibleMinY, visibleMaxX, visibleMaxY;
+      // Get current node/edge data
+      var currentNodes = window.currentNodeData ? window.currentNodeData.nodes : nodes;
+      var currentEdges = window.currentNodeData ? window.currentNodeData.edges : edges;
       
-      if (world && vp) {
-        // Parse current transform
-        var transform = window.getComputedStyle(world).transform;
-        var match = transform.match(/matrix\(([^,]+),[^,]+,[^,]+,([^,]+),([^,]+),([^)]+)\)/);
-        if (match) {
-          var scale = parseFloat(match[2]);
-          var tx = parseFloat(match[3]);
-          var ty = parseFloat(match[4]);
-          var vpRect = vp.getBoundingClientRect();
-          
-          // Calculate visible world bounds with padding
-          var pad = 200; // Draw nodes slightly off-screen for smooth scrolling
-          visibleMinX = (-tx - pad) / scale;
-          visibleMinY = (-ty - pad) / scale;
-          visibleMaxX = (-tx + vpRect.width + pad) / scale;
-          visibleMaxY = (-ty + vpRect.height + pad) / scale;
-          viewportCull = true;
-          
-          // Skip animation if zoomed out too far (performance optimization)
-          if (scale < 0.25) {
-            // At very zoomed out levels, just show static lines without animation
-            ctx.setLineDash([]);
-            ctx.lineDashOffset = 0;
-          } else {
-            var dashOffset = -(elapsed * SPEED) % PATTERN;
-            ctx.setLineDash([DASH_LEN, DASH_GAP]);
-            ctx.lineDashOffset = dashOffset;
-          }
-        }
-      }
+      var nodeMap = {};
+      currentNodes.forEach(function(n) { nodeMap[n.id] = n; });
       
-      if (!viewportCull) {
-        // Fallback: full animation without culling
-        var dashOffset = -(elapsed * SPEED) % PATTERN;
-        ctx.setLineDash([DASH_LEN, DASH_GAP]);
-        ctx.lineDashOffset = dashOffset;
-      }
+      // Global dash offset - same for all edges so they animate in sync
+      var dashOffset = -(elapsed * SPEED) % PATTERN;
       
-      // Batch rendering settings
-      ctx.strokeStyle = 'rgba(108,123,255,0.55)';
-      ctx.lineWidth = 1.4;
-      ctx.shadowColor = 'rgba(108,123,255,0.35)';
-      ctx.shadowBlur = 4;
+      ctx.setLineDash([DASH_LEN, GAP_LEN]);
+      ctx.lineDashOffset = dashOffset;
       
-      // Canvas is now INSIDE world element, so we draw in world coordinates directly
-      // Apply offset to handle negative coordinates
-      // With viewport culling for performance with hundreds of nodes
-      var drawnCount = 0;
-      var skippedCount = 0;
-      
-      edges.forEach(function(e) {
+      // Draw all edges with the SAME dash pattern - this creates continuous flow effect
+      currentEdges.forEach(function(e) {
         var fn = nodeMap[e.from];
         var tn = nodeMap[e.to];
         if (!fn || !tn) return;
         
-        // World coordinates with offset (same as SVG paths)
-        var fx = (fn.x || 0) + NW + offX;
-        var fy = (fn.y || 0) + NH / 2 + offY;
-        var tx = (tn.x || 0) + offX;
-        var ty = (tn.y || 0) + NH / 2 + offY;
-        
-        // Viewport culling: skip edges completely outside visible area
-        if (viewportCull) {
-          var edgeMinX = Math.min(fx, tx) - 100; // Account for curve control points
-          var edgeMinY = Math.min(fy, ty) - 100;
-          var edgeMaxX = Math.max(fx, tx) + 100;
-          var edgeMaxY = Math.max(fy, ty) + 100;
-          
-          if (edgeMaxX < visibleMinX || edgeMinX > visibleMaxX ||
-              edgeMaxY < visibleMinY || edgeMinY > visibleMaxY) {
-            skippedCount++;
-            return; // Edge is off-screen, skip rendering
-          }
-        }
-        
-        drawnCount++;
+        var fx = (fn.x || 0) + NW;
+        var fy = (fn.y || 0) + NH / 2;
+        var tx = tn.x || 0;
+        var ty = (tn.y || 0) + NH / 2;
         
         var pull = Math.max(55, Math.abs(tx - fx) * 0.45);
         var c1x = fx + pull, c1y = fy;
         var c2x = tx - pull, c2y = ty;
         
+        ctx.strokeStyle = 'rgba(108,123,255,0.55)';
+        ctx.lineWidth = 1.4;
+        ctx.shadowColor = 'rgba(108,123,255,0.35)';
+        ctx.shadowBlur = 4;
+        
         ctx.beginPath();
         ctx.moveTo(fx, fy);
         ctx.bezierCurveTo(c1x, c1y, c2x, c2y, tx, ty);
         ctx.stroke();
+        
+        ctx.shadowBlur = 0;
       });
-      
-      ctx.shadowBlur = 0;
-      
-      // Debug logging for performance monitoring (remove in production)
-      // console.log('Edges drawn:', drawnCount, 'skipped:', skippedCount);
       
       ctx.setLineDash([]);
       ctx.lineDashOffset = 0;
