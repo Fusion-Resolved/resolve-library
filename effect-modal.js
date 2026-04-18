@@ -1582,7 +1582,8 @@
     
     // Controls
     var controls = document.createElement('div');
-    controls.style.cssText = 'position:absolute;top:70px;right:20px;z-index:20;display:flex;gap:4px;';
+    controls.id = 'expanded-controls';
+    controls.style.cssText = 'position:absolute;top:70px;right:20px;z-index:20;display:flex;gap:4px;transition:right 0.25s ease;';
     controls.innerHTML = 
       '<button id="exp-zoom-in" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">+</button>' +
       '<button id="exp-zoom-out" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">&minus;</button>' +
@@ -1746,6 +1747,7 @@
 
   function showNodeInSidePanel(node) {
     var panel = document.getElementById('expanded-node-panel');
+    var controls = document.getElementById('expanded-controls');
     if (!panel) return;
     
     var params = node.params || {};
@@ -1797,6 +1799,11 @@
     
     panel.innerHTML = html;
     panel.style.transform = 'translateX(0)';
+    
+    // Slide controls to the left to make room for panel
+    if (controls) {
+      controls.style.right = '340px';
+    }
     
     // Render spline canvases after DOM update
     if (hasParams) {
@@ -1894,8 +1901,13 @@
 
   function closeSidePanel() {
     var panel = document.getElementById('expanded-node-panel');
+    var controls = document.getElementById('expanded-controls');
     if (panel) {
       panel.style.transform = 'translateX(100%)';
+    }
+    // Move controls back to original position
+    if (controls) {
+      controls.style.right = '20px';
     }
   }
   window.closeSidePanel = closeSidePanel;
