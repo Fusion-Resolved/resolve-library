@@ -2426,16 +2426,15 @@
       toggleBtn.style.color = 'rgba(255,255,255,0.55)';
     }
     
-    // Adjust side panel position based on bottom bar state
-    var bottomBar = document.getElementById('expanded-bottom-bar');
-    var bottomBarContent = document.getElementById('exp-bottom-bar-content');
-    if (bottomBar && panel) {
+    // Adjust node panel position based on bottom bar state (if visible)
+    var nodePanel = document.getElementById('exp-node-panel');
+    if (bottomBar && nodePanel && nodePanel.style.display !== 'none') {
       if (bottomBar.style.display === 'none') {
-        panel.style.bottom = '0';
+        nodePanel.style.bottom = '0';
       } else {
         // Calculate bottom bar height based on collapsed/expanded state (40px or 120px)
         var barHeight = bottomBarContent && bottomBarContent.style.maxHeight !== '0' ? 120 : 40;
-        panel.style.bottom = barHeight + 'px';
+        nodePanel.style.bottom = barHeight + 'px';
       }
     }
   }
