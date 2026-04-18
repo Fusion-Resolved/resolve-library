@@ -1595,10 +1595,10 @@
     
     var modal = document.createElement('div');
     modal.id = 'expanded-graph-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,14,0.9);z-index:400;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:2rem;';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,14,0.9);z-index:400;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:1rem;';
     
     var container = document.createElement('div');
-    container.style.cssText = 'width:100%;max-width:1200px;height:80vh;background:#06060d;border-radius:var(--radius,14px);border:1px solid rgba(255,255,255,0.1);position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6);';
+    container.style.cssText = 'width:100%;max-width:95vw;height:92vh;background:#06060d;border-radius:var(--radius,14px);border:1px solid rgba(255,255,255,0.1);position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6);';
     
     // Header
     var header = document.createElement('div');
