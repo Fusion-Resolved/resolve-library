@@ -119,11 +119,12 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 .node-accordion-content .param-row:last-child{margin-bottom:0;}
 
 /* ═══════════════════════════════════
-   NODE GRAPH CANVAS
+   NODE GRAPH (Full-page style pan/zoom)
    ═══════════════════════════════════ */
+.graph-outer{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border-surface);position:relative;}
 .graph-canvas-wrap{position:relative;height:320px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border-surface);user-select:none;-webkit-user-select:none;}
 /* Always dark regardless of theme — graph editors are always dark */
-.graph-viewport{position:absolute;inset:0;overflow:hidden;cursor:grab;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.13) 1px,transparent 1px);background-size:22px 22px;}
+.graph-viewport{position:absolute;inset:0;overflow:hidden;cursor:grab;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;}
 .graph-viewport.panning{cursor:grabbing;}
 .graph-world{position:absolute;top:0;left:0;transform-origin:0 0;}
 .graph-svg{position:absolute;top:0;left:0;pointer-events:none;overflow:visible;}
@@ -293,16 +294,27 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
         <div class="sec" id="modal-node-section">
           <div class="sec-lbl" style="display:flex;align-items:center;justify-content:space-between;">
             <span>Node Graph</span>
-            <span style="font-size:9px;color:var(--text-muted);font-family:var(--font-mono);" id="modal-node-count"></span>
+            <span style="font-size:9px;color:var(--text-muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.07em;" id="modal-node-count"></span>
           </div>
           
-           <!-- Visual Canvas -->
-           <div id="modal-node-code" style="background:#0f0f16;border-radius:6px;height:220px;margin-bottom:12px;cursor:pointer;overflow:hidden;" onclick="window.openNodeGraphModal && window.openNodeGraphModal(window.currentEffectId)">
-             <canvas id="modal-node-canvas" style="width:100%;height:100%;"></canvas>
-           </div>
+          <!-- Full-page style pan/zoom graph viewport -->
+          <div class="graph-outer" style="border-radius:var(--radius);overflow:hidden;border:1px solid var(--border-surface);position:relative;margin-bottom:12px;">
+            <div class="graph-viewport" id="graphVp" style="height:280px;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;overflow:hidden;cursor:grab;position:relative;">
+              <div class="graph-world" id="graphWorld">
+                <svg class="graph-svg" id="graphSvg"></svg>
+              </div>
+            </div>
+            <div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;">
+              <button class="gc-btn" id="gcIn">+</button>
+              <button class="gc-btn" id="gcOut">&minus;</button>
+              <button class="gc-btn gc-fit" id="gcFit">FIT</button>
+            </div>
+            <div class="graph-zoom-lbl" id="gZoomLbl">100%</div>
+            <div class="graph-hint" style="position:absolute;bottom:10px;right:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.18);letter-spacing:0.05em;pointer-events:none;z-index:10;">ctrl+scroll to zoom · drag to pan</div>
+          </div>
           
           <!-- Node Accordion List -->
-          <div id="modal-node-accordion" style="background:#0f0f16;border-radius:6px;border:1px solid var(--border-surface);overflow:hidden;">
+          <div id="modal-node-accordion" style="background:#0f0f16;border-radius:6px;border:1px solid var(--border-surface);overflow:hidden;max-height:300px;overflow-y:auto;">
             <!-- Populated by JS - accordion items for each node -->
           </div>
           

@@ -221,51 +221,22 @@
       }
     }
     
-    // Render the node graph section
+    // Render the node graph section with full-page styling (DOM nodes + SVG edges)
     if (hasValidData && nodeData && nodeSection) {
       nodeSection.style.display = 'block';
       
       // Store current effect ID for click handler
       window.currentEffectId = effect.id;
+      window.currentNodeData = nodeData; // Store for graph interactions
       
       // Update node count
       if (nodeCountEl) {
         nodeCountEl.textContent = nodeData.nodes.length + ' node' + (nodeData.nodes.length !== 1 ? 's' : '');
       }
       
-      // Render canvas
+      // Initialize DOM-based graph (like full-page)
       setTimeout(function() {
-        var canvas = document.getElementById('modal-node-canvas');
-        console.log('[effect-modal] Canvas element:', canvas ? 'found' : 'not found');
-        if (canvas && canvas.parentElement) {
-          var dpr = window.devicePixelRatio || 1;
-          var displayWidth = canvas.parentElement.offsetWidth;
-          var displayHeight = 220;
-          
-          // Set actual canvas size to match display size × DPR for crisp rendering
-          canvas.width = displayWidth * dpr;
-          canvas.height = displayHeight * dpr;
-          canvas.style.width = displayWidth + 'px';
-          canvas.style.height = displayHeight + 'px';
-          
-          var ctx = canvas.getContext('2d');
-          ctx.scale(dpr, dpr);
-          
-          // Auto-fit to canvas with padding - scale calculated based on node bounds
-          console.log('[effect-modal] Rendering graph with fit mode for', nodeData.nodes.length, 'nodes');
-          console.log('[effect-modal] Used _graphData with positions:', usedGraphData);
-          window.NodeSystem.renderGraph(ctx, nodeData.nodes, nodeData.edges, {
-            width: displayWidth,
-            height: displayHeight,
-            fit: true,
-            padding: 20,
-            selectedId: null,
-            clearColor: '#0f0f16'
-          });
-          console.log('[effect-modal] Graph rendered');
-        } else {
-          console.log('[effect-modal] Canvas or parent not found');
-        }
+        initGraphViewport(nodeData);
       }, 50);
       
       // Build accordion
@@ -1170,5 +1141,271 @@
   
   // Expose utility to check if effect is saved
   window.isEffectSaved = isEffectPinned;
+
+  /* ═══════════════════════════════════════════════════════════════
+     NODE GRAPH VIEWPORT (Full-page style pan/zoom)
+     ═══════════════════════════════════════════════════════════════ */
+  var graphState = {
+    tx: 0, ty: 0, sc: 1,
+    dragging: false, dX: 0, dY: 0,
+    selNodeEl: null,
+    vp: null, world: null, svgEl: null, zLbl: null,
+    nodes: [], edges: []
+  };
+  
+  var NW = 132, NH = 50;
+
+  function initGraphViewport(nodeData) {
+    graphState.nodes = nodeData.nodes || [];
+    graphState.edges = nodeData.edges || [];
+    
+    graphState.vp = document.getElementById('graphVp');
+    graphState.world = document.getElementById('graphWorld');
+    graphState.svgEl = document.getElementById('graphSvg');
+    graphState.zLbl = document.getElementById('gZoomLbl');
+    
+    if (!graphState.vp || !graphState.world || !graphState.svgEl) {
+      console.log('[effect-modal] Graph elements not found');
+      return;
+    }
+    
+    buildGraphDOM();
+    wireGraphEvents();
+    fitGraph();
+  }
+
+  function buildGraphDOM() {
+    var vp = graphState.vp;
+    var world = graphState.world;
+    var svgEl = graphState.svgEl;
+    var nodes = graphState.nodes;
+    var edges = graphState.edges;
+    
+    // Calculate world bounds
+    var wW = 0, wH = 0;
+    nodes.forEach(function(n) {
+      var nx = n.x || 0;
+      var ny = n.y || 0;
+      if (nx + NW + 40 > wW) wW = nx + NW + 40;
+      if (ny + NH + 40 > wH) wH = ny + NH + 40;
+    });
+    
+    world.style.width = wW + 'px';
+    world.style.height = wH + 'px';
+    svgEl.setAttribute('width', wW);
+    svgEl.setAttribute('height', wH);
+    
+    // Clear existing
+    svgEl.innerHTML = '';
+    var prevCards = world.querySelectorAll('.gn-card');
+    prevCards.forEach(function(c) { world.removeChild(c); });
+    
+    // Map for edge drawing
+    var nodeMap = {};
+    nodes.forEach(function(n) { nodeMap[n.id] = n; });
+    
+    // Draw edges (SVG)
+    edges.forEach(function(e) {
+      var fn = nodeMap[e.from];
+      var tn = nodeMap[e.to];
+      if (!fn || !tn) return;
+      
+      var fx = (fn.x || 0) + NW;
+      var fy = (fn.y || 0) + NH / 2;
+      var tx = tn.x || 0;
+      var ty = (tn.y || 0) + NH / 2;
+      var pull = Math.max(55, Math.abs(tx - fx) * 0.45);
+      var d = 'M' + fx + ' ' + fy + ' C' + (fx + pull) + ' ' + fy + ' ' + (tx - pull) + ' ' + ty + ' ' + tx + ' ' + ty;
+      
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'rgba(108,123,255,0.38)');
+      path.setAttribute('stroke-width', '1.5');
+      path.setAttribute('stroke-linecap', 'round');
+      svgEl.appendChild(path);
+    });
+    
+    // Draw node cards
+    nodes.forEach(function(n) {
+      var card = document.createElement('div');
+      card.className = 'gn-card';
+      card.dataset.id = n.id;
+      card.style.left = (n.x || 0) + 'px';
+      card.style.top = (n.y || 0) + 'px';
+      card.style.width = NW + 'px';
+      card.style.height = NH + 'px';
+      card.style.borderColor = (n.catColor || '#6c7bff') + '55';
+      // Convert hex to rgba with 0.13 opacity for background
+      var hex = n.catColor || '#6c7bff';
+      var r = parseInt(hex.slice(1, 3), 16);
+      var g = parseInt(hex.slice(3, 5), 16);
+      var b = parseInt(hex.slice(5, 7), 16);
+      card.style.background = 'rgba(' + r + ',' + g + ',' + b + ',0.13)';
+      
+      // Type dot
+      var dot = document.createElement('div');
+      dot.className = 'gn-typedot';
+      dot.style.background = n.catColor || '#6c7bff';
+      
+      // Labels
+      var labels = document.createElement('div');
+      labels.className = 'gn-labels';
+      var typeLabel = document.createElement('div');
+      typeLabel.className = 'gn-type';
+      typeLabel.textContent = n.category || 'Custom';
+      var nameLabel = document.createElement('div');
+      nameLabel.className = 'gn-name';
+      nameLabel.textContent = n.fusionName || n.name;
+      labels.appendChild(typeLabel);
+      labels.appendChild(nameLabel);
+      
+      card.appendChild(dot);
+      card.appendChild(labels);
+      
+      // Click handler
+      card.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        openNodeDetail(n, card);
+      });
+      
+      world.appendChild(card);
+    });
+  }
+
+  function wireGraphEvents() {
+    var vp = graphState.vp;
+    if (!vp || vp._wired) return;
+    vp._wired = true;
+    
+    // Pan start
+    vp.addEventListener('mousedown', function(e) {
+      if (e.target.closest('.gn-card')) return;
+      graphState.dragging = true;
+      graphState.dX = e.clientX - graphState.tx;
+      graphState.dY = e.clientY - graphState.ty;
+      vp.classList.add('panning');
+    });
+    
+    // Pan move
+    document.addEventListener('mousemove', function(e) {
+      if (!graphState.dragging) return;
+      graphState.tx = e.clientX - graphState.dX;
+      graphState.ty = e.clientY - graphState.dY;
+      applyGraphTransform();
+    });
+    
+    // Pan end
+    document.addEventListener('mouseup', function() {
+      graphState.dragging = false;
+      vp.classList.remove('panning');
+    });
+    
+    // Zoom with ctrl+scroll
+    vp.addEventListener('wheel', function(e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      var r = vp.getBoundingClientRect();
+      zoomGraphAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.1 : 0.9);
+    }, { passive: false });
+    
+    // Zoom buttons
+    var gcIn = document.getElementById('gcIn');
+    var gcOut = document.getElementById('gcOut');
+    var gcFit = document.getElementById('gcFit');
+    
+    if (gcIn) gcIn.addEventListener('click', function() {
+      var r = vp.getBoundingClientRect();
+      zoomGraphAt(r.width / 2, r.height / 2, 1.25);
+    });
+    
+    if (gcOut) gcOut.addEventListener('click', function() {
+      var r = vp.getBoundingClientRect();
+      zoomGraphAt(r.width / 2, r.height / 2, 0.8);
+    });
+    
+    if (gcFit) gcFit.addEventListener('click', fitGraph);
+  }
+
+  function applyGraphTransform() {
+    if (graphState.world) {
+      graphState.world.style.transform = 'translate(' + graphState.tx + 'px,' + graphState.ty + 'px) scale(' + graphState.sc + ')';
+    }
+    if (graphState.zLbl) {
+      graphState.zLbl.textContent = Math.round(graphState.sc * 100) + '%';
+    }
+  }
+
+  function clampGraphScale(s) {
+    return Math.max(0.15, Math.min(3, s));
+  }
+
+  function zoomGraphAt(cx, cy, factor) {
+    var ns = clampGraphScale(graphState.sc * factor);
+    var wx = (cx - graphState.tx) / graphState.sc;
+    var wy = (cy - graphState.ty) / graphState.sc;
+    graphState.sc = ns;
+    graphState.tx = cx - wx * ns;
+    graphState.ty = cy - wy * ns;
+    applyGraphTransform();
+  }
+
+  function fitGraph() {
+    var vp = graphState.vp;
+    if (!vp) return;
+    var r = vp.getBoundingClientRect();
+    var pad = 30;
+    var vW = r.width - pad * 2;
+    var vH = r.height - pad * 2;
+    
+    var nodes = graphState.nodes;
+    if (!nodes.length) return;
+    
+    var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
+    nodes.forEach(function(n) {
+      var nx = n.x || 0;
+      var ny = n.y || 0;
+      if (nx < mnX) mnX = nx;
+      if (ny < mnY) mnY = ny;
+      if (nx + NW > mxX) mxX = nx + NW;
+      if (ny + NH > mxY) mxY = ny + NH;
+    });
+    
+    var contentW = mxX - mnX;
+    var contentH = mxY - mnY;
+    
+    graphState.sc = clampGraphScale(Math.min(vW / contentW, vH / contentH));
+    graphState.tx = (r.width - contentW * graphState.sc) / 2 - mnX * graphState.sc;
+    graphState.ty = (r.height - contentH * graphState.sc) / 2 - mnY * graphState.sc;
+    applyGraphTransform();
+  }
+
+  function openNodeDetail(node, cardEl) {
+    // Highlight selected node
+    if (graphState.selNodeEl) graphState.selNodeEl.classList.remove('g-active');
+    graphState.selNodeEl = cardEl;
+    cardEl.classList.add('g-active');
+    
+    // Open accordion for this node
+    var accordionEl = document.getElementById('modal-node-accordion');
+    if (accordionEl) {
+      var items = accordionEl.querySelectorAll('.node-accordion-item');
+      items.forEach(function(item, idx) {
+        var content = item.querySelector('.node-accordion-content');
+        var arrow = item.querySelector('.accordion-arrow');
+        if (graphState.nodes[idx] && graphState.nodes[idx].id === node.id) {
+          content.style.display = 'block';
+          if (arrow) arrow.style.transform = 'rotate(180deg)';
+          item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+          content.style.display = 'none';
+          if (arrow) arrow.style.transform = 'rotate(0deg)';
+        }
+      });
+    }
+  }
+  
+  // Expose graph control functions
+  window.fitModalGraph = fitGraph;
 
 })();
