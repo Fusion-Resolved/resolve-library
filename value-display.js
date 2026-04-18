@@ -226,34 +226,52 @@
       console.log('[ValueDisplay] getRawValues, params:', Object.keys(params));
       
       Object.entries(params).forEach(([tableKey, tableGroup]) => {
+        console.log('[ValueDisplay] Processing tableKey:', tableKey, 'type:', typeof tableGroup, 'hasParams:', tableGroup?.params ? 'yes' : 'no');
+        
         // Handle nested structure: { "0": { table: "Transform", params: { ... } } }
-        if (tableGroup && typeof tableGroup === 'object' && tableGroup.params) {
+        if (tableGroup && typeof tableGroup === 'object' && tableGroup.params && Object.keys(tableGroup.params).length > 0) {
           const tableName = tableGroup.table || 'Parameters';
           const nestedParams = tableGroup.params;
+          
+          console.log('[ValueDisplay] Nested structure detected, table:', tableName, 'nested keys:', Object.keys(nestedParams));
           
           Object.entries(nestedParams).forEach(([key, param]) => {
             if (key.endsWith('_SourceOp') || key.startsWith('_')) return;
             
-            const val = param.v !== undefined ? param.v : param.value;
+            const val = param?.v !== undefined ? param.v : param?.value;
             console.log('[ValueDisplay] Param', key, 'in', tableName, ':', val);
             
             values[key] = {
               value: val,
-              raw: param.raw || String(val),
-              animated: !!(param.keyframes && param.keyframes.length > 0),
+              raw: param?.raw || String(val),
+              animated: !!(param?.keyframes && param.keyframes.length > 0),
               table: tableName,
               frame: this.options.currentFrame
             };
           });
         } else {
-          // Handle flat structure (fallback)
+          // Handle flat structure (fallback) - but only if tableGroup looks like a param
           if (tableKey.endsWith('_SourceOp') || tableKey.startsWith('_')) return;
           
-          const val = tableGroup.v !== undefined ? tableGroup.v : tableGroup.value;
+          // Skip if tableGroup is clearly a table wrapper (has 'table' property but no 'params')
+          if (tableGroup && typeof tableGroup === 'object' && tableGroup.table && !tableGroup.params) {
+            console.log('[ValueDisplay] Skipping table wrapper without params:', tableKey);
+            return;
+          }
+          
+          const val = tableGroup?.v !== undefined ? tableGroup.v : tableGroup?.value;
+          console.log('[ValueDisplay] Flat param', tableKey, ':', val);
+          
+          // Skip if no valid value
+          if (val === undefined || val === null) {
+            console.log('[ValueDisplay] Skipping', tableKey, '- no value');
+            return;
+          }
+          
           values[tableKey] = {
             value: val,
-            raw: tableGroup.raw || String(val),
-            animated: !!(tableGroup.keyframes && tableGroup.keyframes.length > 0),
+            raw: tableGroup?.raw || String(val),
+            animated: !!(tableGroup?.keyframes && tableGroup.keyframes.length > 0),
             table: 'Parameters',
             frame: this.options.currentFrame
           };
@@ -312,9 +330,13 @@
       number.className = 'value-number';
       
       // Format value
-      let displayValue = value.raw || String(value.value);
-      if (typeof value.value === 'number') {
+      let displayValue;
+      if (value.value === undefined || value.value === null) {
+        displayValue = value.raw || 'N/A';
+      } else if (typeof value.value === 'number') {
         displayValue = value.value.toFixed(3);
+      } else {
+        displayValue = String(value.value);
       }
       number.textContent = displayValue;
       valueContainer.appendChild(number);

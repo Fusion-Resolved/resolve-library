@@ -2413,7 +2413,11 @@
           currentFrame: hasAnimation ? Math.floor(frameRange.start) : 0,
           onParamClick: function(key, param) {
             // Show detailed spline view for clicked parameter
-            showParamDetail(node, key, param);
+            if (window.showParamDetail) {
+              window.showParamDetail(node, key, param);
+            } else {
+              console.warn('[EffectModal] showParamDetail not available');
+            }
           }
         });
         
@@ -2541,6 +2545,8 @@
    * Opens a modal with full spline view and keyframe editing
    */
   function showParamDetail(node, paramKey, param) {
+    console.log('[showParamDetail] Opening detail for', paramKey, param);
+    
     // Remove any existing param detail modal
     var existing = document.getElementById('param-detail-modal');
     if (existing) existing.remove();
