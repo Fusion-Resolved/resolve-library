@@ -107,6 +107,9 @@
      POPULATE MODAL WITH EFFECT DATA
      ═══════════════════════════════════════════════════════════════ */
   async function populateModal(effect) {
+    // Store effect data globally for expanded view access
+    window._currentEffectData = effect;
+    
     const colors = getCatColor(effect.cat);
     const isOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === effect.user_id;
 
@@ -1578,7 +1581,7 @@
     
     // Header
     var header = document.createElement('div');
-    header.style.cssText = 'position:absolute;top:0;left:0;right:0;height:50px;background:rgba(6,6,13,0.8);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:20;';
+    header.style.cssText = 'position:absolute;top:0;left:0;right:0;height:50px;background:rgba(6,6,13,0.8);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:30;';
     header.innerHTML = '<span style="font-family:var(--font-display);font-size:14px;color:var(--text-primary);">Node Graph Preview</span>';
     
     // Close button
@@ -1625,18 +1628,49 @@
     container.appendChild(controls);
     container.appendChild(zoomLbl);
     
-    // Right side panel for node details (hidden by default)
+    // Right side panel with collapsible sections
     var sidePanel = document.createElement('div');
     sidePanel.id = 'expanded-node-panel';
-    sidePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:0;width:320px;background:rgba(15,15,22,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:25;transform:translateX(100%);transition:transform 0.25s ease;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;';
-    sidePanel.innerHTML = '<div style="padding:16px;"><div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Select a node to view parameters</div></div>';
+    sidePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:0;width:360px;background:rgba(15,15,22,0.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:25;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;display:flex;flex-direction:column;';
+    
+    // Video section (collapsible)
+    var videoSection = createCollapsibleSection('video', 'Video Tutorial', '<svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>', false);
+    videoSection.content.innerHTML = '<div id="exp-video-container" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;"></div>';
+    
+    // Steps section (collapsible)
+    var stepsSection = createCollapsibleSection('steps', 'Step-by-Step', '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>', true);
+    stepsSection.content.innerHTML = 
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+        '<span id="exp-step-counter" style="font-size:12px;color:var(--text-primary);">Step 1 of 5</span>' +
+        '<div style="display:flex;gap:6px;">' +
+          '<button id="exp-step-prev" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:11px;width:28px;height:28px;cursor:pointer;">&#x2190;</button>' +
+          '<button id="exp-step-next" style="background:rgba(6,6,13,0.75);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.7);font-family:var(--font-mono);font-size:11px;width:28px;height:28px;cursor:pointer;">&#x2192;</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="exp-step-content" style="font-size:14px;color:var(--text-secondary);line-height:1.6;padding:12px;background:rgba(6,6,13,0.5);border-radius:8px;border:1px solid rgba(255,255,255,0.08);min-height:60px;"></div>' +
+      '<div id="exp-step-dots" style="display:flex;gap:4px;justify-content:center;margin-top:12px;flex-wrap:wrap;"></div>';
+    
+    // Nodes section (collapsible, expanded by default)
+    var nodesSection = createCollapsibleSection('nodes', 'Node Details', '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>', true);
+    nodesSection.content.innerHTML = '<div style="padding:8px 0;"><div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--font-mono);">Select a node to view parameters</div></div>';
+    
+    sidePanel.appendChild(videoSection.section);
+    sidePanel.appendChild(stepsSection.section);
+    sidePanel.appendChild(nodesSection.section);
     container.appendChild(sidePanel);
     
     modal.appendChild(container);
     document.body.appendChild(modal);
     
-    // Store reference to panel for node clicks
+    // Store references for later use
     window.expandedNodePanel = sidePanel;
+    window.expandedSections = { video: videoSection, steps: stepsSection, nodes: nodesSection };
+    
+    // Setup toggle functionality
+    setupExpandedToggles();
+    
+    // Populate data if available
+    populateExpandedPanelData();
     
     // Render the graph in expanded view
     renderExpandedGraph(world, svg, zoomLbl);
@@ -2029,8 +2063,9 @@
       
       // Check if side panel is open and adjust available width
       var panel = document.getElementById('expanded-node-panel');
-      var isPanelOpen = panel && panel.style.transform === 'translateX(0px)';
-      var availableWidth = isPanelOpen ? r.width - 320 : r.width;
+      var isPanelOpen = panel && panel.style.display !== 'none';
+      var panelWidth = isPanelOpen ? 360 : 0;
+      var availableWidth = r.width - panelWidth;
       
       var NW = 132, NH = 50;
       var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
@@ -2046,11 +2081,163 @@
       var contentW = mxX - mnX;
       var contentH = mxY - mnY;
       sc = Math.max(0.15, Math.min(3, Math.min((availableWidth - pad * 2) / contentW, (r.height - pad * 2) / contentH)));
-      tx = (availableWidth - contentW * sc) / 2 - mnX * sc;
+      tx = (availableWidth - contentW * sc) / 2 - mnX * sc + (isPanelOpen ? 0 : panelWidth / 2);
       ty = (r.height - contentH * sc) / 2 - mnY * sc;
       world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
       zoomLbl.textContent = Math.round(sc * 100) + '%';
     });
+  }
+
+  // Expanded panel toggle functionality
+  var _expandedCurrentPanel = 'nodes';
+  var _expandedCurrentStep = 0;
+  var _expandedStepsData = [];
+  
+  // Helper function to create a collapsible section
+  function createCollapsibleSection(id, title, iconSvg, defaultExpanded) {
+    var section = document.createElement('div');
+    section.id = 'exp-section-' + id;
+    section.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.08);';
+    
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;transition:background 0.15s;user-select:none;';
+    header.innerHTML = '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-primary);font-weight:500;">' + iconSvg + '<span>' + title + '</span></div><svg class="exp-chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:rgba(255,255,255,0.5);transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"/></svg>';
+    
+    var content = document.createElement('div');
+    content.id = 'exp-content-' + id;
+    content.style.cssText = 'padding:0 16px 16px;overflow:hidden;' + (defaultExpanded ? '' : 'max-height:0;padding:0 16px;');
+    
+    // Store state
+    section._expanded = defaultExpanded;
+    
+    header.addEventListener('click', function() {
+      section._expanded = !section._expanded;
+      if (section._expanded) {
+        content.style.maxHeight = 'none';
+        content.style.padding = '0 16px 16px';
+        header.querySelector('.exp-chevron').style.transform = 'rotate(180deg)';
+      } else {
+        content.style.maxHeight = '0';
+        content.style.padding = '0 16px';
+        header.querySelector('.exp-chevron').style.transform = 'rotate(0deg)';
+      }
+      // Recalculate fit after toggle
+      setTimeout(function() {
+        var fitBtn = document.getElementById('exp-fit');
+        if (fitBtn) fitBtn.click();
+      }, 260);
+    });
+    
+    section.appendChild(header);
+    section.appendChild(content);
+    
+    return { section: section, header: header, content: content, id: id };
+  }
+  
+  function setupExpandedToggles() {
+    // Step navigation is wired separately
+    var prevBtn = document.getElementById('exp-step-prev');
+    var nextBtn = document.getElementById('exp-step-next');
+    
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function() {
+        if (_expandedCurrentStep > 0) {
+          _expandedCurrentStep--;
+          renderExpandedStep(_expandedCurrentStep);
+        }
+      });
+    }
+    
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function() {
+        if (_expandedCurrentStep < _expandedStepsData.length - 1) {
+          _expandedCurrentStep++;
+          renderExpandedStep(_expandedCurrentStep);
+        }
+      });
+    }
+  }
+  
+  function populateExpandedPanelData() {
+    var effect = window._currentEffectData;
+    if (!effect) return;
+    
+    var sections = window.expandedSections;
+    if (!sections) return;
+    
+    // Video section
+    if (effect.video_url) {
+      var ytId = extractYouTubeId(effect.video_url);
+      if (ytId) {
+        var videoContainer = document.getElementById('exp-video-container');
+        if (videoContainer) {
+          videoContainer.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '?rel=0&modestbranding=1" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen></iframe>';
+        }
+        // Keep section visible but collapsed by default
+      } else {
+        // No valid YouTube ID - hide the section
+        sections.video.section.style.display = 'none';
+      }
+    } else {
+      // No video URL - hide the section entirely
+      sections.video.section.style.display = 'none';
+    }
+    
+    // Steps section
+    if (effect.steps) {
+      _expandedStepsData = Array.isArray(effect.steps) ? effect.steps : effect.steps.split('\n').filter(function(s) { return s.trim(); });
+      if (_expandedStepsData.length > 0) {
+        renderExpandedStep(0);
+        // Keep section visible, collapsed by default unless it's the only content
+        if (!effect.video_url && (!window.currentNodeData || !window.currentNodeData.nodes.length)) {
+          // Auto-expand if it's the only content
+          sections.video.section.style.display = 'none';
+          sections.nodes.section.style.display = 'none';
+          sections.steps.header.click();
+        }
+      } else {
+        sections.steps.section.style.display = 'none';
+      }
+    } else {
+      sections.steps.section.style.display = 'none';
+    }
+    
+    // Nodes section - always visible if we have node data
+    if (!window.currentNodeData || !window.currentNodeData.nodes.length) {
+      sections.nodes.section.style.display = 'none';
+    } else if (!effect.video_url && (!effect.steps || !_expandedStepsData.length)) {
+      // Auto-expand nodes if it's the only content
+      sections.nodes.header.click();
+    }
+  }
+  
+  function renderExpandedStep(idx) {
+    if (!_expandedStepsData.length || idx < 0 || idx >= _expandedStepsData.length) return;
+    
+    var content = document.getElementById('exp-step-content');
+    var counter = document.getElementById('exp-step-counter');
+    var dots = document.getElementById('exp-step-dots');
+    
+    if (content) content.textContent = _expandedStepsData[idx];
+    if (counter) counter.textContent = 'Step ' + (idx + 1) + ' of ' + _expandedStepsData.length;
+    
+    if (dots) {
+      dots.innerHTML = _expandedStepsData.map(function(_, i) {
+        return '<span style="width:6px;height:6px;border-radius:50%;background:' + (i === idx ? 'var(--violet)' : 'rgba(255,255,255,0.2)') + ';transition:background 0.15s;"></span>';
+      }).join('');
+    }
+    
+    // Update button states
+    var prevBtn = document.getElementById('exp-step-prev');
+    var nextBtn = document.getElementById('exp-step-next');
+    if (prevBtn) prevBtn.style.opacity = idx === 0 ? '0.4' : '1';
+    if (nextBtn) nextBtn.style.opacity = idx === _expandedStepsData.length - 1 ? '0.4' : '1';
+  }
+  
+  function extractYouTubeId(url) {
+    if (!url) return null;
+    var match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
+    return match ? match[1] : null;
   }
 
   var expandedFlowAnimId = null;
