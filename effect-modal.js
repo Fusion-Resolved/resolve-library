@@ -2123,19 +2123,26 @@
         var panel = document.getElementById('expanded-node-panel');
         var controls = document.getElementById('expanded-controls');
         if (panel) {
-          var isHidden = panel.style.display === 'none';
-          panel.style.display = isHidden ? 'flex' : 'none';
+          // Check if panel is hidden - default is visible (flex)
+          var isHidden = panel.style.display === 'none' || getComputedStyle(panel).display === 'none';
+          var newDisplay = isHidden ? 'flex' : 'none';
+          panel.style.display = newDisplay;
           
           // If showing panel, ensure at least one section is visible and expanded
-          if (isHidden) {
+          if (newDisplay === 'flex') {
             var sections = window.expandedSections;
             if (sections) {
               // First make sure at least one section block is visible
-              var anySectionVisible = sections.video.section.style.display !== 'none' ||
-                                      sections.steps.section.style.display !== 'none' ||
-                                      sections.nodes.section.style.display !== 'none';
-              if (!anySectionVisible && sections.nodes) {
-                sections.nodes.section.style.display = 'block';
+              var anySectionVisible = sections.video.section.style.display !== 'none' &&
+                                      getComputedStyle(sections.video.section).display !== 'none' ||
+                                      sections.steps.section.style.display !== 'none' &&
+                                      getComputedStyle(sections.steps.section).display !== 'none' ||
+                                      sections.nodes.section.style.display !== 'none' &&
+                                      getComputedStyle(sections.nodes.section).display !== 'none';
+              
+              if (!anySectionVisible) {
+                // Show nodes section as fallback, or whichever has content
+                if (sections.nodes) sections.nodes.section.style.display = 'block';
               }
               
               // Then ensure at least one section is expanded (content visible)
@@ -2143,7 +2150,7 @@
                                 sections.steps._expanded ||
                                 sections.nodes._expanded;
               if (!anyExpanded) {
-                // Expand the first available section
+                // Expand the first available visible section
                 if (sections.nodes.section.style.display !== 'none') {
                   sections.nodes.header.click();
                 } else if (sections.steps.section.style.display !== 'none') {
@@ -2157,15 +2164,17 @@
           
           // Move controls to accommodate panel
           if (controls) {
-            controls.style.right = isHidden ? '380px' : '20px';
+            controls.style.right = newDisplay === 'flex' ? '380px' : '20px';
           }
           // Update button visual state
-          togglePanelBtn.style.background = isHidden ? 'rgba(108,123,255,0.25)' : 'rgba(6,6,13,0.75)';
-          togglePanelBtn.style.borderColor = isHidden ? 'rgba(108,123,255,0.5)' : 'rgba(255,255,255,0.1)';
-          togglePanelBtn.style.color = isHidden ? 'var(--violet-light)' : 'rgba(255,255,255,0.55)';
+          var isActive = newDisplay === 'flex';
+          togglePanelBtn.style.background = isActive ? 'rgba(108,123,255,0.25)' : 'rgba(6,6,13,0.75)';
+          togglePanelBtn.style.borderColor = isActive ? 'rgba(108,123,255,0.5)' : 'rgba(255,255,255,0.1)';
+          togglePanelBtn.style.color = isActive ? 'var(--violet-light)' : 'rgba(255,255,255,0.55)';
           // Auto-fit graph after toggle
           setTimeout(function() {
-            document.getElementById('exp-fit').click();
+            var fitBtn = document.getElementById('exp-fit');
+            if (fitBtn) fitBtn.click();
           }, 260);
         }
       });
