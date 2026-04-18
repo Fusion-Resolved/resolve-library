@@ -2094,6 +2094,13 @@ header { z-index: 100 !important; }
 /* Graph node cards */
 .gn-card { position:absolute;display:flex;align-items:center;gap:7px;border-radius:6px;border:1px solid;cursor:pointer;padding:0 10px;transition:filter 0.12s,box-shadow 0.12s; }
 .gn-card:hover { filter:brightness(1.25);z-index:5; }
+.gn-card.g-active { z-index:6;box-shadow:0 0 0 2px rgba(255,255,255,0.3),0 0 18px rgba(108,123,255,0.35); }
+
+/* Node card children */
+.gn-typedot { width:6px;height:6px;border-radius:50%;flex-shrink:0; }
+.gn-labels { min-width:0;flex:1; }
+.gn-type { font-family:var(--font-mono);font-size:7.5px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.38);line-height:1;margin-bottom:3px; }
+.gn-name { font-family:var(--font-display);font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1; }
 
 </style>
 

@@ -1159,19 +1159,86 @@
     graphState.nodes = nodeData.nodes || [];
     graphState.edges = nodeData.edges || [];
     
+    // Try to find existing elements first
     graphState.vp = document.getElementById('graphVp');
     graphState.world = document.getElementById('graphWorld');
     graphState.svgEl = document.getElementById('graphSvg');
     graphState.zLbl = document.getElementById('gZoomLbl');
     
+    // If elements don't exist, create them dynamically
+    if (!graphState.vp) {
+      console.log('[effect-modal] Creating graph container dynamically...');
+      createGraphContainer();
+      
+      // Re-fetch after creation
+      graphState.vp = document.getElementById('graphVp');
+      graphState.world = document.getElementById('graphWorld');
+      graphState.svgEl = document.getElementById('graphSvg');
+      graphState.zLbl = document.getElementById('gZoomLbl');
+    }
+    
     if (!graphState.vp || !graphState.world || !graphState.svgEl) {
-      console.log('[effect-modal] Graph elements not found');
+      console.error('[effect-modal] Failed to create graph elements');
       return;
     }
     
     buildGraphDOM();
     wireGraphEvents();
     fitGraph();
+  }
+
+  function createGraphContainer() {
+    // Find the node section to insert the graph
+    var nodeSection = document.getElementById('modal-node-section');
+    if (!nodeSection) {
+      console.error('[effect-modal] modal-node-section not found');
+      return;
+    }
+    
+    // Find the accordion to insert before it
+    var accordion = document.getElementById('modal-node-accordion');
+    
+    // Create graph container HTML
+    var graphHTML = 
+      '<div class="graph-outer" style="border-radius:var(--radius,14px);overflow:hidden;border:1px solid rgba(255,255,255,0.06);position:relative;margin-bottom:12px;">' +
+        '<div class="graph-viewport" id="graphVp" style="height:280px;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;overflow:hidden;cursor:grab;position:relative;">' +
+          '<div class="graph-world" id="graphWorld" style="position:absolute;top:0;left:0;transform-origin:0 0;">' +
+            '<svg class="graph-svg" id="graphSvg" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible;"></svg>' +
+          '</div>' +
+        '</div>' +
+        '<div class="graph-controls" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;">' +
+          '<button class="gc-btn" id="gcIn" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">+</button>' +
+          '<button class="gc-btn" id="gcOut" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">&minus;</button>' +
+          '<button class="gc-btn gc-fit" id="gcFit" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;">FIT</button>' +
+        '</div>' +
+        '<div class="graph-zoom-lbl" id="gZoomLbl" style="position:absolute;bottom:10px;left:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.07em;pointer-events:none;z-index:10;">100%</div>' +
+        '<div class="graph-hint" style="position:absolute;bottom:10px;right:12px;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.18);letter-spacing:0.05em;pointer-events:none;z-index:10;">ctrl+scroll to zoom · drag to pan</div>' +
+      '</div>';
+    
+    // Create a container div
+    var container = document.createElement('div');
+    container.innerHTML = graphHTML;
+    
+    // Insert before accordion if it exists, otherwise append to node section
+    if (accordion && accordion.parentNode === nodeSection) {
+      nodeSection.insertBefore(container.firstElementChild, accordion);
+    } else {
+      // Find the node count label and insert after it
+      var nodeCount = document.getElementById('modal-node-count');
+      if (nodeCount && nodeCount.parentNode && nodeCount.parentNode.parentNode === nodeSection) {
+        nodeSection.insertBefore(container.firstElementChild, nodeCount.parentNode.nextSibling);
+      } else {
+        // Just insert at the beginning of the section after the first label
+        var firstLabel = nodeSection.querySelector('.sec-lbl');
+        if (firstLabel) {
+          nodeSection.insertBefore(container.firstElementChild, firstLabel.nextSibling);
+        } else {
+          nodeSection.appendChild(container.firstElementChild);
+        }
+      }
+    }
+    
+    console.log('[effect-modal] Graph container created dynamically');
   }
 
   function buildGraphDOM() {
@@ -1245,23 +1312,42 @@
       
       // Type dot
       var dot = document.createElement('div');
-      dot.className = 'gn-typedot';
-      dot.style.background = n.catColor || '#6c7bff';
+      dot.style.cssText = 'width:6px;height:6px;border-radius:50%;flex-shrink:0;background:' + (n.catColor || '#6c7bff') + ';';
       
       // Labels
       var labels = document.createElement('div');
-      labels.className = 'gn-labels';
+      labels.style.cssText = 'min-width:0;flex:1;';
       var typeLabel = document.createElement('div');
-      typeLabel.className = 'gn-type';
+      typeLabel.style.cssText = 'font-family:var(--font-mono, monospace);font-size:7.5px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.38);line-height:1;margin-bottom:3px;';
       typeLabel.textContent = n.category || 'Custom';
       var nameLabel = document.createElement('div');
-      nameLabel.className = 'gn-name';
+      nameLabel.style.cssText = 'font-family:var(--font-display, sans-serif);font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1;';
       nameLabel.textContent = n.fusionName || n.name;
       labels.appendChild(typeLabel);
       labels.appendChild(nameLabel);
       
       card.appendChild(dot);
       card.appendChild(labels);
+      
+      // Input port indicator (left side) - count based on incoming edges
+      var inputCount = edges.filter(function(e) { return e.to === n.id; }).length;
+      if (inputCount === 0 && n.category !== 'Source' && n.category !== 'Output') {
+        inputCount = 1; // Default to 1 input for most nodes
+      }
+      for (var pi = 0; pi < inputCount; pi++) {
+        var inPort = document.createElement('div');
+        var portY = inputCount === 1 ? NH / 2 : (NH / (inputCount + 1)) * (pi + 1);
+        inPort.style.cssText = 'position:absolute;width:9px;height:9px;border-radius:50%;border:1.5px solid ' + (n.catColor || '#6c7bff') + ';background:#06060d;left:-5px;top:' + (portY - 4.5) + 'px;';
+        card.appendChild(inPort);
+      }
+      
+      // Output port indicator (right side)
+      var outputCount = edges.filter(function(e) { return e.from === n.id; }).length;
+      if (outputCount > 0 || n.category === 'Source' || n.category !== 'Output') {
+        var outPort = document.createElement('div');
+        outPort.style.cssText = 'position:absolute;width:9px;height:9px;border-radius:50%;border:1.5px solid ' + (n.catColor || '#6c7bff') + ';background:#06060d;right:-5px;top:' + (NH / 2 - 4.5) + 'px;';
+        card.appendChild(outPort);
+      }
       
       // Click handler
       card.addEventListener('click', function(ev) {
