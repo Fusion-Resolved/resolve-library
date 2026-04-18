@@ -2481,7 +2481,8 @@
 
   // YouTube IFrame API callback - called when API is ready
   window.onYouTubeIframeAPIReady = function() {
-    createExpandedPlayer();
+    // Small delay to ensure DOM is ready
+    setTimeout(createExpandedPlayer, 50);
   };
   
   // Create YouTube player for expanded view
@@ -2496,20 +2497,31 @@
     
     var savedTime = window._expandedVideoTime || 0;
     
+    // Check if player div exists
+    var playerDiv = document.getElementById('exp-yt-player');
+    if (!playerDiv) {
+      console.error('YouTube player div not found');
+      return;
+    }
+    
     window.expandedYTPlayer = new YT.Player('exp-yt-player', {
       videoId: videoId,
       playerVars: {
         rel: 0,
         modestbranding: 1,
         start: Math.floor(savedTime),
-        autoplay: 0
+        autoplay: 0,
+        playsinline: 1
       },
       events: {
         onReady: function(event) {
-          // Player is ready
+          // Player is ready - seek to saved position if needed
+          if (savedTime > 0) {
+            event.target.seekTo(savedTime, true);
+          }
         },
-        onStateChange: function(event) {
-          // Track state changes if needed
+        onError: function(event) {
+          console.error('YouTube player error:', event.data);
         }
       }
     });
@@ -2612,13 +2624,13 @@
     if (effect.video_url) {
       var ytId = extractYouTubeId(effect.video_url);
       if (ytId) {
+        // Store video ID FIRST (before any player creation)
+        window._expandedVideoId = ytId;
+        
         var videoInner = document.getElementById('exp-video-inner');
         if (videoInner) {
           // Clear any existing player
           videoInner.innerHTML = '<div id="exp-yt-player" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>';
-          
-          // Store video ID for player initialization
-          window._expandedVideoId = ytId;
           
           // Load YouTube API if not already loaded
           if (!window.YT || !window.YT.Player) {
@@ -2627,8 +2639,8 @@
             var firstScriptTag = document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
           } else {
-            // API already loaded, create player directly
-            createExpandedPlayer();
+            // API already loaded, create player after brief delay to ensure DOM ready
+            setTimeout(createExpandedPlayer, 50);
           }
         }
       } else {
