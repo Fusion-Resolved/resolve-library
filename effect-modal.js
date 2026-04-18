@@ -1601,7 +1601,7 @@
     // Right side panel for node details (hidden by default)
     var sidePanel = document.createElement('div');
     sidePanel.id = 'expanded-node-panel';
-    sidePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:0;width:320px;background:rgba(15,15,22,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:15;transform:translateX(100%);transition:transform 0.25s ease;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;';
+    sidePanel.style.cssText = 'position:absolute;top:50px;right:0;bottom:0;width:320px;background:rgba(15,15,22,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-left:1px solid rgba(255,255,255,0.08);z-index:25;transform:translateX(100%);transition:transform 0.25s ease;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;';
     sidePanel.innerHTML = '<div style="padding:16px;"><div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Select a node to view parameters</div></div>';
     container.appendChild(sidePanel);
     
