@@ -1661,16 +1661,29 @@
     container.appendChild(controls);
     container.appendChild(zoomLbl);
     
-    // Floating video with invisible overlay for drag detection
+    // Floating video with drag grip + resize handles (video area free for interaction)
     var videoContainer = document.createElement('div');
     videoContainer.id = 'exp-video-section';
-    videoContainer.style.cssText = 'position:absolute;top:110px;right:20px;width:320px;display:none;z-index:25;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,0.5);';
+    videoContainer.style.cssText = 'position:absolute;top:110px;right:20px;width:320px;display:none;z-index:25;border-radius:8px;overflow:visible;background:#000;box-shadow:0 10px 40px rgba(0,0,0,0.5);';
     videoContainer.innerHTML = 
-      '<div id="exp-video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">' +
+      '<div id="exp-video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;">' +
         '<div id="exp-video-inner" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>' +
       '</div>' +
-      '<div id="exp-video-overlay" style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:5;cursor:default;"></div>' +
-      '<button id="exp-video-close" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border:none;border-radius:4px;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;padding:4px 8px;opacity:0;transition:opacity 0.2s;z-index:10;">&#x2715;</button>';
+      // Close button (top-right of video)
+      '<button id="exp-video-close" style="position:absolute;top:-10px;right:-10px;width:24px;height:24px;background:rgba(0,0,0,0.8);border:1px solid rgba(255,255,255,0.2);border-radius:50%;color:rgba(255,255,255,0.8);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;z-index:30;">&#x2715;</button>' +
+      // Drag grip (bottom-left) - 6 dots pattern
+      '<div id="exp-video-drag" style="position:absolute;bottom:-16px;left:8px;width:24px;height:24px;cursor:grab;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:2px;padding:4px;opacity:0;transition:opacity 0.2s;z-index:20;background:rgba(0,0,0,0.6);border-radius:4px;border:1px solid rgba(255,255,255,0.1);">' +
+        '<div style="width:3px;height:3px;background:rgba(255,255,255,0.6);border-radius:50%;"></div>' +
+        '<div style="width:3px;height:3px;background:rgba(255,255,255,0.6);border-radius:50%;"></div>' +
+        '<div style="width:3px;height:3px;background:rgba(255,255,255,0.6);border-radius:50%;"></div>' +
+        '<div style="width:3px;height:3px;background:rgba(255,255,255,0.6);border-radius:50%;"></div>' +
+        '<div style="width:3px;height:3px;background:rgba(255,255,255,0.6);border-radius:50%;"></div>' +
+        '<div style="width:3px;height:3px;background:rgba(255,255,255,0.6);border-radius:50%;"></div>' +
+      '</div>' +
+      // Resize handle (bottom-right) - diagonal lines
+      '<div id="exp-video-resize" style="position:absolute;bottom:-16px;right:8px;width:24px;height:24px;cursor:nwse-resize;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;z-index:20;background:rgba(0,0,0,0.6);border-radius:4px;border:1px solid rgba(255,255,255,0.1);">' +
+        '<svg width="12" height="12" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20 12L12 20M20 4L4 20"/></svg>' +
+      '</div>';
     
     // Node details panel (only shows when node selected)
     var nodePanel = document.createElement('div');
@@ -1727,86 +1740,82 @@
     window.expandedBottomBarContent = bottomBarContent;
     window.expandedBottomBarHeader = bottomBarHeader;
     
-    // Setup video drag with invisible overlay (click-through on non-drag)
+    // Setup video drag (via grip handle) and resize (via corner handle)
     var videoCloseBtn = document.getElementById('exp-video-close');
-    var videoOverlay = document.getElementById('exp-video-overlay');
-    var isDraggingVideo = false;
-    var hasDraggedVideo = false;
-    var videoMouseDown = false;
-    var videoStartX = 0, videoStartY = 0;
-    var videoDragStartX = 0, videoDragStartY = 0;
-    var VIDEO_DRAG_THRESHOLD = 3;
+    var videoDragHandle = document.getElementById('exp-video-drag');
+    var videoResizeHandle = document.getElementById('exp-video-resize');
     
-    // Show/hide close button on hover
+    // Show/hide handles on hover
     videoContainer.addEventListener('mouseenter', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '1';
+      if (videoDragHandle) videoDragHandle.style.opacity = '1';
+      if (videoResizeHandle) videoResizeHandle.style.opacity = '1';
     });
     videoContainer.addEventListener('mouseleave', function() {
       if (videoCloseBtn) videoCloseBtn.style.opacity = '0';
+      if (videoDragHandle) videoDragHandle.style.opacity = '0';
+      if (videoResizeHandle) videoResizeHandle.style.opacity = '0';
     });
     
-    // Mousedown on overlay
-    if (videoOverlay) {
-      videoOverlay.addEventListener('mousedown', function(e) {
-        if (e.target === videoCloseBtn) return;
-        
-        videoMouseDown = true;
-        hasDraggedVideo = false;
-        videoDragStartX = e.clientX;
-        videoDragStartY = e.clientY;
+    // Drag state
+    var isDraggingVideo = false;
+    var isResizingVideo = false;
+    var videoStartX = 0, videoStartY = 0;
+    var videoStartWidth = 320;
+    var dragStartMouseX = 0, dragStartMouseY = 0;
+    
+    // MIN/MAX video sizes
+    var MIN_VIDEO_WIDTH = 240;
+    var MAX_VIDEO_WIDTH = 600;
+    
+    // MouseDown on DRAG handle (move video)
+    if (videoDragHandle) {
+      videoDragHandle.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        isDraggingVideo = true;
+        videoDragHandle.style.cursor = 'grabbing';
+        dragStartMouseX = e.clientX;
+        dragStartMouseY = e.clientY;
         videoStartX = parseInt(videoContainer.style.right) || 20;
         videoStartY = parseInt(videoContainer.style.top) || 110;
-        
-        // Don't prevent default - let the click potentially pass through
       });
     }
     
-    // Global mousemove
+    // MouseDown on RESIZE handle (resize video)
+    if (videoResizeHandle) {
+      videoResizeHandle.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        isResizingVideo = true;
+        dragStartMouseX = e.clientX;
+        videoStartWidth = parseInt(videoContainer.style.width) || 320;
+      });
+    }
+    
+    // Global mousemove (drag or resize)
     document.addEventListener('mousemove', function(e) {
-      if (!videoMouseDown) return;
-      
-      var moveX = Math.abs(e.clientX - videoDragStartX);
-      var moveY = Math.abs(e.clientY - videoDragStartY);
-      
-      // If moved > 3px, this is a drag
-      if (!hasDraggedVideo && (moveX > VIDEO_DRAG_THRESHOLD || moveY > VIDEO_DRAG_THRESHOLD)) {
-        hasDraggedVideo = true;
-        isDraggingVideo = true;
-        if (videoOverlay) videoOverlay.style.cursor = 'grabbing';
-      }
-      
-      // If dragging, move the video
-      if (hasDraggedVideo) {
-        var dx = e.clientX - videoDragStartX;
-        var dy = e.clientY - videoDragStartY;
+      if (isDraggingVideo) {
+        var dx = dragStartMouseX - e.clientX; // Inverted because we use 'right'
+        var dy = e.clientY - dragStartMouseY;
         var containerRect = container.getBoundingClientRect();
-        var newRight = Math.max(0, Math.min(containerRect.width - 320, videoStartX - dx));
-        var newTop = Math.max(50, Math.min(containerRect.height - 200, videoStartY + dy));
+        var currentWidth = parseInt(videoContainer.style.width) || 320;
+        var newRight = Math.max(0, Math.min(containerRect.width - currentWidth, videoStartX + dx));
+        var newTop = Math.max(50, Math.min(containerRect.height - 150, videoStartY + dy));
         videoContainer.style.right = newRight + 'px';
         videoContainer.style.top = newTop + 'px';
+      } else if (isResizingVideo) {
+        var dx = e.clientX - dragStartMouseX;
+        var newWidth = Math.max(MIN_VIDEO_WIDTH, Math.min(MAX_VIDEO_WIDTH, videoStartWidth + dx));
+        videoContainer.style.width = newWidth + 'px';
       }
     });
     
-    // Global mouseup
+    // Global mouseup (stop drag/resize)
     document.addEventListener('mouseup', function() {
-      if (!videoMouseDown) return;
-      
-      videoMouseDown = false;
-      
-      if (!hasDraggedVideo) {
-        // It was a click - hide overlay briefly to let click pass through
-        if (videoOverlay) {
-          videoOverlay.style.display = 'none';
-          // Restore overlay after click has passed through
-          setTimeout(function() {
-            if (videoOverlay) videoOverlay.style.display = 'block';
-          }, 50);
-        }
+      if (isDraggingVideo && videoDragHandle) {
+        videoDragHandle.style.cursor = 'grab';
       }
-      
       isDraggingVideo = false;
-      hasDraggedVideo = false;
-      if (videoOverlay) videoOverlay.style.cursor = 'default';
+      isResizingVideo = false;
     });
     
     // Video close button
