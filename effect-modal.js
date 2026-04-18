@@ -2335,23 +2335,42 @@
     var controls = document.getElementById('expanded-controls');
     if (!nodePanel || !nodeContent) return;
     
-    // Get animation range for this node
+    // Get animation range for this node - handle nested structure
     var frameRange = { start: 0, end: 100 };
     var allKeyframes = [];
     var params = node.params || {};
+    var hasAnimation = false;
+    var hasParams = false;
     
-    Object.values(params).forEach(function(param) {
-      if (param.keyframes && param.keyframes.length > 0) {
-        param.keyframes.forEach(function(kf) {
-          allKeyframes.push(kf.frame);
-          frameRange.start = Math.min(frameRange.start, kf.frame);
-          frameRange.end = Math.max(frameRange.end, kf.frame);
+    // Traverse nested structure: params[tableKey] = { table: "Transform", params: { ... } }
+    Object.values(params).forEach(function(tableGroup) {
+      if (tableGroup && typeof tableGroup === 'object' && tableGroup.params) {
+        hasParams = true;
+        var nestedParams = tableGroup.params;
+        Object.values(nestedParams).forEach(function(param) {
+          if (param.keyframes && param.keyframes.length > 0) {
+            hasAnimation = true;
+            param.keyframes.forEach(function(kf) {
+              allKeyframes.push(kf.frame);
+              frameRange.start = Math.min(frameRange.start, kf.frame);
+              frameRange.end = Math.max(frameRange.end, kf.frame);
+            });
+          }
         });
+      } else {
+        // Flat structure fallback
+        hasParams = true;
+        var param = tableGroup;
+        if (param.keyframes && param.keyframes.length > 0) {
+          hasAnimation = true;
+          param.keyframes.forEach(function(kf) {
+            allKeyframes.push(kf.frame);
+            frameRange.start = Math.min(frameRange.start, kf.frame);
+            frameRange.end = Math.max(frameRange.end, kf.frame);
+          });
+        }
       }
     });
-    
-    var hasParams = Object.keys(params).length > 0;
-    var hasAnimation = allKeyframes.length > 0;
     
     // Build node details content with timeline integration
     var html = 
@@ -2516,6 +2535,249 @@
     }
   }
   window.closeSidePanel = closeSidePanel;
+
+  /**
+   * Show detailed spline editor for a specific parameter
+   * Opens a modal with full spline view and keyframe editing
+   */
+  function showParamDetail(node, paramKey, param) {
+    // Remove any existing param detail modal
+    var existing = document.getElementById('param-detail-modal');
+    if (existing) existing.remove();
+
+    // Create modal overlay
+    var overlay = document.createElement('div');
+    overlay.id = 'param-detail-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,14,0.85);z-index:400;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;';
+
+    // Modal container
+    var modal = document.createElement('div');
+    modal.style.cssText = 'background:#141419;border:1px solid rgba(108,123,255,0.3);border-radius:12px;width:90%;max-width:700px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.5);';
+
+    // Header
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);';
+    header.innerHTML = 
+      '<div>' +
+        '<div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:#fff;">' + escapeHtml(paramKey) + '</div>' +
+        '<div style="font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;">' + 
+          (node.fusionName || node.name) + ' • ' + (param.keyframes ? param.keyframes.length + ' keyframes' : 'Static') + 
+        '</div>' +
+      '</div>' +
+      '<button id="param-detail-close" style="background:none;border:none;color:rgba(255,255,255,0.6);cursor:pointer;font-size:20px;padding:4px 8px;border-radius:4px;transition:all 0.15s;">&#x2715;</button>';
+
+    // Content area with spline canvas
+    var content = document.createElement('div');
+    content.style.cssText = 'padding:20px;flex:1;overflow:hidden;';
+
+    if (param.keyframes && param.keyframes.length > 0) {
+      // Canvas container
+      var canvasContainer = document.createElement('div');
+      canvasContainer.style.cssText = 'background:#0d0d10;border-radius:8px;border:1px solid rgba(255,255,255,0.08);height:300px;position:relative;';
+      
+      var canvas = document.createElement('canvas');
+      canvas.id = 'param-detail-canvas';
+      canvas.style.cssText = 'width:100%;height:100%;display:block;';
+      canvasContainer.appendChild(canvas);
+      content.appendChild(canvasContainer);
+
+      // Keyframe list
+      var kfList = document.createElement('div');
+      kfList.style.cssText = 'margin-top:16px;max-height:150px;overflow-y:auto;font-family:var(--font-mono);font-size:11px;';
+      
+      var sortedKfs = param.keyframes.slice().sort(function(a, b) { return a.frame - b.frame; });
+      var kfHtml = '<div style="display:grid;grid-template-columns:80px 1fr 100px;gap:8px;padding:8px 12px;background:rgba(108,123,255,0.1);border-radius:6px;margin-bottom:8px;font-weight:600;color:var(--violet-light);">' +
+        '<div>Frame</div><div>Value</div><div>Type</div></div>';
+      
+      sortedKfs.forEach(function(kf, i) {
+        var val = parseFloat(kf.value !== undefined ? kf.value : kf.val || 0);
+        var type = kf.hold ? 'Hold' : (kf.rh || kf.lh ? 'Bezier' : 'Linear');
+        kfHtml += '<div style="display:grid;grid-template-columns:80px 1fr 100px;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:4px;color:rgba(255,255,255,0.8);">' +
+          '<div>' + kf.frame + '</div>' +
+          '<div>' + val.toFixed(4) + '</div>' +
+          '<div style="color:' + (type === 'Bezier' ? '#f0c060' : type === 'Hold' ? '#ef4444' : '#22d3ee') + ';">' + type + '</div>' +
+        '</div>';
+      });
+      
+      kfList.innerHTML = kfHtml;
+      content.appendChild(kfList);
+
+      // Draw the spline after DOM insertion
+      setTimeout(function() {
+        drawParamDetailSpline(canvas, sortedKfs);
+      }, 10);
+    } else {
+      content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">' +
+        '<div style="font-size:48px;margin-bottom:16px;">&#x23F8;</div>' +
+        '<div style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Static Parameter</div>' +
+        '<div style="font-size:13px;">This parameter has no animation keyframes.</div>' +
+        '<div style="font-family:var(--font-mono);font-size:14px;margin-top:16px;padding:12px 20px;background:rgba(108,123,255,0.1);border-radius:6px;display:inline-block;color:#fff;">' +
+          'Value: ' + (param.v !== undefined ? param.v : param.value !== undefined ? param.value : 'N/A') +
+        '</div>' +
+      '</div>';
+    }
+
+    // Assemble modal
+    modal.appendChild(header);
+    modal.appendChild(content);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    // Close handlers
+    var closeBtn = document.getElementById('param-detail-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeParamDetail);
+      closeBtn.addEventListener('mouseenter', function() { this.style.background = 'rgba(255,255,255,0.1)'; this.style.color = '#fff'; });
+      closeBtn.addEventListener('mouseleave', function() { this.style.background = 'none'; this.style.color = 'rgba(255,255,255,0.6)'; });
+    }
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) closeParamDetail();
+    });
+  }
+  window.showParamDetail = showParamDetail;
+
+  function closeParamDetail() {
+    var modal = document.getElementById('param-detail-modal');
+    if (modal) {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+  }
+  window.closeParamDetail = closeParamDetail;
+
+  /**
+   * Draw detailed spline view for param detail modal
+   */
+  function drawParamDetailSpline(canvas, keyframes) {
+    var rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    var w = rect.width, h = rect.height;
+    var PAD = { l: 50, r: 20, t: 30, b: 40 };
+    var gW = w - PAD.l - PAD.r, gH = h - PAD.t - PAD.b;
+
+    // Calculate ranges
+    var minF = keyframes[0].frame, maxF = keyframes[keyframes.length - 1].frame;
+    var minV = Infinity, maxV = -Infinity;
+    keyframes.forEach(function(k) {
+      var v = parseFloat(k.value !== undefined ? k.value : k.val || 0);
+      minV = Math.min(minV, v);
+      maxV = Math.max(maxV, v);
+    });
+
+    if (minF === maxF) { minF -= 1; maxF += 1; }
+    if (minV === maxV) { minV -= 0.1; maxV += 0.1; }
+
+    var tx = function(f) { return PAD.l + (f - minF) / (maxF - minF) * gW; };
+    var ty = function(v) { return PAD.t + (1 - (v - minV) / (maxV - minV)) * gH; };
+
+    // Clear
+    ctx.fillStyle = '#0d0d10';
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (var i = 0; i <= 5; i++) {
+      var y = PAD.t + (gH / 5) * i;
+      ctx.beginPath();
+      ctx.moveTo(PAD.l, y);
+      ctx.lineTo(w - PAD.r, y);
+      ctx.stroke();
+    }
+    for (var i = 0; i <= 5; i++) {
+      var x = PAD.l + (gW / 5) * i;
+      ctx.beginPath();
+      ctx.moveTo(x, PAD.t);
+      ctx.lineTo(x, h - PAD.b);
+      ctx.stroke();
+    }
+
+    // Frame axis labels
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '10px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    for (var i = 0; i <= 5; i++) {
+      var f = Math.round(minF + (maxF - minF) * (i / 5));
+      var x = PAD.l + (gW / 5) * i;
+      ctx.fillText(f, x, h - 15);
+    }
+
+    // Value axis labels
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (var i = 0; i <= 5; i++) {
+      var v = minV + (maxV - minV) * (1 - i / 5);
+      var y = PAD.t + (gH / 5) * i;
+      ctx.fillText(v.toFixed(2), PAD.l - 8, y);
+    }
+
+    // Axis titles
+    ctx.save();
+    ctx.translate(15, h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText('Value', 0, 0);
+    ctx.restore();
+
+    ctx.textAlign = 'center';
+    ctx.fillText('Frame', w / 2 + PAD.l / 2, h - 5);
+
+    // Spline curve
+    ctx.strokeStyle = '#f0c060';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var i = 0; i < keyframes.length - 1; i++) {
+      var k0 = keyframes[i], k1 = keyframes[i + 1];
+      var v0 = parseFloat(k0.value !== undefined ? k0.value : k0.val || 0);
+      var v1 = parseFloat(k1.value !== undefined ? k1.value : k1.val || 0);
+      var x0 = tx(k0.frame), y0 = ty(v0), x3 = tx(k1.frame), y3 = ty(v1);
+      
+      if (i === 0) ctx.moveTo(x0, y0);
+
+      if (k0.hold) {
+        // Hold interpolation - flat line then jump
+        ctx.lineTo(x3, y0);
+        ctx.lineTo(x3, y3);
+      } else if (k0.rh || k1.lh) {
+        // Bezier with handles
+        var cp1x = k0.rh ? tx(k0.rh.x) : x0 + (x3 - x0) / 3;
+        var cp1y = k0.rh ? ty(k0.rh.y) : y0;
+        var cp2x = k1.lh ? tx(k1.lh.x) : x3 - (x3 - x0) / 3;
+        var cp2y = k1.lh ? ty(k1.lh.y) : y3;
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x3, y3);
+      } else {
+        // Linear
+        ctx.lineTo(x3, y3);
+      }
+    }
+    ctx.stroke();
+
+    // Keyframe diamonds
+    keyframes.forEach(function(k) {
+      var v = parseFloat(k.value !== undefined ? k.value : k.val || 0);
+      var px = tx(k.frame), py = ty(v);
+      ctx.fillStyle = k.hold ? '#ef4444' : (k.rh || k.lh ? '#f0c060' : '#22d3ee');
+      ctx.beginPath();
+      ctx.moveTo(px, py - 6);
+      ctx.lineTo(px + 6, py);
+      ctx.lineTo(px, py + 6);
+      ctx.lineTo(px - 6, py);
+      ctx.closePath();
+      ctx.fill();
+    });
+  }
 
   function wireExpandedGraphEvents(vp, world, svg, zoomLbl) {
     var tx = 0, ty = 0, sc = 1, dragging = false, dX = 0, dY = 0;

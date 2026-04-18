@@ -225,32 +225,51 @@
       
       console.log('[ValueDisplay] getRawValues, params:', Object.keys(params));
       
-      Object.entries(params).forEach(([key, param]) => {
-        if (key.endsWith('_SourceOp') || key.startsWith('_')) return;
-        
-        // Check param structure
-        const val = param.v !== undefined ? param.v : param.value;
-        console.log('[ValueDisplay] Param', key, ':', {v: param.v, value: param.value, raw: param.raw, hasKeyframes: !!param.keyframes});
-        
-        values[key] = {
-          value: val,
-          raw: param.raw || String(val),
-          animated: !!(param.keyframes && param.keyframes.length > 0),
-          frame: this.options.currentFrame
-        };
+      Object.entries(params).forEach(([tableKey, tableGroup]) => {
+        // Handle nested structure: { "0": { table: "Transform", params: { ... } } }
+        if (tableGroup && typeof tableGroup === 'object' && tableGroup.params) {
+          const tableName = tableGroup.table || 'Parameters';
+          const nestedParams = tableGroup.params;
+          
+          Object.entries(nestedParams).forEach(([key, param]) => {
+            if (key.endsWith('_SourceOp') || key.startsWith('_')) return;
+            
+            const val = param.v !== undefined ? param.v : param.value;
+            console.log('[ValueDisplay] Param', key, 'in', tableName, ':', val);
+            
+            values[key] = {
+              value: val,
+              raw: param.raw || String(val),
+              animated: !!(param.keyframes && param.keyframes.length > 0),
+              table: tableName,
+              frame: this.options.currentFrame
+            };
+          });
+        } else {
+          // Handle flat structure (fallback)
+          if (tableKey.endsWith('_SourceOp') || tableKey.startsWith('_')) return;
+          
+          const val = tableGroup.v !== undefined ? tableGroup.v : tableGroup.value;
+          values[tableKey] = {
+            value: val,
+            raw: tableGroup.raw || String(val),
+            animated: !!(tableGroup.keyframes && tableGroup.keyframes.length > 0),
+            table: 'Parameters',
+            frame: this.options.currentFrame
+          };
+        }
       });
       
+      console.log('[ValueDisplay] Extracted values:', Object.keys(values));
       return values;
     }
 
     groupByTable(values, node) {
       const groups = {};
-      const params = node.params || {};
 
       Object.entries(values).forEach(([key, value]) => {
-        const param = params[key];
-        console.log('[ValueDisplay] groupByTable, key:', key, 'param:', param);
-        const table = param?.table || 'Parameters';
+        // Use table property from value (set by getRawValues)
+        const table = value.table || 'Parameters';
         
         if (!groups[table]) groups[table] = [];
         groups[table].push([key, value]);
@@ -271,15 +290,18 @@
       name.textContent = key;
       paramInfo.appendChild(name);
 
+      // Find the parameter's keyframes by traversing nested structure
+      const paramWithKeyframes = this.findParamWithKeyframes(key);
+
       // Mini spline for animated params
-      if (value.animated && this.options.node?.params?.[key]?.keyframes) {
+      if (value.animated && paramWithKeyframes?.keyframes) {
         const spline = document.createElement('div');
         spline.className = 'value-param-spline';
         paramInfo.appendChild(spline);
         
         // Render mini spline after DOM insertion
         setTimeout(() => {
-          this.renderMiniSpline(spline, this.options.node.params[key].keyframes, value.frame);
+          this.renderMiniSpline(spline, paramWithKeyframes.keyframes, value.frame);
         }, 0);
       }
 
@@ -314,14 +336,37 @@
       row.appendChild(valueContainer);
 
       // Click handler
-      if (this.options.onParamClick) {
+      if (this.options.onParamClick && paramWithKeyframes) {
         row.style.cursor = 'pointer';
         row.addEventListener('click', () => {
-          this.options.onParamClick(key, this.options.node.params[key]);
+          this.options.onParamClick(key, paramWithKeyframes);
         });
       }
 
       return row;
+    }
+
+    /**
+     * Find a parameter with its keyframes by traversing nested structure
+     * @param {string} key - Parameter name to find
+     * @returns {Object|null} The parameter object with keyframes, or null
+     */
+    findParamWithKeyframes(key) {
+      const node = this.options.node;
+      if (!node || !node.params) return null;
+
+      // Traverse nested structure: node.params[tableKey].params[paramKey]
+      for (const tableKey of Object.keys(node.params)) {
+        const tableGroup = node.params[tableKey];
+        if (tableGroup && typeof tableGroup === 'object' && tableGroup.params) {
+          if (tableGroup.params[key]) {
+            return tableGroup.params[key];
+          }
+        }
+      }
+
+      // Fallback: flat structure
+      return node.params[key] || null;
     }
 
     renderMiniSpline(container, keyframes, currentFrame) {

@@ -130,43 +130,92 @@
 
   /**
    * Evaluate all parameters for a node at a specific frame
+   * Handles Fusion's nested parameter structure: node.params[tableKey].params[paramKey]
    * @param {Object} node - Node with params
    * @param {number} frame - Frame to evaluate
-   * @returns {Object} Map of param names to { value, raw, animated, keyframeIndex }
+   * @returns {Object} Map of param names to { value, raw, animated, keyframeIndex, table }
    */
   function evaluateNodeAtFrame(node, frame) {
     const result = {};
     const params = node.params || {};
 
-    Object.entries(params).forEach(([key, param]) => {
-      // Skip metadata keys
-      if (key.endsWith('_SourceOp') || key.startsWith('_')) {
+    // Handle nested structure: params[tableKey] = { table: "Transform", params: { ... } }
+    Object.entries(params).forEach(([tableKey, tableGroup]) => {
+      // Skip metadata keys at top level
+      if (tableKey.endsWith('_SourceOp') || tableKey.startsWith('_')) {
         return;
       }
 
-      const hasKeyframes = param.keyframes && param.keyframes.length > 0;
-      
-      if (hasKeyframes) {
-        // Evaluate the animated parameter
-        const value = evaluateSpline(param.keyframes, frame);
-        const { prev } = findSurroundingKeyframes(param.keyframes, frame);
-        
-        result[key] = {
-          value: value,
-          raw: value.toFixed(3),
-          animated: true,
-          keyframeIndex: prev ? param.keyframes.indexOf(prev) : -1,
-          frame: frame
-        };
+      // Check if this is a nested table structure
+      if (tableGroup && typeof tableGroup === 'object' && tableGroup.params) {
+        const tableName = tableGroup.table || 'Parameters';
+        const nestedParams = tableGroup.params;
+
+        Object.entries(nestedParams).forEach(([key, param]) => {
+          if (key.endsWith('_SourceOp') || key.startsWith('_')) {
+            return;
+          }
+
+          const hasKeyframes = param.keyframes && param.keyframes.length > 0;
+          
+          if (hasKeyframes) {
+            // Evaluate the animated parameter
+            const value = evaluateSpline(param.keyframes, frame);
+            const { prev } = findSurroundingKeyframes(param.keyframes, frame);
+            
+            result[key] = {
+              value: value,
+              raw: value.toFixed(3),
+              animated: true,
+              keyframeIndex: prev ? param.keyframes.indexOf(prev) : -1,
+              frame: frame,
+              table: tableName
+            };
+          } else {
+            // Static parameter - return stored value
+            const val = param.v !== undefined ? param.v : param.value;
+            result[key] = {
+              value: val,
+              raw: param.raw || String(val),
+              animated: false,
+              keyframeIndex: -1,
+              frame: frame,
+              table: tableName
+            };
+          }
+        });
       } else {
-        // Static parameter - return stored value
-        result[key] = {
-          value: param.v !== undefined ? param.v : param.value,
-          raw: param.raw || String(param.v || param.value),
-          animated: false,
-          keyframeIndex: -1,
-          frame: frame
-        };
+        // Handle flat structure (fallback for backward compatibility)
+        const param = tableGroup;
+        if (tableKey.endsWith('_SourceOp') || tableKey.startsWith('_')) {
+          return;
+        }
+
+        const hasKeyframes = param.keyframes && param.keyframes.length > 0;
+        
+        if (hasKeyframes) {
+          const value = evaluateSpline(param.keyframes, frame);
+          const { prev } = findSurroundingKeyframes(param.keyframes, frame);
+          
+          result[tableKey] = {
+            value: value,
+            raw: value.toFixed(3),
+            animated: true,
+            keyframeIndex: prev ? param.keyframes.indexOf(prev) : -1,
+            frame: frame,
+            table: 'Parameters'
+          };
+        } else {
+          const val = param.v !== undefined ? param.v : param.value;
+          result[tableKey] = {
+            value: val,
+            raw: param.raw || String(val),
+            animated: false,
+            keyframeIndex: -1,
+            frame: frame,
+            table: 'Parameters'
+          };
+        }
       }
     });
 
@@ -175,6 +224,7 @@
 
   /**
    * Get the frame range for a node's animation
+   * Handles nested parameter structure
    * @param {Object} node - Node with params
    * @returns {Object} { start, end } frame range
    */
@@ -184,13 +234,31 @@
     let hasAnimation = false;
 
     const params = node.params || {};
-    Object.values(params).forEach(param => {
-      if (param.keyframes && param.keyframes.length > 0) {
-        hasAnimation = true;
-        param.keyframes.forEach(kf => {
-          minFrame = Math.min(minFrame, kf.frame);
-          maxFrame = Math.max(maxFrame, kf.frame);
+    
+    // Handle nested structure: params[tableKey] = { table: "Transform", params: { ... } }
+    Object.values(params).forEach(tableGroup => {
+      if (tableGroup && typeof tableGroup === 'object' && tableGroup.params) {
+        // Nested structure
+        const nestedParams = tableGroup.params;
+        Object.values(nestedParams).forEach(param => {
+          if (param.keyframes && param.keyframes.length > 0) {
+            hasAnimation = true;
+            param.keyframes.forEach(kf => {
+              minFrame = Math.min(minFrame, kf.frame);
+              maxFrame = Math.max(maxFrame, kf.frame);
+            });
+          }
         });
+      } else {
+        // Flat structure fallback
+        const param = tableGroup;
+        if (param.keyframes && param.keyframes.length > 0) {
+          hasAnimation = true;
+          param.keyframes.forEach(kf => {
+            minFrame = Math.min(minFrame, kf.frame);
+            maxFrame = Math.max(maxFrame, kf.frame);
+          });
+        }
       }
     });
 
