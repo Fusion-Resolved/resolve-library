@@ -183,13 +183,13 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
   input:focus, select:focus, textarea:focus { font-size: max(16px, 1em); }
   body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
-  /* ── Full-screen canvas layout (behind transparent header) ── */
+  /* ── Canvas layout (below header) ── */
   .app {
     position: absolute;
-    top: 0;
+    top: 58px;  /* Below header */
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: calc(100vh - 58px);  /* Subtract header height */
     z-index: 1;
     margin: 0;
     padding: 0;
