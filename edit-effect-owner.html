@@ -1192,9 +1192,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     const renderWeight = weightEl ? weightEl.value : '';
     
     const selfEl = document.getElementById('fSelf');
+    const stepsEl = document.getElementById('fSteps');
     const updates = {
       name: nameEl ? nameEl.value : '',
       desc: descEl ? descEl.value : '',
+      steps: stepsEl ? stepsEl.value : '',
       cat: catEl ? catEl.value : '',
       version: verEl ? verEl.value : '',
       difficulty: difficulty,
@@ -1233,7 +1235,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       console.log('[doSave] Verifying save by re-fetching...');
       const { data: verifyData, error: verifyError } = await supabase
         .from('effects')
-        .select('name, cat, desc, version, difficulty, tags, render_weight, self_contained, node_code')
+        .select('name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code')
         .eq('id', effectId)
         .single();
       
@@ -1400,6 +1402,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       if (descCC) {
         descCC.textContent = effect.desc.length + ' / 400';
         descCC.className = 'cc' + (effect.desc.length > 360 ? ' warn' : '');
+      }
+    }
+    
+    // Set steps
+    const stepsEl = document.getElementById('fSteps');
+    if (stepsEl && effect.steps) {
+      stepsEl.value = Array.isArray(effect.steps) ? effect.steps.join('\n') : effect.steps;
+      const stepsCC = document.getElementById('stepsCC');
+      if (stepsCC) {
+        const stepsLen = stepsEl.value.length;
+        stepsCC.textContent = stepsLen + ' / 2000';
+        stepsCC.className = 'cc' + (stepsLen > 1800 ? ' warn' : '');
       }
     }
     
