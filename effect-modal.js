@@ -775,7 +775,11 @@
     var vr = vp.getBoundingClientRect();
     console.log('[fitGraph] Viewport size:', vr.width.toFixed(0), 'x', vr.height.toFixed(0));
     
+    // Reserve space at bottom for action buttons (Open in Editor, Expand)
+    // Buttons are ~40px tall + 10px padding = 50px reserved
+    var BUTTON_AREA_HEIGHT = 55;
     var pad = 10;
+    
     var nodes = wrld.querySelectorAll('.gn-card');
     console.log('[fitGraph] Node count:', nodes.length);
     
@@ -805,13 +809,13 @@
     gw = Math.max(gw, NW);
     gh = Math.max(gh, NH);
     
-    // Calculate available space
+    // Calculate available space (reserve bottom area for buttons)
     var availW = Math.max(vr.width - pad * 2, 50);
-    var availH = Math.max(vr.height - pad * 2, 50);
+    var availH = Math.max(vr.height - pad * 2 - BUTTON_AREA_HEIGHT, 50);
     
-    console.log('[fitGraph] Available:', availW.toFixed(0), 'x', availH.toFixed(0));
+    console.log('[fitGraph] Available:', availW.toFixed(0), 'x', availH.toFixed(0), '(reserved', BUTTON_AREA_HEIGHT, 'px for buttons)');
     
-    // Calculate scale to fit content in viewport
+    // Calculate scale to fit content in available space (above buttons)
     var scaleX = availW / gw;
     var scaleY = availH / gh;
     var newSc = Math.min(scaleX, scaleY, 1.5);
@@ -819,9 +823,16 @@
     // Clamp to reasonable limits
     newSc = clampScale(Math.max(newSc, 0.1));
     
-    // Center the content
+    // Center horizontally
     var newTx = (vr.width - gw * newSc) / 2 - mnX * newSc;
-    var newTy = (vr.height - gh * newSc) / 2 - mnY * newSc;
+    
+    // Position vertically: center in available space (above buttons), then shift up
+    // The available height is (vr.height - pad*2 - BUTTON_AREA_HEIGHT)
+    // We want to center the content in that space, not the full viewport
+    var contentTop = pad;
+    var contentBottom = vr.height - pad - BUTTON_AREA_HEIGHT;
+    var contentHeight = contentBottom - contentTop;
+    var newTy = contentTop + (contentHeight - gh * newSc) / 2 - mnY * newSc;
     
     console.log('[fitGraph] Calculated scale:', newSc.toFixed(4));
     console.log('[fitGraph] Calculated translate:', newTx.toFixed(2), newTy.toFixed(2));
