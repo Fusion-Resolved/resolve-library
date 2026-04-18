@@ -1640,11 +1640,12 @@
     // Controls
     var controls = document.createElement('div');
     controls.id = 'expanded-controls';
-    controls.style.cssText = 'position:absolute;top:70px;right:20px;z-index:20;display:flex;gap:4px;transition:right 0.25s ease;';
+    controls.style.cssText = 'position:absolute;top:70px;right:380px;z-index:20;display:flex;gap:4px;transition:right 0.25s ease;';
     controls.innerHTML = 
       '<button id="exp-zoom-in" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">+</button>' +
       '<button id="exp-zoom-out" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">&minus;</button>' +
-      '<button id="exp-fit" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;">FIT</button>';
+      '<button id="exp-fit" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;">FIT</button>' +
+      '<button id="exp-toggle-panel" style="background:rgba(108,123,255,0.25);backdrop-filter:blur(8px);border:1px solid rgba(108,123,255,0.5);border-radius:6px;color:var(--violet-light);font-family:var(--font-mono);font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;cursor:pointer;transition:all 0.13s;display:flex;align-items:center;gap:4px;"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>Panel</button>';
     
     var zoomLbl = document.createElement('div');
     zoomLbl.id = 'exp-zoom-lbl';
@@ -2114,6 +2115,31 @@
       world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
       zoomLbl.textContent = Math.round(sc * 100) + '%';
     });
+    
+    // Toggle side panel button
+    var togglePanelBtn = document.getElementById('exp-toggle-panel');
+    if (togglePanelBtn) {
+      togglePanelBtn.addEventListener('click', function() {
+        var panel = document.getElementById('expanded-node-panel');
+        var controls = document.getElementById('expanded-controls');
+        if (panel) {
+          var isHidden = panel.style.display === 'none';
+          panel.style.display = isHidden ? 'flex' : 'none';
+          // Move controls to accommodate panel
+          if (controls) {
+            controls.style.right = isHidden ? '380px' : '20px';
+          }
+          // Update button visual state
+          togglePanelBtn.style.background = isHidden ? 'rgba(108,123,255,0.25)' : 'rgba(6,6,13,0.75)';
+          togglePanelBtn.style.borderColor = isHidden ? 'rgba(108,123,255,0.5)' : 'rgba(255,255,255,0.1)';
+          togglePanelBtn.style.color = isHidden ? 'var(--violet-light)' : 'rgba(255,255,255,0.55)';
+          // Auto-fit graph after toggle
+          setTimeout(function() {
+            document.getElementById('exp-fit').click();
+          }, 260);
+        }
+      });
+    }
   }
 
   // Expanded panel toggle functionality
@@ -2236,6 +2262,24 @@
     } else if (!effect.video_url && (!effect.steps || !_expandedStepsData.length)) {
       // Auto-expand nodes if it's the only content
       sections.nodes.header.click();
+    }
+    
+    // Check if any sections are visible, if not hide the entire panel and adjust controls
+    var anyVisible = sections.video.section.style.display !== 'none' ||
+                     sections.steps.section.style.display !== 'none' ||
+                     sections.nodes.section.style.display !== 'none';
+    var panel = document.getElementById('expanded-node-panel');
+    var controls = document.getElementById('expanded-controls');
+    var toggleBtn = document.getElementById('exp-toggle-panel');
+    
+    if (!anyVisible && panel) {
+      panel.style.display = 'none';
+      if (controls) controls.style.right = '20px';
+      if (toggleBtn) {
+        toggleBtn.style.background = 'rgba(6,6,13,0.75)';
+        toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
+        toggleBtn.style.color = 'rgba(255,255,255,0.55)';
+      }
     }
   }
   
