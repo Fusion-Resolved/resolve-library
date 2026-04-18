@@ -759,16 +759,23 @@
     var vp = graphState.vp || viewport;
     var wrld = graphState.world || world;
     
-    if (!vp || !wrld) return;
+    if (!vp || !wrld) {
+      console.log('[fitGraph] Missing viewport or world element');
+      return;
+    }
+    
     var vr = vp.getBoundingClientRect();
-    var pad = 36;
+    var pad = 10; // Reduced padding for tighter fit
     var nodes = wrld.querySelectorAll('.gn-card');
-    if (!nodes || nodes.length === 0) return;
+    if (!nodes || nodes.length === 0) {
+      console.log('[fitGraph] No nodes found');
+      return;
+    }
 
     var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
     nodes.forEach(function(n) {
-      var x = parseFloat(n.style.left);
-      var y = parseFloat(n.style.top);
+      var x = parseFloat(n.style.left) || 0;
+      var y = parseFloat(n.style.top) || 0;
       if (x < mnX) mnX = x;
       if (y < mnY) mnY = y;
       if (x + NW > mxX) mxX = x + NW;
@@ -778,10 +785,27 @@
     var gw = mxX - mnX;
     var gh = mxY - mnY;
     
-    // Update both graphState and module-level variables
-    var newSc = clampScale(Math.min((vr.width - pad * 2) / gw, (vr.height - pad * 2) / gh));
+    // Ensure minimum dimensions to prevent division by zero
+    gw = Math.max(gw, NW);
+    gh = Math.max(gh, NH);
+    
+    // Calculate available space
+    var availW = Math.max(vr.width - pad * 2, 100);
+    var availH = Math.max(vr.height - pad * 2, 100);
+    
+    // Calculate scale to fit content in viewport
+    var scaleX = availW / gw;
+    var scaleY = availH / gh;
+    var newSc = Math.min(scaleX, scaleY, 1.5); // Max 150% zoom
+    
+    // Clamp to reasonable limits
+    newSc = clampScale(Math.max(newSc, 0.1));
+    
+    // Center the content
     var newTx = (vr.width - gw * newSc) / 2 - mnX * newSc;
     var newTy = (vr.height - gh * newSc) / 2 - mnY * newSc;
+    
+    console.log('[fitGraph] Bounds:', mnX, mnY, mxX, mxY, 'Size:', gw, gh, 'Scale:', newSc, 'Translate:', newTx, newTy);
     
     // Update graphState
     graphState.sc = newSc;
@@ -793,9 +817,10 @@
     tx = newTx;
     ty = newTy;
     
-    // Apply transform using the world element from graphState or module level
+    // Apply transform
     if (wrld) {
       wrld.style.transform = 'translate(' + newTx + 'px,' + newTy + 'px) scale(' + newSc + ')';
+      wrld.style.transformOrigin = '0 0';
     }
     
     // Update zoom label
