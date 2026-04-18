@@ -8147,11 +8147,17 @@ window.addEventListener('message', function(e) {
     closeEditIframe();
   }
   if (e.data && e.data.action === 'effect-updated') {
-    // Close the edit modal and refresh effects to show updated data
-    console.log('[effects] Effect updated, closing modal and refreshing... ID:', e.data.id);
+    // Close the edit modal, refresh effects, and reopen the effect modal
+    console.log('[effects] Effect updated, closing modal, refreshing, and reopening effect... ID:', e.data.id);
     closeEditIframe();
     loadEffectsFromSupabase().then(function() {
       console.log('[effects] Effects refreshed after save');
+      // Reopen the effect modal to show the updated effect
+      if (e.data.id && typeof openEffectModal === 'function') {
+        setTimeout(function() {
+          openEffectModal(e.data.id);
+        }, 300); // Small delay to allow refresh to complete
+      }
     }).catch(function(err) {
       console.error('[effects] Failed to refresh effects:', err);
     });
