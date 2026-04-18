@@ -755,52 +755,61 @@
   }
 
   function fitGraph() {
+    console.log('[fitGraph] ========== START ==========');
+    
     // Use graphState if available, otherwise fall back to module-level variables
     var vp = graphState.vp || viewport;
     var wrld = graphState.world || world;
     
-    console.log('[fitGraph] vp:', vp ? 'found' : 'missing', 'world:', wrld ? 'found' : 'missing');
+    console.log('[fitGraph] vp element:', vp ? (vp.id || 'no-id') : 'null');
+    console.log('[fitGraph] world element:', wrld ? (wrld.id || 'no-id') : 'null');
     
     if (!vp || !wrld) {
-      console.log('[fitGraph] Missing viewport or world element');
+      console.log('[fitGraph] ERROR: Missing elements');
       return;
     }
     
+    // Reset any existing transform first
+    wrld.style.transform = 'translate(0px, 0px) scale(1)';
+    
     var vr = vp.getBoundingClientRect();
-    console.log('[fitGraph] Viewport size:', vr.width, 'x', vr.height);
+    console.log('[fitGraph] Viewport size:', vr.width.toFixed(0), 'x', vr.height.toFixed(0));
     
     var pad = 10;
     var nodes = wrld.querySelectorAll('.gn-card');
     console.log('[fitGraph] Node count:', nodes.length);
     
     if (!nodes || nodes.length === 0) {
-      console.log('[fitGraph] No nodes found');
+      console.log('[fitGraph] WARNING: No nodes found');
       return;
     }
 
-    var mnX = 9999, mnY = 9999, mxX = -9999, mxY = -9999;
+    var mnX = Infinity, mnY = Infinity, mxX = -Infinity, mxY = -Infinity;
     nodes.forEach(function(n, i) {
       var x = parseFloat(n.style.left) || 0;
       var y = parseFloat(n.style.top) || 0;
-      if (x < mnX) mnX = x;
-      if (y < mnY) mnY = y;
-      if (x + NW > mxX) mxX = x + NW;
-      if (y + NH > mxY) mxY = y + NH;
-      if (i < 3) console.log('[fitGraph] Node', i, 'pos:', x, y);
+      mnX = Math.min(mnX, x);
+      mnY = Math.min(mnY, y);
+      mxX = Math.max(mxX, x + NW);
+      mxY = Math.max(mxY, y + NH);
+      if (i < 3) console.log('[fitGraph] Node', i, 'at', x.toFixed(1), y.toFixed(1));
     });
 
     var gw = mxX - mnX;
     var gh = mxY - mnY;
     
-    console.log('[fitGraph] Bounds:', mnX, mnY, mxX, mxY, 'Content size:', gw, gh);
+    console.log('[fitGraph] Content bounds - min:', mnX.toFixed(1), mnY.toFixed(1), 'max:', mxX.toFixed(1), mxY.toFixed(1));
+    console.log('[fitGraph] Content size:', gw.toFixed(1), 'x', gh.toFixed(1));
     
     // Ensure minimum dimensions
     gw = Math.max(gw, NW);
     gh = Math.max(gh, NH);
     
     // Calculate available space
-    var availW = Math.max(vr.width - pad * 2, 100);
-    var availH = Math.max(vr.height - pad * 2, 100);
+    var availW = Math.max(vr.width - pad * 2, 50);
+    var availH = Math.max(vr.height - pad * 2, 50);
+    
+    console.log('[fitGraph] Available:', availW.toFixed(0), 'x', availH.toFixed(0));
     
     // Calculate scale to fit content in viewport
     var scaleX = availW / gw;
@@ -814,30 +823,35 @@
     var newTx = (vr.width - gw * newSc) / 2 - mnX * newSc;
     var newTy = (vr.height - gh * newSc) / 2 - mnY * newSc;
     
-    console.log('[fitGraph] Scale:', newSc, 'Translate:', newTx, newTy);
+    console.log('[fitGraph] Calculated scale:', newSc.toFixed(4));
+    console.log('[fitGraph] Calculated translate:', newTx.toFixed(2), newTy.toFixed(2));
     
-    // Update graphState
+    // Update both states
     graphState.sc = newSc;
     graphState.tx = newTx;
     graphState.ty = newTy;
-    
-    // Update module-level variables
     sc = newSc;
     tx = newTx;
     ty = newTy;
     
     // Apply transform
-    if (wrld) {
-      wrld.style.transform = 'translate(' + newTx.toFixed(2) + 'px,' + newTy.toFixed(2) + 'px) scale(' + newSc.toFixed(4) + ')';
-      wrld.style.transformOrigin = '0 0';
-      console.log('[fitGraph] Applied transform');
-    }
+    var transform = 'translate(' + newTx.toFixed(2) + 'px,' + newTy.toFixed(2) + 'px) scale(' + newSc.toFixed(4) + ')';
+    console.log('[fitGraph] Applying transform:', transform);
+    
+    wrld.style.transform = transform;
+    wrld.style.transformOrigin = '0 0';
+    
+    // Verify the transform was applied
+    var applied = window.getComputedStyle(wrld).transform;
+    console.log('[fitGraph] Applied transform (computed):', applied);
     
     // Update zoom label
     var zLbl = graphState.zLbl || zoomLbl;
     if (zLbl) {
       zLbl.textContent = Math.round(newSc * 100) + '%';
     }
+    
+    console.log('[fitGraph] ========== DONE ==========');
   }
 
   function onMouseDown(e) {
@@ -1292,11 +1306,24 @@
     buildGraphDOM();
     wireGraphEvents();
     
-    // Delay fit to ensure DOM is fully rendered
+    // Multiple delayed calls to fitGraph to ensure proper positioning
+    // First call after short delay for DOM
     setTimeout(function() {
-      console.log('[initGraphViewport] Calling fitGraph after delay');
+      console.log('[initGraphViewport] First fit call');
       fitGraph();
     }, 50);
+    
+    // Second call after longer delay for any async rendering
+    setTimeout(function() {
+      console.log('[initGraphViewport] Second fit call');
+      fitGraph();
+    }, 200);
+    
+    // Third call as safety net
+    setTimeout(function() {
+      console.log('[initGraphViewport] Third fit call (safety)');
+      fitGraph();
+    }, 500);
   }
 
   function createGraphContainer() {
