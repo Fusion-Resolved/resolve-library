@@ -1582,7 +1582,7 @@
     
     // Controls
     var controls = document.createElement('div');
-    controls.style.cssText = 'position:absolute;top:70px;right:20px;z-index:10;display:flex;gap:4px;';
+    controls.style.cssText = 'position:absolute;top:70px;right:20px;z-index:20;display:flex;gap:4px;';
     controls.innerHTML = 
       '<button id="exp-zoom-in" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">+</button>' +
       '<button id="exp-zoom-out" style="background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--font-mono);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.13s;">&minus;</button>' +
@@ -1756,10 +1756,11 @@
       '<div style="padding:16px;">' +
         '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);">' +
           '<div style="width:10px;height:10px;border-radius:50%;background:' + (node.catColor || '#6c7bff') + ';flex-shrink:0;"></div>' +
-          '<div style="min-width:0;">' +
+          '<div style="min-width:0;flex:1;">' +
             '<div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (node.fusionName || node.name) + '</div>' +
             '<div style="font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">' + (node.category || 'Custom') + '</div>' +
           '</div>' +
+          '<button onclick="closeSidePanel()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;padding:4px 8px;transition:color 0.15s;line-height:1;">&#x2715;</button>' +
         '</div>';
     
     if (hasParams) {
@@ -1891,16 +1892,22 @@
     ctx.fillText(Math.round(maxF), w - PAD.r, h - 6);
   }
 
+  function closeSidePanel() {
+    var panel = document.getElementById('expanded-node-panel');
+    if (panel) {
+      panel.style.transform = 'translateX(100%)';
+    }
+  }
+  window.closeSidePanel = closeSidePanel;
+
   function wireExpandedGraphEvents(vp, world, svg, zoomLbl) {
     var tx = 0, ty = 0, sc = 1, dragging = false, dX = 0, dY = 0;
     
-    // Click to close panel when clicking empty canvas
+    // Click to close panel when clicking empty canvas (but not when clicking panel itself)
     vp.addEventListener('click', function(e) {
       if (e.target.closest('div[style*="position:absolute;left:"]')) return;
-      var panel = document.getElementById('expanded-node-panel');
-      if (panel) {
-        panel.style.transform = 'translateX(100%)';
-      }
+      if (e.target.closest('#expanded-node-panel')) return;
+      closeSidePanel();
     });
     
     vp.addEventListener('mousedown', function(e) {
