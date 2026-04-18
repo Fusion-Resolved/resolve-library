@@ -1590,6 +1590,10 @@
     var existingModal = document.getElementById('expanded-graph-modal');
     if (existingModal) {
       existingModal.style.display = 'flex';
+      // Hide side panel and fit graph on reopen
+      setTimeout(function() {
+        hideSidePanelAndFitGraph();
+      }, 50);
       return;
     }
     
@@ -1708,6 +1712,40 @@
     
     // Wire up expanded controls
     wireExpandedGraphEvents(viewport, world, svg, zoomLbl);
+    
+    // Hide side panel and fit graph to full screen on initial open
+    setTimeout(function() {
+      hideSidePanelAndFitGraph();
+    }, 100);
+  }
+  
+  function hideSidePanelAndFitGraph() {
+    var panel = document.getElementById('expanded-node-panel');
+    var controls = document.getElementById('expanded-controls');
+    var toggleBtn = document.getElementById('exp-toggle-panel');
+    var fitBtn = document.getElementById('exp-fit');
+    
+    // Hide side panel
+    if (panel) {
+      panel.style.display = 'none';
+    }
+    
+    // Move controls to right edge (no panel)
+    if (controls) {
+      controls.style.right = '20px';
+    }
+    
+    // Update toggle button to "off" state
+    if (toggleBtn) {
+      toggleBtn.style.background = 'rgba(6,6,13,0.75)';
+      toggleBtn.style.borderColor = 'rgba(255,255,255,0.1)';
+      toggleBtn.style.color = 'rgba(255,255,255,0.55)';
+    }
+    
+    // Auto-fit graph to use full screen width
+    if (fitBtn) {
+      fitBtn.click();
+    }
   }
 
   function renderExpandedGraph(world, svg, zoomLbl) {
@@ -2391,9 +2429,43 @@
     if (total) total.textContent = _expandedStepsData.length;
     
     if (dots) {
-      dots.innerHTML = _expandedStepsData.map(function(_, i) {
-        return '<span style="width:6px;height:6px;border-radius:50%;background:' + (i === idx ? 'var(--violet)' : 'rgba(255,255,255,0.2)') + ';transition:background 0.15s;"></span>';
-      }).join('');
+      // Sliding window approach - show max 7 dots centered around current step
+      var totalSteps = _expandedStepsData.length;
+      var maxVisible = 7;
+      var dotsHtml = '';
+      
+      if (totalSteps <= maxVisible) {
+        // Show all dots if fewer than max
+        dotsHtml = _expandedStepsData.map(function(_, i) {
+          return '<span style="width:6px;height:6px;border-radius:50%;background:' + (i === idx ? 'var(--violet)' : 'rgba(255,255,255,0.2)') + ';transition:background 0.15s;flex-shrink:0;"></span>';
+        }).join('');
+      } else {
+        // Show sliding window with ellipses
+        var start = Math.max(0, Math.min(idx - 3, totalSteps - maxVisible));
+        var end = Math.min(totalSteps, start + maxVisible);
+        
+        // Adjust start if we're near the end
+        if (end - start < maxVisible) {
+          start = Math.max(0, end - maxVisible);
+        }
+        
+        // Leading ellipsis
+        if (start > 0) {
+          dotsHtml += '<span style="font-size:10px;color:rgba(255,255,255,0.3);margin:0 2px;">…</span>';
+        }
+        
+        // Visible dots
+        for (var i = start; i < end; i++) {
+          dotsHtml += '<span style="width:6px;height:6px;border-radius:50%;background:' + (i === idx ? 'var(--violet)' : 'rgba(255,255,255,0.2)') + ';transition:background 0.15s;flex-shrink:0;"></span>';
+        }
+        
+        // Trailing ellipsis
+        if (end < totalSteps) {
+          dotsHtml += '<span style="font-size:10px;color:rgba(255,255,255,0.3);margin:0 2px;">…</span>';
+        }
+      }
+      
+      dots.innerHTML = dotsHtml;
     }
     
     // Update button states
