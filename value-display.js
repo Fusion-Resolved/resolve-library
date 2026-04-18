@@ -223,12 +223,18 @@
       const values = {};
       const params = node.params || {};
       
+      console.log('[ValueDisplay] getRawValues, params:', Object.keys(params));
+      
       Object.entries(params).forEach(([key, param]) => {
         if (key.endsWith('_SourceOp') || key.startsWith('_')) return;
         
+        // Check param structure
+        const val = param.v !== undefined ? param.v : param.value;
+        console.log('[ValueDisplay] Param', key, ':', {v: param.v, value: param.value, raw: param.raw, hasKeyframes: !!param.keyframes});
+        
         values[key] = {
-          value: param.v !== undefined ? param.v : param.value,
-          raw: param.raw || String(param.v || param.value),
+          value: val,
+          raw: param.raw || String(val),
           animated: !!(param.keyframes && param.keyframes.length > 0),
           frame: this.options.currentFrame
         };
@@ -243,6 +249,7 @@
 
       Object.entries(values).forEach(([key, value]) => {
         const param = params[key];
+        console.log('[ValueDisplay] groupByTable, key:', key, 'param:', param);
         const table = param?.table || 'Parameters';
         
         if (!groups[table]) groups[table] = [];
