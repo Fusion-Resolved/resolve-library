@@ -1303,14 +1303,28 @@
     var nodes = graphState.nodes;
     var edges = graphState.edges;
     
-    // Calculate world bounds
-    var wW = 0, wH = 0;
+    // Calculate world bounds including min/max for proper canvas sizing
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     nodes.forEach(function(n) {
       var nx = n.x || 0;
       var ny = n.y || 0;
-      if (nx + NW + 40 > wW) wW = nx + NW + 40;
-      if (ny + NH + 40 > wH) wH = ny + NH + 40;
+      if (nx < minX) minX = nx;
+      if (ny < minY) minY = ny;
+      if (nx + NW > maxX) maxX = nx + NW;
+      if (ny + NH > maxY) maxY = ny + NH;
     });
+    
+    // Apply offset so all coordinates are positive
+    var PAD = 50;
+    var offsetX = minX < 0 ? -minX + PAD : PAD;
+    var offsetY = minY < 0 ? -minY + PAD : PAD;
+    
+    // Store offset for animation use
+    window._modalRenderOffsetX = offsetX;
+    window._modalRenderOffsetY = offsetY;
+    
+    var wW = Math.max(maxX + offsetX + PAD, 800);
+    var wH = Math.max(maxY + offsetY + PAD, 600);
     
     world.style.width = wW + 'px';
     world.style.height = wH + 'px';
@@ -1326,16 +1340,16 @@
     var nodeMap = {};
     nodes.forEach(function(n) { nodeMap[n.id] = n; });
     
-    // Draw edges (SVG)
+    // Draw edges (SVG) with offset
     edges.forEach(function(e) {
       var fn = nodeMap[e.from];
       var tn = nodeMap[e.to];
       if (!fn || !tn) return;
       
-      var fx = (fn.x || 0) + NW;
-      var fy = (fn.y || 0) + NH / 2;
-      var tx = tn.x || 0;
-      var ty = (tn.y || 0) + NH / 2;
+      var fx = (fn.x || 0) + NW + offsetX;
+      var fy = (fn.y || 0) + NH / 2 + offsetY;
+      var tx = (tn.x || 0) + offsetX;
+      var ty = (tn.y || 0) + NH / 2 + offsetY;
       var pull = Math.max(55, Math.abs(tx - fx) * 0.45);
       var d = 'M' + fx + ' ' + fy + ' C' + (fx + pull) + ' ' + fy + ' ' + (tx - pull) + ' ' + ty + ' ' + tx + ' ' + ty;
       
@@ -1373,13 +1387,16 @@
     // Start flow animation
     startFlowAnimation(flowCanvas, nodes, edges);
     
-    // Draw node cards
+    // Draw node cards with offset
+    var cardOffsetX = window._modalRenderOffsetX || 0;
+    var cardOffsetY = window._modalRenderOffsetY || 0;
+    
     nodes.forEach(function(n) {
       var card = document.createElement('div');
       card.className = 'gn-card';
       card.dataset.id = n.id;
-      card.style.left = (n.x || 0) + 'px';
-      card.style.top = (n.y || 0) + 'px';
+      card.style.left = ((n.x || 0) + cardOffsetX) + 'px';
+      card.style.top = ((n.y || 0) + cardOffsetY) + 'px';
       card.style.width = NW + 'px';
       card.style.height = NH + 'px';
       card.style.borderColor = (n.catColor || '#6c7bff') + '55';
@@ -1461,6 +1478,10 @@
     
     var NW = 132, NH = 50;
     
+    // Get render offset (same as nodes and SVG)
+    var offX = window._modalRenderOffsetX || 0;
+    var offY = window._modalRenderOffsetY || 0;
+    
     function drawFlow(ts) {
       var elapsed = (ts - startTime) / 1000;
       var W = canvas.width, H = canvas.height;
@@ -1471,17 +1492,17 @@
       ctx.lineDashOffset = dashOffset;
       
       // Canvas is INSIDE world element - draw in world coordinates directly
-      // CSS transform on parent handles positioning automatically
+      // Apply offset to handle negative coordinates
       edges.forEach(function(e) {
         var fn = nodeMap[e.from];
         var tn = nodeMap[e.to];
         if (!fn || !tn) return;
         
-        // World coordinates (same as SVG paths and node cards)
-        var fx = (fn.x || 0) + NW;
-        var fy = (fn.y || 0) + NH / 2;
-        var tx2 = tn.x || 0;
-        var ty2 = (tn.y || 0) + NH / 2;
+        // World coordinates with offset (same as SVG paths and node cards)
+        var fx = (fn.x || 0) + NW + offX;
+        var fy = (fn.y || 0) + NH / 2 + offY;
+        var tx2 = (tn.x || 0) + offX;
+        var ty2 = (tn.y || 0) + NH / 2 + offY;
         
         var pull = Math.abs(tx2 - fx) * 0.45;
         var c1x = fx + pull, c1y = fy;
