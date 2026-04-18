@@ -1751,10 +1751,12 @@
     
     // Listen on the CONTAINER for mousedown (which fires even with inactive overlay above)
     videoContainer.addEventListener('mousedown', function(e) {
-      if (e.target === videoCloseBtn) return;
+      console.log('[Video Drag] mousedown fired on container', 'target:', e.target.id || e.target.tagName);
       
-      // Check if we clicked on the overlay area (not the close button)
-      // The overlay is on top but inactive, so event bubbles from overlay to container
+      if (e.target === videoCloseBtn) {
+        console.log('[Video Drag] Clicked close button, ignoring');
+        return;
+      }
       
       videoMouseDown = true;
       hasVideoDragged = false;
@@ -1765,13 +1767,14 @@
       videoStartX = parseInt(videoContainer.style.right) || 20;
       videoStartY = parseInt(videoContainer.style.top) || 110;
       
+      console.log('[Video Drag] Starting tracking, position:', videoStartX, videoStartY);
+      
       // CRITICAL: Activate overlay NOW so it captures mousemove events
       if (videoDragOverlay) {
         videoDragOverlay.style.pointerEvents = 'auto';
+        console.log('[Video Drag] Overlay activated');
       }
       
-      // Don't prevent default - let the mousedown potentially reach YouTube
-      // If this becomes a drag, we'll take over. If it's a click, it already went through.
     }, true); // Use capture phase to ensure we get the event
     
     // Global mousemove - track drag
@@ -1781,9 +1784,14 @@
       var moveX = Math.abs(e.clientX - videoMouseStartX);
       var moveY = Math.abs(e.clientY - videoMouseStartY);
       
+      if (!hasVideoDragged) {
+        console.log('[Video Drag] mousemove, delta:', moveX, moveY, 'threshold:', VIDEO_DRAG_THRESHOLD);
+      }
+      
       if (!hasVideoDragged && (moveX > VIDEO_DRAG_THRESHOLD || moveY > VIDEO_DRAG_THRESHOLD)) {
         hasVideoDragged = true;
         isDraggingVideo = true;
+        console.log('[Video Drag] DRAG STARTED!');
         if (videoDragOverlay) videoDragOverlay.style.cursor = 'grabbing';
       }
       
@@ -1795,14 +1803,20 @@
         var newTop = Math.max(50, Math.min(containerRect.height - 200, videoStartY + dy));
         videoContainer.style.right = newRight + 'px';
         videoContainer.style.top = newTop + 'px';
+        console.log('[Video Drag] Moving to:', newRight, newTop);
       }
     });
     
     // Global mouseup
     document.addEventListener('mouseup', function(e) {
-      if (!videoMouseDown) return;
+      if (!videoMouseDown) {
+        console.log('[Video Drag] mouseup but videoMouseDown is false');
+        return;
+      }
       
       videoMouseDown = false;
+      
+      console.log('[Video Drag] mouseup, was drag:', hasVideoDragged);
       
       if (!hasVideoDragged) {
         // It was a click - disable overlay so the click reaches YouTube
