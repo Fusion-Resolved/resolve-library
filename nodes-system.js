@@ -179,14 +179,12 @@
         const kfs = parseBezierKeyframes(entry.content);
         splineMap[entry.name] = { type: 'BezierSpline', keyframes: kfs };
       } else if (entry.type === 'PolyPath') {
-        // Parse PolyPath inputs to store its connection info
-        const inputsIdx = entry.content.search(/\bInputs\s*=\s*(?:ordered\s*\(\s*\)\s*)?\{/);
-        if (inputsIdx >= 0) {
-          const inputsOpen = entry.content.indexOf('{', inputsIdx);
-          const inputsBlock = extractBlock(entry.content, inputsOpen + 1);
-          const parsedParams = parseInputsBlock(inputsBlock.content, splineMap);
-          polyPathMap[entry.name] = { type: 'PolyPath', params: parsedParams };
-        }
+        // Extract actual polyline points from the PolyPath block
+        const pts = parsePolyPathPoints(entry.content);
+        // Store in BOTH maps: polyPathMap for metadata, splineMap so parseInputsBlock
+        // can resolve SourceOp = "pathN" → real XY data instead of just the name
+        splineMap[entry.name]    = { type: 'PolyPath', points: pts };
+        polyPathMap[entry.name]  = { type: 'PolyPath', points: pts };
       }
     }
     
@@ -234,7 +232,11 @@
             type: v.type,
             keyframes: v.keyframes,
             enumValue: v.enumValue,
-            sourceOp: v.sourceOp
+            sourceOp: v.sourceOp,
+            // Path / animation flags used by display layer
+            isPath:     v.isPath     || false,
+            isKeyframe: v.isKeyframe || false,
+            pathPoints: v.pathPoints || null
           };
         });
       }
@@ -447,6 +449,44 @@
       const sourceOpM = pbody.match(/\bSourceOp\s*=\s*"([^"]+)"/);
       const sourceOp = sourceOpM ? sourceOpM[1] : null;
 
+      // Resolve SourceOp against splineMap — covers PolyPath motion paths and
+      // BezierSpline references that come via SourceOp rather than inline Value
+      if (sourceOp && splineMap && splineMap[sourceOp]) {
+        const splineData = splineMap[sourceOp];
+
+        if (splineData.type === 'PolyPath') {
+          // Motion path — store actual XY points so display shows coordinates, not "path2"
+          const pts = splineData.points || [];
+          const firstPt = pts[0];
+          const displayXY = firstPt
+            ? `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}`
+            : '0.5, 0.5';
+          params[pname] = {
+            value: displayXY,
+            raw: displayXY,
+            type: 'path',
+            keyframes: null,
+            pathPoints: pts,
+            sourceOp: sourceOp,
+            isPath: true
+          };
+          continue; // fully resolved — skip generic fallthrough
+
+        } else if (splineData.type === 'BezierSpline' && splineData.keyframes && splineData.keyframes.length) {
+          // Animated via BezierSpline referenced by SourceOp (rather than inline Value)
+          const kf0 = splineData.keyframes[0];
+          params[pname] = {
+            value: fmtNum(String(kf0.value)),
+            raw: String(kf0.value),
+            type: 'animated',
+            keyframes: splineData.keyframes,
+            sourceOp: sourceOp,
+            isKeyframe: true
+          };
+          continue;
+        }
+      }
+
       // Check for enum
       const enumVal = lookupEnum(pname, formattedVal);
       if (enumVal) formattedVal = enumVal;
@@ -478,6 +518,27 @@
       kfs.push({ frame: parseFloat(m[1]), value: parseFloat(m[2]) });
     }
     return kfs.sort((a, b) => a.frame - b.frame);
+  }
+
+  /**
+   * Extract XY points from a PolyPath block.
+   * Looks for  Value = Polyline { Points = { [n] = { X = ..., Y = ... } } }
+   * inside the PolyPath's Inputs block.
+   */
+  function parsePolyPathPoints(content) {
+    // Find the Polyline value block
+    const polyIdx = content.search(/Value\s*=\s*Polyline\s*\{/);
+    if (polyIdx === -1) return [];
+    const polyOpen = content.indexOf('{', polyIdx) + 1;
+    const { content: polyBody } = extractBlock(content, polyOpen);
+    // Extract individual X, Y pairs
+    const ptRe = /X\s*=\s*(-?[\d.eE+]+)\s*,\s*Y\s*=\s*(-?[\d.eE+]+)/g;
+    const pts = [];
+    let pm;
+    while ((pm = ptRe.exec(polyBody)) !== null) {
+      pts.push({ x: parseFloat(pm[1]), y: parseFloat(pm[2]) });
+    }
+    return pts;
   }
 
   /**
