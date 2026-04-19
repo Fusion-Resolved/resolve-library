@@ -197,7 +197,31 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 /* toast */
 .toast{position:fixed;top:72px;right:1.5rem;background:var(--gb2);backdrop-filter:var(--gblur);-webkit-backdrop-filter:var(--gblur);box-shadow:var(--gshine),var(--gshadow);border:1px solid var(--border-subtle);color:var(--text-primary);padding:10px 18px;border-radius:var(--radius-lg);font-size:13px;opacity:0;transform:translateY(-6px);transition:all var(--duration-base) var(--ease-out-expo);pointer-events:none;z-index:999;display:flex;align-items:center;gap:8px;}
 .toast.show{opacity:1;transform:translateY(0);}
+
+/* ─── Comp Analysis Panel ─── */
+.analysis-sec{display:flex;flex-direction:column;gap:12px;}
+.analysis-summary{font-size:13px;color:var(--text-secondary);line-height:1.7;padding:12px 14px;background:rgba(108,123,255,0.05);border:1px solid rgba(108,123,255,0.14);border-radius:var(--radius-sm);}
+.analysis-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.an-stat{background:rgba(255,255,255,0.03);border:1px solid var(--border-surface);border-radius:var(--radius-sm);padding:8px 10px;text-align:center;}
+.an-stat strong{display:block;font-size:20px;font-weight:600;color:var(--violet-light);font-family:var(--font-mono);line-height:1.1;}
+.an-stat span{font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);}
+.analysis-pipeline{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.pl-node{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:10px;padding:3px 8px;border-radius:var(--radius-xs);border:1px solid;white-space:nowrap;}
+.pl-arrow{color:var(--text-muted);font-size:10px;line-height:1;}
+.an-anim-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-surface);font-size:11px;}
+.an-anim-row:last-child{border-bottom:none;}
+.an-anim-node{color:var(--violet-light);font-family:var(--font-mono);font-size:10px;min-width:90px;}
+.an-anim-param{color:var(--text-secondary);flex:1;padding:0 6px;}
+.an-anim-kf{font-family:var(--font-mono);font-size:9px;color:var(--node-teal);white-space:nowrap;}
+.an-issue{display:flex;align-items:flex-start;gap:8px;font-size:11px;padding:6px 8px;border-radius:var(--radius-xs);}
+.an-issue.warning{background:rgba(176,113,24,0.10);border:1px solid rgba(176,113,24,0.25);color:var(--signal-amber);}
+.an-issue.info{background:rgba(108,123,255,0.07);border:1px solid rgba(108,123,255,0.18);color:var(--violet-light);}
+.cat-chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:var(--radius-xs);background:var(--tag-bg);color:var(--tag-color);margin:2px;}
+.cat-chip-count{font-size:9px;opacity:0.7;}
 </style>
+<script src="nodes-data.js"></script>
+<script src="nodes-system.js"></script>
+<script src="lua-analyzer.js"></script>
 </head>
 <body>
 
@@ -273,7 +297,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
           
           <!-- Full-page style pan/zoom graph viewport -->
           <div class="graph-outer" style="border-radius:var(--radius);overflow:hidden;border:1px solid var(--border-surface);position:relative;margin-bottom:12px;">
-            <div class="graph-viewport" id="graphVp" style="height:280px;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;overflow:hidden;cursor:grab;position:relative;">
+            <div class="graph-viewport" id="graphViewport" style="height:280px;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;overflow:hidden;cursor:grab;position:relative;">
               <div class="graph-world" id="graphWorld">
                 <svg class="graph-svg" id="graphSvg"></svg>
               </div>
@@ -293,6 +317,15 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
           </div>
           
           <button class="copy-btn" id="btnCopy" style="margin-top:8px;width:100%;">copy node code</button>
+        </div>
+
+        <!-- Comp Analysis Section (populated from node_code via NodeSystem.analyze) -->
+        <div class="sec" id="analysis-section" style="display:none;">
+          <div class="sec-lbl" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Comp Analysis</span>
+            <span style="font-size:9px;color:var(--text-muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.07em;">auto · no api</span>
+          </div>
+          <div id="analysis-content" class="analysis-sec"></div>
         </div>
 
         <!-- Details -->
@@ -372,7 +405,6 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
-<script src="nodes-system.js"></script>
 
 <script>
 (function () {
@@ -456,6 +488,284 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
                'background:var(--tag-bg);color:var(--tag-color);font-family:var(--font-mono);">' +
                tag + '</span>';
       }).join('');
+    }
+
+    // ── Comp Analysis via NodeSystem.analyze() ──
+    var analysisSec = document.getElementById('analysis-section');
+    var analysisContent = document.getElementById('analysis-content');
+    var nodeCode = effect.node_code || (effect.nodes && typeof effect.nodes === 'string' ? effect.nodes : null);
+
+    if (nodeCode && analysisContent && typeof window.NodeSystem !== 'undefined') {
+      try {
+        var parsed   = window.NodeSystem.parse(nodeCode);
+        var luaData  = (typeof window.LuaAnalyzer !== 'undefined')
+          ? window.LuaAnalyzer.analyze(nodeCode, parsed)
+          : null;
+        if (parsed && parsed.nodes && parsed.nodes.length > 0) {
+          var analysis = window.NodeSystem.analyze(parsed);
+          renderAnalysis(analysisContent, analysis, parsed, luaData);
+          if (analysisSec) analysisSec.style.display = '';
+        }
+      } catch(e) {
+        console.warn('[effect-modal] Analysis failed:', e);
+      }
+    }
+  }
+
+  /* ════════════════════════════════
+     RENDER COMP ANALYSIS PANEL
+     Pure JS — no API needed.
+     ════════════════════════════════ */
+  // Pipeline node colour mapping (always dark, graph is always dark)
+  var PIPELINE_COLORS = {
+    'source':    { border:'rgba(15,168,136,0.45)',  bg:'rgba(15,168,136,0.10)',  text:'#0fa888' },
+    'output':    { border:'rgba(74,222,128,0.45)',  bg:'rgba(74,222,128,0.10)',  text:'#4ade80' },
+    'color':     { border:'rgba(234,179,8,0.45)',   bg:'rgba(234,179,8,0.10)',   text:'#eab308' },
+    'blur':      { border:'rgba(239,68,68,0.45)',   bg:'rgba(239,68,68,0.10)',   text:'#ef4444' },
+    'composite': { border:'rgba(148,163,184,0.40)', bg:'rgba(148,163,184,0.08)', text:'#94a3b8' },
+    'transform': { border:'rgba(34,211,238,0.45)',  bg:'rgba(34,211,238,0.10)',  text:'#22d3ee' },
+    'distort':   { border:'rgba(168,85,247,0.45)',  bg:'rgba(168,85,247,0.10)',  text:'#a855f7' },
+    'mask':      { border:'rgba(251,146,60,0.45)',  bg:'rgba(251,146,60,0.10)',  text:'#fb923c' },
+    'keyer':     { border:'rgba(236,72,153,0.45)',  bg:'rgba(236,72,153,0.10)',  text:'#ec4899' },
+    'tracker':   { border:'rgba(245,158,11,0.45)',  bg:'rgba(245,158,11,0.10)',  text:'#f59e0b' },
+    '3d':        { border:'rgba(15,168,136,0.45)',  bg:'rgba(15,168,136,0.10)',  text:'#0fa888' },
+    'time':      { border:'rgba(245,158,11,0.45)',  bg:'rgba(245,158,11,0.10)',  text:'#f59e0b' },
+    'analysis':  { border:'rgba(108,123,255,0.45)', bg:'rgba(108,123,255,0.10)', text:'#6c7bff' },
+    'particle':  { border:'rgba(168,85,247,0.45)',  bg:'rgba(168,85,247,0.10)',  text:'#a855f7' },
+    'custom':    { border:'rgba(108,123,255,0.30)', bg:'rgba(108,123,255,0.07)', text:'#9ca8ff' }
+  };
+
+  function plColor(cat) {
+    return PIPELINE_COLORS[cat] || PIPELINE_COLORS['custom'];
+  }
+
+  function renderAnalysis(container, analysis, parsed, luaData) {
+    container.innerHTML = '';
+
+    if (!analysis || !analysis.valid) {
+      container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);font-style:italic;">Could not analyse this comp.</div>';
+      return;
+    }
+
+    // ── Summary ──────────────────────────────────────────────────
+    if (analysis.summary) {
+      var sumDiv = document.createElement('div');
+      sumDiv.className = 'analysis-summary';
+      sumDiv.textContent = analysis.summary;
+      container.appendChild(sumDiv);
+    }
+
+    // ── Stats row ─────────────────────────────────────────────────
+    var s = analysis.stats || {};
+    var statsDiv = document.createElement('div');
+    statsDiv.className = 'analysis-stats';
+    [
+      { v: s.nodeCount    || 0, l: 'nodes'    },
+      { v: s.edgeCount    || 0, l: 'connections' },
+      { v: s.animatedCount|| 0, l: 'animated'  }
+    ].forEach(function(item) {
+      var d = document.createElement('div');
+      d.className = 'an-stat';
+      d.innerHTML = '<strong>' + item.v + '</strong><span>' + item.l + '</span>';
+      statsDiv.appendChild(d);
+    });
+    container.appendChild(statsDiv);
+
+    // ── Category breakdown ────────────────────────────────────────
+    if (analysis.categoryBreakdown && analysis.categoryBreakdown.length > 0) {
+      var catWrap = document.createElement('div');
+      catWrap.style.cssText = 'margin-top:2px;';
+      var catLbl = document.createElement('div');
+      catLbl.style.cssText = 'font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:7px;';
+      catLbl.textContent = 'Node types';
+      catWrap.appendChild(catLbl);
+      var catChips = document.createElement('div');
+      analysis.categoryBreakdown.forEach(function(cb) {
+        var chip = document.createElement('span');
+        chip.className = 'cat-chip';
+        var col = plColor(cb.category);
+        chip.style.cssText = 'border:1px solid ' + col.border + ';background:' + col.bg + ';color:' + col.text + ';';
+        chip.textContent = cb.label;
+        var cnt = document.createElement('span');
+        cnt.className = 'cat-chip-count';
+        cnt.textContent = '×' + cb.count;
+        chip.appendChild(cnt);
+        catChips.appendChild(chip);
+      });
+      catWrap.appendChild(catChips);
+      container.appendChild(catWrap);
+    }
+
+    // ── Pipeline ─────────────────────────────────────────────────
+    if (analysis.pipeline && analysis.pipeline.length > 0) {
+      var plWrap = document.createElement('div');
+      var plLbl = document.createElement('div');
+      plLbl.style.cssText = 'font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:7px;';
+      plLbl.textContent = 'Pipeline order';
+      plWrap.appendChild(plLbl);
+      var plRow = document.createElement('div');
+      plRow.className = 'analysis-pipeline';
+      analysis.pipeline.forEach(function(n, idx) {
+        var col = plColor(n._cat || 'custom');
+        var chip = document.createElement('div');
+        chip.className = 'pl-node';
+        chip.style.cssText = 'border-color:' + col.border + ';background:' + col.bg + ';color:' + col.text + ';';
+        chip.title = n.name;
+        chip.textContent = n.fusionName || n.name;
+        plRow.appendChild(chip);
+        if (idx < analysis.pipeline.length - 1) {
+          var arrow = document.createElement('div');
+          arrow.className = 'pl-arrow';
+          arrow.textContent = '→';
+          plRow.appendChild(arrow);
+        }
+      });
+      plWrap.appendChild(plRow);
+      if (analysis.frameRange) {
+        var frDiv = document.createElement('div');
+        frDiv.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin-top:5px;';
+        frDiv.textContent = 'Animation: frames ' + analysis.frameRange.start + ' – ' + analysis.frameRange.end;
+        plWrap.appendChild(frDiv);
+      }
+      container.appendChild(plWrap);
+    }
+
+    // ── Animated parameters ───────────────────────────────────────
+    if (analysis.animatedParams && analysis.animatedParams.length > 0) {
+      var animWrap = document.createElement('div');
+      var animLbl = document.createElement('div');
+      animLbl.style.cssText = 'font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:6px;';
+      animLbl.textContent = 'Animated parameters (' + analysis.animatedParams.length + ')';
+      animWrap.appendChild(animLbl);
+      var animList = document.createElement('div');
+      animList.style.cssText = 'background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);padding:6px 10px;';
+      analysis.animatedParams.forEach(function(ap) {
+        var row = document.createElement('div');
+        row.className = 'an-anim-row';
+        var nodeLbl = document.createElement('span');
+        nodeLbl.className = 'an-anim-node';
+        nodeLbl.textContent = ap.node;
+        var paramLbl = document.createElement('span');
+        paramLbl.className = 'an-anim-param';
+        paramLbl.textContent = ap.param + (ap.hint ? ' (' + ap.hint + ')' : '');
+        var kfLbl = document.createElement('span');
+        kfLbl.className = 'an-anim-kf';
+        kfLbl.textContent = ap.keyframes + ' kf · ' + ap.frameStart + '–' + ap.frameEnd;
+        row.appendChild(nodeLbl);
+        row.appendChild(paramLbl);
+        row.appendChild(kfLbl);
+        animList.appendChild(row);
+      });
+      animWrap.appendChild(animList);
+      container.appendChild(animWrap);
+    }
+
+    // ── Issues / notices ──────────────────────────────────────────
+    if (analysis.issues && analysis.issues.length > 0) {
+      var issueWrap = document.createElement('div');
+      issueWrap.style.cssText = 'display:flex;flex-direction:column;gap:5px;';
+      analysis.issues.forEach(function(issue) {
+        var d = document.createElement('div');
+        d.className = 'an-issue ' + (issue.severity || 'info');
+        d.textContent = issue.msg;
+        issueWrap.appendChild(d);
+      });
+      container.appendChild(issueWrap);
+    }
+
+    // ── LuaAnalyzer data (custom expressions, macros, script blocks, path helpers) ──
+    if (luaData && luaData.valid) {
+      var hasLuaContent = luaData.expressions.length > 0 ||
+                          luaData.customTools.length  > 0 ||
+                          luaData.scriptBlocks.length > 0 ||
+                          luaData.macros.length       > 0 ||
+                          luaData.stats.pathHelperCount > 0;
+
+      if (hasLuaContent) {
+        var divider = document.createElement('div');
+        divider.style.cssText = 'border-top:1px solid var(--border-surface);margin:4px 0;';
+        container.appendChild(divider);
+
+        var luaLbl = document.createElement('div');
+        luaLbl.style.cssText = 'font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:7px;';
+        luaLbl.textContent = 'Lua internals';
+        container.appendChild(luaLbl);
+
+        // Path helpers filtered notice
+        if (luaData.stats.pathHelperCount > 0) {
+          var ph = document.createElement('div');
+          ph.className = 'an-issue info';
+          ph.textContent = luaData.stats.pathHelperCount + ' motion-path helper' +
+            (luaData.stats.pathHelperCount > 1 ? 's' : '') +
+            ' (' + luaData.pathHelpers.map(function(h){ return h.name; }).join(', ') +
+            ') — internal, filtered from node graph';
+          container.appendChild(ph);
+        }
+
+        // Custom tools / macros
+        if (luaData.customTools.length > 0) {
+          var ctLbl = document.createElement('div');
+          ctLbl.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin:6px 0 4px;';
+          ctLbl.textContent = 'Custom / macro tools (' + luaData.customTools.length + ')';
+          container.appendChild(ctLbl);
+          var ctList = document.createElement('div');
+          ctList.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;';
+          luaData.customTools.forEach(function(t) {
+            var chip = document.createElement('span');
+            chip.className = 'cat-chip';
+            chip.style.cssText = 'border:1px solid rgba(251,146,60,0.35);background:rgba(251,146,60,0.08);color:#fb923c;';
+            chip.textContent = t.name + ' =' + t.type;
+            ctList.appendChild(chip);
+          });
+          container.appendChild(ctList);
+        }
+
+        // Custom expressions
+        if (luaData.expressions.length > 0) {
+          var exLbl = document.createElement('div');
+          exLbl.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin:6px 0 4px;';
+          exLbl.textContent = 'Custom expressions (' + luaData.expressions.length + ')';
+          container.appendChild(exLbl);
+          var exList = document.createElement('div');
+          exList.style.cssText = 'background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);padding:6px 10px;';
+          luaData.expressions.slice(0, 8).forEach(function(ex) {
+            var row = document.createElement('div');
+            row.className = 'an-anim-row';
+            var nodeLbl = document.createElement('span');
+            nodeLbl.className = 'an-anim-node';
+            nodeLbl.textContent = ex.node;
+            var paramLbl = document.createElement('span');
+            paramLbl.className = 'an-anim-param';
+            paramLbl.textContent = ex.param;
+            var codeLbl = document.createElement('span');
+            codeLbl.style.cssText = 'font-family:var(--font-mono);font-size:9px;color:var(--node-teal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;';
+            codeLbl.title = ex.code;
+            codeLbl.textContent = ex.code.slice(0, 30) + (ex.code.length > 30 ? '…' : '');
+            row.appendChild(nodeLbl);
+            row.appendChild(paramLbl);
+            row.appendChild(codeLbl);
+            exList.appendChild(row);
+          });
+          if (luaData.expressions.length > 8) {
+            var more = document.createElement('div');
+            more.style.cssText = 'font-size:9px;color:var(--text-muted);margin-top:4px;font-family:var(--font-mono);';
+            more.textContent = '+ ' + (luaData.expressions.length - 8) + ' more';
+            exList.appendChild(more);
+          }
+          container.appendChild(exList);
+        }
+
+        // Script blocks
+        if (luaData.scriptBlocks.length > 0) {
+          luaData.scriptBlocks.forEach(function(sb) {
+            var d = document.createElement('div');
+            d.className = 'an-issue warning';
+            d.style.cssText += 'flex-direction:column;align-items:flex-start;gap:3px;';
+            d.innerHTML = '<strong style="font-size:10px;">' + sb.node + '</strong> contains a Script block';
+            container.appendChild(d);
+          });
+        }
+      }
     }
   }
 

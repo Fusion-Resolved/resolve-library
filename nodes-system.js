@@ -51,6 +51,17 @@
   const SKIP_TYPES = new Set(['Input','Polyline','Point','OperatorInfo','InstanceInput','InstanceOutput','GroupInfo']);
   const SKIP_NAMES = new Set(['ordered','Comp','Tools','Inputs','Outputs','Input','Output','ViewInfo']);
 
+  // Motion-path and spline helper types — internal to Fusion, not real comp nodes.
+  // BUG FIX: previously only BezierSpline + PolyPath were filtered; Fusion also
+  // emits Path, XYPath, BezierPath, LinearPath, etc. for animated position paths.
+  const PATH_TYPES = new Set([
+    'BezierSpline','PolyPath','Path','XYPath','BezierPath',
+    'LinearPath','MoPath','MotionPath','SplinePath','PathFollow'
+  ]);
+
+  // Name patterns for motion-path helpers (path1, Path2, spline3 …)
+  const PATH_NAME_RE = /^[Pp]ath\d*$|^[Ss]pline\d*$|^[Bb]ezier\d*$|^[Mm]o[Pp]ath\d*$/;
+
   /* ================================================================
      SECTION 2: UTILITY FUNCTIONS
      ================================================================ */
@@ -191,7 +202,11 @@
 
     for (const entry of entries) {
       if (SKIP_NAMES.has(entry.name) || SKIP_TYPES.has(entry.type)) continue;
-      if (entry.type === 'BezierSpline' || entry.type === 'PolyPath') continue;
+      // Skip all motion-path / spline helper types (expanded from original two-type check)
+      if (PATH_TYPES.has(entry.type)) continue;
+      // Also guard by name pattern — catches edge cases where the type differs between
+      // Fusion versions (e.g. "Path" vs "PolyPath") but the variable name is still path-like
+      if (PATH_NAME_RE.test(entry.name)) continue;
 
       // Extract position
       const posM = entry.content.match(/Pos\s*=\s*\{\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\}/);
@@ -1224,7 +1239,274 @@
   }
 
   /* ================================================================
-     SECTION 7: EXPORT PUBLIC API
+     SECTION 7: RULE-BASED FUSION ANALYZER
+     Pure JS — no external API required.
+     Takes the result of parseFusion() and returns structured insights.
+     ================================================================ */
+
+  // Classified tool-type sets for semantic understanding
+  const _A = {
+    source:    new Set(['MediaIn','Loader','Background','FastNoise','Plasma','Gradient','Text','Text3D','ReactorLoader','BitmapMask']),
+    output:    new Set(['MediaOut','Saver','DirectoryWatcher']),
+    color:     new Set(['ColorCorrector','ColorCurves','HueCurves','Saturation','Brightness','Contrast','LUTCube','GammaCorrection','ColorSpace','ColorGain','WhiteBalance','ExposureTool']),
+    blur:      new Set(['Blur','Glow','Defocus','Sharpen','Dilate','Erode','SoftClip','Unsharpen','GaussianBlur','VariBlur']),
+    composite: new Set(['Merge','ChannelBoolean','MatteControl','AlphaMultiply','AlphaDivide','Dissolve','BooleanOp']),
+    transform: new Set(['Transform','Scale','Resize','Crop','Flip','GridWarp','Corner','DVEDistort','Rotate']),
+    distort:   new Set(['DisplaceDistort','LensDistortion','GridWarp','PolarCoords','Ripple','Turbulence','WarpTransform','WobbleDistort','Deform']),
+    mask:      new Set(['RectangleMask','EllipseMask','BSplineMask','PolyMask','MaskPaint','BitmapMask','LumaKeyerMask','PlanarTrackerMask']),
+    keyer:     new Set(['DeltaKeyer','ChromaKeyer','LumaKeyer','UltraKeyer','MatteControl','KeyMix','Primatte']),
+    tracker:   new Set(['Tracker','PlanarTracker','CameraTracker']),
+    '3d':      new Set(['Renderer3D','Merge3D','Transform3D','Camera3D','PointLight3D','SpotLight3D','DirectionalLight3D','Shape3D','ImagePlane3D','FBXMesh3D','AlembicMesh3D','Fog3D']),
+    time:      new Set(['TimeSpeed','TimeStretcher','Freeze','FrameBlend','TimeDisplace','OpticalFlowInterpolation']),
+    analysis:  new Set(['OpticalFlow','MotionVector','Disparity','LensData','Deflicker']),
+    paint:     new Set(['PaintFlat','Bitmap','Polyline']),
+    particle:  new Set(['pEmitter','pRender','pChangeStyle','pFlock','pAvoid','pSpawn','pGravity','pWall','pTurbulence','pVortex','pMerge','pKill'])
+  };
+
+  // Human-readable label per category
+  const _CAT_LABEL = {
+    source:'source input', output:'output', color:'colour correction', blur:'blur / filter',
+    composite:'composite / merge', transform:'transform', distort:'distortion',
+    mask:'mask', keyer:'keyer / matte', tracker:'tracker', '3d':'3D', time:'time effect',
+    analysis:'motion analysis', paint:'paint', particle:'particle'
+  };
+
+  // Animated parameter name → human description
+  const _PARAM_HINTS = {
+    Center:'position', Size:'scale', Angle:'rotation', Blend:'opacity',
+    Saturation:'colour', Gain:'exposure', Gamma:'midtone', Lift:'shadow',
+    XBlur:'blur radius', YBlur:'blur radius', Blend:'blend amount',
+    Width:'width', Height:'height', Pivot:'pivot point',
+    Red:'red channel', Green:'green channel', Blue:'blue channel',
+    Alpha:'alpha', Opacity:'opacity', Level:'level', Softness:'softness'
+  };
+
+  function _nodeCategory(type) {
+    for (const [cat, set] of Object.entries(_A)) {
+      if (set.has(type)) return cat;
+    }
+    return 'custom';
+  }
+
+  // BFS topological sort — returns nodes ordered from roots (sources) to leaves (outputs)
+  function _topoSort(nodes, edges) {
+    const idMap = {};
+    nodes.forEach(n => { idMap[n.id] = n; });
+
+    const inDeg = {};
+    const adj = {};
+    nodes.forEach(n => { inDeg[n.id] = 0; adj[n.id] = []; });
+    edges.forEach(e => {
+      if (adj[e.from]) adj[e.from].push(e.to);
+      if (inDeg[e.to] !== undefined) inDeg[e.to]++;
+    });
+
+    const queue = nodes.filter(n => inDeg[n.id] === 0).map(n => n.id);
+    const result = [];
+    const visited = new Set();
+
+    while (queue.length) {
+      const id = queue.shift();
+      if (visited.has(id)) continue;
+      visited.add(id);
+      if (idMap[id]) result.push(idMap[id]);
+      (adj[id] || []).forEach(nid => {
+        inDeg[nid]--;
+        if (inDeg[nid] <= 0) queue.push(nid);
+      });
+    }
+
+    // Append any remaining nodes not reached by BFS (disconnected)
+    nodes.forEach(n => { if (!visited.has(n.id)) result.push(n); });
+    return result;
+  }
+
+  /**
+   * Analyze a parsed Fusion composition — pure JS, no API needed.
+   * @param {Object} parseResult  Output from parseFusion()
+   * @returns {Object} analysis   Structured report ready to render
+   */
+  function analyzeFusion(parseResult) {
+    const { nodes, edges } = parseResult;
+    if (!nodes || nodes.length === 0) {
+      return { valid: false, reason: 'No nodes found' };
+    }
+
+    // ── Classify each node ──────────────────────────────────────────
+    const classified = nodes.map(n => ({
+      ...n,
+      _cat: _nodeCategory(n.name)
+    }));
+
+    const byCategory = {};
+    classified.forEach(n => {
+      if (!byCategory[n._cat]) byCategory[n._cat] = [];
+      byCategory[n._cat].push(n);
+    });
+
+    const sources    = byCategory['source']    || [];
+    const outputs    = byCategory['output']    || [];
+    const composites = byCategory['composite'] || [];
+    const colors     = byCategory['color']     || [];
+    const blurs      = byCategory['blur']       || [];
+    const transforms = byCategory['transform'] || [];
+    const distorts   = byCategory['distort']   || [];
+    const keyers     = byCategory['keyer']      || [];
+    const trackers   = byCategory['tracker']   || [];
+    const threeD     = byCategory['3d']         || [];
+    const timers     = byCategory['time']       || [];
+    const particles  = byCategory['particle']  || [];
+    const analysis   = byCategory['analysis']  || [];
+    const masks      = byCategory['mask']       || [];
+
+    // ── Animation inventory ─────────────────────────────────────────
+    const animatedParams = [];
+    let globalFrameMin = Infinity, globalFrameMax = -Infinity;
+
+    classified.forEach(n => {
+      Object.entries(n.params || {}).forEach(([key, param]) => {
+        if (!param.keyframes || param.keyframes.length === 0) return;
+        const kfs   = param.keyframes;
+        const fMin  = kfs[0].frame;
+        const fMax  = kfs[kfs.length - 1].frame;
+        const vals  = kfs.map(k => k.value);
+        const range = Math.max(...vals) - Math.min(...vals);
+        globalFrameMin = Math.min(globalFrameMin, fMin);
+        globalFrameMax = Math.max(globalFrameMax, fMax);
+
+        const hint = Object.entries(_PARAM_HINTS).find(([k]) =>
+          key.toLowerCase().includes(k.toLowerCase())
+        );
+
+        animatedParams.push({
+          node:       n.fusionName,
+          nodeType:   n.name,
+          param:      key,
+          keyframes:  kfs.length,
+          frameStart: fMin,
+          frameEnd:   fMax,
+          valueRange: parseFloat(range.toPrecision(4)),
+          hint:       hint ? hint[1] : null
+        });
+      });
+    });
+
+    const animatedNodes = [...new Set(animatedParams.map(p => p.node))];
+
+    // ── Issues ──────────────────────────────────────────────────────
+    const issues = [];
+    const connectedIds = new Set();
+    edges.forEach(e => { connectedIds.add(e.from); connectedIds.add(e.to); });
+
+    if (nodes.length > 1) {
+      nodes.forEach(n => {
+        if (!connectedIds.has(n.id)) {
+          issues.push({ severity: 'warning', msg: `"${n.fusionName}" (${n.name}) is not connected to any other node` });
+        }
+      });
+    }
+    if (sources.length === 0) {
+      issues.push({ severity: 'info', msg: 'No MediaIn / source node detected — comp may rely on upstream input' });
+    }
+    if (outputs.length === 0) {
+      issues.push({ severity: 'info', msg: 'No MediaOut / Saver node — comp has no explicit output connection' });
+    }
+    if (trackers.length > 0 && transforms.length === 0) {
+      issues.push({ severity: 'info', msg: 'Tracker present but no Transform node — tracking data may not be applied' });
+    }
+
+    // ── Pipeline (topological) ──────────────────────────────────────
+    const pipeline = _topoSort(classified, edges);
+
+    // ── Prose summary ───────────────────────────────────────────────
+    const parts = [];
+
+    if (sources.length > 0) {
+      const names = sources.map(s => `"${s.fusionName}"`).join(' and ');
+      parts.push(`Takes ${sources.length === 1 ? 'one source input' : sources.length + ' source inputs'} (${names}).`);
+    }
+
+    if (threeD.length > 0) {
+      parts.push(`Includes a 3D pipeline (${threeD.map(n => n.name).join(', ')}).`);
+    }
+
+    if (particles.length > 0) {
+      parts.push(`Uses a particle system (${particles.length} particle node${particles.length > 1 ? 's' : ''}).`);
+    }
+
+    const middleParts = [];
+    if (keyers.length)     middleParts.push(`${keyers.length} keyer${keyers.length > 1 ? 's' : ''}`);
+    if (transforms.length) middleParts.push(`${transforms.length} transform${transforms.length > 1 ? 's' : ''}`);
+    if (distorts.length)   middleParts.push(`${distorts.length} distortion${distorts.length > 1 ? 's' : ''}`);
+    if (composites.length) middleParts.push(`${composites.length} composite merge${composites.length > 1 ? 's' : ''}`);
+    if (colors.length)     middleParts.push(`${colors.length} colour-correction stage${colors.length > 1 ? 's' : ''}`);
+    if (blurs.length)      middleParts.push(`${blurs.length} blur/filter node${blurs.length > 1 ? 's' : ''}`);
+    if (masks.length)      middleParts.push(`${masks.length} mask${masks.length > 1 ? 's' : ''}`);
+
+    if (middleParts.length > 0) {
+      parts.push(`Applies ${middleParts.join(', ')}.`);
+    }
+
+    if (trackers.length > 0) {
+      parts.push(`Motion tracked with ${trackers.map(n => n.name).join(', ')}.`);
+    }
+    if (timers.length > 0) {
+      parts.push(`Time-remapped using ${timers.map(n => n.name).join(', ')}.`);
+    }
+    if (analysis.length > 0) {
+      parts.push(`Includes ${analysis.map(n => n.name).join(', ')} analysis.`);
+    }
+
+    if (animatedParams.length > 0) {
+      const animHints = [...new Set(animatedParams.filter(p => p.hint).map(p => p.hint))];
+      parts.push(
+        `Animated across ${globalFrameMax - globalFrameMin + 1} frames ` +
+        `(${Math.round(globalFrameMin)}–${Math.round(globalFrameMax)})` +
+        (animHints.length > 0 ? ` — driving ${animHints.slice(0, 3).join(', ')}` : '') +
+        '.'
+      );
+    }
+
+    if (outputs.length > 0) {
+      parts.push(`Outputs via ${outputs.map(o => `"${o.fusionName}"`).join(' and ')}.`);
+    }
+
+    const summary = parts.join(' ');
+
+    // ── Category breakdown for display ──────────────────────────────
+    const categoryBreakdown = Object.entries(byCategory)
+      .filter(([, arr]) => arr.length > 0)
+      .map(([cat, arr]) => ({
+        category: cat,
+        label:    _CAT_LABEL[cat] || cat,
+        count:    arr.length,
+        nodes:    arr.map(n => ({ fusionName: n.fusionName, type: n.name }))
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      valid: true,
+      summary,
+      pipeline,
+      categoryBreakdown,
+      animatedParams,
+      animatedNodes,
+      frameRange: animatedParams.length > 0
+        ? { start: Math.round(globalFrameMin), end: Math.round(globalFrameMax) }
+        : null,
+      issues,
+      stats: {
+        nodeCount:    nodes.length,
+        edgeCount:    edges.length,
+        animatedCount: animatedNodes.length,
+        sourcesCount: sources.length,
+        outputsCount: outputs.length
+      }
+    };
+  }
+
+  /* ================================================================
+     SECTION 8: EXPORT PUBLIC API
      ================================================================ */
 
   window.NodeSystem = {
@@ -1236,6 +1518,9 @@
     parseArrow: parseArrowNotation,
     categorizeTool,
     _parseAll: parseAllNodes, // Internal: parse all including hidden nodes
+    
+    // Analysis (rule-based, no API required)
+    analyze: analyzeFusion,
     
     // Data
     normalize: normalizeGraph,
