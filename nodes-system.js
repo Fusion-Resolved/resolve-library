@@ -162,12 +162,26 @@
     
     // First pass: collect splines
     const splineMap = {};
+    const polyPathMap = {}; // Store PolyPath data too
     for (const entry of entries) {
       if (entry.type === 'BezierSpline') {
         const kfs = parseBezierKeyframes(entry.content);
         splineMap[entry.name] = { type: 'BezierSpline', keyframes: kfs };
+      } else if (entry.type === 'PolyPath') {
+        // Parse PolyPath inputs to store its connection info
+        const inputsIdx = entry.content.search(/\bInputs\s*=\s*(?:ordered\s*\(\s*\)\s*)?\{/);
+        if (inputsIdx >= 0) {
+          const inputsOpen = entry.content.indexOf('{', inputsIdx);
+          const inputsBlock = extractBlock(entry.content, inputsOpen + 1);
+          const parsedParams = parseInputsBlock(inputsBlock.content, splineMap);
+          polyPathMap[entry.name] = { type: 'PolyPath', params: parsedParams };
+        }
       }
     }
+    
+    // Store maps globally for connection tracing
+    window._splineMap = splineMap;
+    window._polyPathMap = polyPathMap;
 
     // Second pass: parse tools
     const nodes = [];

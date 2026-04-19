@@ -2570,6 +2570,66 @@
       // Check if this param has direct keyframes
       var p = currentNode.params[currentParam];
       if (!p) {
+        // Try nested structure: node.params[tableKey].params[paramName]
+        for (var tableKey in currentNode.params) {
+          var tableGroup = currentNode.params[tableKey];
+          if (tableGroup && typeof tableGroup === 'object' && tableGroup.params && tableGroup.params[currentParam]) {
+            p = tableGroup.params[currentParam];
+            console.log('[traceKeyframes] Found in nested table:', tableKey);
+            break;
+          }
+        }
+      }
+      
+      if (p) {
+        console.log('[traceKeyframes] Found param', currentParam, 'in', nodeName, 'keyframes:', !!(p.keyframes && p.keyframes.length), 'sourceOp:', p.sourceOp);
+        resolutionChain.push({ node: nodeName, param: currentParam });
+        
+        if (p.keyframes && p.keyframes.length > 0) {
+          console.log('[traceKeyframes] Returning', p.keyframes.length, 'keyframes');
+          return p.keyframes;
+        }
+        
+        // If connected, trace to source
+        if (p.sourceOp && depth < maxDepth) {
+          var sourceNode = findNodeByName(p.sourceOp);
+          console.log('[traceKeyframes] Tracing to source:', p.sourceOp, 'found:', !!sourceNode);
+          if (sourceNode) {
+            // Determine which parameter to look for in the source node
+            var targetParam = 'Value'; // default
+            
+            // PolyPath nodes output Position which is driven by Displacement
+            if (sourceNode.name === 'PolyPath' || sourceNode.fusionName === 'PolyPath' ||
+                (sourceNode.params && sourceNode.params.Displacement)) {
+              targetParam = 'Displacement';
+            }
+            // PolylineMask/BezierSpline nodes have their animation in Value or keyframes directly
+            else if (sourceNode.name === 'BezierSpline' || sourceNode.fusionName === 'BezierSpline') {
+              // BezierSpline may have keyframes at the node level, not in a param
+              if (sourceNode.keyframes && sourceNode.keyframes.length > 0) {
+                console.log('[traceKeyframes] Found keyframes directly on BezierSpline node');
+                resolutionChain.push({ node: sourceNode.fusionName || sourceNode.name, param: 'Direct' });
+                return sourceNode.keyframes;
+              }
+            }
+            
+            console.log('[traceKeyframes] Looking for', targetParam, 'in', sourceNode.fusionName || sourceNode.name);
+            return traceKeyframes(sourceNode, targetParam, depth + 1);
+          }
+        }
+      } else {
+        console.log('[traceKeyframes] Param', currentParam, 'not found in', nodeName, 'params keys:', Object.keys(currentNode.params));
+      }
+      
+      return null;
+    }
+      
+      var nodeName = currentNode.fusionName || currentNode.name;
+      console.log('[traceKeyframes] Looking at', nodeName + '.' + currentParam, 'depth:', depth);
+      
+      // Check if this param has direct keyframes
+      var p = currentNode.params[currentParam];
+      if (!p) {
         // Try nested structure
         for (var tableKey in currentNode.params) {
           var tableGroup = currentNode.params[tableKey];
@@ -2616,33 +2676,49 @@
       console.log('[findNodeByName] Expanded nodes available:', expandedNodes ? expandedNodes.length : 0);
       
       if (expandedNodes && expandedNodes.length) {
-        // Log first few node names for debugging
-        console.log('[findNodeByName] First 3 nodes:', expandedNodes.slice(0, 3).map(function(n) { 
-          return { id: n.id, name: n.name, fusionName: n.fusionName, label: n.label }; 
-        }));
+        // Log all node names for debugging
+        var nodeNames = expandedNodes.map(function(n) { 
+          return 'id:' + n.id + '|name:' + n.name + '|fusionName:' + (n.fusionName || 'null'); 
+        });
+        console.log('[findNodeByName] All nodes:', nodeNames.join(', '));
         
         var found = expandedNodes.find(function(n) { 
           var match = n.name === name || n.label === name || n.fusionName === name;
-          if (match) console.log('[findNodeByName] Found match:', n.name, 'fusionName:', n.fusionName);
+          if (match) console.log('[findNodeByName] Found match! id:', n.id, 'name:', n.name, 'fusionName:', n.fusionName);
           return match;
         });
         if (found) return found;
       }
       
-      console.log('[findNodeByName] Not found in expanded nodes, checking effect data');
+      // Check for PolyPath in the global map (PolyPaths aren't rendered as nodes)
+      if (window._polyPathMap && window._polyPathMap[name]) {
+        console.log('[findNodeByName] Found PolyPath in polyPathMap:', name);
+        var polyPathData = window._polyPathMap[name];
+        // Return a synthetic node object
+        return {
+          id: 'poly_' + name,
+          name: 'PolyPath',
+          fusionName: name,
+          params: polyPathData.params || {}
+        };
+      }
       
-      // Look in the current effect's nodes as fallback
-      var effectData = window._currentEffectData;
-      if (!effectData || !effectData._graphData) return null;
+      // Check for BezierSpline in the global map
+      if (window._splineMap && window._splineMap[name]) {
+        console.log('[findNodeByName] Found BezierSpline in splineMap:', name);
+        var splineData = window._splineMap[name];
+        // Return a synthetic node object with keyframes
+        return {
+          id: 'spline_' + name,
+          name: 'BezierSpline',
+          fusionName: name,
+          keyframes: splineData.keyframes,
+          params: {}
+        };
+      }
       
-      var graphData = typeof effectData._graphData === 'string' ? 
-        JSON.parse(effectData._graphData) : effectData._graphData;
-      
-      if (!graphData || !graphData.nodes) return null;
-      
-      return graphData.nodes.find(function(n) { 
-        return n.name === name || n.label === name || n.fusionName === name;
-      });
+      console.log('[findNodeByName] Not found anywhere');
+      return null;
     }
     
     // Try to resolve keyframes
