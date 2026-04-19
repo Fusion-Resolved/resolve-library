@@ -251,10 +251,16 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 .em-path-pt{color:var(--text-muted);margin-bottom:2px;}
 .em-path-pt.first{color:var(--violet-light);}
 .em-section-lbl{font-size:9px;font-family:var(--font-mono);color:var(--violet-light);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}
+
+/* Timeline component container */
+#em-timeline-container{padding:8px 12px;border-top:1px solid var(--border-surface);background:rgba(6,6,13,0.6);}
 </style>
 <script src="nodes-data.js"></script>
 <script src="nodes-system.js"></script>
 <script src="lua-analyzer.js"></script>
+<script src="spline-evaluator.js"></script>
+<script src="timeline-component.js"></script>
+<script src="value-display.js"></script>
 </head>
 <body>
 
@@ -360,6 +366,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
                 <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">Select a parameter</div>
               </div>
             </div>
+            <div id="em-timeline-container"></div>
           </div>
           
           <button class="copy-btn" id="btnCopy" style="margin-top:8px;width:100%;">copy node code</button>
@@ -1151,6 +1158,14 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
   var _emScrubFrame = null;
 
   /* ════════════════════════════════
+     TIMELINE & VALUE DISPLAY COMPONENTS
+     ════════════════════════════════ */
+  var _emTimeline = null;
+  var _emValueDisplay = null;
+  var _emCurrentFrame = 0;
+  var _emFrameRange = { start: 0, end: 100 };
+
+  /* ════════════════════════════════
      UTILITY: number formatting + interpolation
      (mirrors nodegraph.html fmtNum / _getValueAtFrame)
      ════════════════════════════════ */
@@ -1335,31 +1350,94 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
       _emSelParam = firstKf || (paramKeys.length ? paramKeys[0] : null);
     }
 
-    // ── LEFT: param list ──
+    // ── LEFT: param list with ValueDisplay component ──
     var left = document.getElementById('em-pp-left');
     left.innerHTML = '';
-    var listLbl = document.createElement('div');
-    listLbl.className = 'em-section-lbl';
-    listLbl.style.cssText = 'margin-bottom:6px;';
-    listLbl.textContent = 'Parameters';
-    left.appendChild(listLbl);
 
-    paramKeys.forEach(function(k) {
-      var p = flatParams[k];
-      var isKf = !!(p.isKeyframe && p.keyframes && p.keyframes.length);
-      var isSel = (k === _emSelParam);
-      var label = k.replace(/([a-z])([A-Z])/g,'$1 $2');
-      var val = isKf && scrubFrame != null ? emGetValueAtFrame(p, scrubFrame) : (p.v || '—');
+    // Clean up previous value display
+    if (_emValueDisplay) {
+      _emValueDisplay.destroy();
+      _emValueDisplay = null;
+    }
 
-      var row = document.createElement('div');
-      row.className = 'em-param-row' + (isSel?' sel':'') + (isKf?' kf':'');
-      row.innerHTML = '<span class="em-param-name">' + label + '</span><span class="em-param-val">' + val + '</span>';
-      row.addEventListener('click', (function(key){ return function(){ emSelectParam(nodeId, key); }; })(k));
-      left.appendChild(row);
-    });
+    // Create container for value display
+    var valueContainer = document.createElement('div');
+    valueContainer.id = 'em-value-display';
+    valueContainer.style.height = '100%';
+    left.appendChild(valueContainer);
+
+    // Initialize ParameterValueDisplay if available
+    if (window.ParameterValueDisplay && window.SplineEvaluator) {
+      _emValueDisplay = new window.ParameterValueDisplay(valueContainer, {
+        node: node,
+        currentFrame: _emScrubFrame || 0,
+        onParamClick: function(paramName, paramData) {
+          _emSelParam = paramName;
+          emShowNodeParams(nodeId, _emScrubFrame);
+        }
+      });
+    } else {
+      // Fallback: manual param list (original behavior)
+      var listLbl = document.createElement('div');
+      listLbl.className = 'em-section-lbl';
+      listLbl.style.cssText = 'margin-bottom:6px;';
+      listLbl.textContent = 'Parameters';
+      left.appendChild(listLbl);
+
+      paramKeys.forEach(function(k) {
+        var p = flatParams[k];
+        var isKf = !!(p.isKeyframe && p.keyframes && p.keyframes.length);
+        var isSel = (k === _emSelParam);
+        var label = k.replace(/([a-z])([A-Z])/g,'$1 $2');
+        var val = isKf && scrubFrame != null ? emGetValueAtFrame(p, scrubFrame) : (p.v || '—');
+
+        var row = document.createElement('div');
+        row.className = 'em-param-row' + (isSel?' sel':'') + (isKf?' kf':'');
+        row.innerHTML = '<span class="em-param-name">' + label + '</span><span class="em-param-val">' + val + '</span>';
+        row.addEventListener('click', (function(key){ return function(){ emSelectParam(nodeId, key); }; })(k));
+        left.appendChild(row);
+      });
+    }
 
     // ── RIGHT: selected param detail ──
     emRenderParamDetail(nodeId, scrubFrame);
+
+    // ── BOTTOM: Timeline component ──
+    var timelineContainer = document.getElementById('em-timeline-container');
+    timelineContainer.innerHTML = '';
+
+    // Clean up previous timeline
+    if (_emTimeline) {
+      _emTimeline.destroy();
+      _emTimeline = null;
+    }
+
+    // Calculate frame range
+    var frameRange = { start: 0, end: 100 };
+    if (window.SplineEvaluator) {
+      frameRange = window.SplineEvaluator.getFrameRange(node);
+    }
+    _emFrameRange = frameRange;
+
+    // Initialize TimelineScrubber if available
+    if (window.TimelineScrubber) {
+      _emTimeline = new window.TimelineScrubber(timelineContainer, {
+        startFrame: frameRange.start,
+        endFrame: frameRange.end,
+        currentFrame: scrubFrame || frameRange.start,
+        keyframes: allFrames,
+        onFrameChange: function(frame) {
+          _emScrubFrame = frame;
+          _emCurrentFrame = frame;
+          // Update value display
+          if (_emValueDisplay) {
+            _emValueDisplay.setFrame(frame);
+          }
+          // Update param detail
+          emRenderParamDetail(nodeId, frame);
+        }
+      });
+    }
   }
 
   function emSelectParam(nodeId, paramKey) {
@@ -1369,7 +1447,16 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 
   function emScrubFrame(nodeId, frame) {
     _emScrubFrame = frame;
-    emShowNodeParams(nodeId, frame);
+    _emCurrentFrame = frame;
+    // Update timeline if available
+    if (_emTimeline) {
+      _emTimeline.setFrame(frame);
+    }
+    // Update value display if available
+    if (_emValueDisplay) {
+      _emValueDisplay.setFrame(frame);
+    }
+    emRenderParamDetail(nodeId, frame);
   }
 
   function emScrubStep(nodeId, dir) {
@@ -1507,6 +1594,16 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
   function emCloseParams() {
     document.getElementById('em-param-panel').style.display = 'none';
     _emActiveNodeId = null; _emSelParam = null; _emScrubFrame = null;
+    // Clean up timeline component
+    if (_emTimeline) {
+      _emTimeline.destroy();
+      _emTimeline = null;
+    }
+    // Clean up value display component
+    if (_emValueDisplay) {
+      _emValueDisplay.destroy();
+      _emValueDisplay = null;
+    }
     // Deselect node card
     document.querySelectorAll('.gn-card.g-active').forEach(function(el){ el.classList.remove('g-active'); });
     activeGnEl = null;
