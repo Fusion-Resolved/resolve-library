@@ -2639,21 +2639,21 @@
           var sourceNode = findNodeByName(p.sourceOp);
           console.log('[traceKeyframes] Tracing to source:', p.sourceOp, 'found:', !!sourceNode);
           if (sourceNode) {
-            // Determine which parameter to look for in the source node
-            var targetParam = 'Value'; // default
-            
-            // PolyPath nodes output Position which is driven by Displacement
-            if (sourceNode.name === 'PolyPath' || sourceNode.fusionName === 'PolyPath') {
-              targetParam = 'Displacement';
-            }
-            // BezierSpline nodes have their animation at the node level
-            else if (sourceNode.name === 'BezierSpline' || sourceNode.fusionName === 'BezierSpline') {
+            // SPECIAL CASE: BezierSpline has keyframes directly on the node, not in params
+            if (sourceNode.name === 'BezierSpline' || sourceNode.fusionName === 'BezierSpline') {
               if (sourceNode.keyframes && sourceNode.keyframes.length > 0) {
-                console.log('[traceKeyframes] Found keyframes directly on BezierSpline');
+                console.log('[traceKeyframes] Found keyframes directly on BezierSpline node:', sourceNode.keyframes.length);
                 resolutionChain.push({ node: sourceNode.fusionName || sourceNode.name, param: 'Direct' });
                 return sourceNode.keyframes;
               }
-              targetParam = 'Value'; // fallback
+              console.log('[traceKeyframes] BezierSpline found but has no keyframes');
+              return null;
+            }
+            
+            // PolyPath nodes output Position which is driven by Displacement
+            var targetParam = 'Value'; // default for most nodes
+            if (sourceNode.name === 'PolyPath' || sourceNode.fusionName === 'PolyPath') {
+              targetParam = 'Displacement';
             }
             
             console.log('[traceKeyframes] Looking for', targetParam, 'in', sourceNode.fusionName || sourceNode.name);
