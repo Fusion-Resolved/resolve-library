@@ -109,6 +109,9 @@
   async function populateModal(effect) {
     // Store effect data globally for expanded view access
     window._currentEffectData = effect;
+    console.log('[Effect Modal] Effect data keys:', Object.keys(effect).join(', '));
+    console.log('[Effect Modal] Has node_code?', !!effect.node_code, 'Has graph_payload?', !!effect.graph_payload, 'Has lua_code?', !!effect.lua_code);
+    console.log('[Effect Modal] Has _graphData?', !!effect._graphData);
     
     const colors = getCatColor(effect.cat);
     const isOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === effect.user_id;
@@ -263,24 +266,27 @@
     }
     
     // Extract ALL nodes including hidden ones (PolyPath, BezierSpline) for connection tracing
-    if ((effect.node_code || effect.graph_payload) && window.NodeSystem) {
+    var rawLua = effect.node_code || effect.graph_payload || effect.lua_code;
+    if (rawLua && window.NodeSystem && window.NodeSystem._parseAll) {
       try {
-        var raw = effect.node_code || effect.graph_payload;
         console.log('[effect-modal] Extracting hidden nodes for connection tracing...');
+        console.log('[effect-modal] Lua length:', rawLua.length, 'first 100 chars:', rawLua.slice(0, 100));
         
-        // Use nodes-system internal parser to get all entries including hidden
-        if (window.NodeSystem._parseAll) {
-          var allNodes = window.NodeSystem._parseAll(raw);
-          window._parsedEffectData = {
-            visibleNodes: nodeData ? nodeData.nodes : [],
-            allNodes: allNodes,
-            timestamp: Date.now()
-          };
-          console.log('[effect-modal] Stored', allNodes.length, 'total nodes (including hidden)');
+        var allNodes = window.NodeSystem._parseAll(rawLua);
+        window._parsedEffectData = {
+          visibleNodes: nodeData ? nodeData.nodes : [],
+          allNodes: allNodes,
+          timestamp: Date.now()
+        };
+        console.log('[effect-modal] Stored', allNodes.length, 'total nodes (including hidden)');
+        if (allNodes.length > 0) {
+          console.log('[effect-modal] First few nodes:', allNodes.slice(0, 3).map(function(n) { return n.name + ':' + n.type; }).join(', '));
         }
       } catch (e) {
         console.warn('[effect-modal] Failed to extract hidden nodes:', e);
       }
+    } else {
+      console.log('[effect-modal] Cannot extract hidden nodes - no Lua code or _parseAll unavailable');
     }
     
     // Render the node graph section with full-page styling (DOM nodes + SVG edges)
