@@ -4551,10 +4551,16 @@ async function saveGraph() {
   localStorage.setItem('ng-graphs', JSON.stringify(savedGraphs));
 
   // ── 2. Supabase PATCH ─ write full graph JSONB to Supabase ───────────────
-  const nodeNames = nodes.map(function(n) { return n.name; });
+  // Use full Lua code if available (stored when importing), otherwise fallback to arrow notation
+  const nodeCodeToSave = window._lastImportedLua && window._lastImportedLua.length > 0
+    ? window._lastImportedLua  // Full Fusion Lua with animation data
+    : nodes.map(function(n) { return n.name; }).join(', ');  // Arrow notation fallback
+  
+  console.log('[saveGraph] Saving node_code, length:', nodeCodeToSave.length, 'isFullLua:', nodeCodeToSave.includes('Tools'));
+  
   const patchPayload = {
     nodes: graphObj,
-    node_code: nodeNames.join(', '),
+    node_code: nodeCodeToSave,
   };
 
   // Collect IDs: start with linked effects, then add URL ?id= if owner
@@ -5059,6 +5065,10 @@ function importFromNodeSystem(str) {
   
   const text = (str !== undefined && str !== null) ? str : (document.getElementById('gpaste-area') || {}).value || '';
   const trimmedText = typeof text === 'string' ? text.trim() : '';
+  
+  // Store the ORIGINAL full Lua text globally for later saving
+  window._lastImportedLua = trimmedText;
+  console.log('[importFromNodeSystem] Stored original Lua, length:', trimmedText.length);
   
   const err = document.getElementById('gpaste-err');
   const res = document.getElementById('gpaste-result');
