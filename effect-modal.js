@@ -2623,50 +2623,6 @@
       
       return null;
     }
-      
-      var nodeName = currentNode.fusionName || currentNode.name;
-      console.log('[traceKeyframes] Looking at', nodeName + '.' + currentParam, 'depth:', depth);
-      
-      // Check if this param has direct keyframes
-      var p = currentNode.params[currentParam];
-      if (!p) {
-        // Try nested structure
-        for (var tableKey in currentNode.params) {
-          var tableGroup = currentNode.params[tableKey];
-          if (tableGroup && tableGroup.params && tableGroup.params[currentParam]) {
-            p = tableGroup.params[currentParam];
-            console.log('[traceKeyframes] Found in nested table:', tableKey);
-            break;
-          }
-        }
-      }
-      
-      if (p) {
-        console.log('[traceKeyframes] Found param', currentParam, 'has keyframes:', !!(p.keyframes && p.keyframes.length), 'sourceOp:', p.sourceOp);
-        resolutionChain.push({ node: nodeName, param: currentParam });
-        
-        if (p.keyframes && p.keyframes.length > 0) {
-          console.log('[traceKeyframes] Returning', p.keyframes.length, 'keyframes');
-          return p.keyframes;
-        }
-        
-        // If connected, trace to source
-        if (p.sourceOp && depth < maxDepth) {
-          var sourceNode = findNodeByName(p.sourceOp);
-          console.log('[traceKeyframes] Tracing to source:', p.sourceOp, 'found:', !!sourceNode);
-          if (sourceNode) {
-            // For PolyPath nodes, the Position output is driven by Displacement
-            var targetParam = (sourceNode.name === 'PolyPath' || sourceNode.fusionName === 'PolyPath') ? 'Displacement' : 'Value';
-            console.log('[traceKeyframes] Looking for', targetParam, 'in', sourceNode.fusionName || sourceNode.name);
-            return traceKeyframes(sourceNode, targetParam, depth + 1);
-          }
-        }
-      } else {
-        console.log('[traceKeyframes] Param', currentParam, 'not found in', nodeName);
-      }
-      
-      return null;
-    }
     
     function findNodeByName(name) {
       console.log('[findNodeByName] Looking for:', name);
