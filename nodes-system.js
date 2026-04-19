@@ -266,6 +266,71 @@
   }
 
   /**
+   * Parse ALL nodes including hidden ones (PolyPath, BezierSpline)
+   * Used for connection tracing to find keyframes in non-visible nodes
+   * Returns array of all tool entries with parsed data
+   */
+  function parseAllNodes(luaText) {
+    if (!luaText || !luaText.trim()) return [];
+    
+    const raw = luaText.trim();
+    if (!raw.includes('Tools') && !raw.includes('SourceOp')) return [];
+    
+    const topLevelText = getTopLevelToolsContent(raw);
+    const entries = shallowScanTools(topLevelText);
+    
+    const allNodes = [];
+    const splineMap = {};
+    
+    // First pass: collect BezierSplines
+    for (const entry of entries) {
+      if (entry.type === 'BezierSpline') {
+        const kfs = parseBezierKeyframes(entry.content);
+        splineMap[entry.name] = { type: 'BezierSpline', keyframes: kfs };
+        allNodes.push({
+          name: entry.name,
+          type: entry.type,
+          keyframes: kfs,
+          params: {}
+        });
+      }
+    }
+    
+    // Second pass: collect all other nodes including PolyPath
+    for (const entry of entries) {
+      if (entry.type === 'BezierSpline') continue; // Already handled
+      
+      let params = {};
+      
+      // Parse inputs if present
+      const inputsIdx = entry.content.search(/\bInputs\s*=\s*(?:ordered\s*\(\s*\)\s*)?\{/);
+      if (inputsIdx >= 0) {
+        const inputsOpen = entry.content.indexOf('{', inputsIdx);
+        const inputsBlock = extractBlock(entry.content, inputsOpen + 1);
+        params = parseInputsBlock(inputsBlock.content, splineMap);
+      }
+      
+      allNodes.push({
+        name: entry.name,
+        type: entry.type,
+        params: params,
+        raw: entry.content
+      });
+    }
+    
+    // Also store maps globally for backward compatibility
+    window._splineMap = splineMap;
+    window._polyPathMap = allNodes
+      .filter(n => n.type === 'PolyPath')
+      .reduce((map, n) => {
+        map[n.name] = { type: 'PolyPath', params: n.params };
+        return map;
+      }, {});
+    
+    return allNodes;
+  }
+
+  /**
    * Get content inside Tools = ordered() { ... }
    */
   function getTopLevelToolsContent(src) {
@@ -1170,6 +1235,7 @@
     parse: parseFusion,
     parseArrow: parseArrowNotation,
     categorizeTool,
+    _parseAll: parseAllNodes, // Internal: parse all including hidden nodes
     
     // Data
     normalize: normalizeGraph,

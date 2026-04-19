@@ -262,6 +262,27 @@
       }
     }
     
+    // Extract ALL nodes including hidden ones (PolyPath, BezierSpline) for connection tracing
+    if ((effect.node_code || effect.graph_payload) && window.NodeSystem) {
+      try {
+        var raw = effect.node_code || effect.graph_payload;
+        console.log('[effect-modal] Extracting hidden nodes for connection tracing...');
+        
+        // Use nodes-system internal parser to get all entries including hidden
+        if (window.NodeSystem._parseAll) {
+          var allNodes = window.NodeSystem._parseAll(raw);
+          window._parsedEffectData = {
+            visibleNodes: nodeData ? nodeData.nodes : [],
+            allNodes: allNodes,
+            timestamp: Date.now()
+          };
+          console.log('[effect-modal] Stored', allNodes.length, 'total nodes (including hidden)');
+        }
+      } catch (e) {
+        console.warn('[effect-modal] Failed to extract hidden nodes:', e);
+      }
+    }
+    
     // Render the node graph section with full-page styling (DOM nodes + SVG edges)
     if (hasValidData && nodeData && nodeSection) {
       nodeSection.style.display = 'block';
@@ -2599,18 +2620,17 @@
             var targetParam = 'Value'; // default
             
             // PolyPath nodes output Position which is driven by Displacement
-            if (sourceNode.name === 'PolyPath' || sourceNode.fusionName === 'PolyPath' ||
-                (sourceNode.params && sourceNode.params.Displacement)) {
+            if (sourceNode.name === 'PolyPath' || sourceNode.fusionName === 'PolyPath') {
               targetParam = 'Displacement';
             }
-            // PolylineMask/BezierSpline nodes have their animation in Value or keyframes directly
+            // BezierSpline nodes have their animation at the node level
             else if (sourceNode.name === 'BezierSpline' || sourceNode.fusionName === 'BezierSpline') {
-              // BezierSpline may have keyframes at the node level, not in a param
               if (sourceNode.keyframes && sourceNode.keyframes.length > 0) {
-                console.log('[traceKeyframes] Found keyframes directly on BezierSpline node');
+                console.log('[traceKeyframes] Found keyframes directly on BezierSpline');
                 resolutionChain.push({ node: sourceNode.fusionName || sourceNode.name, param: 'Direct' });
                 return sourceNode.keyframes;
               }
+              targetParam = 'Value'; // fallback
             }
             
             console.log('[traceKeyframes] Looking for', targetParam, 'in', sourceNode.fusionName || sourceNode.name);
@@ -2646,31 +2666,21 @@
         if (found) return found;
       }
       
-      // Check for PolyPath in the global map (PolyPaths aren't rendered as nodes)
-      if (window._polyPathMap && window._polyPathMap[name]) {
-        console.log('[findNodeByName] Found PolyPath in polyPathMap:', name);
-        var polyPathData = window._polyPathMap[name];
-        // Return a synthetic node object
-        return {
-          id: 'poly_' + name,
-          name: 'PolyPath',
-          fusionName: name,
-          params: polyPathData.params || {}
-        };
-      }
-      
-      // Check for BezierSpline in the global map
-      if (window._splineMap && window._splineMap[name]) {
-        console.log('[findNodeByName] Found BezierSpline in splineMap:', name);
-        var splineData = window._splineMap[name];
-        // Return a synthetic node object with keyframes
-        return {
-          id: 'spline_' + name,
-          name: 'BezierSpline',
-          fusionName: name,
-          keyframes: splineData.keyframes,
-          params: {}
-        };
+      // Check in full parsed data (includes hidden nodes like PolyPath, BezierSpline)
+      if (window._parsedEffectData && window._parsedEffectData.allNodes) {
+        var hiddenNode = window._parsedEffectData.allNodes.find(function(n) {
+          return n.name === name;
+        });
+        if (hiddenNode) {
+          console.log('[findNodeByName] Found in parsed data:', name, 'type:', hiddenNode.type);
+          return {
+            id: hiddenNode.type + '_' + name,
+            name: hiddenNode.type,
+            fusionName: name,
+            keyframes: hiddenNode.keyframes || null,
+            params: hiddenNode.params || {}
+          };
+        }
       }
       
       console.log('[findNodeByName] Not found anywhere');
