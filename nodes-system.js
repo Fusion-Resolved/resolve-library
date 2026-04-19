@@ -508,16 +508,62 @@
   }
 
   /**
-   * Parse BezierSpline keyframes
+   * Parse BezierSpline keyframes from a Fusion .setting block.
+   *
+   * Fusion clipboard format (Ctrl+C) uses:
+   *   KeyFrames = {
+   *     [1]   = { 0.5, RH = { 34, 0.583 }, Flags = { Linear = true } },
+   *     [100] = { 1.0, LH = { 67, 0.416 } },
+   *   }
+   *
+   * Handles (RH/LH) are { frameOffset, value } pairs stored as positional args,
+   * which map to absolute { x: frame, y: value } for the spline evaluator.
    */
   function parseBezierKeyframes(content) {
-    const kfs = [];
-    const kRe = /Key\((-?[\d.]+),\s*(-?[\d.eE-]+)\)/g;
-    let m;
-    while ((m = kRe.exec(content)) !== null) {
-      kfs.push({ frame: parseFloat(m[1]), value: parseFloat(m[2]) });
+    // Locate the KeyFrames = { ... } block
+    const kfIdx = content.search(/\bKeyFrames\s*=\s*\{/);
+    if (kfIdx === -1) return [];
+    const kfOpen = content.indexOf('{', kfIdx) + 1;
+    const { content: kfContent } = extractBlock(content, kfOpen);
+
+    const keyframes = [];
+    // Match each entry: [frameNum] = {
+    const entryRe = /\[(\d+(?:\.\d+)?)\]\s*=\s*\{/g;
+    let em;
+    while ((em = entryRe.exec(kfContent)) !== null) {
+      const frame = parseFloat(em[1]);
+      const entStart = em.index + em[0].length;
+      const { content: entBody } = extractBlock(kfContent, entStart);
+
+      // First token in the entry body is the keyframe value
+      const valM = entBody.match(/^\s*(-?[\d.eE+\-]+)/);
+      const value = valM ? parseFloat(valM[1]) : NaN;
+      if (isNaN(value)) continue;
+
+      const kf = { frame, value };
+
+      // Parse right handle: RH = { frameAbs, valueAbs }
+      // Fusion stores handles as absolute frame + absolute value positional args
+      const rhM = entBody.match(/\bRH\s*=\s*\{\s*(-?[\d.eE+\-]+)\s*,\s*(-?[\d.eE+\-]+)/);
+      if (rhM) {
+        kf.rh = { x: parseFloat(rhM[1]), y: parseFloat(rhM[2]) };
+      }
+
+      // Parse left handle: LH = { frameAbs, valueAbs }
+      const lhM = entBody.match(/\bLH\s*=\s*\{\s*(-?[\d.eE+\-]+)\s*,\s*(-?[\d.eE+\-]+)/);
+      if (lhM) {
+        kf.lh = { x: parseFloat(lhM[1]), y: parseFloat(lhM[2]) };
+      }
+
+      // Detect hold/step interpolation
+      if (/\bFlags\s*=\s*\{[^}]*\bHold\b/.test(entBody)) {
+        kf.hold = true;
+      }
+
+      keyframes.push(kf);
     }
-    return kfs.sort((a, b) => a.frame - b.frame);
+
+    return keyframes.sort((a, b) => a.frame - b.frame);
   }
 
   /**
