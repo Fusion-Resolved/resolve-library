@@ -268,22 +268,39 @@
     // Extract ALL nodes including hidden ones (PolyPath, BezierSpline) for connection tracing
     var rawLua = effect.node_code || effect.graph_payload || effect.lua_code;
     if (rawLua && window.NodeSystem && window.NodeSystem._parseAll) {
-      try {
-        console.log('[effect-modal] Extracting hidden nodes for connection tracing...');
-        console.log('[effect-modal] Lua length:', rawLua.length, 'first 100 chars:', rawLua.slice(0, 100));
-        
-        var allNodes = window.NodeSystem._parseAll(rawLua);
+      // Check if this is full Fusion Lua or just arrow notation
+      var isFullLua = rawLua.includes('Tools') || rawLua.includes('SourceOp') || rawLua.includes('Inputs');
+      var isArrowNotation = !isFullLua && (rawLua.includes('→') || rawLua.includes('->') || rawLua.includes(','));
+      
+      console.log('[effect-modal] Lua format detected:', isFullLua ? 'Full Fusion Lua' : (isArrowNotation ? 'Arrow Notation' : 'Unknown'));
+      
+      if (isFullLua) {
+        try {
+          console.log('[effect-modal] Extracting hidden nodes for connection tracing...');
+          console.log('[effect-modal] Lua length:', rawLua.length, 'first 100 chars:', rawLua.slice(0, 100));
+          
+          var allNodes = window.NodeSystem._parseAll(rawLua);
+          window._parsedEffectData = {
+            visibleNodes: nodeData ? nodeData.nodes : [],
+            allNodes: allNodes,
+            timestamp: Date.now()
+          };
+          console.log('[effect-modal] Stored', allNodes.length, 'total nodes (including hidden)');
+          if (allNodes.length > 0) {
+            console.log('[effect-modal] First few nodes:', allNodes.slice(0, 3).map(function(n) { return n.name + ':' + n.type; }).join(', '));
+          }
+        } catch (e) {
+          console.warn('[effect-modal] Failed to extract hidden nodes:', e);
+        }
+      } else if (isArrowNotation) {
+        console.log('[effect-modal] Arrow notation detected - hidden nodes (PolyPath, BezierSpline) not available');
+        // Mark that we have limited data
         window._parsedEffectData = {
           visibleNodes: nodeData ? nodeData.nodes : [],
-          allNodes: allNodes,
+          allNodes: [],
+          isArrowNotation: true,
           timestamp: Date.now()
         };
-        console.log('[effect-modal] Stored', allNodes.length, 'total nodes (including hidden)');
-        if (allNodes.length > 0) {
-          console.log('[effect-modal] First few nodes:', allNodes.slice(0, 3).map(function(n) { return n.name + ':' + n.type; }).join(', '));
-        }
-      } catch (e) {
-        console.warn('[effect-modal] Failed to extract hidden nodes:', e);
       }
     } else {
       console.log('[effect-modal] Cannot extract hidden nodes - no Lua code or _parseAll unavailable');
@@ -2711,8 +2728,11 @@
     var isConnected = param.v === '—' && param.sourceOp;
     var isPolyline = param.type === 'polyline' || (typeof param.value === 'string' && param.value.includes('points'));
     var hasResolvedKeyframes = resolvedKeyframes && resolvedKeyframes.length > 0;
+    var isArrowNotation = window._parsedEffectData && window._parsedEffectData.isArrowNotation;
+    
     var paramTypeLabel = hasResolvedKeyframes ? (resolvedKeyframes.length + ' keyframes (via connection)') : 
                          param.keyframes ? (param.keyframes.length + ' keyframes') : 
+                         isConnected && isArrowNotation ? 'Connected (limited data)' :
                          isConnected ? 'Connected' : 
                          isPolyline ? 'Polyline' : 'Static';
     
@@ -2784,17 +2804,35 @@
         var isPolyline = param.type === 'polyline' || (typeof param.value === 'string' && param.value.includes('points'));
         
         if (isConnected) {
-          content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">' +
-            '<div style="font-size:48px;margin-bottom:16px;">&#x2190;</div>' +
-            '<div style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Connected Parameter</div>' +
-            '<div style="font-size:13px;">This parameter receives its value from another node.</div>' +
-            '<div style="font-family:var(--font-mono);font-size:14px;margin-top:16px;padding:12px 20px;background:rgba(108,123,255,0.1);border-radius:6px;display:inline-block;color:#fff;">' +
-              'Source: <span style="color:var(--violet-light);">' + escapeHtml(param.sourceOp) + '</span>' +
-            '</div>' +
-            '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:12px;">' +
-              'Click on the <strong>' + escapeHtml(param.sourceOp) + '</strong> node to see its output values.' +
-            '</div>' +
-          '</div>';
+          // Check if this is arrow notation (limited data) vs full Lua
+          var isArrowNotation = window._parsedEffectData && window._parsedEffectData.isArrowNotation;
+          
+          if (isArrowNotation) {
+            content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">' +
+              '<div style="font-size:48px;margin-bottom:16px;">&#x2190;</div>' +
+              '<div style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Connected Parameter</div>' +
+              '<div style="font-size:13px;">This parameter receives its value from <strong>' + escapeHtml(param.sourceOp) + '</strong>.</div>' +
+              '<div style="font-family:var(--font-mono);font-size:14px;margin-top:16px;padding:12px 20px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:6px;display:inline-block;color:#f59e0b;">' +
+                '&#x26A0; Animation details not available' +
+              '</div>' +
+              '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:12px;max-width:400px;margin-left:auto;margin-right:auto;">' +
+                'This effect was saved with simplified node notation.<br>' +
+                'Full keyframe data requires the original Fusion Lua code.' +
+              '</div>' +
+            '</div>';
+          } else {
+            content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">' +
+              '<div style="font-size:48px;margin-bottom:16px;">&#x2190;</div>' +
+              '<div style="font-family:var(--font-display);font-size:16px;margin-bottom:8px;">Connected Parameter</div>' +
+              '<div style="font-size:13px;">This parameter receives its value from another node.</div>' +
+              '<div style="font-family:var(--font-mono);font-size:14px;margin-top:16px;padding:12px 20px;background:rgba(108,123,255,0.1);border-radius:6px;display:inline-block;color:#fff;">' +
+                'Source: <span style="color:var(--violet-light);">' + escapeHtml(param.sourceOp) + '</span>' +
+              '</div>' +
+              '<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:12px;">' +
+                'Click on the <strong>' + escapeHtml(param.sourceOp) + '</strong> node to see its output values.' +
+              '</div>' +
+            '</div>';
+          }
         } else if (isPolyline) {
           content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,0.5);">' +
             '<div style="font-size:48px;margin-bottom:16px;">&#x27F3;</div>' +
