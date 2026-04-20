@@ -424,6 +424,7 @@
       let formattedVal = formatFuID(rawVal);
       let keyframes = null;
       let type = 'value';
+      let isKeyframe = false;
 
       // Check for Polyline and show point count
       const polylineM = rawVal.match(/Polyline\s*\{/);
@@ -442,6 +443,7 @@
         if (keyframes && keyframes.length) {
           formattedVal = keyframes[0].value;
           type = 'animated';
+          isKeyframe = true; // Mark as animated for display layer
         }
       }
 
@@ -500,7 +502,9 @@
         type: type,
         keyframes: keyframes,
         enumValue: enumVal,
-        sourceOp: sourceOp
+        sourceOp: sourceOp,
+        isKeyframe: isKeyframe,
+        isPath: false
       };
     }
 
