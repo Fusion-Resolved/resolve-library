@@ -374,6 +374,7 @@
     // If node.name is "Transform", only show "Transform3" tool, not "Background5", "Merge3", etc.
     const nodeNameLower = node.name.toLowerCase();
     const relevantTools = node.fusionParams.filter(tool => {
+      if (!tool || !tool.toolName) return false;
       const toolNameLower = tool.toolName.toLowerCase();
       // Match if tool name contains node name OR node name contains tool name
       return toolNameLower.includes(nodeNameLower) || 
@@ -677,6 +678,7 @@
     // Filter to only relevant tools
     const nodeNameLower = node.name.toLowerCase();
     const relevantTools = node.fusionParams.filter(tool => {
+      if (!tool || !tool.toolName) return false;
       const toolNameLower = tool.toolName.toLowerCase();
       return toolNameLower.includes(nodeNameLower) || 
              nodeNameLower.includes(toolNameLower.replace(/\d+$/, '')) ||

@@ -4670,10 +4670,28 @@ function copyGraphToFusion(mode) {
 buildSavedList();applyVP();buildCatChips();
 
 // Auto-parse when Fusion data is pasted into the params textarea
-document.getElementById('params-paste').addEventListener('paste', () => {
-  // Use setTimeout so the pasted text is in the textarea before we read it
-  setTimeout(parseSettingPaste, 0);
-});
+(function setupParamsAutoParse() {
+  const paramsPaste = document.getElementById('params-paste');
+  if (!paramsPaste) {
+    console.warn('[nodegraph] params-paste element not found, retrying in 100ms');
+    setTimeout(setupParamsAutoParse, 100);
+    return;
+  }
+  
+  paramsPaste.addEventListener('paste', (e) => {
+    console.log('[nodegraph] Paste detected in params textarea');
+    // Use setTimeout so the pasted text is in the textarea before we read it
+    setTimeout(() => {
+      const text = paramsPaste.value.trim();
+      if (text.length > 0) {
+        console.log('[nodegraph] Auto-parsing pasted params, length:', text.length);
+        parseSettingPaste();
+      }
+    }, 0);
+  });
+  
+  console.log('[nodegraph] Params auto-parse listener attached');
+})();
 
 // ── Deep-link initialisation ─────────────────────────────────────────────────
 // Priority order:
