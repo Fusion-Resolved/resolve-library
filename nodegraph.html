@@ -38,6 +38,10 @@
   <script src="spline-evaluator.js"></script>
   <script src="timeline-component.js"></script>
   <script src="value-display.js"></script>
+  <!-- Fusion parameter parser - shared across all pages -->
+  <script src="fusion-param-parser.js"></script>
+  <!-- Node visualizer - shared UI rendering across all pages -->
+  <script src="node-visualizer.js"></script>
   <!-- Theme/UI flash prevention (preserved verbatim) -->
   <script>
 (function(){try{var t=JSON.parse(localStorage.getItem('noding-theme')||'{}'),s=document.documentElement.style,h=function(x){var r=parseInt(x.slice(1,3),16),g=parseInt(x.slice(3,5),16),b=parseInt(x.slice(5,7),16);return[r,g,b]};if(t.accent){s.setProperty('--accent',t.accent);var a=h(t.accent);s.setProperty('--accent-dim','rgba('+a+',0.08)');s.setProperty('--tag-bg','rgba('+a+',0.08)');s.setProperty('--tag-color',t.accent);}if(t.accent2){s.setProperty('--accent2',t.accent2);var c=h(t.accent2);s.setProperty('--accent2-dim','rgba('+c+',0.08)');}if(t.bg)s.setProperty('--bg',t.bg);if(t.surface)s.setProperty('--surface',t.surface);if(t.surface2)s.setProperty('--surface2',t.surface2);if(t.surface3)s.setProperty('--surface3',t.surface3);if(t.text)s.setProperty('--text',t.text);}catch(e){}
@@ -1687,25 +1691,111 @@ function rpToggle(id) {
 }
 
 // ── Bottom drawer ─────────────────────────────────────────────────────────
-let _bdSelParam = null; // currently selected param key in bottom drawer
+// Note: State is now managed by node-visualizer.js module
+// These wrapper functions delegate to the module for consistency
+
+let _bdSelParam = null; // Kept for backward compatibility
+let _kfScrubFrame = null; // Kept for backward compatibility
 
 function showBottomDrawer(node, scrubFrame) {
-  const drawer = document.getElementById('bottom-drawer');
-  if (!drawer) return;
-  drawer.classList.remove('hidden');
-  document.getElementById('bd-title').textContent = node.name;
-  document.getElementById('bd-cat').textContent = node.cat;
-  const dot = document.getElementById('bd-dot');
-  const effColor = node.color || node.catColor || getCatColor(node.cat) || 'rgba(255,255,255,0.2)';
-  dot.style.background = effColor;
-  const instDot = document.getElementById('bd-instance-dot');
-  if (node.instanceOf) {
-    instDot.innerHTML = '<div class="nd-instance-dot" title="Instance"></div>';
-  } else if (node.hasInstances) {
-    instDot.innerHTML = '<div class="nd-master-dot" title="Master"></div>';
-  } else {
-    instDot.innerHTML = '';
+  NodeVisualizer.showBottomDrawer(node, scrubFrame, {
+    findNode: (id) => nodes.find(n => n.id === id),
+    selectedNodeId: selNode,
+    resolveEnum: FusionParamParser.resolveEnum,
+    openSplineModal: openSplineModal
+  });
+  // Sync state back from module
+  _kfScrubFrame = NodeVisualizer.getScrubFrame();
+  _bdSelParam = NodeVisualizer.getSelectedParam();
+}
+
+function bdSelectParam(nodeId, paramKey) {
+  NodeVisualizer.bdSelectParam(nodeId, paramKey);
+  _bdSelParam = paramKey;
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  showBottomDrawer(node, _kfScrubFrame);
+  if (selNode === nodeId) renderParamsDisplay(node, _kfScrubFrame);
+}
+
+function bdScrubFrame(nodeId, frame) {
+  NodeVisualizer.bdScrubFrame(nodeId, frame);
+  _kfScrubFrame = frame;
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  showBottomDrawer(node, frame);
+  if (selNode === nodeId) renderParamsDisplay(node, frame);
+}
+
+function bdScrubStep(nodeId, dir) {
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  
+  let frames = [];
+  if (_bdSelParam) {
+    for (const tool of node.fusionParams || []) {
+      const p = (tool.params||{})[_bdSelParam];
+      if (p && p.keyframes) { frames = p.keyframes.map(k=>k.frame).sort((a,b)=>a-b); break; }
+    }
   }
+  if (!frames.length) {
+    node.fusionParams.forEach(tool => {
+      Object.values(tool.params || {}).forEach(p => {
+        if (p.keyframes) p.keyframes.forEach(kf => { if (!frames.includes(kf.frame)) frames.push(kf.frame); });
+      });
+    });
+    frames.sort((a,b) => a-b);
+  }
+  if (!frames.length) return;
+  
+  const cur = _kfScrubFrame ?? frames[0];
+  const curIdx = frames.indexOf(cur);
+  const nextIdx = Math.max(0, Math.min(frames.length - 1, (curIdx === -1 ? 0 : curIdx) + dir));
+  bdScrubFrame(nodeId, frames[nextIdx]);
+}
+
+function _bdDrawParamSpline(canvas, param, activeFrame) {
+  NodeVisualizer._bdDrawParamSpline(canvas, param, activeFrame);
+}
+
+function hideBottomDrawer() {
+  NodeVisualizer.hideBottomDrawer();
+}
+
+function toggleBottomDrawer() {
+  NodeVisualizer.toggleBottomDrawer();
+}
+
+function renderParamsPanel(nodeId) {
+  const node = nodes.find(n => n.id === nodeId);
+  NodeVisualizer.renderParamsPanel(node, 
+    (id) => nodes.find(n => n.id === id),
+    {
+      onRenderDisplay: (n) => renderParamsDisplay(n, _kfScrubFrame),
+      onShowDrawer: (n, frame) => showBottomDrawer(n, frame),
+      autoSaveParams: autoSaveParams
+    }
+  );
+}
+
+function renderParamsDisplay(node, scrubFrame) {
+  NodeVisualizer.renderParamsDisplay(node, scrubFrame, {
+    findNode: (id) => nodes.find(n => n.id === id),
+    selectedNodeId: selNode,
+    onShowDrawer: showBottomDrawer,
+    autoSaveParams: autoSaveParams,
+    openSplineModal: openSplineModal,
+    resolveEnum: FusionParamParser.resolveEnum,
+    fmtNum: FusionParamParser.fmtNum
+  });
+  // Sync state back from module
+  _kfScrubFrame = NodeVisualizer.getScrubFrame();
+  _bdSelParam = NodeVisualizer.getSelectedParam();
+}
+
+function _getValueAtFrame(param, frame) {
+  return NodeVisualizer._getValueAtFrame(param, frame);
+}
   const splineBtn = document.getElementById('bd-spline-btn');
   const splineAllBtn = document.getElementById('bd-spline-all-btn');
   if (splineBtn) {
@@ -3305,978 +3395,65 @@ function fmtBoolParam(paramName, val) {
   return val;
 }
 
-// ── Comprehensive Fusion enum lookup ─────────────────────────────────────
-// Maps param-name patterns to their enum tables so raw numbers become words.
-const FUSION_ENUMS = {
-  // ChannelBooleans
-  'Operation': { '0':'Copy','1':'AND','2':'OR','3':'XOR','4':'Add','5':'Subtract','6':'Multiply','7':'Divide','8':'Maximum','9':'Minimum' },
-  'To Alpha':  { '0':'Off','1':'Luminance','2':'Red','3':'Green','4':'Blue','5':'Cyan','6':'Magenta','7':'Yellow','8':'Hatch' },
-  'To Red':    { '0':'None','1':'Red','2':'Green','3':'Blue','4':'Alpha' },
-  'To Green':  { '0':'None','1':'Red','2':'Green','3':'Blue','4':'Alpha' },
-  'To Blue':   { '0':'None','1':'Red','2':'Green','3':'Blue','4':'Alpha' },
-  // BrightnessContrast
-  'Alpha':     { '0':'Off','1':'On' },
-  // ErodeDilate / morphological nodes
-  'Filter':    { '0':'Box','1':'Bartlett','2':'Multi-box','3':'Gaussian' },
-  'Lock X/Y':  { '0':'Unlocked','1':'Locked' },
-  'Clipping Mode': { '0':'Frame','1':'Domain' },
-  'Red':       { '0':'Off','1':'On' },
-  'Green':     { '0':'Off','1':'On' },
-  'Blue':      { '0':'Off','1':'On' },
-  'XFilter':   { '0':'Box','1':'Bartlett','2':'Multi-box','3':'Gaussian' },
-  'YFilter':   { '0':'Box','1':'Bartlett','2':'Multi-box','3':'Gaussian' },
-  // Blur nodes filter types
-  'Blend Mode':    { '0':'Normal','1':'Screen','2':'Dissolve','3':'Multiply','4':'Overlay','5':'Soft Light','6':'Hard Light','7':'Color Dodge','8':'Color Burn','9':'Darken','10':'Lighten','11':'Difference','12':'Exclusion','13':'Hue','14':'Saturation','15':'Color','16':'Luminosity' },
-  'Apply Mode':    { '0':'Normal','1':'Screen','2':'Dissolve','3':'Multiply','4':'Overlay','5':'Soft Light','6':'Hard Light','7':'Color Dodge','8':'Color Burn','9':'Darken','10':'Lighten','11':'Difference','12':'Exclusion','13':'Hue','14':'Saturation','15':'Color','16':'Luminosity' },
-  // ColorSpace
-  'Color Space':   { '0':'sRGB','1':'Linear','2':'Log','3':'Rec.709','4':'Rec.2020','5':'P3-D65','6':'DaVinci Wide Gamut' },
-  'From Color Space': { '0':'sRGB','1':'Linear','2':'Log','3':'Rec.709','4':'Rec.2020','5':'P3-D65','6':'DaVinci Wide Gamut' },
-  'To Color Space':   { '0':'sRGB','1':'Linear','2':'Log','3':'Rec.709','4':'Rec.2020','5':'P3-D65','6':'DaVinci Wide Gamut' },
-  // ChangeDepth
-  'Depth':         { '0':'Auto','1':'int8','2':'int16','3':'Half Float','4':'Float32' },
-  // Resize filter
-  'Filter Type':   { '0':'Nearest','1':'Box','2':'Linear','3':'Quadratic','4':'Cubic','5':'Catmull-Rom','6':'Gaussian','7':'Mitchell','8':'Lanczos','9':'Sinc' },
-  // Merge apply modes
-  'Operator':      { '0':'Normal','1':'Screen','2':'Dissolve','3':'Multiply','4':'Overlay','5':'Soft Light','6':'Hard Light','7':'Color Dodge','8':'Color Burn','9':'Darken','10':'Lighten','11':'Difference','12':'Exclusion','13':'Hue','14':'Saturation','15':'Color','16':'Luminosity','19':'Over','20':'Under','21':'In','22':'Held Out','23':'Atop' },
-  // Boolean operations
-  'Boolean Operator': { '0':'AND','1':'OR','2':'XOR','3':'Not','4':'Darken','5':'Lighten','6':'Add','7':'Subtract','8':'Difference','9':'Multiply','10':'Divide' },
-  // Noise types
-  'Type':          { '0':'Fast Noise','1':'Turbulent Noise','2':'Gradient Noise','3':'Multi-Fractal Noise','4':'Wispy Noise','5':'Cauliflower Noise','6':'Plasma Noise','7':'Log Noise','8':'Absolute Log Noise' },
-  // 3D renderer
-  'Renderer':      { '0':'OpenGL','1':'Software' },
-  'Light Model':   { '0':'Phong','1':'Blinn','2':'Cook-Torrance','3':'Ward' },
-  // Flip
-  'Flip Horiz':    { '0':'None','1':'Flip' },
-  'Flip Vert':     { '0':'None','1':'Flip' },
-  // Saver format
-  'Format':        { '0':'BMP','1':'Cineon','2':'DPX','3':'EXR','4':'JPEG','5':'PNG','6':'PSD','7':'QuickTime','8':'TIFF','9':'TGA' },
-  // Composite channel modes
-  'Channels':      { '0':'Colour+Alpha','1':'Colour only','2':'Alpha only' },
-  // HueSaturation channels
-  'ColorChannels': { '0':'Master','1':'Red','2':'Yellow','3':'Green','4':'Cyan','5':'Blue','6':'Magenta' },
-  // Tracker channel
-  'Channel':       { '0':'Luminance','1':'Red','2':'Green','3':'Blue','4':'Alpha' },
-  // pEmitter / particle
-  'Style':         { '0':'Point','1':'Line','2':'Blob','3':'Sphere','4':'User Particle' },
-  // Background gradient type
-  'Gradient Type': { '0':'Linear','1':'Reflect','2':'Square','3':'Cross','4':'Radial' },
-  // Text+ alignment
-  'Horiz Align':   { '0':'Left','1':'Centre','2':'Right','3':'Justified' },
-  'Vert Align':    { '0':'Top','1':'Centre','2':'Bottom' },
-  'Layout Style':  { '0':'Horizontal','1':'Vertical','2':'Path' },
-  // DVE edge behaviour
-  'Edge':          { '0':'Black','1':'Wrap','2':'Duplicate Edge','3':'Reflect' },
-};
-
-// Per-tool overrides: { ToolType: { paramKey: enumTable } }
-const FUSION_TOOL_ENUMS = {
-  'ChannelBooleans': {
-    'Operation': { '0':'Copy','1':'AND','2':'OR','3':'XOR','4':'Add','5':'Subtract','6':'Multiply','7':'Divide','8':'Maximum','9':'Minimum' },
-    'To Alpha':  { '0':'Off','1':'Luminance','2':'Red','3':'Green','4':'Blue','5':'Cyan','6':'Magenta','7':'Yellow','8':'Hatch' },
-    'To Red':    { '0':'None','1':'Red','2':'Green','3':'Blue','4':'Alpha' },
-    'To Green':  { '0':'None','1':'Red','2':'Green','3':'Blue','4':'Alpha' },
-    'To Blue':   { '0':'None','1':'Red','2':'Green','3':'Blue','4':'Alpha' },
-  },
-  'ErodeDilate': {
-    'Filter':        { '0':'Box','1':'Bartlett','2':'Multi-box','3':'Gaussian' },
-    'XFilter':       { '0':'Box','1':'Bartlett','2':'Multi-box','3':'Gaussian' },
-    'YFilter':       { '0':'Box','1':'Bartlett','2':'Multi-box','3':'Gaussian' },
-    'Lock X/Y':      { '0':'Unlocked','1':'Locked' },
-    'Clipping Mode': { '0':'Frame','1':'Domain' },
-    'Red':           { '0':'Off','1':'On' },
-    'Green':         { '0':'Off','1':'On' },
-    'Blue':          { '0':'Off','1':'On' },
-    'Alpha':         { '0':'Off','1':'On' },
-  },
-  'BrightnessContrast': {
-    'Alpha': { '0':'Off','1':'On' },
-  },
-};
+// Note: FUSION_ENUMS and FUSION_TOOL_ENUMS are now provided by fusion-param-parser.js module
 
 /**
  * Try to resolve a raw numeric string to a human-readable enum label.
  * toolType is optional — enables per-tool lookup tables.
+ * Delegates to fusion-param-parser module.
  */
 function resolveEnum(paramLabel, rawVal, toolType) {
-  if (!rawVal || rawVal === '—') return rawVal;
-  const v = String(rawVal).trim();
-  // Only resolve pure integers (or integers with trailing decimal zeros)
-  if (!/^-?\d+(\.\d*)?$/.test(v)) return rawVal;
-  const intStr = String(parseInt(v));
-
-  // Per-tool lookup first
-  if (toolType && FUSION_TOOL_ENUMS[toolType]) {
-    const toolTable = FUSION_TOOL_ENUMS[toolType];
-    // Try exact param label match, then partial key match
-    for (const [key, table] of Object.entries(toolTable)) {
-      if (paramLabel.toLowerCase().includes(key.toLowerCase()) ||
-          key.toLowerCase().includes(paramLabel.toLowerCase())) {
-        if (table[intStr] !== undefined) return table[intStr];
-      }
-    }
-  }
-
-  // Global lookup
-  for (const [key, table] of Object.entries(FUSION_ENUMS)) {
-    if (paramLabel.toLowerCase().includes(key.toLowerCase()) ||
-        key.toLowerCase() === paramLabel.toLowerCase()) {
-      if (table[intStr] !== undefined) return table[intStr];
-    }
-  }
-  return rawVal;
+  return FusionParamParser.resolveEnum(paramLabel, rawVal, toolType);
 }
 
 /**
  * Parse gradient stops from a Fusion Gradient block body and return a
  * human-readable string listing each stop's position and RGBA.
+ * Delegates to fusion-param-parser module.
  */
 function fmtGradientValue(pbody) {
-  // Count stops: entries like [0.0] = { ... } or [0.5] = { ... }
-  const stopRe = /\[(\d+(?:\.\d+)?)\]\s*=\s*\{([^}]*)\}/g;
-  const stops = [];
-  let sm;
-  while ((sm = stopRe.exec(pbody)) !== null) {
-    const pos = parseFloat(sm[1]);
-    const body = sm[2];
-    const rM = body.match(/R\s*=\s*([\d.eE+\-]+)/); const r = rM ? parseFloat(rM[1]) : 0;
-    const gM = body.match(/G\s*=\s*([\d.eE+\-]+)/); const g = gM ? parseFloat(gM[1]) : 0;
-    const bM = body.match(/B\s*=\s*([\d.eE+\-]+)/); const b = bM ? parseFloat(bM[1]) : 0;
-    const aM = body.match(/A\s*=\s*([\d.eE+\-]+)/); const a = aM ? parseFloat(aM[1]) : 1;
-    // Convert to 0-255 if values look like 0-1 floats
-    const scale = (r <= 1 && g <= 1 && b <= 1) ? 255 : 1;
-    const toHex = v => Math.round(v * (scale === 255 ? 255 : 1)).toString(16).padStart(2,'0');
-    const hex = '#' + toHex(r) + toHex(g) + toHex(b);
-    const alphaStr = a < 1 ? ` A:${Math.round(a*100)}%` : '';
-    stops.push({ pos: Math.round(pos * 100), hex, alphaStr });
-  }
-  if (!stops.length) return `Gradient`;
-  return stops.map(s => `@${s.pos}%: ${s.hex}${s.alphaStr}`).join(' | ');
+  return FusionParamParser.fmtGradientValue(pbody);
 }
 
+/**
+ * Parse an Inputs block from a Fusion tool
+ * Delegates to fusion-param-parser module
+ */
 function parseInputsBlock(inputsContent, splineMap, innerValMap) {
-  const params = {};
-
-  // ── Pre-pass: build ControlGroup → first explicit Name map ───────────────
-  // Used so colour-component groups (Red/Green/Blue/Alpha) get consistent labels.
-  // e.g. Input21 Name="Tint Color" ControlGroup=18, Input22/23 no Name → "Tint Color Green/Blue"
-  //
-  // FIX: use extractBlock (brace-counting) instead of [^}]+ so that InstanceInput
-  // bodies containing nested braces are never truncated at the first inner '}'.
-  const controlGroupNames = {};
-  {
-    const cgHeadRe = /\w+\s*=\s*InstanceInput\s*\{/g;
-    let cgm;
-    while ((cgm = cgHeadRe.exec(inputsContent)) !== null) {
-      const bodyStart = cgm.index + cgm[0].length;
-      const { content: cgBody, endIdx: cgEnd } = extractBlock(inputsContent, bodyStart);
-      // Advance past this entire block so we never re-enter its nested content
-      cgHeadRe.lastIndex = cgEnd;
-      const nM = cgBody.match(/\bName\s*=\s*"([^"]+)"/);
-      const gM = cgBody.match(/\bControlGroup\s*=\s*(\d+)/);
-      if (nM && gM && !controlGroupNames[gM[1]]) {
-        controlGroupNames[gM[1]] = nM[1];
-      }
-    }
-  }
-
-  let i = 0;
-  const len = inputsContent.length;
-  while (i < len) {
-    while (i < len && /\s/.test(inputsContent[i])) i++;
-    if (i >= len) break;
-    // Match both regular Input and InstanceInput entries
-    const nameMatch = inputsContent.slice(i).match(/^(?:\["([^"]+)"\]|(\w+))\s*=\s*(InstanceInput|Input)\s*\{/);
-    if (!nameMatch) { while (i < len && inputsContent[i] !== '\n') i++; i++; continue; }
-    const pname = nameMatch[1] || nameMatch[2];
-    const entryType = nameMatch[3]; // 'Input' or 'InstanceInput'
-    const bodyStart = i + nameMatch[0].length;
-    const { content: pbody, endIdx } = extractBlock(inputsContent, bodyStart);
-    i = endIdx;
-
-    // InstanceInput: these are macro-exposed parameters — parse Name, Default, Source
-    if (entryType === 'InstanceInput') {
-      const nameM    = pbody.match(/\bName\s*=\s*"([^"]+)"/);
-      const defaultM = pbody.match(/\bDefault\s*=\s*([^\n,}]+)/);
-      const sourceM  = pbody.match(/\bSource\s*=\s*"([^"]+)"/);
-      const sourceOpM= pbody.match(/\bSourceOp\s*=\s*"([^"]+)"/);
-      const cgM      = pbody.match(/\bControlGroup\s*=\s*(\d+)/);
-
-      const sourceProp = sourceM  ? sourceM[1]  : null;
-      const sourceOp   = sourceOpM? sourceOpM[1]: null;
-      const cgId       = cgM      ? cgM[1]      : null;
-      const groupName  = cgId     ? controlGroupNames[cgId] : null;
-
-      // Derive a readable label from the Source field (camelCase → Title Case).
-      // Dotted prefixes (e.g. "Garbage.MaskLow") are kept so they don't collide
-      // with their un-prefixed siblings ("MaskLow") → "Garbage Mask Low" vs "Mask Low".
-      function srcToLabel(src) {
-        if (!src) return null;
-        const toCamel = s => s.replace(/([a-z])([A-Z])/g, '$1 $2')
-                               .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim();
-        if (src.includes('.')) {
-          return src.split('.').map(toCamel).join(' ');  // "Garbage.MaskLow" → "Garbage Mask Low"
-        }
-        return toCamel(src);
-      }
-
-      // Detect colour-component suffix in Source: TopLeftRed → Red, ProcessAlpha → Alpha
-      const colorSuffixM = sourceProp ? sourceProp.match(/^.+?(Red|Green|Blue|Alpha)$/) : null;
-      const colorSuffix  = colorSuffixM ? colorSuffixM[1] : null;
-
-      // Resolve property aliases and get UserControl metadata — needed before displayName
-      const PROP_ALIASES = { BlendClone: 'Blend', BlendMask: 'Blend' };
-      const resolvedProp = PROP_ALIASES[sourceProp] || sourceProp;
-      const ucInfo = (innerValMap && sourceOp && innerValMap[sourceOp] && innerValMap[sourceOp]._uc)
-        ? (innerValMap[sourceOp]._uc[resolvedProp] || innerValMap[sourceOp]._uc[sourceProp] || null)
-        : null;
-
-      // Build display name:
-      //   • Explicit Name + colour ControlGroup → append component (e.g. "Tint Color Red")
-      //   • Explicit Name alone → use as-is
-      //   • No Name but colour group → "{groupName} {component}"
-      //   • No Name but UserControl LINKS_Name → use that (e.g. "Glow Only", "Enable Tint")
-      //   • Fallback → derive from Source or use pname
-      let displayName;
-      if (nameM) {
-        displayName = (groupName && colorSuffix && nameM[1] === groupName)
-          ? `${nameM[1]} ${colorSuffix}`
-          : nameM[1];
-      } else if (groupName && colorSuffix) {
-        displayName = `${groupName} ${colorSuffix}`;
-      } else if (ucInfo && ucInfo.linksName) {
-        displayName = ucInfo.linksName;
-      } else {
-        displayName = srcToLabel(sourceProp) || pname;
-      }
-
-      // Look up the actual current value from the macro's inner nodes.
-      // BlendClone is Fusion's alias for the Blend property on Merge/BrightnessContrast nodes.
-
-      let actualVal = null;
-      if (innerValMap && sourceOp && sourceProp) {
-        const nodeVals = innerValMap[sourceOp];
-        if (nodeVals) {
-          if (nodeVals[sourceProp] !== undefined)    actualVal = String(nodeVals[sourceProp]);
-          else if (resolvedProp !== sourceProp && nodeVals[resolvedProp] !== undefined)
-                                                     actualVal = String(nodeVals[resolvedProp]);
-        }
-      }
-
-      // Get UserControl metadata is already resolved above as ucInfo
-      // Use actual inner-node value if found, else fall back to InstanceInput Default
-      const rawVal = actualVal !== null ? actualVal
-                   : (defaultM ? defaultM[1].trim() : null);
-      // Format: unwrap FuID, then apply On/Off for binary booleans
-      let displayVal = rawVal ? formatFusionValue(rawVal) : '—';
-
-      // Skip Fusion's UI-only LabelControl section-header toggles (Hide6_1 etc.)
-      // These are never functional parameters — they just expand/collapse UI sections.
-      if (/^Hide\d+_\d+$/.test(sourceProp || '')) continue;
-
-      // For *Channel params map numeric enum → readable name (Fusion 1-indexed)
-      const FUSION_CHANNELS = { '1':'Red','2':'Green','3':'Blue','4':'Alpha','5':'Luminance','6':'Saturation','7':'Hue','8':'Coverage' };
-      if (/Channel$/i.test(sourceProp || '') && FUSION_CHANNELS[displayVal]) {
-        displayVal = FUSION_CHANNELS[displayVal];
-      }
-
-      // For Depth params map numeric enum → bit-depth label (Fusion ChangeDepth values)
-      const FUSION_DEPTH = { '0':'Auto','1':'int8','2':'int16','3':'Half Float','4':'Float32' };
-      if (/^Depth$/i.test(sourceProp || '') && FUSION_DEPTH[displayVal]) {
-        displayVal = FUSION_DEPTH[displayVal];
-      }
-
-      displayVal = fmtBoolParam(displayName, displayVal);
-      // Override: if the inner node declares this as a CheckboxControl, always use On/Off
-      if (ucInfo && ucInfo.controlType === 'CheckboxControl' && (displayVal === '0' || displayVal === '1')) {
-        displayVal = displayVal === '1' ? 'On' : 'Off';
-      }
-      // Apply general enum resolution using the display name
-      displayVal = resolveEnum(displayName, displayVal, null);
-
-      const sourceStr = sourceOp && sourceProp ? `${sourceOp}.${sourceProp}` : (sourceProp || null);
-
-      // Skip pure image/mask connector ports that have neither Name nor Default
-      const isConnector = !nameM && !defaultM &&
-        (pname === 'MainInput1' || pname === 'EffectMask' || /^MainInput\d+$/.test(pname));
-      if (!isConnector) {
-        params[displayName] = { v: displayVal, isInstanceParam: true, sourceRef: sourceStr };
-      }
-      continue;
-    }
-
-    const srcM = pbody.match(/SourceOp\s*=\s*"([^"]+)"/);
-    if (srcM) {
-      const portM = pbody.match(/Source\s*=\s*"([^"]+)"/);
-      const srcOpName = srcM[1];
-      const portName = portM ? portM[1] : null;
-
-      // Try to resolve the actual value from splineMap
-      const splineData = splineMap && splineMap[srcOpName];
-      if (splineData) {
-        if (splineData.type === 'PolyPath' && splineData.points && splineData.points.length) {
-          // It's a path — show first point as X, Y and mark as path with all points
-          const firstPt = splineData.points[0];
-          params[pname] = {
-            v: `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}`,
-            isPath: true,
-            pathPoints: splineData.points,
-            sourceOp: srcOpName,
-            displayValue: `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}`,
-          };
-        } else if (splineData.type === 'BezierSpline' && splineData.keyframes && splineData.keyframes.length) {
-          // It's an animated spline — show value at first keyframe
-          const kf0 = splineData.keyframes[0];
-          params[pname] = {
-            v: fmtNum(String(kf0.value)),
-            isKeyframe: true,
-            keyframes: splineData.keyframes,
-            sourceOp: srcOpName,
-            displayFrame: kf0.frame,
-            splineColor: splineData.color || '#cc44cc',
-          };
-        } else if (splineData.type === 'PolyPath') {
-          // PolyPath with no parsed points — still mark as path, apply default if known
-          const defCenter = FUSION_PARAM_DEFAULTS[pname];
-          params[pname] = {
-            v: defCenter ? defCenter.v : '0.5, 0.5',
-            isPath: true,
-            pathPoints: [],
-            sourceOp: srcOpName,
-          };
-        }
-      } else {
-        params[pname] = { v: `→ ${srcOpName}${portName ? '.' + portName : ''}`, isConnection: true, sourceOp: srcOpName };
-      }
-      continue;
-    }
-    const exprM = pbody.match(/Expression\s*=\s*"([^"]*)"/);
-    if (exprM) { params[pname] = { v: exprM[1], isExpr: true }; continue; }
-
-    const xy2M = pbody.match(/Value\s*=\s*\{\s*(-?[\d.eE+]+)\s*,\s*(-?[\d.eE+]+)\s*\}/);
-    if (xy2M) { params[pname] = { v: `${fmtNum(xy2M[1])}, ${fmtNum(xy2M[2])}` }; continue; }
-
-    const ptM = pbody.match(/Value\s*=\s*Point\s*\{\s*(-?[\d.eE+]+)\s*,\s*(-?[\d.eE+]+)\s*\}/);
-    if (ptM) { params[pname] = { v: `${fmtNum(ptM[1])}, ${fmtNum(ptM[2])}` }; continue; }
-
-    const polyM = pbody.match(/Value\s*=\s*Polyline\s*\{/);
-    if (polyM) {
-      const ptRe = /X\s*=\s*(-?[\d.eE+]+)\s*,\s*Y\s*=\s*(-?[\d.eE+]+)/g;
-      const pts = []; let ptm;
-      while ((ptm = ptRe.exec(pbody)) !== null) pts.push({ x: parseFloat(ptm[1]), y: parseFloat(ptm[2]) });
-      const firstPt = pts[0];
-      params[pname] = {
-        v: firstPt ? `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}` : 'Polyline',
-        isPath: true,
-        pathPoints: pts,
-      };
-      continue;
-    }
-    const typedM = pbody.match(/Value\s*=\s*(\w+)\s*\{/);
-    if (typedM) {
-      const vtype = typedM[1];
-      if (vtype === 'FuID') {
-        // FuID { "Screen" } → just show "Screen"
-        const fuInner = pbody.match(/Value\s*=\s*FuID\s*\{\s*"([^"]+)"\s*\}/);
-        params[pname] = { v: fuInner ? fuInner[1] : 'FuID' };
-      } else if (vtype === 'Gradient') {
-        // Parse gradient stops with position and colour info
-        const gradInner = pbody.match(/Value\s*=\s*Gradient\s*\{([^]*)\}/);
-        const gradBody = gradInner ? gradInner[1] : pbody;
-        const stopMatches = gradBody.match(/\[\d+(?:\.\d+)?\]\s*=\s*\{/g);
-        const stopCount = stopMatches ? stopMatches.length : 0;
-        const gradStr = fmtGradientValue(gradBody);
-        params[pname] = { v: gradStr !== 'Gradient' ? gradStr : (stopCount ? `Gradient (${stopCount} stop${stopCount!==1?'s':''})` : 'Gradient') };
-      } else if (vtype === 'ColorControls') {
-        params[pname] = { v: 'Color wheel' };
-      } else if (vtype === 'MtlStdInputs') {
-        params[pname] = { v: 'Material' };
-      } else {
-        params[pname] = { v: `[${vtype}]` };
-      }
-      continue;
-    }
-
-    const valM = pbody.match(/Value\s*=\s*([^\n{},]+)/);
-    if (valM) { params[pname] = { v: formatScalar(valM[1]) }; continue; }
-
-    params[pname] = { v: '—' };
-  }
-  // Apply known defaults for any params that ended up with '—'
-  // (Fusion omits params at their defaults from the .setting export)
-  Object.entries(params).forEach(([k, p]) => {
-    if (!p.isKeyframe && !p.isPath && !p.isConnection && !p.isExpr) {
-      const def = FUSION_PARAM_DEFAULTS[k];
-      if (def && (!p.v || p.v === '—')) {
-        params[k] = { ...p, v: def.v };
-      }
-    }
-  });
-  return params;
+  return FusionParamParser.parseInputsBlock(inputsContent, splineMap, innerValMap);
 }
 
-/** Parse a BezierSpline block's KeyFrames into [{frame, value, rh, lh}] */
+/** Parse a BezierSpline block's KeyFrames into [{frame, value}]
+ * Delegates to fusion-param-parser module
+ */
 function parseBezierKeyframes(blockContent) {
-  const kfIdx = blockContent.search(/\bKeyFrames\s*=\s*\{/);
-  if (kfIdx === -1) return [];
-  const kfOpen = blockContent.indexOf('{', kfIdx) + 1;
-  const { content: kfContent } = extractBlock(blockContent, kfOpen);
-  // Each entry: [frameNum] = { Value, RH = {...}, LH = {...} }
-  const entryRe = /\[(\d+)\]\s*=\s*\{/g;
-  const keyframes = [];
-  let em;
-  while ((em = entryRe.exec(kfContent)) !== null) {
-    const frame = parseInt(em[1]);
-    const entStart = em.index + em[0].length;
-    const { content: entBody } = extractBlock(kfContent, entStart);
-    const valM = entBody.match(/^\s*(-?[\d.eE+]+)/);
-    const value = valM ? parseFloat(valM[1]) : NaN;
-    if (!isNaN(value)) keyframes.push({ frame, value });
-  }
-  return keyframes;
+  return FusionParamParser.parseBezierKeyframes(blockContent);
 }
 
-/** Parse a PolyPath block's Inputs → PolyLine → Points into [{x, y}] */
+/** Parse a PolyPath block's Inputs → PolyLine → Points into [{x, y}]
+ * Delegates to fusion-param-parser module
+ */
 function parsePolyPathPoints(blockContent) {
-  // Look for any Polyline { Points = { ... } } inside Inputs
-  const polyRe = /Value\s*=\s*Polyline\s*\{/;
-  const polyIdx = blockContent.search(polyRe);
-  if (polyIdx === -1) return [];
-  const polyOpen = blockContent.indexOf('{', polyIdx) + 1;
-  const { content: polyBody } = extractBlock(blockContent, polyOpen);
-  // Points entries: [idx] = { X = ..., Y = ... }
-  const ptRe = /X\s*=\s*(-?[\d.eE+]+)\s*,\s*Y\s*=\s*(-?[\d.eE+]+)/g;
-  const pts = []; let pm;
-  while ((pm = ptRe.exec(polyBody)) !== null) pts.push({ x: parseFloat(pm[1]), y: parseFloat(pm[2]) });
-  return pts;
+  return FusionParamParser.parsePolyPathPoints(blockContent);
 }
 
 function parseSettingText(text) {
-  text = text.trim();
-  const results = [];
-
-  // ── Pre-processing: strip CustomData blocks entirely ─────────────────────
-  // CustomData stores saved presets as nested tool definitions — these are NOT
-  // real nodes on the canvas and must be removed before parsing so we don't
-  // create phantom duplicate nodes from them.
-  function stripCustomData(src) {
-    let out = '';
-    let i = 0;
-    while (i < src.length) {
-      // Look for "CustomData" key followed by "= {"
-      const cd = src.indexOf('CustomData', i);
-      if (cd === -1) { out += src.slice(i); break; }
-      // Find the opening brace of this CustomData block
-      let eq = cd + 10;
-      while (eq < src.length && /\s/.test(src[eq])) eq++;
-      if (src[eq] !== '=') { out += src.slice(i, cd + 10); i = cd + 10; continue; }
-      let ob = eq + 1;
-      while (ob < src.length && /\s/.test(src[ob])) ob++;
-      if (src[ob] !== '{') { out += src.slice(i, ob); i = ob; continue; }
-      // Extract and discard the whole block
-      out += src.slice(i, cd);
-      const { endIdx } = extractBlock(src, ob + 1);
-      i = endIdx;
-    }
-    return out;
-  }
-  text = stripCustomData(text);
-
-  // ── Types/names to always skip ────────────────────────────────────────────
-  const SKIP_NAMES = new Set(['Tools','Inputs','ViewInfo','ordered','OperatorInfo','Flags','Points','KeyFrames']);
-  // Skip Fusion internal/macro connector types and ALL spline/path types
-  const SKIP_TYPES = new Set([
-    'Input','Polyline','Point','OperatorInfo',
-    'InstanceInput','InstanceOutput',   // macro port descriptors, not real nodes
-    'GroupInfo',                         // group position containers
-  ]);
-  // Motion-path helper types — internal to Fusion, must never appear as nodes.
-  // BUG FIX: original code only filtered BezierSpline + PolyPath; Fusion also
-  // emits Path, XYPath, BezierPath, LinearPath, MoPath, etc. for animated paths.
-  const SKIP_PATH_TYPES = new Set([
-    'BezierSpline','PolyPath','Path','XYPath','BezierPath',
-    'LinearPath','MoPath','MotionPath','SplinePath','PathFollow',
-  ]);
-  const SKIP_PATH_NAME_RE = /^[Pp]ath\d*$|^[Ss]pline\d*$|^[Bb]ezier\d*$|^[Mm]o[Pp]ath\d*$/;
-
-  // ── Identify the top-level Tools block only ───────────────────────────────
-  // We only want tools at the TOP level of the paste (direct children of
-  // "Tools = ordered() { ... }"). Tools nested inside MacroOperator or other
-  // group containers (e.g. the inner "Tools = ordered() { ... }" inside a
-  // MacroOperator block) must be completely ignored.
-  //
-  // CRITICAL: a plain regex over the extracted text will still descend into
-  // nested { } blocks and find interior macro nodes. We fix this by using a
-  // depth-aware shallow scanner that advances PAST each entry's entire { }
-  // block before looking for the next entry, so it never sees nested content.
-
-  function getTopLevelToolsContent(src) {
-    const toolsMatch = src.match(/\bTools\s*=\s*ordered\s*\(\s*\)\s*\{|\bTools\s*=\s*ordered\s*\{/);
-    if (!toolsMatch) return src; // fallback: use full text
-    const openBrace = src.indexOf('{', toolsMatch.index + toolsMatch[0].length - 1);
-    if (openBrace === -1) return src;
-    const { content } = extractBlock(src, openBrace + 1);
-    return content;
-  }
-
-  // Shallow scanner — yields { name, type, content } for every direct child
-  // entry of the form   Name = Type { ... }   found at depth 0 only.
-  //
-  // Strategy: use a regex to locate the HEAD of each "Word = Word {" entry,
-  // then use a BRACE-COUNTING loop to find its matching closing brace.
-  // This correctly handles nodes with deeply nested braces (e.g. AlembicMesh3D
-  // with ViewInfo = { Pos = { ... } }) that would cause a non-greedy regex to
-  // "chop" the body at the first inner closing brace it encounters.
-  //
-  // After consuming each entry's full body we set the regex's lastIndex past it,
-  // preventing descent into nested content (MacroOperator inner Tools, etc.).
-  // We always start at index 0 so the very first node is never skipped.
-  function shallowScanTools(src) {
-    const entries = [];
-    // Match only the HEAD:  Word = Word {
-    // Captures name (group 1), type (group 2), and leaves lastIndex pointing
-    // just after the opening brace so extractBlock() can consume the body.
-    const headRe = /([\w]+)\s*=\s*([\w]+)\s*\{/g;
-    headRe.lastIndex = 0; // guarantee we start at the very beginning of src
-    let m;
-    while ((m = headRe.exec(src)) !== null) {
-      const name     = m[1];
-      const type     = m[2];
-      // headRe.lastIndex now points to the character AFTER the opening '{'.
-      // extractBlock expects startIdx = position after the opening brace,
-      // with depth already at 1 (counting the brace we just consumed).
-      const openAfter = headRe.lastIndex; // char after '{'
-      const { content, endIdx } = extractBlock(src, openAfter);
-      entries.push({ name, type, content });
-      // Advance past the entire block so the next iteration starts outside it.
-      headRe.lastIndex = endIdx;
-    }
-    return entries;
-  }
-
-  const topLevelText = getTopLevelToolsContent(text);
-  const topLevelEntries = shallowScanTools(topLevelText);
-
-  // First pass: collect all spline/path nodes into a lookup map
-  const splineMap = {}; // name → { type, keyframes?, points? }
-  for (const { name: tname, type: ttype, content: bc } of topLevelEntries) {
-    if (SKIP_NAMES.has(tname)) continue;
-    if (ttype === 'BezierSpline') {
-      const kfs = parseBezierKeyframes(bc);
-      const colM = bc.match(/Red\s*=\s*(\d+)[,\s]+Green\s*=\s*(\d+)[,\s]+Blue\s*=\s*(\d+)/);
-      const color = colM ? `rgb(${colM[1]},${colM[2]},${colM[3]})` : '#cc44cc';
-      splineMap[tname] = { type: 'BezierSpline', keyframes: kfs, color };
-    } else if (ttype === 'PolyPath') {
-      const pts = parsePolyPathPoints(bc);
-      splineMap[tname] = { type: 'PolyPath', points: pts };
-    }
-  }
-
-  // Second pass: parse actual tool nodes — only top-level entries, never nested
-  const seenNames = new Set();
-  for (const { name: toolName, type: toolType, content: blockContent } of topLevelEntries) {
-    if (SKIP_NAMES.has(toolName) || SKIP_TYPES.has(toolType)) continue;
-    if (SKIP_PATH_TYPES.has(toolType)) continue;
-    if (SKIP_PATH_NAME_RE.test(toolName)) continue;
-    if (seenNames.has(toolName)) continue;
-    seenNames.add(toolName);
-
-    // Detect tool-level SourceOp — this marks an instance of another tool.
-    // Only search BEFORE the Inputs block so we don't false-match SourceOp
-    // entries nested inside connection params (e.g. EffectMask = Input { SourceOp = "..." }).
-    // Match BOTH "Inputs = {" and "Inputs = ordered() {" so that SourceOp entries
-    // inside the Inputs block are never mistaken for a tool-level instance marker.
-    const inputsIdx = blockContent.search(/\bInputs\s*=\s*(?:ordered\s*\(\s*\)\s*)?\{/);
-    const topLevel = inputsIdx >= 0 ? blockContent.slice(0, inputsIdx) : blockContent;
-    const toolSrcOpM = topLevel.match(/SourceOp\s*=\s*"([^"]+)"/);
-    const instanceOfName = toolSrcOpM ? toolSrcOpM[1] : null;
-
-    const params = {};
-    let pos = null;
-    const posM = blockContent.match(/Pos\s*=\s*\{\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\}/);
-    if (posM) pos = { x: parseFloat(posM[1]), y: parseFloat(posM[2]) };
-
-    // For MacroOperator: parse the inner Tools block to get actual current values for
-    // InstanceInput params, e.g. so Exposure shows 0.56 rather than the slider default of 1.
-    let innerValMap = null;
-    if (toolType === 'MacroOperator') {
-      innerValMap = {};
-      const innerToolsIdx = blockContent.search(/\bTools\s*=\s*ordered\s*\(\s*\)\s*\{|\bTools\s*=\s*ordered\s*\{/);
-      if (innerToolsIdx !== -1) {
-        const innerOpen = blockContent.indexOf('{', innerToolsIdx) + 1;
-        const { content: innerContent } = extractBlock(blockContent, innerOpen);
-        const innerEntries = shallowScanTools(innerContent);
-
-        // First pass: collect all explicit Input values from each inner tool
-        innerEntries.forEach(({ name: iname, content: ic }) => {
-          innerValMap[iname] = {};
-          const iInputsIdx = ic.search(/\bInputs\s*=\s*(?:ordered\s*\(\s*\)\s*)?\{/);
-          if (iInputsIdx !== -1) {
-            const iOpen = ic.indexOf('{', iInputsIdx) + 1;
-            const { content: iIC } = extractBlock(ic, iOpen);
-            // Capture scalar AND FuID values for both plain keys (Gain) and
-            // bracket-notation keys (["Garbage.MaskChannel"]) so masked-channel
-            // and mask-range values from inner nodes are looked up correctly.
-            const valRe = /(?:(\w+)|\["([^"]+)"\])\s*=\s*Input\s*\{[^{}]*\bValue\s*=\s*(FuID\s*\{[^}]+\}|[^\n,{}]+)/g;
-            let vm;
-            while ((vm = valRe.exec(iIC)) !== null) {
-              const key = vm[1] || vm[2]; // word key or quoted-bracket key
-              innerValMap[iname][key] = vm[3].trim().replace(/,$/, '');
-            }
-          }
-
-          // Extract UserControl definitions so we can use their LINKS_Name as a display
-          // label and detect CheckboxControls for On/Off formatting.
-          innerValMap[iname]._uc = {};
-          const ucM = ic.match(/\bUserControls\s*=\s*ordered\s*\(\s*\)\s*\{/);
-          if (ucM) {
-            try {
-              const { content: ucContent } = extractBlock(ic, ucM.index + ucM[0].length);
-              // Each entry: PropName = { ..., LINKS_Name = "...", INPID_InputControl = "...", INP_Default = ..., ... }
-              // Use depth-aware block extraction so multi-line entries with nested {} aren't truncated
-              let ui = 0;
-              while (ui < ucContent.length) {
-                while (ui < ucContent.length && /\s/.test(ucContent[ui])) ui++;
-                if (ui >= ucContent.length) break;
-                const ucEntM = ucContent.slice(ui).match(/^(\w+)\s*=\s*\{/);
-                if (!ucEntM) { const nl = ucContent.indexOf('\n', ui); ui = nl === -1 ? ucContent.length : nl + 1; continue; }
-                const ucPropName = ucEntM[1];
-                const ucBodyStart = ui + ucEntM[0].length;
-                const { content: ucBody, endIdx: ucEnd } = extractBlock(ucContent, ucBodyStart);
-                ui = ucEnd;
-                const linksM   = ucBody.match(/LINKS_Name\s*=\s*"([^"]+)"/);
-                const ctrlM    = ucBody.match(/INPID_InputControl\s*=\s*"([^"]+)"/);
-                const defM     = ucBody.match(/INP_Default\s*=\s*([^\n,}]+)/);
-                const ucEntry = {
-                  linksName:   linksM ? linksM[1] : null,
-                  controlType: ctrlM  ? ctrlM[1]  : null,
-                  defaultVal:  defM   ? defM[1].trim().replace(/,$/, '') : null,
-                };
-                innerValMap[iname]._uc[ucPropName] = ucEntry;
-                // If the Inputs block has no value for this UserControl property,
-                // seed it from INP_Default so InstanceInput lookups succeed.
-                // This fixes the "Enable Tint" / "Glow Only" pattern where the
-                // Inputs block omits the Blend line but UserControls defines the default.
-                if (ucEntry.defaultVal !== null && innerValMap[iname][ucPropName] === undefined) {
-                  innerValMap[iname][ucPropName] = ucEntry.defaultVal;
-                }
-              }
-            } catch(e) {}
-          }
-        });
-
-        // Second pass: inherit unset values from master tools.
-        // e.g. Add1 { SourceOp = "Add2" } should inherit Add2.ApplyMode = "Screen"
-        // even when Add1 appears before Add2 in the listing.
-        innerEntries.forEach(({ name: iname, content: ic }) => {
-          const inputsStart = ic.search(/\bInputs\s*=/);
-          const preInputs  = inputsStart >= 0 ? ic.slice(0, inputsStart) : ic;
-          const masterM    = preInputs.match(/\bSourceOp\s*=\s*"([^"]+)"/);
-          if (masterM && innerValMap[masterM[1]]) {
-            Object.entries(innerValMap[masterM[1]]).forEach(([k, v]) => {
-              if (innerValMap[iname][k] === undefined) innerValMap[iname][k] = v;
-            });
-          }
-        });
-      }
-    }
-
-    // Match both plain "Inputs = {" and ordered "Inputs = ordered() {"
-    const inputsSearch = blockContent.search(/\bInputs\s*=\s*(?:ordered\s*\(\s*\)\s*)?\{/);
-    const hasInputs = inputsSearch !== -1;
-    if (hasInputs) {
-      const inputsOpen = blockContent.indexOf('{', inputsSearch) + 1;
-      const { content: inputsContent } = extractBlock(blockContent, inputsOpen);
-      const parsedParams = parseInputsBlock(inputsContent, splineMap, innerValMap);
-
-      // For instances: mark each parsed param as DEINSTANCED (independently overridden)
-      if (instanceOfName) {
-        Object.entries(parsedParams).forEach(([k, v]) => {
-          v.deinstanced = true; // this param is overridden on this instance
-        });
-      }
-      Object.assign(params, parsedParams);
-    }
-
-    // Allow instance nodes through even with no params — they are valid (fully instanced).
-    // Also allow nodes that HAVE an Inputs block even if none of the params were recognised
-    // by parseInputsBlock (e.g. AlembicMesh3D whose file-path params use non-standard syntax).
-    // Only skip entries that have NO Inputs block at all AND are not instances — these are
-    // typically Fusion bookkeeping stubs (ViewInfo, GroupInfo, etc.) that slipped through
-    // the SKIP_NAMES / SKIP_TYPES filters.
-    const isInstance = !!instanceOfName;
-    if (!hasInputs && !isInstance) continue;
-
-    results.push({ toolName, toolType, params, pos, raw: blockContent.trim(), instanceOfName });
-  }
-
-  // Collect frame numbers across all keyframed params for the scrubber
-  if (results.length) {
-    const allFrames = new Set();
-    results.forEach(tool => {
-      Object.values(tool.params).forEach(p => {
-        if (p.keyframes) p.keyframes.forEach(kf => allFrames.add(kf.frame));
-      });
-    });
-    if (allFrames.size > 0) {
-      results._allFrames = Array.from(allFrames).sort((a,b) => a-b);
-    }
-  }
-
-  return results.length ? results : null;
+  // Delegate to the shared fusion-param-parser module
+  return FusionParamParser.parseSettingText(text);
 }
 
+/** Backward compatibility: delegate fmtNum to the module */
 function fmtNum(s) {
-  const n = parseFloat(s);
-  if (isNaN(n)) return s;
-  const r = parseFloat(n.toPrecision(5));
-  return String(r);
+  return FusionParamParser.fmtNum(s);
 }
 
-/** Render the params panel for the selected node */
-function renderParamsPanel(nodeId) {
-  const node = nodes.find(n => n.id === nodeId);
-  const sec = document.getElementById('params-sec');
-  if (!node) { return; }
-  document.getElementById('params-node-name').textContent = node.name;
-  document.getElementById('params-node-cat').textContent = node.cat;
-
-  // Show badge if params already stored
-  const badge = document.getElementById('params-badge-lbl');
-  if (node.fusionParams && node.fusionParams.length) {
-    const total = node.fusionParams.reduce((s,t) => s + Object.keys(t.params).length, 0);
-    badge.innerHTML = `<span class="params-badge">${total} params</span>`;
-  } else {
-    badge.innerHTML = '';
-  }
-
-  // Show instance information banner
-  const paramsSec = document.getElementById('params-sec');
-  // Remove any existing instance bar
-  paramsSec.querySelector('.instance-info-bar')?.remove();
-  if (node.instanceOf) {
-    const master = nodes.find(n => n.id === node.instanceOf);
-    const deinstancedParams = node.fusionParams
-      ? node.fusionParams.reduce((s, t) =>
-          s + Object.values(t.params).filter(p => p.deinstanced).length, 0)
-      : 0;
-    const bar = document.createElement('div');
-    bar.className = 'instance-info-bar';
-    bar.innerHTML = `
-      <span>⬡ Instance of</span>
-      <span class="iib-master">${master?.name || '?'}</span>
-      ${deinstancedParams
-        ? `<span class="iib-deinstanced">${deinstancedParams} deinstanced param${deinstancedParams!==1?'s':''}</span>`
-        : `<span style="margin-left:auto;color:var(--muted);font-size:8px">fully linked</span>`}`;
-    // Insert after the rp-lbl
-    const lbl = paramsSec.querySelector('.rp-lbl');
-    if (lbl) lbl.after(bar);
-  }
-
-  // Pre-fill paste area if raw is stored
-  const ta = document.getElementById('params-paste');
-  ta.value = node._rawSetting || '';
-
-  // Render parsed params if present
-  renderParamsDisplay(node);
+/** Backward compatibility: delegate extractBlock to the module */
+function extractBlock(text, startIdx) {
+  return FusionParamParser.extractBlock(text, startIdx);
 }
 
-/* ── KEYFRAME SCRUBBER STATE ── */
-let _kfScrubFrame = null; // currently selected frame, null = first available
-
-function _getValueAtFrame(param, frame) {
-  if (param.keyframes && param.keyframes.length) {
-    // Find exact or interpolate
-    const kfs = param.keyframes;
-    const exact = kfs.find(k => k.frame === frame);
-    if (exact) return fmtNum(String(exact.value));
-    // Linear interpolation between surrounding keyframes
-    let lo = null, hi = null;
-    for (const k of kfs) {
-      if (k.frame <= frame) lo = k;
-      if (k.frame > frame && !hi) hi = k;
-    }
-    if (lo && hi) {
-      const t = (frame - lo.frame) / (hi.frame - lo.frame);
-      return fmtNum(String(lo.value + (hi.value - lo.value) * t));
-    }
-    if (lo) return fmtNum(String(lo.value));
-    if (hi) return fmtNum(String(hi.value));
-  }
-  return param.v;
-}
-
-/** Shared custom param editor — shown at the bottom of the params-display div for any node. */
-function _renderCustomParamEditor(disp, node) {
-  const prev = disp.querySelector('.custom-params-section');
-  if (prev) prev.remove();
-  if (!node) return;
-  if (!node.customParams) node.customParams = {};
-
-  const section = document.createElement('div');
-  section.className = 'custom-params-section';
-
-  const title = document.createElement('div');
-  title.className = 'custom-params-title';
-  title.textContent = 'Custom Params';
-  section.appendChild(title);
-
-  // Add-new row (appended first so insertBefore works for existing rows)
-  const addRow = document.createElement('div');
-  addRow.className = 'custom-param-add-row';
-  const newKeyInp = document.createElement('input');
-  newKeyInp.placeholder = 'param name…';
-  const newValInp = document.createElement('input');
-  newValInp.placeholder = 'value…';
-  const addBtn = document.createElement('button');
-  addBtn.className = 'custom-param-add-btn';
-  addBtn.textContent = '+ Add';
-
-  function rebuildRows() {
-    section.querySelectorAll('.custom-param-row').forEach(r => r.remove());
-    Object.entries(node.customParams).forEach(([k, v]) => {
-      const row = document.createElement('div');
-      row.className = 'custom-param-row';
-      const keyInp = document.createElement('input');
-      keyInp.value = k; keyInp.placeholder = 'name'; keyInp.style.flex = '0.9';
-      const valInp = document.createElement('input');
-      valInp.value = v; valInp.placeholder = 'value';
-      const del = document.createElement('button');
-      del.className = 'custom-param-del'; del.textContent = '✕'; del.title = 'Delete';
-      del.addEventListener('click', () => { delete node.customParams[k]; autoSaveParams(); rebuildRows(); });
-      keyInp.addEventListener('blur', () => {
-        const nk = keyInp.value.trim();
-        if (nk && nk !== k) { node.customParams[nk] = node.customParams[k]; delete node.customParams[k]; autoSaveParams(); rebuildRows(); }
-      });
-      valInp.addEventListener('blur', () => { node.customParams[k] = valInp.value; autoSaveParams(); });
-      keyInp.addEventListener('keydown', e => { if (e.key === 'Enter') keyInp.blur(); });
-      valInp.addEventListener('keydown', e => { if (e.key === 'Enter') valInp.blur(); });
-      row.appendChild(keyInp); row.appendChild(valInp); row.appendChild(del);
-      section.insertBefore(row, addRow);
-    });
-  }
-
-  addBtn.addEventListener('click', () => {
-    const k = newKeyInp.value.trim(), v = newValInp.value.trim();
-    if (!k) { newKeyInp.focus(); return; }
-    node.customParams[k] = v;
-    newKeyInp.value = ''; newValInp.value = '';
-    autoSaveParams(); rebuildRows();
-  });
-  [newKeyInp, newValInp].forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); }));
-
-  addRow.appendChild(newKeyInp); addRow.appendChild(newValInp); addRow.appendChild(addBtn);
-  section.appendChild(addRow);
-  rebuildRows();
-  disp.appendChild(section);
-}
-
-function renderParamsDisplay(node, scrubFrame) {
-  const disp = document.getElementById('params-display');
-  disp.innerHTML = '';
-  if (!node.fusionParams || !node.fusionParams.length) {
-    // If this node is an instance of a master, show master's params with an "inherited" header
-    if (node.instanceOf) {
-      const master = nodes.find(n => n.id === node.instanceOf);
-      if (master && master.fusionParams && master.fusionParams.length) {
-        const inhBar = document.createElement('div');
-        inhBar.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--accent);background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.18);border-radius:5px;padding:5px 9px;margin-bottom:8px;';
-        inhBar.innerHTML = `⬡ All params inherited from <strong>${master.name}</strong>`;
-        disp.appendChild(inhBar);
-        // Render master params with inherited styling
-        const origNode = node;
-        // Temporarily render master's params
-        const masterNode = { ...node, fusionParams: master.fusionParams };
-        renderParamsDisplay(masterNode, scrubFrame);
-        return;
-      }
-    }
-    // No Fusion params — still show the custom param editor for any node
-    _renderCustomParamEditor(disp, node);
-    return;
-  }
-
-  // Collect all unique keyframe numbers across all tools/params
-  const allFrames = [];
-  node.fusionParams.forEach(tool => {
-    Object.values(tool.params).forEach(p => {
-      if (p.keyframes) p.keyframes.forEach(kf => { if (!allFrames.includes(kf.frame)) allFrames.push(kf.frame); });
-    });
-  });
-  allFrames.sort((a,b) => a-b);
-
-  // Determine active frame
-  if (allFrames.length) {
-    if (scrubFrame === undefined || scrubFrame === null) {
-      scrubFrame = (_kfScrubFrame !== null && allFrames.includes(_kfScrubFrame)) ? _kfScrubFrame : allFrames[0];
-    }
-    _kfScrubFrame = scrubFrame;
-  }
-
-  // ── KEYFRAME SCRUBBER ──
-  if (allFrames.length > 0) {
-    const scrubberId = 'kf-scrubber-' + node.id;
-    const scrubWrap = document.createElement('div');
-    scrubWrap.style.cssText = 'margin-bottom:10px;background:#0d0d10;border:1px solid var(--border);border-radius:5px;padding:6px 8px;';
-
-    const scrubLabel = document.createElement('div');
-    scrubLabel.style.cssText = 'font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;';
-    scrubLabel.innerHTML = `<span>Keyframes</span><span style="color:var(--accent);font-size:12px;" id="kf-frame-lbl">Frame ${scrubFrame}</span>`;
-    scrubWrap.appendChild(scrubLabel);
-
-    const chips = document.createElement('div');
-    chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;';
-    allFrames.forEach(fr => {
-      const chip = document.createElement('button');
-      chip.style.cssText = `font-size:12px;font-family:var(--font-mono);padding:4px 10px;border-radius:4px;border:1px solid ${fr === scrubFrame ? 'rgba(200,240,96,.6)' : 'var(--border)'};background:${fr === scrubFrame ? 'rgba(200,240,96,.12)' : 'rgba(255,255,255,.03)'};color:${fr === scrubFrame ? 'var(--accent)' : 'var(--text2)'};cursor:pointer;transition:all .1s;`;
-      chip.textContent = fr;
-      chip.title = `Frame ${fr}`;
-      chip.addEventListener('click', () => {
-        _kfScrubFrame = fr;
-        renderParamsDisplay(node, fr);
-        const selNodeObj = nodes.find(n => n.id === selNode);
-        if (selNodeObj) showBottomDrawer(selNodeObj, fr);
-      });
-      chips.appendChild(chip);
-    });
-    scrubWrap.appendChild(chips);
-
-    // Prev/Next arrows
-    const nav = document.createElement('div');
-    nav.style.cssText = 'display:flex;gap:4px;margin-top:5px;';
-    const curIdx = allFrames.indexOf(scrubFrame);
-    const prevBtn = document.createElement('button');
-    prevBtn.style.cssText = 'flex:1;font-size:12px;font-family:var(--font-mono);padding:5px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .1s;';
-    prevBtn.textContent = '◂ Prev';
-    prevBtn.disabled = curIdx <= 0;
-    if (curIdx > 0) prevBtn.addEventListener('click', () => {
-      _kfScrubFrame = allFrames[curIdx-1];
-      renderParamsDisplay(node, allFrames[curIdx-1]);
-      const selNodeObj = nodes.find(n => n.id === selNode);
-      if (selNodeObj) showBottomDrawer(selNodeObj, allFrames[curIdx-1]);
-    });
-    const nextBtn = document.createElement('button');
-    nextBtn.style.cssText = 'flex:1;font-size:12px;font-family:var(--font-mono);padding:5px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .1s;';
-    nextBtn.textContent = 'Next ▸';
-    nextBtn.disabled = curIdx >= allFrames.length - 1;
-    if (curIdx < allFrames.length - 1) nextBtn.addEventListener('click', () => {
-      _kfScrubFrame = allFrames[curIdx+1];
-      renderParamsDisplay(node, allFrames[curIdx+1]);
-      const selNodeObj = nodes.find(n => n.id === selNode);
-      if (selNodeObj) showBottomDrawer(selNodeObj, allFrames[curIdx+1]);
-    });
-    nav.appendChild(prevBtn);
-    nav.appendChild(nextBtn);
-    scrubWrap.appendChild(nav);
-    disp.appendChild(scrubWrap);
-  }
-
-  node.fusionParams.forEach(tool => {
-    if (node.fusionParams.length > 1) {
-      const th = document.createElement('div');
-      th.style.cssText = 'font-size:9px;font-family:var(--font-head);font-weight:600;color:var(--text);margin-bottom:4px;margin-top:6px;padding-bottom:4px;border-bottom:1px solid var(--border);';
-      th.textContent = `${tool.toolName} (${tool.toolType})`;
-      disp.appendChild(th);
-    }
+// Note: renderParamsPanel, renderParamsDisplay, _renderCustomParamEditor, and _getValueAtFrame
+// are now provided by node-visualizer.js module (delegated via wrapper functions above)
 
     const params = tool.params;
     // Filter out noise — Fusion already only exports changed values,
