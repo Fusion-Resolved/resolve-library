@@ -1565,7 +1565,7 @@ var FUSION_NODES_UNIQUE = FUSION_NODES;
         <div class="rp-sec-body">
         <div style="font-size:8px;font-family:var(--font-mono);color:var(--muted);margin-bottom:6px;line-height:1.5;">Select any nodes or group in Fusion → Ctrl+C → paste below. Nodes will be created on the canvas with all parameters auto-filled.</div>
         <textarea class="gpaste-area" id="gpaste-area" placeholder="Paste Fusion .setting here…" spellcheck="false"></textarea>
-        <button class="gpaste-btn" onclick="importFromFusionAuto()">↳ Import nodes to canvas</button>
+        <button class="gpaste-btn" onclick="(function(){ var t=(document.getElementById('gpaste-area')||{}).value||''; importFromFusionAuto(); if(t.trim()) openCompositionInspector(t); })()">↳ Import nodes to canvas</button>
         <div class="gpaste-err" id="gpaste-err"></div>
         <div class="gpaste-result" id="gpaste-result"></div>
         <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
@@ -1575,6 +1575,17 @@ var FUSION_NODES_UNIQUE = FUSION_NODES;
           <input type="file" id="comp-file-input" accept=".comp,.setting" style="display:none" onchange="importCompFile(event)">
           <div class="gpaste-err" id="comp-err"></div>
           <div class="gpaste-result" id="comp-result"></div>
+        </div>
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+          <div class="rp-lbl" style="margin-bottom:6px">Composition Inspector</div>
+          <div style="font-size:8px;font-family:var(--font-mono);color:var(--muted);margin-bottom:8px;line-height:1.5;">Paste any .comp, .setting snippet, or Tools block to browse all nodes, parameters, keyframes and spline curves in a full three-panel view.</div>
+          <button class="sv-btn" id="ci-open-btn" onclick="openCompositionInspector()"
+            style="background:rgba(74,158,255,0.08);border-color:rgba(74,158,255,0.35);color:#4a9eff;">
+            ⬡ Open Composition Inspector
+          </button>
+          <div style="font-size:8px;font-family:var(--font-mono);color:var(--muted);margin-top:5px;line-height:1.4;">
+            Tip: if the selected node already has a saved .setting, it will auto-load.
+          </div>
         </div>
         </div>
       </div>
@@ -1712,7 +1723,16 @@ function showBottomDrawer(node, scrubFrame) {
     findNode: (id) => nodes.find(n => n.id === id),
     selectedNodeId: selNode,
     resolveEnum: FusionParamParser.resolveEnum,
-    openSplineModal: openSplineModal
+    openSplineModal: openSplineModal,
+    // Called by the module when scrubFrame changes from within the drawer,
+    // so the right-side params panel stays in sync without a double re-render.
+    onScrubFrame: (frame) => {
+      _kfScrubFrame = frame;
+      if (selNode) {
+        const n = nodes.find(nd => nd.id === selNode);
+        if (n) renderParamsDisplay(n, frame);
+      }
+    }
   });
   // Sync state back from module
   _kfScrubFrame = NodeVisualizer.getScrubFrame();
@@ -1989,7 +2009,7 @@ function importCompFile(event) {
   const reader = new FileReader();
   reader.onload = function(e) {
     const text = e.target.result;
-    // Paste into gpaste-area and call importFromFusionAuto
+    // Import nodes and connections onto the canvas
     const area = document.getElementById('gpaste-area');
     area.value = text;
     importFromFusionAuto();
@@ -1997,6 +2017,9 @@ function importCompFile(event) {
     resEl.textContent = document.getElementById('gpaste-result').textContent;
     errEl.textContent = document.getElementById('gpaste-err').textContent;
     if (errEl.textContent) errEl.classList.add('show');
+    // Open the composition inspector so all nodes, params, and connections
+    // are browsable immediately after file import
+    openCompositionInspector(text);
     // Reset file input so same file can be re-imported
     event.target.value = '';
   };
@@ -3150,12 +3173,11 @@ function extractBlock(text, startIdx) {
 
 function parseSettingPaste() {
   const node = nodes.find(n => n.id === selNode);
-  if (!node) return;
-  const text = document.getElementById('params-paste').value;
+  const text = (document.getElementById('params-paste').value || '').trim();
   const err = document.getElementById('parse-err');
   err.classList.remove('show');
 
-  if (!text.trim()) { err.textContent = 'Nothing pasted yet.'; err.classList.add('show'); return; }
+  if (!text) { err.textContent = 'Nothing pasted yet.'; err.classList.add('show'); return; }
 
   const result = parseSettingText(text);
   if (!result) {
@@ -3164,13 +3186,42 @@ function parseSettingPaste() {
     return;
   }
 
+  // ── Multi-tool paste: import to canvas + open inspector ───────────────────
+  // When the clipboard contains more than one real tool (spline helpers don't
+  // count — they're internal Fusion objects that never become canvas nodes),
+  // route through the full import pipeline and open the composition inspector
+  // so the user can browse all nodes, connections, params, and splines.
+  const realTools = result.filter(t =>
+    t.toolType !== 'BezierSpline' && t.toolType !== 'PolyPath' &&
+    t.toolType !== 'Path' && t.toolType !== 'XYPath'
+  );
+
+  if (realTools.length > 1) {
+    // Import nodes and connections onto the canvas
+    const gpArea = document.getElementById('gpaste-area');
+    if (gpArea) gpArea.value = text;
+    importFromFusionAuto(text);
+    // Open the inspector loaded with this composition
+    openCompositionInspector(text);
+    // Clear the paste area so it's ready for the next paste
+    document.getElementById('params-paste').value = '';
+    return;
+  }
+
+  // ── Single-tool paste: existing per-node behaviour ────────────────────────
+  if (!node) {
+    err.textContent = 'Select a canvas node first, then paste its .setting here.';
+    err.classList.add('show');
+    return;
+  }
+
   node.fusionParams = result;
   node._rawSetting = text;
   const total = result.reduce((s,t) => s + Object.keys(t.params).length, 0);
   document.getElementById('params-badge-lbl').innerHTML = `<span class="params-badge">${total} params</span>`;
-  _kfScrubFrame = null; // reset frame to first keyframe on fresh parse
+  _kfScrubFrame = null;
   renderParamsDisplay(node);
-  showBottomDrawer(node); // refresh bottom drawer with new params + scrubber
+  showBottomDrawer(node);
   autoSaveParams();
   toast(`Parsed ${total} params — auto-saved`);
 }
@@ -4275,7 +4326,16 @@ function _importFromFusionLegacy(text, tools, err, res) {
 // Auto-trigger import when text is pasted into the group paste area
 document.addEventListener('DOMContentLoaded', () => {
   const gp = document.getElementById('gpaste-area');
-  if (gp) gp.addEventListener('paste', () => setTimeout(importFromFusionAuto, 0));
+  if (gp) gp.addEventListener('paste', () => setTimeout(function() {
+    var text = (document.getElementById('gpaste-area') || {}).value || '';
+    importFromFusionAuto();
+    if (text.trim()) openCompositionInspector(text);
+  }, 0));
+
+  // Also auto-fire on paste into the params paste area — handles both
+  // single-node and multi-node pastes without requiring a button click.
+  const pp = document.getElementById('params-paste');
+  if (pp) pp.addEventListener('paste', () => setTimeout(parseSettingPaste, 0));
 });
 
 // ── ?import= URL listener (V3) ────────────────────────────────────────────
@@ -5792,6 +5852,159 @@ function shToggleDrop(e,id){
 document.addEventListener('click',function(){
   document.querySelectorAll('.sh-add-dd.open').forEach(function(d){d.classList.remove('open');});
 });
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     COMPOSITION INSPECTOR — fullscreen overlay (Option A)
+     ═══════════════════════════════════════════════════════════ -->
+<div id="ci-overlay" style="
+  display:none; position:fixed; inset:0; z-index:400;
+  background:#0a0a0d; flex-direction:column;
+  font-family:'DM Sans',system-ui,sans-serif;">
+
+  <!-- Header bar -->
+  <div id="ci-header" style="
+    display:flex; align-items:center; gap:12px;
+    padding:0 16px; height:48px; flex-shrink:0;
+    background:#111115; border-bottom:1px solid #2c2c38;">
+
+    <span style="font-size:13px; font-weight:700; color:#d4d4e0; letter-spacing:.03em;">
+      ⬡ Composition Inspector
+    </span>
+
+    <!-- Node badge — shown when pre-loaded from a selected node -->
+    <div id="ci-source-badge" style="
+      display:none; font-size:10px; font-family:'DM Mono',monospace;
+      color:#8888a0; background:#1e1e25; border:1px solid #2c2c38;
+      border-radius:4px; padding:2px 8px; line-height:1.6;">
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <!-- Load from selected node button -->
+    <button id="ci-reload-btn" onclick="ciReloadFromNode()" style="
+      display:none; font-size:11px; font-family:'DM Mono',monospace;
+      padding:5px 11px; border-radius:4px; cursor:pointer;
+      background:rgba(74,158,255,.1); border:1px solid rgba(74,158,255,.35);
+      color:#4a9eff; transition:.12s;"
+      title="Reload the currently selected node's saved .setting into the inspector">
+      ↺ Reload from node
+    </button>
+
+    <button onclick="closeCompositionInspector()" style="
+      font-size:11px; font-family:'DM Mono',monospace;
+      padding:5px 12px; border-radius:4px; cursor:pointer;
+      background:rgba(255,255,255,.04); border:1px solid #2c2c38;
+      color:#8888a0; transition:.12s;"
+      onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444';"
+      onmouseout="this.style.borderColor='#2c2c38';this.style.color='#8888a0';">
+      ✕ Close
+    </button>
+  </div>
+
+  <!-- The inspector iframe fills the rest -->
+  <iframe id="ci-frame"
+    src="fusion-inspector.html"
+    style="flex:1; border:none; width:100%; display:block;">
+  </iframe>
+</div>
+
+<script>
+// ── Composition Inspector (Option A) ─────────────────────────
+
+(function () {
+
+  var _frameReady = false;
+  var _pendingSrc  = null;
+
+  // The iframe tells us when it's ready to receive messages
+  window.addEventListener('message', function (e) {
+    if (!e.data) return;
+    if (e.data.type === 'CI_READY') {
+      _frameReady = true;
+      if (_pendingSrc) { _postSrc(_pendingSrc); _pendingSrc = null; }
+    }
+  });
+
+  function _postSrc(src) {
+    var frame = document.getElementById('ci-frame');
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'LOAD_COMPOSITION', src: src }, '*');
+    }
+  }
+
+  function _getSelectedNodeSetting() {
+    // selNode is the nodegraph.html global for the currently selected node id
+    var node = (typeof selNode !== 'undefined' && typeof nodes !== 'undefined')
+      ? nodes.find(function(n){ return n.id === selNode; })
+      : null;
+    return node && node._rawSetting ? node._rawSetting : null;
+  }
+
+  // openCompositionInspector(src?)
+  // • No argument / undefined  — loads the currently-selected node's _rawSetting (existing behaviour)
+  // • String argument          — loads that src directly, used after multi-node paste or file import
+  window.openCompositionInspector = function (directSrc) {
+    var overlay = document.getElementById('ci-overlay');
+    overlay.style.display = 'flex';
+
+    var badge     = document.getElementById('ci-source-badge');
+    var reloadBtn = document.getElementById('ci-reload-btn');
+
+    // Determine what to send to the iframe
+    var src = null;
+    var badgeLabel = null;
+
+    if (typeof directSrc === 'string' && directSrc.trim()) {
+      // Called programmatically with a composition string (multi-node paste / file import)
+      src = directSrc;
+      // Count real tool nodes for the badge label
+      var toolCount = (src.match(/\b\w+\s*=\s*\w+\s*\{/g) || []).length;
+      badgeLabel = toolCount + ' node' + (toolCount !== 1 ? 's' : '') + ' from paste';
+    } else {
+      // Fallback: load from the currently-selected canvas node's saved .setting
+      src = _getSelectedNodeSetting();
+      if (src) {
+        var node = nodes.find(function(n){ return n.id === selNode; });
+        badgeLabel = 'Loaded from: ' + (node ? node.name : 'selected node');
+      }
+    }
+
+    if (src) {
+      badge.textContent  = badgeLabel || '';
+      badge.style.display = badgeLabel ? '' : 'none';
+      reloadBtn.style.display = '';
+      if (_frameReady) { _postSrc(src); }
+      else { _pendingSrc = src; }
+    } else {
+      badge.style.display  = 'none';
+      reloadBtn.style.display = 'none';
+    }
+  };
+
+  window.closeCompositionInspector = function () {
+    document.getElementById('ci-overlay').style.display = 'none';
+  };
+
+  // Reload button: push the currently-selected node's setting into the inspector
+  window.ciReloadFromNode = function () {
+    var src = _getSelectedNodeSetting();
+    if (!src) return;
+    var node = nodes.find(function(n){ return n.id === selNode; });
+    var badge = document.getElementById('ci-source-badge');
+    badge.textContent = 'Loaded from: ' + (node ? node.name : 'selected node');
+    if (_frameReady) { _postSrc(src); }
+  };
+
+  // Keyboard: Escape closes the panel
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      var overlay = document.getElementById('ci-overlay');
+      if (overlay.style.display !== 'none') closeCompositionInspector();
+    }
+  });
+
+}());
 </script>
 </body>
 </html>

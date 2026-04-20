@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fusion Composition Inspector</title>
+<style>
+:root {
+  --bg:        #0a0a0d;
+  --surf0:     #111115;
+  --surf1:     #17171c;
+  --surf2:     #1e1e25;
+  --surf3:     #25252e;
+  --border:    #2c2c38;
+  --border2:   #383848;
+  --text:      #d4d4e0;
+  --text2:     #8888a0;
+  --text3:     #55556a;
+  --accent:    #4a9eff;
+  --accent2:   #c8f060;
+  --kf:        #f5c842;
+  --path:      #b06afc;
+  --conn:      #34d399;
+  --expr:      #fb923c;
+  --inst:      #64b5f6;
+  --muted:     #44445a;
+  --radius:    6px;
+  --radius-sm: 4px;
+  --mono:      'DM Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --head:      'DM Sans', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--head); overflow: hidden; }
+
+/* ── SCROLLBARS ────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── LAYOUT ────────────────────────────────────────────────── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+#topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  background: var(--surf0); flex-shrink: 0; min-height: 48px;
+}
+#topbar h1 { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .04em; white-space: nowrap; }
+#topbar .sep { flex: 1; }
+#paste-btn, #clear-btn {
+  font-size: 11px; font-family: var(--mono); padding: 5px 12px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border2);
+  background: var(--surf2); color: var(--text); cursor: pointer; transition: .12s;
+  white-space: nowrap;
+}
+#paste-btn:hover { border-color: var(--accent); color: var(--accent); }
+#clear-btn:hover { border-color: #ef4444; color: #ef4444; }
+#comp-info { font-size: 10px; font-family: var(--mono); color: var(--text3); }
+
+#panels { display: flex; flex: 1; overflow: hidden; }
+
+/* ── SIDEBAR ───────────────────────────────────────────────── */
+#sidebar {
+  width: 220px; min-width: 160px; flex-shrink: 0;
+  background: var(--surf0); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#sidebar-head {
+  padding: 8px 12px; font-size: 10px; font-family: var(--mono);
+  color: var(--text3); text-transform: uppercase; letter-spacing: .1em;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: flex; justify-content: space-between; align-items: center;
+}
+#node-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+.node-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+  cursor: pointer; transition: background .1s; font-size: 12px; line-height: 1.3;
+}
+.node-item:hover { background: var(--surf2); }
+.node-item.active { background: rgba(74,158,255,.12); border-right: 2px solid var(--accent); }
+.node-item.active .node-name { color: var(--accent); }
+.node-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.node-name { font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.node-type-tag { font-size: 9px; font-family: var(--mono); color: var(--text3); white-space: nowrap; }
+.node-section-hdr {
+  font-size: 9px; font-family: var(--mono); color: var(--text3);
+  text-transform: uppercase; letter-spacing: .1em;
+  padding: 10px 12px 3px; border-top: 1px solid var(--border); margin-top: 3px;
+}
+.node-section-hdr:first-child { border-top: none; margin-top: 0; }
+
+/* ── PARAMS PANEL ──────────────────────────────────────────── */
+#params-panel {
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
+  background: var(--surf1); border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+#params-head {
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-height: 40px;
+}
+#params-node-name { font-size: 13px; font-weight: 700; color: var(--text); }
+#params-node-type {
+  font-size: 10px; font-family: var(--mono); color: var(--text3);
+  background: var(--surf3); border: 1px solid var(--border);
+  padding: 2px 7px; border-radius: 3px;
+}
+#params-body { flex: 1; overflow-y: auto; padding: 8px 12px; }
+
+.pgroup { margin-bottom: 10px; }
+.pgroup-title {
+  font-size: 9px; font-family: var(--mono); color: var(--text3);
+  text-transform: uppercase; letter-spacing: .1em;
+  padding: 4px 0 4px 2px; border-bottom: 1px solid var(--border);
+  margin-bottom: 3px;
+}
+.prow {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 6px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: background .1s;
+  border: 1px solid transparent;
+}
+.prow:hover { background: var(--surf2); }
+.prow.selected { background: rgba(74,158,255,.08); border-color: rgba(74,158,255,.2); }
+.pkey {
+  font-size: 11px; font-family: var(--mono); color: var(--text2);
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pval {
+  font-size: 11px; font-family: var(--mono); color: var(--text);
+  white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis;
+  text-align: right;
+}
+.pval.kf { color: var(--kf); }
+.pval.path { color: var(--path); }
+.pval.conn { color: var(--conn); }
+.pval.expr { color: var(--expr); }
+.pval.inst { color: var(--inst); }
+.pval.def { color: var(--text3); font-style: italic; }
+.kf-dot { width: 6px; height: 6px; background: var(--kf); border-radius: 1px; transform: rotate(45deg); flex-shrink: 0; }
+.path-dot { width: 6px; height: 6px; background: var(--path); border-radius: 50%; flex-shrink: 0; }
+.conn-dot { width: 6px; height: 6px; background: var(--conn); border-radius: 50%; flex-shrink: 0; }
+.empty-dot { width: 6px; flex-shrink: 0; }
+
+/* ── DETAIL PANEL ──────────────────────────────────────────── */
+#detail-panel {
+  width: 300px; min-width: 240px; flex-shrink: 0;
+  background: var(--surf0); display: flex; flex-direction: column; overflow: hidden;
+}
+#detail-head {
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0; min-height: 40px;
+}
+#detail-param-name { font-size: 12px; font-weight: 600; color: var(--text); }
+#detail-param-type { font-size: 9px; font-family: var(--mono); color: var(--text3); }
+#detail-body { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+
+.detail-value-box {
+  background: var(--surf2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 12px;
+}
+.detail-value-label { font-size: 9px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+.detail-value-main { font-size: 18px; font-family: var(--mono); color: var(--text); }
+.detail-value-main.kf { color: var(--kf); }
+.detail-value-main.path { color: var(--path); }
+
+.kf-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.kf-chip {
+  font-size: 10px; font-family: var(--mono); padding: 3px 8px;
+  border-radius: 3px; border: 1px solid var(--border2);
+  background: var(--surf2); color: var(--text2); cursor: pointer;
+  transition: .1s; display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.kf-chip:hover { border-color: var(--kf); color: var(--kf); }
+.kf-chip.active { border-color: rgba(245,200,66,.6); background: rgba(245,200,66,.1); color: var(--kf); }
+.kf-chip .kf-fr { font-size: 8px; color: var(--text3); }
+.kf-chip.active .kf-fr { color: var(--kf); }
+
+.kf-chip.path-chip { color: var(--text2); }
+.kf-chip.path-chip:hover { border-color: var(--path); color: var(--path); }
+.kf-chip.path-chip.active { border-color: rgba(176,106,252,.6); background: rgba(176,106,252,.1); color: var(--path); }
+.kf-chip.path-chip.active .kf-fr { color: var(--path); }
+
+.spline-wrap { border-radius: var(--radius); overflow: hidden; background: #080810; }
+.spline-canvas { display: block; width: 100%; height: 120px; cursor: crosshair; }
+
+.path-points-list { font-size: 11px; font-family: var(--mono); display: flex; flex-direction: column; gap: 2px; }
+.path-pt { color: var(--text2); }
+.path-pt.first { color: var(--path); }
+
+.nav-btns { display: flex; gap: 6px; }
+.nav-btn {
+  flex: 1; font-size: 11px; font-family: var(--mono); padding: 5px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: transparent; color: var(--text2); cursor: pointer; transition: .12s;
+}
+.nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.nav-btn:disabled { opacity: .3; cursor: default; }
+
+/* Back navigation button */
+#detail-back {
+  font-size:10px; font-family:var(--mono); padding:3px 8px;
+  border-radius:3px; border:1px solid var(--border); background:transparent;
+  color:var(--text3); cursor:pointer; transition:.1s; display:none;
+}
+#detail-back:hover { border-color:var(--accent); color:var(--accent); }
+
+/* Connection section in detail panel */
+.conn-section { display:flex; flex-direction:column; gap:4px; }
+.conn-row {
+  display:flex; align-items:center; gap:6px; padding:4px 8px;
+  border-radius:var(--radius-sm); cursor:pointer; transition:background .1s;
+  font-size:11px; font-family:var(--mono);
+}
+.conn-row:hover { background:var(--surf2); }
+.conn-row .conn-arrow { color:var(--text3); font-size:10px; }
+.conn-row .conn-name { color:var(--conn); flex:1; }
+.conn-row .conn-param { color:var(--text3); font-size:9px; text-align:right; }
+
+/* ── SCRUBBER ──────────────────────────────────────────────── */
+#scrubber {
+  border-top: 1px solid var(--border); background: var(--surf0);
+  padding: 8px 16px; flex-shrink: 0; display: flex; align-items: center; gap: 12px;
+}
+#scrubber .scr-label { font-size: 10px; font-family: var(--mono); color: var(--text3); white-space: nowrap; }
+#scrubber .frame-lbl {
+  font-size: 14px; font-family: var(--mono); color: var(--accent2);
+  min-width: 60px; text-align: right; white-space: nowrap;
+}
+#frame-track {
+  flex: 1; height: 32px; background: var(--surf2); border: 1px solid var(--border);
+  border-radius: var(--radius); position: relative; cursor: pointer; overflow: hidden;
+}
+#frame-thumb {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: var(--accent2); pointer-events: none; transition: left .05s;
+}
+.track-kf-tick {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: rgba(245,200,66,.35); pointer-events: none;
+}
+.track-kf-tick.path { background: rgba(176,106,252,.35); }
+
+/* ── PASTE MODAL ───────────────────────────────────────────── */
+#paste-modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  display: none; align-items: center; justify-content: center; z-index: 100;
+}
+#paste-modal.open { display: flex; }
+#paste-box {
+  background: var(--surf1); border: 1px solid var(--border2); border-radius: 8px;
+  width: 680px; max-width: calc(100vw - 40px); display: flex; flex-direction: column; gap: 0;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+#paste-box-head {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+#paste-box-head h2 { font-size: 13px; font-weight: 700; }
+#paste-box-close { background: none; border: none; color: var(--text2); font-size: 18px; cursor: pointer; line-height: 1; padding: 0 4px; }
+#paste-ta {
+  width: 100%; height: 300px; background: #060608; border: none; outline: none;
+  color: var(--text); font-family: var(--mono); font-size: 11px; line-height: 1.5;
+  padding: 14px 18px; resize: vertical;
+}
+#paste-box-foot {
+  padding: 12px 18px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+#paste-hint { font-size: 10px; font-family: var(--mono); color: var(--text3); }
+#paste-submit {
+  font-size: 12px; font-family: var(--mono); padding: 7px 18px;
+  border-radius: var(--radius-sm); border: 1px solid var(--accent);
+  background: rgba(74,158,255,.12); color: var(--accent); cursor: pointer; transition: .12s;
+}
+#paste-submit:hover { background: rgba(74,158,255,.22); }
+
+/* ── EMPTY STATES ──────────────────────────────────────────── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; gap: 10px; color: var(--text3); font-family: var(--mono); font-size: 12px;
+  text-align: center; padding: 24px;
+}
+.empty-state .big { font-size: 32px; margin-bottom: 4px; }
+.empty-state .hint { font-size: 10px; color: var(--muted); line-height: 1.6; max-width: 200px; }
+
+/* ── PARSE ERROR ───────────────────────────────────────────── */
+#parse-error {
+  font-size: 11px; font-family: var(--mono); color: #f87171;
+  padding: 6px 12px; background: rgba(248,113,113,.08);
+  border-radius: var(--radius-sm); display: none;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <h1>⬡ Fusion Inspector</h1>
+    <div id="comp-info"></div>
+    <div class="sep"></div>
+    <div id="parse-error"></div>
+    <button id="clear-btn" style="display:none">Clear</button>
+    <button id="paste-btn">Paste Composition ▸</button>
+  </div>
+
+  <div id="panels">
+    <!-- LEFT: Node list -->
+    <div id="sidebar">
+      <div id="sidebar-head">
+        <span>Nodes</span>
+        <span id="node-count" style="color:var(--text3)"></span>
+      </div>
+      <div id="node-list">
+        <div class="empty-state">
+          <div class="big">⬡</div>
+          Paste a composition to begin
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: Parameters -->
+    <div id="params-panel">
+      <div id="params-head">
+        <div id="params-node-name" style="color:var(--text3)">No node selected</div>
+        <div id="params-node-type" style="display:none"></div>
+      </div>
+      <div id="params-body">
+        <div class="empty-state">
+          <div class="hint">Select a node from the list to view its parameters</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Detail / Spline -->
+    <div id="detail-panel">
+      <div id="detail-head">
+        <button id="detail-back" onclick="navBack()" title="Back">◂</button>
+        <div id="detail-param-name" style="color:var(--text3)">No parameter selected</div>
+        <div id="detail-param-type"></div>
+      </div>
+      <div id="detail-body">
+        <div class="empty-state">
+          <div class="hint">Click an animated parameter to view keyframes and spline</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRUBBER -->
+  <div id="scrubber" style="display:none">
+    <span class="scr-label">Frame</span>
+    <div id="frame-track">
+      <div id="frame-thumb"></div>
+    </div>
+    <span class="frame-lbl" id="frame-display">0</span>
+  </div>
+</div>
+
+<!-- PASTE MODAL -->
+<div id="paste-modal">
+  <div id="paste-box">
+    <div id="paste-box-head">
+      <h2>Paste Fusion Composition</h2>
+      <button id="paste-box-close">✕</button>
+    </div>
+    <textarea id="paste-ta" spellcheck="false" placeholder="Paste your Fusion .comp file, clipboard snippet, or Lua table here…"></textarea>
+    <div id="paste-box-foot">
+      <span id="paste-hint">Accepts .comp files, clipboard snippets ({ Tools = ordered() { … } }), or bare tool blocks</span>
+      <button id="paste-submit">Parse ▸</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  1. LEXER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class Lexer {
+  constructor(src) {
+    this.src = src; this.pos = 0; this.len = src.length;
+  }
+  skipWS() {
+    while (this.pos < this.len) {
+      const c = this.src[this.pos];
+      if (c === ' ' || c === '\t' || c === '\r' || c === '\n') { this.pos++; continue; }
+      // long comment --[[ ... ]]
+      if (this.src.startsWith('--[[', this.pos)) {
+        const e = this.src.indexOf(']]', this.pos + 4);
+        this.pos = e < 0 ? this.len : e + 2; continue;
+      }
+      // single-line comment
+      if (this.src.startsWith('--', this.pos)) {
+        while (this.pos < this.len && this.src[this.pos] !== '\n') this.pos++;
+        continue;
+      }
+      break;
+    }
+  }
+  next() {
+    this.skipWS();
+    if (this.pos >= this.len) return { t: 'EOF' };
+    const c = this.src[this.pos];
+    if ('{}[]()=,'.includes(c)) return { t: c, pos: this.pos++ };
+    // string
+    if (c === '"') {
+      let s = ''; let i = this.pos + 1;
+      while (i < this.len && this.src[i] !== '"') {
+        if (this.src[i] === '\\' && i + 1 < this.len) { s += this.src[i + 1]; i += 2; }
+        else s += this.src[i++];
+      }
+      const tok = { t: 'STR', v: s, pos: this.pos }; this.pos = i + 1; return tok;
+    }
+    // long string [[...]]
+    if (this.src.startsWith('[[', this.pos)) {
+      const e = this.src.indexOf(']]', this.pos + 2);
+      const s = e < 0 ? '' : this.src.slice(this.pos + 2, e);
+      const tok = { t: 'STR', v: s, pos: this.pos }; this.pos = e < 0 ? this.len : e + 2; return tok;
+    }
+    // number (including negative)
+    const nm = this.src.slice(this.pos).match(/^-?(?:0x[\da-fA-F]+|[\d]*\.?[\d]+(?:[eE][+-]?\d+)?)/);
+    if (nm && (nm[0][0] === '-' ? nm[0].length > 1 : true)) {
+      const tok = { t: 'NUM', v: parseFloat(nm[0]), pos: this.pos };
+      this.pos += nm[0].length; return tok;
+    }
+    // identifier / keyword
+    const im = this.src.slice(this.pos).match(/^[a-zA-Z_]\w*/);
+    if (im) {
+      const v = im[0]; this.pos += v.length;
+      if (v === 'true') return { t: 'BOOL', v: true };
+      if (v === 'false') return { t: 'BOOL', v: false };
+      if (v === 'nil') return { t: 'NIL', v: null };
+      return { t: 'ID', v };
+    }
+    return { t: 'UNK', v: this.src[this.pos++] };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  2. PARSER  — recursive descent, produces plain JS objects/arrays
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class Parser {
+  constructor(src) { this.lex = new Lexer(src); this._buf = null; }
+  peek() { if (!this._buf) this._buf = this.lex.next(); return this._buf; }
+  next() { const t = this._buf || this.lex.next(); this._buf = null; return t; }
+  eat(type) { const t = this.next(); return t; } // consume without strict check
+  tryEat(type) { if (this.peek().t === type) { this.next(); return true; } return false; }
+
+  parse() {
+    const t = this.peek();
+    if (t.t === '{') return this.table();
+    if (t.t === 'ID') {
+      // Could be: "Fusion {", "Composition {", "Tools {", etc.
+      const id = this.next();
+      const p = this.peek();
+      if (p.t === '{' || p.t === '(') return this.typedVal(id.v);
+      // Bare text — try to scan for first table
+    }
+    // Fallback: scan for first '{' and parse from there
+    return this.table();
+  }
+
+  // Parse a Lua table literal { ... }
+  table() {
+    this.eat('{');
+    const obj = {}; let arr = 1;
+    while (this.peek().t !== '}' && this.peek().t !== 'EOF') {
+      // [ key ] = val
+      if (this.peek().t === '[') {
+        this.eat('[');
+        const k = this.next(); // NUM or STR
+        this.eat(']'); this.eat('=');
+        const v = this.val();
+        obj[k.v] = v;
+      } else if (this.peek().t === 'ID') {
+        const id = this.next();
+        if (this.peek().t === '=') {
+          this.eat('=');
+          obj[id.v] = this.val();
+        } else {
+          // Type-prefixed value as array element OR bare ident
+          const p = this.peek();
+          if (p.t === '{' || p.t === '(') {
+            obj[arr++] = this.typedVal(id.v);
+          } else {
+            obj[arr++] = id.v; // bare identifier value
+          }
+        }
+      } else {
+        const v = this.val();
+        if (v !== undefined) obj[arr++] = v;
+      }
+      this.tryEat(',');
+    }
+    this.eat('}');
+    return obj;
+  }
+
+  // Parse a value
+  val() {
+    const t = this.peek();
+    if (t.t === '{') return this.table();
+    if (t.t === 'STR') { this.next(); return t.v; }
+    if (t.t === 'NUM') { this.next(); return t.v; }
+    if (t.t === 'BOOL') { this.next(); return t.v; }
+    if (t.t === 'NIL') { this.next(); return null; }
+    if (t.t === 'ID') {
+      this.next();
+      const p = this.peek();
+      if (p.t === '{' || p.t === '(') return this.typedVal(t.v);
+      return t.v;
+    }
+    this.next(); return null;
+  }
+
+  // Parse TypeName(...) { } or TypeName { }
+  typedVal(typeName) {
+    // Skip optional () with any args
+    if (this.peek().t === '(') {
+      this.eat('(');
+      let depth = 1;
+      while (depth > 0 && this.peek().t !== 'EOF') {
+        const x = this.next();
+        if (x.t === '(') depth++; else if (x.t === ')') depth--;
+      }
+    }
+    const obj = { __type: typeName };
+    if (this.peek().t === '{') {
+      this.eat('{');
+      let arr = 1;
+      while (this.peek().t !== '}' && this.peek().t !== 'EOF') {
+        if (this.peek().t === '[') {
+          this.eat('['); const k = this.next(); this.eat(']'); this.eat('=');
+          obj[k.v] = this.val();
+        } else if (this.peek().t === 'ID') {
+          const id = this.next();
+          if (this.peek().t === '=') { this.eat('='); obj[id.v] = this.val(); }
+          else {
+            const p = this.peek();
+            if (p.t === '{' || p.t === '(') obj[arr++] = this.typedVal(id.v);
+            else obj[arr++] = id.v;
+          }
+        } else {
+          const v = this.val();
+          if (v !== undefined) obj[arr++] = v;
+        }
+        this.tryEat(',');
+      }
+      this.eat('}');
+    }
+    return obj;
+  }
+}
+
+function parseLua(src) {
+  try { return new Parser(src).parse(); }
+  catch(e) { console.warn('Parse error:', e); return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  3. TOOL REGISTRY — comprehensive defaults & categories
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CAT_COLORS = {
+  Transform:    '#4a9eff', Color:   '#f5a623', Blur:    '#a78bfa',
+  Composite:    '#34d399', Mask:    '#fb7185', Generator:'#22d3ee',
+  Effect:       '#f0c060', '3D':    '#90cdf4', Particle: '#86efac',
+  Utility:      '#94a3b8', Other:   '#64748b',
+};
+
+// Per-tool: { cat, defaults: { paramName: defaultValue } }
+// defaultValue: number | [x,y] for Point | string
+const TOOL_REGISTRY = {
+  // ─── TRANSFORM ──────────────────────────────────────────────────────────────
+  Transform: {
+    cat: 'Transform',
+    defaults: {
+      Center:[0.5,0.5], Size:1, Angle:0, Aspect:1, Pivot:[0.5,0.5],
+      FlipHoriz:0, FlipVert:0, Blend:1, XOffset:0.5, YOffset:0.5,
+    }
+  },
+  Scale: {
+    cat: 'Transform',
+    defaults: { Center:[0.5,0.5], XSize:1, YSize:1, Aspect:1, ScaleType:0, Blend:1 }
+  },
+  Rotate: {
+    cat: 'Transform',
+    defaults: { Center:[0.5,0.5], Angle:0, Blend:1 }
+  },
+  DVE: {
+    cat: 'Transform',
+    defaults: {
+      Center:[0.5,0.5], PivotPoint:[0.5,0.5],
+      XSize:1, YSize:1, ZSize:1, XRotation:0, YRotation:0, ZRotation:0,
+      Perspective:1, Blend:1,
+    }
+  },
+  Crop: {
+    cat: 'Transform',
+    defaults: { XOffset:0, YOffset:0, XSize:1, YSize:1, Blend:1, KeepCentered:0 }
+  },
+  Resize: {
+    cat: 'Transform',
+    defaults: { Width:1920, Height:1080, FilterType:4, PixelAspect:1 }
+  },
+  GridWarp: {
+    cat: 'Transform',
+    defaults: { XSubdivisions:5, YSubdivisions:5, Blend:1 }
+  },
+  PerspectivePosioner: {
+    cat: 'Transform',
+    defaults: { Blend:1 }
+  },
+
+  // ─── COMPOSITE ──────────────────────────────────────────────────────────────
+  Merge: {
+    cat: 'Composite',
+    defaults: {
+      Center:[0.5,0.5], Size:1, Angle:0, XOffset:0.5, YOffset:0.5,
+      Blend:1, ApplyMode:0, FgAddSub:0, BgAddSub:0, Operator:19,
+      PreDivide:0, Clamp:0,
+    }
+  },
+  MatteControl: {
+    cat: 'Composite',
+    defaults: { PreMultiply:0, Clip:1, Gain:1, Gamma:1, Blur:0, Erode:0 }
+  },
+  ChannelBooleans: {
+    cat: 'Composite',
+    defaults: { Operation:0, ToRed:0, ToGreen:0, ToBlue:0, ToAlpha:0 }
+  },
+  Boolean: {
+    cat: 'Composite',
+    defaults: { 'Boolean Operator':0, Blend:1 }
+  },
+
+  // ─── COLOR ──────────────────────────────────────────────────────────────────
+  BrightnessContrast: {
+    cat: 'Color',
+    defaults: { Gain:1, Gamma:1, Lift:0, Brightness:1, Contrast:1, Saturation:1, Hue:0, Blend:1, Alpha:0 }
+  },
+  HueSaturation: {
+    cat: 'Color',
+    defaults: {
+      ColorChannels:0, MasterHue:0, MasterSaturation:1, MasterLum:1,
+      RedHue:0, RedSaturation:1, RedLum:1,
+      YellowHue:0, YellowSaturation:1, YellowLum:1,
+      GreenHue:0, GreenSaturation:1, GreenLum:1,
+      CyanHue:0, CyanSaturation:1, CyanLum:1,
+      BlueHue:0, BlueSaturation:1, BlueLum:1,
+      MagentaHue:0, MagentaSaturation:1, MagentaLum:1, Blend:1,
+    }
+  },
+  GammaGain: {
+    cat: 'Color',
+    defaults: { RGain:1, GGain:1, BGain:1, AGain:1, RGamma:1, GGamma:1, BGamma:1, Blend:1 }
+  },
+  ColorSpace: {
+    cat: 'Color',
+    defaults: { 'From Color Space':0, 'To Color Space':1, Blend:1 }
+  },
+  ColorCurves: {
+    cat: 'Color',
+    defaults: { Blend:1 }
+  },
+  ColorCorrector: {
+    cat: 'Color',
+    defaults: {
+      'Master RGB Lift':0, 'Master RGB Gamma':1, 'Master RGB Gain':1,
+      'Master RGB Contrast':1, 'Master RGB Saturation':1,
+      'Shadow RGB Lift':0, 'Shadow RGB Gain':1,
+      'Midtone RGB Lift':0, 'Midtone RGB Gain':1,
+      'Highlight RGB Lift':0, 'Highlight RGB Gain':1, Blend:1,
+    }
+  },
+  LUTCubeApply: { cat: 'Color', defaults: { Blend:1, ClipInput:0, Clip:0 } },
+  Levels: {
+    cat: 'Color',
+    defaults: {
+      Low:0, High:1, Gamma:1, OutLow:0, OutHigh:1,
+      Red:1, Green:1, Blue:1, Alpha:1, Blend:1,
+    }
+  },
+  Threshold: { cat: 'Color', defaults: { Threshold:0.5, Blend:1 } },
+  Clamp: { cat: 'Color', defaults: { Low:0, High:1, Blend:1 } },
+
+  // ─── BLUR ───────────────────────────────────────────────────────────────────
+  Blur: {
+    cat: 'Blur',
+    defaults: { XBlurSize:0, YBlurSize:0, Filter:4, Blend:1, Red:1, Green:1, Blue:1, Alpha:1 }
+  },
+  Defocus: {
+    cat: 'Blur',
+    defaults: { XDefocusSize:0, YDefocusSize:0, Filter:4, Blend:1 }
+  },
+  Glow: {
+    cat: 'Blur',
+    defaults: { XGlowSize:0, YGlowSize:0, Blend:1, Passes:1, Threshold:0 }
+  },
+  Sharpen: {
+    cat: 'Blur',
+    defaults: { XSharpenSize:0, YSharpenSize:0, Blend:1 }
+  },
+  Unsharpen: {
+    cat: 'Blur',
+    defaults: { XBlurSize:0, YBlurSize:0, Gain:1, Blend:1 }
+  },
+  Soften: {
+    cat: 'Blur',
+    defaults: { XSoftenSize:0, YSoftenSize:0, Blend:1 }
+  },
+  Trails: {
+    cat: 'Blur',
+    defaults: { Gain:0.5, Threshold:0, Blend:1 }
+  },
+  ErodeDilate: {
+    cat: 'Blur',
+    defaults: { XFilter:0, YFilter:0, XSize:0, YSize:0, Red:1, Green:1, Blue:1, Alpha:1, Blend:1 }
+  },
+  BandedSwirl: {
+    cat: 'Effect',
+    defaults: { Center:[0.5,0.5], Angle:0, Amount:0, Bands:4, Blend:1 }
+  },
+  Whirl: {
+    cat: 'Effect',
+    defaults: { Center:[0.5,0.5], Angle:0, Blend:1 }
+  },
+  Displace: {
+    cat: 'Effect',
+    defaults: { XRefraction:0, YRefraction:0, Blend:1 }
+  },
+
+  // ─── GENERATOR ──────────────────────────────────────────────────────────────
+  Background: {
+    cat: 'Generator',
+    defaults: { Width:1920, Height:1080, Depth:0, Type:0 }
+  },
+  TextPlus: {
+    cat: 'Generator',
+    defaults: {
+      StyledText:'', Size:0.1, Center:[0.5,0.5], VerticalJustificationMode:0,
+      HorizontalJustificationMode:1, Red:1, Green:1, Blue:1, Alpha:1, Blend:1,
+    }
+  },
+  FastNoise: {
+    cat: 'Generator',
+    defaults: {
+      Width:1920, Height:1080, Detail:1, Contrast:1, Brightness:0,
+      XScale:5, YScale:5, X:0.5, Y:0.5, Z:0, Seethe:0, SeetheRate:0,
+      Blend:1,
+    }
+  },
+  Gradient: {
+    cat: 'Generator',
+    defaults: {
+      Width:1920, Height:1080, GradientType:0, Start:[0,0.5], End:[1,0.5], Blend:1,
+    }
+  },
+  Ramp: {
+    cat: 'Generator',
+    defaults: { Start:[0.5,1], End:[0.5,0], Blend:1 }
+  },
+  Shape: {
+    cat: 'Generator',
+    defaults: { Center:[0.5,0.5], Blend:1 }
+  },
+
+  // ─── MASK ───────────────────────────────────────────────────────────────────
+  RectangleMask: {
+    cat: 'Mask',
+    defaults: {
+      Center:[0.5,0.5], Width:0.5, Height:0.25, Angle:0,
+      SoftEdge:0, Level:1, Invert:0, Blend:1,
+      CornerAX:0, CornerAY:0, CornerBX:0, CornerBY:0,
+      CornerCX:0, CornerCY:0, CornerDX:0, CornerDY:0,
+    }
+  },
+  EllipseMask: {
+    cat: 'Mask',
+    defaults: { Center:[0.5,0.5], Width:0.5, Height:0.25, Angle:0, SoftEdge:0, Level:1, Invert:0, Blend:1 }
+  },
+  PolylineMask: {
+    cat: 'Mask',
+    defaults: { SoftEdge:0, Level:1, Invert:0, Blend:1 }
+  },
+  BSplineMask: {
+    cat: 'Mask',
+    defaults: { SoftEdge:0, Level:1, Invert:0, Blend:1 }
+  },
+  BitmapMask: {
+    cat: 'Mask',
+    defaults: { Level:1, Invert:0, Blend:1 }
+  },
+  WandMask: { cat: 'Mask', defaults: { Blend:1 } },
+
+  // ─── EFFECT ─────────────────────────────────────────────────────────────────
+  Emboss: {
+    cat: 'Effect',
+    defaults: { Angle:45, Elevation:45, Depth:1, Blend:1 }
+  },
+  Plasma: {
+    cat: 'Effect',
+    defaults: { Center:[0.5,0.5], Seed:0, Blend:1 }
+  },
+  Rays: {
+    cat: 'Effect',
+    defaults: { Center:[0.5,0.5], Length:0.5, Samples:5, Blend:1 }
+  },
+  Fog3D: { cat: 'Effect', defaults: { Blend:1 } },
+
+  // ─── 3D ─────────────────────────────────────────────────────────────────────
+  Merge3D: { cat: '3D', defaults: {} },
+  Transform3D: {
+    cat: '3D',
+    defaults: {
+      'Transform3DOp.Translate.X':0, 'Transform3DOp.Translate.Y':0, 'Transform3DOp.Translate.Z':0,
+      'Transform3DOp.Rotate.X':0, 'Transform3DOp.Rotate.Y':0, 'Transform3DOp.Rotate.Z':0,
+      'Transform3DOp.Scale.X':1, 'Transform3DOp.Scale.Y':1, 'Transform3DOp.Scale.Z':1,
+      UseTarget:0, Blend:1,
+    }
+  },
+  Camera3D: {
+    cat: '3D',
+    defaults: {
+      FLength:36, ApertureW:24.576, ApertureH:18.672,
+      PlaneFocus:2, Near:0.1, Far:10000,
+      'Transform3DOp.Translate.X':0, 'Transform3DOp.Translate.Y':0, 'Transform3DOp.Translate.Z':-2,
+      'Transform3DOp.Rotate.X':0, 'Transform3DOp.Rotate.Y':0, 'Transform3DOp.Rotate.Z':0,
+    }
+  },
+  PointLight3D: {
+    cat: '3D',
+    defaults: { Intensity:1, Color:[1,1,1], Decay:0, Blend:1 }
+  },
+  SpotLight3D: {
+    cat: '3D',
+    defaults: { Intensity:1, ConeAngle:45, ConeEdge:10, Color:[1,1,1], Decay:0, Blend:1 }
+  },
+  DirectionalLight3D: {
+    cat: '3D',
+    defaults: { Intensity:1, Color:[1,1,1], Blend:1 }
+  },
+  AmbientLight3D: { cat: '3D', defaults: { Intensity:0.2, Color:[1,1,1] } },
+  Renderer3D: { cat: '3D', defaults: { Width:1920, Height:1080, Renderer:0 } },
+  Shape3D: {
+    cat: '3D',
+    defaults: {
+      'Transform3DOp.Translate.X':0, 'Transform3DOp.Translate.Y':0, 'Transform3DOp.Translate.Z':0,
+      'Transform3DOp.Rotate.X':0, 'Transform3DOp.Rotate.Y':0, 'Transform3DOp.Rotate.Z':0,
+      'Transform3DOp.Scale.X':1, 'Transform3DOp.Scale.Y':1, 'Transform3DOp.Scale.Z':1,
+      ObjectID:1,
+    }
+  },
+  ImagePlane3D: {
+    cat: '3D',
+    defaults: {
+      'Transform3DOp.Translate.X':0, 'Transform3DOp.Translate.Y':0, 'Transform3DOp.Translate.Z':0,
+    }
+  },
+  AlembicMesh3D: { cat: '3D', defaults: {} },
+  FBXMesh3D: { cat: '3D', defaults: {} },
+
+  // ─── PARTICLE ───────────────────────────────────────────────────────────────
+  pEmitter: { cat: 'Particle', defaults: { Number:100, SizeX:0.1, SizeY:0.1 } },
+  pRender: { cat: 'Particle', defaults: { SoftEdge:0, Blend:1 } },
+  pMerge: { cat: 'Particle', defaults: {} },
+  pDirectionalForce: { cat: 'Particle', defaults: { Strength:0, Angle:0 } },
+  pGravity: { cat: 'Particle', defaults: { Strength:0.1 } },
+  pFriction: { cat: 'Particle', defaults: { Friction:0.1 } },
+  pTurbulence: { cat: 'Particle', defaults: { Strength:0 } },
+  pVortex: { cat: 'Particle', defaults: { Strength:0, Center:[0.5,0.5] } },
+  pBounce: { cat: 'Particle', defaults: { Threshold:0 } },
+  pCustom: { cat: 'Particle', defaults: {} },
+
+  // ─── UTILITY ────────────────────────────────────────────────────────────────
+  TimeSpeed: { cat: 'Utility', defaults: { Speed:1 } },
+  TimeStretcher: { cat: 'Utility', defaults: { Duration:1 } },
+  ChangeDepth: { cat: 'Utility', defaults: { Depth:0 } },
+  PipeRouter: { cat: 'Utility', defaults: {} },
+  Note: { cat: 'Utility', defaults: {} },
+  Underlay: { cat: 'Utility', defaults: {} },
+  GroupOperator: { cat: 'Utility', defaults: {} },
+
+  // Tracker
+  Tracker: { cat: 'Utility', defaults: { Center:[0.5,0.5], SearchWidth:0.1, SearchHeight:0.1 } },
+
+  // Saver / Loader
+  Saver: { cat: 'Utility', defaults: { CreateDir:1 } },
+  Loader: { cat: 'Utility', defaults: { Loop:0, Reverse:0 } },
+};
+
+// ─── Universal defaults (applied when tool type not found) ────────────────────
+const UNIVERSAL_DEFAULTS = { Blend: 1 };
+
+// ─── 2D point params (need offset correction from path space) ─────────────────
+const POINT_PARAM_DEFAULTS = {
+  Center:[0.5,0.5], Pivot:[0.5,0.5], Start:[0,0.5], End:[1,0.5],
+  PivotPoint:[0.5,0.5], XOffset:0.5, YOffset:0.5,
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  4. ENUM TABLES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ENUMS = {
+  ApplyMode:    {0:'Normal',1:'Screen',2:'Dissolve',3:'Multiply',4:'Overlay',5:'Soft Light',6:'Hard Light',7:'Color Dodge',8:'Color Burn',9:'Darken',10:'Lighten',11:'Difference',12:'Exclusion',13:'Hue',14:'Saturation',15:'Color',16:'Luminosity',19:'Over',20:'Under',21:'In',22:'Held Out',23:'Atop'},
+  Operator:     {0:'Normal',1:'Screen',2:'Dissolve',3:'Multiply',4:'Overlay',5:'Soft Light',6:'Hard Light',7:'Color Dodge',8:'Color Burn',9:'Darken',10:'Lighten',11:'Difference',12:'Exclusion',13:'Hue',14:'Saturation',15:'Color',16:'Luminosity',19:'Over',20:'Under',21:'In',22:'Held Out',23:'Atop'},
+  Filter:       {0:'Box',1:'Bartlett',2:'Multi-box',3:'Gaussian',4:'Catmull-Rom',5:'Mitchell',6:'Lanczos'},
+  XFilter:      {0:'Box',1:'Bartlett',2:'Multi-box',3:'Gaussian',4:'Catmull-Rom'},
+  YFilter:      {0:'Box',1:'Bartlett',2:'Multi-box',3:'Gaussian',4:'Catmull-Rom'},
+  FilterType:   {0:'Nearest',1:'Box',2:'Linear',3:'Quadratic',4:'Cubic',5:'Catmull-Rom',6:'Gaussian',7:'Mitchell',8:'Lanczos',9:'Sinc'},
+  'Color Space':   {0:'sRGB',1:'Linear',2:'Log',3:'Rec.709',4:'Rec.2020',5:'P3-D65',6:'DaVinci Wide Gamut'},
+  'From Color Space':{0:'sRGB',1:'Linear',2:'Log',3:'Rec.709',4:'Rec.2020',5:'P3-D65',6:'DaVinci Wide Gamut'},
+  'To Color Space':  {0:'sRGB',1:'Linear',2:'Log',3:'Rec.709',4:'Rec.2020',5:'P3-D65',6:'DaVinci Wide Gamut'},
+  Depth:        {0:'Auto',1:'int8',2:'int16',3:'Half Float',4:'Float32'},
+  FlipHoriz:    {0:'None',1:'Flip'}, FlipVert:{0:'None',1:'Flip'},
+  Alpha:        {0:'Off',1:'On'},
+  Operation:    {0:'Copy',1:'AND',2:'OR',3:'XOR',4:'Add',5:'Subtract',6:'Multiply',7:'Divide',8:'Maximum',9:'Minimum'},
+  'Boolean Operator':{0:'AND',1:'OR',2:'XOR',3:'Not',4:'Darken',5:'Lighten',6:'Add',7:'Subtract',8:'Difference',9:'Multiply',10:'Divide'},
+  Renderer:     {0:'OpenGL',1:'Software'},
+  ColorChannels:{0:'Master',1:'Red',2:'Yellow',3:'Green',4:'Cyan',5:'Blue',6:'Magenta'},
+  GradientType: {0:'Linear',1:'Reflect',2:'Square',3:'Cross',4:'Radial'},
+  'Gradient Type':{0:'Linear',1:'Reflect',2:'Square',3:'Cross',4:'Radial'},
+  Type:         {0:'Fast Noise',1:'Turbulent Noise',2:'Gradient Noise',3:'Multi-Fractal Noise'},
+  LayoutStyle:  {0:'Horizontal',1:'Vertical',2:'Path'},
+  HorizAlign:   {0:'Left',1:'Centre',2:'Right',3:'Justified'},
+  VertAlign:    {0:'Top',1:'Centre',2:'Bottom'},
+};
+
+function resolveEnum(paramName, val) {
+  if (val === null || val === undefined || val === '—') return val;
+  const s = String(val).trim();
+  if (!/^-?\d+$/.test(s)) return val;
+  const n = parseInt(s);
+  // Direct name match
+  for (const [k, table] of Object.entries(ENUMS)) {
+    if (k.toLowerCase() === paramName.toLowerCase() && table[n] !== undefined) return table[n];
+  }
+  // Partial match
+  for (const [k, table] of Object.entries(ENUMS)) {
+    if (paramName.toLowerCase().includes(k.toLowerCase()) && table[n] !== undefined) return table[n];
+  }
+  return val;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  5. FUSION RESOLVER — extract tools, splines, apply defaults
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SKIP_TYPES = new Set(['BezierSpline','PolyPath','Input','Polyline','Point','OperatorInfo','GroupInfo','InstanceInput','InstanceOutput']);
+const SKIP_NAMES = new Set(['Tools','Inputs','ViewInfo','ordered','OperatorInfo','Flags','Points','KeyFrames']);
+
+function findToolsBlock(obj, depth = 0) {
+  if (!obj || typeof obj !== 'object' || depth > 6) return null;
+  if (obj.Tools) return obj.Tools;
+  for (const v of Object.values(obj)) {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const found = findToolsBlock(v, depth + 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function parseBezierSpline(obj) {
+  const kfBlock = obj.KeyFrames;
+  if (!kfBlock) return [];
+  const kfs = [];
+  for (const [k, v] of Object.entries(kfBlock)) {
+    const frame = parseFloat(k);
+    if (isNaN(frame)) continue;
+    let value, rh = null, lh = null;
+    if (typeof v === 'object') {
+      // Array element 1 is the value: { 1: val, RH: {...}, LH: {...} }
+      value = (v[1] !== undefined) ? parseFloat(v[1]) : NaN;
+      if (v.RH && typeof v.RH === 'object') rh = { x: v.RH[1] ?? v.RH.X ?? 0, y: v.RH[2] ?? v.RH.Y ?? 0 };
+      if (v.LH && typeof v.LH === 'object') lh = { x: v.LH[1] ?? v.LH.X ?? 0, y: v.LH[2] ?? v.LH.Y ?? 0 };
+    } else {
+      value = parseFloat(v);
+    }
+    if (!isNaN(value)) kfs.push({ frame, value, rh, lh });
+  }
+  return kfs.sort((a, b) => a.frame - b.frame);
+}
+
+function parsePolyPath(obj) {
+  // Find Polyline inside Inputs
+  const inputs = obj.Inputs;
+  if (!inputs) return { points: [] };
+  const polyLineInput = inputs.PolyLine;
+  if (!polyLineInput) return { points: [] };
+  const polylineVal = polyLineInput.Value || polyLineInput;
+  if (!polylineVal || polylineVal.__type !== 'Polyline') return { points: [] };
+  const pts = [];
+  const pointsBlock = polylineVal.Points || polylineVal;
+  for (const v of Object.values(pointsBlock)) {
+    if (typeof v === 'object' && v !== null && 'X' in v && 'Y' in v) {
+      pts.push({ x: parseFloat(v.X), y: parseFloat(v.Y) });
+    }
+  }
+  return { points: pts };
+}
+
+function fmtNum(n) {
+  if (typeof n !== 'number') n = parseFloat(n);
+  if (isNaN(n)) return '—';
+  const r = parseFloat(n.toPrecision(5));
+  return String(r);
+}
+
+function fmtPoint(x, y) { return `${fmtNum(x)}, ${fmtNum(y)}`; }
+
+function resolveComposition(ast) {
+  const toolsBlock = findToolsBlock(ast) || ast;
+  if (!toolsBlock) return null;
+
+  // First pass: collect splines and paths
+  const splineMap = {};
+  for (const [name, obj] of Object.entries(toolsBlock)) {
+    if (!obj || typeof obj !== 'object') continue;
+    const type = obj.__type;
+    if (type === 'BezierSpline') {
+      const color = obj.SplineColor
+        ? `rgb(${obj.SplineColor.Red||200},${obj.SplineColor.Green||100},${obj.SplineColor.Blue||200})`
+        : '#cc44cc';
+      splineMap[name] = { type: 'BezierSpline', keyframes: parseBezierSpline(obj), color };
+    } else if (type === 'PolyPath') {
+      const { points } = parsePolyPath(obj);
+      // Check for animated displacement
+      let dispSpline = null;
+      const inputs = obj.Inputs || {};
+      const dispInput = inputs.Displacement;
+      if (dispInput && dispInput.SourceOp) {
+        dispSpline = dispInput.SourceOp;
+      }
+      splineMap[name] = { type: 'PolyPath', points, dispSplineName: dispSpline };
+    }
+  }
+
+  // Resolve PolyPath displacement splines
+  for (const [name, spl] of Object.entries(splineMap)) {
+    if (spl.type === 'PolyPath' && spl.dispSplineName && splineMap[spl.dispSplineName]) {
+      spl.dispSpline = splineMap[spl.dispSplineName];
+    }
+  }
+
+  // Second pass: extract real tools
+  const tools = [];
+  const seen = new Set();
+  for (const [name, obj] of Object.entries(toolsBlock)) {
+    if (!obj || typeof obj !== 'object') continue;
+    const type = obj.__type;
+    if (!type || SKIP_NAMES.has(name) || SKIP_TYPES.has(type)) continue;
+    if (seen.has(name)) continue;
+    seen.add(name);
+
+    const pos = obj.ViewInfo?.Pos
+      ? { x: obj.ViewInfo.Pos[1] ?? 0, y: obj.ViewInfo.Pos[2] ?? 0 }
+      : null;
+
+    const params = resolveInputs(obj.Inputs || {}, splineMap, type);
+    tools.push({ name, type, params, pos, raw: JSON.stringify(obj, null, 2) });
+  }
+
+  // Collect all keyframe frames
+  const allFrames = new Set();
+  tools.forEach(t => Object.values(t.params).forEach(p => {
+    if (p.keyframes) p.keyframes.forEach(k => allFrames.add(k.frame));
+  }));
+
+  // Build connection graph — upstream/downstream per tool
+  const _byName = {};
+  tools.forEach(t => { _byName[t.name] = t; t.upstream = []; t.downstream = []; });
+  tools.forEach(t => {
+    Object.entries(t.params).forEach(([pname, p]) => {
+      if (p.kind === 'conn' && p.sourceOp && _byName[p.sourceOp]) {
+        t.upstream.push({ param: pname, from: p.sourceOp });
+        _byName[p.sourceOp].downstream.push({ param: pname, to: t.name });
+      }
+    });
+  });
+  tools.forEach(t => { t.isRoot = t.upstream.length === 0; });
+
+  return { tools, allFrames: [...allFrames].sort((a,b)=>a-b) };
+}
+
+function resolveInputs(inputs, splineMap, toolType) {
+  const params = {};
+  const toolDef = TOOL_REGISTRY[toolType] || {};
+  const toolDefaults = toolDef.defaults || {};
+
+  for (const [pname, inp] of Object.entries(inputs)) {
+    if (!inp || typeof inp !== 'object') continue;
+    if (inp.__type !== 'Input' && inp.__type !== 'InstanceInput') continue;
+
+    // Connection to spline / path
+    if (inp.SourceOp) {
+      const srcName = inp.SourceOp;
+      const spline = splineMap[srcName];
+      if (spline) {
+        if (spline.type === 'BezierSpline' && spline.keyframes.length) {
+          const kf0 = spline.keyframes[0];
+          params[pname] = {
+            v: fmtNum(kf0.value), kind: 'keyframe',
+            keyframes: spline.keyframes, splineColor: spline.color,
+            sourceOp: srcName,
+          };
+        } else if (spline.type === 'PolyPath') {
+          const ptDefault = POINT_PARAM_DEFAULTS[pname];
+          const ox = ptDefault ? ptDefault[0] : 0;
+          const oy = ptDefault ? ptDefault[1] : 0;
+          const pts = spline.points;
+          const fPt = pts[0];
+          let baseV = fPt ? fmtPoint(ox + fPt.x, oy + fPt.y) : `${ox}, ${oy}`;
+          const isAnimated = !!(spline.dispSpline && spline.dispSpline.keyframes && spline.dispSpline.keyframes.length);
+          if (isAnimated) {
+            const kf0 = spline.dispSpline.keyframes[0];
+            baseV = computePathValue(pname, pts, kf0.value);
+          }
+          params[pname] = {
+            v: baseV, kind: isAnimated ? 'animpath' : 'path',
+            pathPoints: pts, pathDefault: [ox, oy],
+            keyframes: isAnimated ? spline.dispSpline.keyframes : null,
+            splineColor: '#b06afc', sourceOp: srcName,
+          };
+        } else {
+          params[pname] = { v: `→ ${srcName}`, kind: 'conn', sourceOp: srcName };
+        }
+        continue;
+      } else {
+        params[pname] = { v: `→ ${srcName}`, kind: 'conn', sourceOp: srcName };
+        continue;
+      }
+    }
+
+    // Expression
+    if (inp.Expression !== undefined) {
+      params[pname] = { v: inp.Expression, kind: 'expr' }; continue;
+    }
+
+    // Explicit value
+    const rawVal = inp.Value;
+    if (rawVal !== undefined) {
+      params[pname] = { v: extractValue(rawVal), kind: 'static' }; continue;
+    }
+
+    // Default
+    const def = toolDefaults[pname] ?? UNIVERSAL_DEFAULTS[pname];
+    if (def !== undefined) {
+      const dv = Array.isArray(def) ? fmtPoint(def[0], def[1]) : fmtNum(def);
+      params[pname] = { v: dv, kind: 'default' };
+    } else {
+      params[pname] = { v: '—', kind: 'static' };
+    }
+  }
+
+  // Fill in missing defaults
+  for (const [pname, def] of Object.entries(toolDefaults)) {
+    if (!params[pname]) {
+      const dv = Array.isArray(def) ? fmtPoint(def[0], def[1]) : fmtNum(def);
+      params[pname] = { v: dv, kind: 'default' };
+    }
+  }
+
+  return params;
+}
+
+function extractValue(raw) {
+  if (raw === null || raw === undefined) return '—';
+  if (typeof raw === 'number') return fmtNum(raw);
+  if (typeof raw === 'boolean') return String(raw);
+  if (typeof raw === 'string') return raw;
+  if (typeof raw === 'object') {
+    const t = raw.__type;
+    if (t === 'Point') return fmtPoint(raw[1] ?? raw.X ?? 0, raw[2] ?? raw.Y ?? 0);
+    if (t === 'Polyline') return 'Polyline';
+    if (t === 'FuID') return raw[1] ?? raw[Object.keys(raw).find(k=>k!=='__type')] ?? 'FuID';
+    if (t === 'Gradient') return fmtGradient(raw);
+    if (t === 'ColorControls') return 'Color wheel';
+    if (t === 'MtlStdInputs') return 'Material';
+    // Array-style object: check if first element
+    if (raw[1] !== undefined && raw[2] !== undefined) return fmtPoint(raw[1], raw[2]);
+    if (raw[1] !== undefined) return fmtNum(raw[1]);
+    return `[${t || 'table'}]`;
+  }
+  return String(raw);
+}
+
+function fmtGradient(obj) {
+  const stops = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === '__type') continue;
+    const pos = parseFloat(k);
+    if (isNaN(pos) || typeof v !== 'object') continue;
+    const r = Math.round((v.R ?? 0) * 255), g = Math.round((v.G ?? 0) * 255), b = Math.round((v.B ?? 0) * 255);
+    const hex = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+    stops.push({ pos: Math.round(pos * 100), hex });
+  }
+  if (!stops.length) return 'Gradient';
+  return stops.map(s => `@${s.pos}%:${s.hex}`).join(' ');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  6. VALUE COMPUTATION — single source of truth for all display sections
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function computePathValue(pname, pts, displacement) {
+  const ptDefault = POINT_PARAM_DEFAULTS[pname];
+  const ox = ptDefault ? ptDefault[0] : 0;
+  const oy = ptDefault ? ptDefault[1] : 0;
+  if (!pts || pts.length === 0) return fmtPoint(ox, oy);
+  if (pts.length === 1) return fmtPoint(ox + pts[0].x, oy + pts[0].y);
+
+  // Arc-length parameterization for multi-point paths
+  const segs = [];
+  let total = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const dx = pts[i+1].x - pts[i].x, dy = pts[i+1].y - pts[i].y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    segs.push({ from: pts[i], to: pts[i+1], len }); total += len;
+  }
+  if (total === 0) return fmtPoint(ox + pts[0].x, oy + pts[0].y);
+
+  let d = displacement * total, acc = 0;
+  for (const seg of segs) {
+    if (d <= acc + seg.len || seg === segs[segs.length-1]) {
+      const t = seg.len > 0 ? (d - acc) / seg.len : 0;
+      const cx = seg.from.x + (seg.to.x - seg.from.x) * Math.max(0, Math.min(1, t));
+      const cy = seg.from.y + (seg.to.y - seg.from.y) * Math.max(0, Math.min(1, t));
+      return fmtPoint(ox + cx, oy + cy);
+    }
+    acc += seg.len;
+  }
+  return fmtPoint(ox + pts[pts.length-1].x, oy + pts[pts.length-1].y);
+}
+
+function getSplineValueAtFrame(keyframes, frame) {
+  if (!keyframes || !keyframes.length) return null;
+  const kfs = keyframes;
+  const exact = kfs.find(k => k.frame === frame);
+  if (exact) return exact.value;
+  let lo = null, hi = null;
+  for (const k of kfs) {
+    if (k.frame <= frame) lo = k;
+    else if (!hi) hi = k;
+  }
+  if (lo && hi) {
+    // Bezier interpolation using RH/LH handles if present
+    if (lo.rh && hi.lh) {
+      return bezierInterp(lo.frame, lo.value, lo.rh.x, lo.rh.y, hi.lh.x, hi.lh.y, hi.frame, hi.value, frame);
+    }
+    const t = (frame - lo.frame) / (hi.frame - lo.frame);
+    return lo.value + (hi.value - lo.value) * t;
+  }
+  if (lo) return lo.value;
+  if (hi) return hi.value;
+  return null;
+}
+
+function bezierInterp(x0, y0, cx1, cy1, cx2, cy2, x3, y3, targetX) {
+  // Numerically find t such that bezier_x(t) = targetX, then return bezier_y(t)
+  let t = (targetX - x0) / (x3 - x0); // initial guess
+  for (let i = 0; i < 8; i++) {
+    const mt = 1 - t;
+    const bx = mt*mt*mt*x0 + 3*mt*mt*t*cx1 + 3*mt*t*t*cx2 + t*t*t*x3;
+    const dbx = 3*(mt*mt*(cx1-x0) + 2*mt*t*(cx2-cx1) + t*t*(x3-cx2));
+    if (Math.abs(dbx) < 1e-10) break;
+    t -= (bx - targetX) / dbx;
+    t = Math.max(0, Math.min(1, t));
+  }
+  const mt = 1 - t;
+  return mt*mt*mt*y0 + 3*mt*mt*t*cy1 + 3*mt*t*t*cy2 + t*t*t*y3;
+}
+
+// The unified display-value getter — called by ALL display sections
+function getDisplayValue(param, pname, frame) {
+  if (param.kind === 'keyframe') {
+    const v = getSplineValueAtFrame(param.keyframes, frame);
+    return v !== null ? fmtNum(v) : param.v;
+  }
+  if (param.kind === 'animpath' && param.keyframes && param.pathPoints) {
+    const displacement = getSplineValueAtFrame(param.keyframes, frame);
+    if (displacement !== null) return computePathValue(pname, param.pathPoints, displacement);
+  }
+  return param.v;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  7. PARAMETER GROUPING & LABELS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const GROUP_PATTERNS = [
+  { name:'Transform',     re:/^(Center|Size$|Angle$|Aspect|Pivot|[XY]Offset|Flip[HV]|Width$|Height$|XScale|YScale|Tilt|Skew|Corner[A-Z]|PivotPoint|PerspNear|PerspFar|XSize|YSize|ZSize|X(Rotation|Scale)|Y(Rotation|Scale)|Z(Rotation|Scale)|Perspective$|ObjectID)/i },
+  { name:'3D Transform',  re:/^Transform3DOp\./i },
+  { name:'Opacity',       re:/^(Blend$|Alpha$|Opacity|PreDivide|Clamp$|FgAddSub|BgAddSub|ApplyMode|Operator$)/i },
+  { name:'Color',         re:/^(Gain$|Gamma$|Lift$|Saturation|Hue$|Brightness|Contrast|Red$|Green$|Blue$|RGB|Luma|ColorChannels|Color$|Tint|Temperature|RGain|GGain|BGain|RGamma|GGamma|BGamma|Midtone|Highlight|Shadow$|Low[RGB]|High[RGB]|Out(Low|High)|Threshold$)/i },
+  { name:'Color Space',   re:/^(Color Space|From Color|To Color|Depth$|LUT)/i },
+  { name:'Blur',          re:/^([XY]?(Blur|Glow|Defocus|Sharpen|Soften)Size|Passes$|Filter$|[XY]Filter|Samples$)/i },
+  { name:'Mask',          re:/^(SoftEdge|Level$|Invert$|Threshold$|Low$|High$|Clipping|Erode|Dilate|ClipBlack|ClipWhite|Inner|Outer|Matte|Mask|Edge$)/i },
+  { name:'Animation',     re:/^(TimeOffset|Speed$|Hold|Rate|Duration|Frame|Loop|Reverse|MotionBlur|ShutterAngle)/i },
+  { name:'Text',          re:/^(StyledText|Font|Size$|Tracking|Leading|LineSpacing|CharSpacing|LayoutStyle|HorizAlign|VertAlign|Italic|Bold|LineWidth|Text[A-Z]|Vertical|Horizontal)/i },
+  { name:'Noise',         re:/^(Noise|Phase|Amplitude|Frequency|Seethe|Detail|Roughness|Scale$|Lacunarity|Octave|Cellular|Perlin|Turbulence|Warp|Ripple)/i },
+  { name:'Particles',     re:/^(Number$|Size[XY]|pEmit|pRender|Life|Mass|Velocity|Direction|Region|Spread|Gravity|Bounce|Friction|Strength$)/i },
+  { name:'Light',         re:/^(Intensity|ConeAngle|ConeEdge|Attenuation|Decay|Ambient|Diffuse|Specular|FLength|ApertureW|ApertureH|PlaneFocus|Near$|Far$|StereoEyeSep)/i },
+  { name:'Geometry',      re:/^(Search|Pattern|CornerAX|CornerAY|CornerBX|CornerBY|CornerCX|CornerCY|CornerDX|CornerDY|XSubdiv|YSubdiv|KeepCentered)/i },
+];
+const GROUP_ORDER = ['Transform','3D Transform','Opacity','Color','Color Space','Blur','Mask','Animation','Text','Noise','Particles','Light','Geometry','Connections','Other'];
+
+function getParamGroup(pname, param) {
+  if (param.kind === 'conn') return 'Connections';
+  for (const g of GROUP_PATTERNS) { if (g.re.test(pname)) return g.name; }
+  return 'Other';
+}
+
+const LABEL_OVERRIDES = {
+  XBlurSize:'Blur Width', YBlurSize:'Blur Height', BlurSize:'Blur Size',
+  XGlowSize:'Glow Width', YGlowSize:'Glow Height',
+  FgAddSub:'Fg Add/Sub', BgAddSub:'Bg Add/Sub',
+  ApplyMode:'Apply Mode', FlipHoriz:'Flip Horiz', FlipVert:'Flip Vert',
+  XOffset:'X Offset', YOffset:'Y Offset', XSize:'X Size', YSize:'Y Size',
+  ZSize:'Z Size', XRotation:'X Rotation', YRotation:'Y Rotation', ZRotation:'Z Rotation',
+  FLength:'Focal Length', ApertureW:'Aperture W', ApertureH:'Aperture H',
+  PlaneFocus:'Plane of Focus', StyledText:'Styled Text', LayoutStyle:'Layout Style',
+  SeetheRate:'Seethe Rate', PivotPoint:'Pivot Point',
+};
+
+function fmtLabel(k) {
+  if (LABEL_OVERRIDES[k]) return LABEL_OVERRIDES[k];
+  if (k.startsWith('Transform3DOp.')) {
+    return k.replace('Transform3DOp.', '').replace(/\./g, ' ');
+  }
+  return k.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  8. APP STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const state = {
+  tools: [], allFrames: [], frame: 0,
+  selectedTool: null, selectedParam: null,
+  minFrame: 0, maxFrame: 100,
+  navHistory: [],   // stack of tool names for back-navigation
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  9. UI RENDERING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderSidebar() {
+  const list = document.getElementById('node-list');
+  const cnt  = document.getElementById('node-count');
+  if (!state.tools.length) {
+    list.innerHTML = '<div class="empty-state"><div class="big">⬡</div>Paste a composition to begin</div>';
+    cnt.textContent = '';
+    return;
+  }
+  cnt.textContent = state.tools.length;
+
+  // Topological sort: roots first, then breadth-first downstream
+  const sorted = [];
+  const visited = new Set();
+  function visit(name) {
+    if (visited.has(name)) return;
+    visited.add(name);
+    const t = state.tools.find(x => x.name === name);
+    if (!t) return;
+    // visit all upstream first
+    (t.upstream || []).forEach(u => visit(u.from));
+    sorted.push(t);
+  }
+  // Start from roots (nodes with no upstream within this composition)
+  state.tools.filter(t => t.isRoot).forEach(t => visit(t.name));
+  // Catch any remaining (disconnected cycles or missed nodes)
+  state.tools.forEach(t => visit(t.name));
+
+  // Group by category for the section headers
+  const groups = {};
+  const catOrder = ['Transform','Composite','Color','Blur','Generator','Mask','Effect','3D','Particle','Utility','Other'];
+  sorted.forEach(t => {
+    const cat = (TOOL_REGISTRY[t.type]?.cat) || 'Other';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(t);
+  });
+
+  let html = '';
+  catOrder.forEach(cat => {
+    const ts = groups[cat];
+    if (!ts) return;
+    html += `<div class="node-section-hdr">${cat}</div>`;
+    ts.forEach(t => {
+      const color = CAT_COLORS[cat] || '#64748b';
+      const isActive = state.selectedTool === t.name;
+      const animated = Object.values(t.params).filter(p => p.kind === 'keyframe' || p.kind === 'animpath').length;
+      const upCount = (t.upstream || []).length;
+      const dnCount = (t.downstream || []).length;
+
+      // Flow indicator: ↑n shows how many feed in, ↓n shows how many it feeds
+      let flowHtml = '';
+      if (upCount) flowHtml += `<span style="font-size:9px;color:var(--conn);font-family:var(--mono)">↑${upCount}</span>`;
+      if (dnCount) flowHtml += `<span style="font-size:9px;color:var(--accent2);font-family:var(--mono)">↓${dnCount}</span>`;
+
+      html += `<div class="node-item${isActive?' active':''}" data-tool="${t.name}">
+        <div class="node-dot" style="background:${color}"></div>
+        <span class="node-name">${t.name}</span>
+        <span style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+          ${flowHtml}
+          ${animated ? `<span class="node-type-tag" style="color:var(--kf)">◆${animated}</span>` : ''}
+        </span>
+      </div>`;
+    });
+  });
+  list.innerHTML = html;
+  list.querySelectorAll('.node-item').forEach(el => {
+    el.addEventListener('click', () => selectTool(el.dataset.tool));
+  });
+}
+
+function selectTool(name, pushHistory = true) {
+  if (pushHistory && state.selectedTool && state.selectedTool !== name) {
+    state.navHistory.push(state.selectedTool);
+    if (state.navHistory.length > 20) state.navHistory.shift();
+  }
+  state.selectedTool = name;
+  state.selectedParam = null;
+  renderSidebar();
+  renderParams();
+  renderDetail();
+}
+
+function navBack() {
+  if (!state.navHistory.length) return;
+  const prev = state.navHistory.pop();
+  selectTool(prev, false);
+}
+
+function renderParams() {
+  const tool = state.tools.find(t => t.name === state.selectedTool);
+  const nameEl = document.getElementById('params-node-name');
+  const typeEl = document.getElementById('params-node-type');
+  const body   = document.getElementById('params-body');
+
+  if (!tool) {
+    nameEl.textContent = 'No node selected';
+    nameEl.style.color = 'var(--text3)';
+    typeEl.style.display = 'none';
+    body.innerHTML = '<div class="empty-state"><div class="hint">Select a node from the list to view its parameters</div></div>';
+    return;
+  }
+
+  nameEl.textContent = tool.name;
+  nameEl.style.color = 'var(--text)';
+  typeEl.textContent = tool.type;
+  typeEl.style.display = '';
+
+  // Group params
+  const groups = {};
+  for (const [k, p] of Object.entries(tool.params)) {
+    const g = getParamGroup(k, p);
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(k);
+  }
+
+  let html = '';
+  GROUP_ORDER.forEach(gname => {
+    const ks = groups[gname];
+    if (!ks || !ks.length) return;
+    html += `<div class="pgroup"><div class="pgroup-title">${gname}</div>`;
+    ks.forEach(k => {
+      const p = tool.params[k];
+      const isSel = k === state.selectedParam;
+      const label = fmtLabel(k);
+      let displayVal = getDisplayValue(p, k, state.frame);
+      let valClass = '';
+      let dotHtml = '<div class="empty-dot"></div>';
+
+      if (p.kind === 'keyframe') { valClass = 'kf'; dotHtml = '<div class="kf-dot"></div>'; }
+      else if (p.kind === 'animpath') { valClass = 'path'; dotHtml = '<div class="path-dot" style="background:var(--path)"></div>'; }
+      else if (p.kind === 'path') { valClass = 'path'; dotHtml = '<div class="path-dot"></div>'; }
+      else if (p.kind === 'conn') { valClass = 'conn'; dotHtml = '<div class="conn-dot"></div>'; }
+      else if (p.kind === 'expr') { valClass = 'expr'; }
+      else if (p.kind === 'default') { valClass = 'def'; }
+
+      // Enum resolution for static/default values
+      if (p.kind === 'static' || p.kind === 'default') {
+        const enumed = resolveEnum(k, displayVal);
+        if (enumed !== displayVal) displayVal = enumed;
+      }
+
+      html += `<div class="prow${isSel?' selected':''}" data-param="${k}">
+        ${dotHtml}
+        <span class="pkey" title="${k}">${label}</span>
+        <span class="pval ${valClass}" title="${displayVal}">${displayVal}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  body.innerHTML = html || '<div class="empty-state"><div class="hint">No parameters</div></div>';
+  body.querySelectorAll('.prow').forEach(el => {
+    el.addEventListener('click', () => {
+      state.selectedParam = el.dataset.param;
+      renderParams();
+      renderDetail();
+    });
+  });
+}
+
+function renderDetail() {
+  const tool = state.tools.find(t => t.name === state.selectedTool);
+  const nameEl = document.getElementById('detail-param-name');
+  const typeEl = document.getElementById('detail-param-type');
+  const body   = document.getElementById('detail-body');
+  const backBtn = document.getElementById('detail-back');
+
+  // Back button visibility
+  if (backBtn) backBtn.style.display = state.navHistory.length ? '' : 'none';
+
+  if (!tool || !state.selectedParam) {
+    // Show node-level connection summary when a tool is selected but no param
+    if (tool) {
+      nameEl.textContent = tool.name;
+      nameEl.style.color = 'var(--text)';
+      typeEl.textContent = tool.type;
+
+      const up = tool.upstream || [];
+      const dn = tool.downstream || [];
+
+      if (!up.length && !dn.length) {
+        body.innerHTML = '<div class="empty-state"><div class="hint">No connections — standalone node.<br>Click a parameter on the left to inspect it.</div></div>';
+        return;
+      }
+
+      let html = '';
+
+      if (up.length) {
+        html += `<div>
+          <div class="detail-value-label" style="margin-bottom:6px">Receives from (${up.length})</div>
+          <div class="conn-section">`;
+        up.forEach(u => {
+          html += `<div class="conn-row" data-nav="${u.from}">
+            <span class="conn-arrow">←</span>
+            <span class="conn-name">${u.from}</span>
+            <span class="conn-param">${fmtLabel(u.param)}</span>
+          </div>`;
+        });
+        html += `</div></div>`;
+      }
+
+      if (dn.length) {
+        html += `<div>
+          <div class="detail-value-label" style="margin-bottom:6px">Feeds into (${dn.length})</div>
+          <div class="conn-section">`;
+        dn.forEach(d => {
+          html += `<div class="conn-row" data-nav="${d.to}">
+            <span class="conn-arrow">→</span>
+            <span class="conn-name">${d.to}</span>
+            <span class="conn-param">${fmtLabel(d.param)}</span>
+          </div>`;
+        });
+        html += `</div></div>`;
+      }
+
+      html += `<div style="font-size:10px;font-family:var(--mono);color:var(--text3);padding:6px 2px;">Click a parameter on the left to inspect its value or animation.</div>`;
+
+      body.innerHTML = html;
+      body.querySelectorAll('.conn-row[data-nav]').forEach(el => {
+        el.addEventListener('click', () => selectTool(el.dataset.nav));
+      });
+      return;
+    }
+
+    nameEl.textContent = 'No parameter selected';
+    nameEl.style.color = 'var(--text3)';
+    typeEl.textContent = '';
+    body.innerHTML = '<div class="empty-state"><div class="hint">Click an animated parameter to view keyframes and spline</div></div>';
+    return;
+  }
+
+  const p = tool.params[state.selectedParam];
+  if (!p) return;
+
+  nameEl.textContent = fmtLabel(state.selectedParam);
+  nameEl.style.color = 'var(--text)';
+
+  const kindLabels = { keyframe:'BezierSpline', animpath:'Animated Path', path:'PolyPath',
+                       conn:'Connection', expr:'Expression', static:'Static', default:'Default' };
+  typeEl.textContent = kindLabels[p.kind] || p.kind;
+
+  const val = getDisplayValue(p, state.selectedParam, state.frame);
+  let html = '';
+
+  // If this param is a connection, show navigation to the source node
+  if (p.kind === 'conn' && p.sourceOp) {
+    const srcTool = state.tools.find(t => t.name === p.sourceOp);
+    html += `<div class="detail-value-box">
+      <div class="detail-value-label">Connected to</div>
+      <div class="conn-row" data-nav="${p.sourceOp}" style="padding:6px 0;cursor:pointer;">
+        <span class="conn-arrow">←</span>
+        <span class="conn-name" style="font-size:14px;">${p.sourceOp}</span>
+        ${srcTool ? `<span style="font-size:9px;font-family:var(--mono);color:var(--text3)">${srcTool.type}</span>` : ''}
+      </div>
+      <div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-top:4px;">Click to navigate to source node</div>
+    </div>`;
+
+    body.innerHTML = html;
+    body.querySelectorAll('.conn-row[data-nav]').forEach(el => {
+      el.addEventListener('click', () => selectTool(el.dataset.nav));
+    });
+    return;
+  }
+
+  // Value box
+  const isKfType = p.kind === 'keyframe' || p.kind === 'animpath';
+  html += `<div class="detail-value-box">
+    <div class="detail-value-label">Value @ Frame ${state.frame}</div>
+    <div class="detail-value-main ${isKfType ? (p.kind==='animpath'?'path':'kf') : ''}">${val}</div>
+  </div>`;
+
+  // Keyframe chips + navigation
+  if (isKfType && p.keyframes && p.keyframes.length) {
+    const kfs = p.keyframes;
+    const paramFrames = kfs.map(k => k.frame);
+    const curIdx = paramFrames.findIndex(f => f === state.frame);
+
+    html += `<div>
+      <div class="detail-value-label" style="margin-bottom:6px">Keyframes (${kfs.length})</div>
+      <div class="kf-chips" id="kf-chips">`;
+
+    kfs.forEach(kf => {
+      const isActive = kf.frame === state.frame;
+      const chipVal = p.kind === 'animpath'
+        ? computePathValue(state.selectedParam, p.pathPoints, kf.value)
+        : fmtNum(kf.value);
+      const cls = p.kind === 'animpath' ? 'path-chip' : '';
+      html += `<div class="kf-chip ${cls}${isActive?' active':''}" data-frame="${kf.frame}" title="Frame ${kf.frame}: ${chipVal}">
+        <span class="kf-fr">${kf.frame}</span>
+        <span>${chipVal}</span>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+
+    // Prev/Next
+    html += `<div class="nav-btns">
+      <button class="nav-btn" id="nav-prev" ${curIdx<=0?'disabled':''}>◂ Prev</button>
+      <button class="nav-btn" id="nav-next" ${curIdx>=paramFrames.length-1?'disabled':''}>Next ▸</button>
+    </div>`;
+
+    // Spline canvas (keyframe only)
+    if (p.kind === 'keyframe') {
+      html += `<div class="spline-wrap"><canvas class="spline-canvas" id="spline-canvas"></canvas></div>`;
+    }
+  }
+
+  // Path points list
+  if ((p.kind === 'path' || p.kind === 'animpath') && p.pathPoints && p.pathPoints.length) {
+    const ptDef = POINT_PARAM_DEFAULTS[state.selectedParam];
+    const ox = ptDef ? ptDef[0] : 0, oy = ptDef ? ptDef[1] : 0;
+    html += `<div>
+      <div class="detail-value-label" style="margin-bottom:4px">Path Points (${p.pathPoints.length})</div>
+      <div class="path-points-list">`;
+    p.pathPoints.slice(0, 8).forEach((pt, i) => {
+      html += `<div class="path-pt${i===0?' first':''}">
+        [${i}] ${fmtPoint(ox+pt.x, oy+pt.y)} <span style="color:var(--muted);font-size:9px">(+${fmtNum(pt.x)}, +${fmtNum(pt.y)})</span>
+      </div>`;
+    });
+    if (p.pathPoints.length > 8) html += `<div style="color:var(--muted);font-size:10px">…${p.pathPoints.length-8} more points</div>`;
+    html += `</div></div>`;
+  }
+
+  if (p.kind === 'expr') {
+    html += `<div class="detail-value-box"><div class="detail-value-label">Expression</div><div style="font-family:var(--mono);font-size:11px;color:var(--expr)">${p.v}</div></div>`;
+  }
+
+  body.innerHTML = html;
+
+  // Wire chip clicks
+  body.querySelectorAll('.kf-chip').forEach(el => {
+    el.addEventListener('click', () => scrubToFrame(parseInt(el.dataset.frame)));
+  });
+
+  const prevBtn = document.getElementById('nav-prev');
+  const nextBtn = document.getElementById('nav-next');
+  if (prevBtn && p.keyframes) {
+    const frames = p.keyframes.map(k=>k.frame);
+    const ci = frames.findIndex(f => f === state.frame);
+    if (prevBtn && ci > 0) prevBtn.addEventListener('click', () => scrubToFrame(frames[ci-1]));
+    if (nextBtn && ci < frames.length-1) nextBtn.addEventListener('click', () => scrubToFrame(frames[ci+1]));
+  }
+
+  // Draw spline
+  requestAnimationFrame(() => {
+    const canvas = document.getElementById('spline-canvas');
+    if (canvas && p.kind === 'keyframe') drawSpline(canvas, p, state.frame);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  10. SPLINE CANVAS DRAWING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function drawSpline(canvas, param, activeFrame) {
+  const kfs = (param.keyframes || []).slice().sort((a,b) => a.frame - b.frame);
+  if (!kfs.length) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth || 276, H = 120;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const PAD = { l:40, r:10, t:10, b:24 };
+  const gW = W - PAD.l - PAD.r, gH = H - PAD.t - PAD.b;
+
+  let minF = kfs[0].frame, maxF = kfs[kfs.length-1].frame;
+  let minV = Infinity, maxV = -Infinity;
+  kfs.forEach(k => {
+    minV = Math.min(minV, k.value); maxV = Math.max(maxV, k.value);
+    if (k.rh) { minV = Math.min(minV, k.rh.y); maxV = Math.max(maxV, k.rh.y); }
+    if (k.lh) { minV = Math.min(minV, k.lh.y); maxV = Math.max(maxV, k.lh.y); }
+  });
+  if (minF === maxF) { minF--; maxF++; }
+  if (minV === maxV) { minV -= 0.1; maxV += 0.1; }
+
+  const fp = (maxF-minF)*0.07, vp = (maxV-minV)*0.2;
+  const fMin = minF-fp, fMax = maxF+fp, vMin = minV-vp, vMax = maxV+vp;
+  const tx = f => PAD.l + (f-fMin)/(fMax-fMin)*gW;
+  const ty = v => PAD.t + (1-(v-vMin)/(vMax-vMin))*gH;
+
+  // Background
+  ctx.fillStyle = '#070710'; ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 0.5;
+  for (let i=0; i<=4; i++) {
+    const v = vMin + (vMax-vMin)*i/4, y = ty(v);
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W-PAD.r, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = `9px ${getComputedStyle(document.documentElement).getPropertyValue('--mono')||'monospace'}`;
+    ctx.textAlign = 'right';
+    ctx.fillText(parseFloat(v.toPrecision(3)), PAD.l-3, y+3);
+  }
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD.l, PAD.t); ctx.lineTo(PAD.l, H-PAD.b); ctx.lineTo(W-PAD.r, H-PAD.b); ctx.stroke();
+  // Frame labels
+  [minF, maxF].forEach(f => {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.textAlign = 'center';
+    ctx.fillText(Math.round(f), tx(f), H-PAD.b+13);
+  });
+
+  // Spline curve
+  const color = param.splineColor || '#f5c842';
+  ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.beginPath();
+  for (let i=0; i<kfs.length-1; i++) {
+    const k0=kfs[i], k1=kfs[i+1];
+    const x0=tx(k0.frame), y0=ty(k0.value), x3=tx(k1.frame), y3=ty(k1.value);
+    const cp1x = k0.rh ? tx(k0.rh.x) : x0+(x3-x0)/3;
+    const cp1y = k0.rh ? ty(k0.rh.y) : y0;
+    const cp2x = k1.lh ? tx(k1.lh.x) : x3-(x3-x0)/3;
+    const cp2y = k1.lh ? ty(k1.lh.y) : y3;
+    if (i===0) ctx.moveTo(x0,y0);
+    ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,x3,y3);
+  }
+  ctx.stroke();
+
+  // Keyframe diamonds
+  kfs.forEach(k => {
+    const px=tx(k.frame), py=ty(k.value);
+    ctx.save(); ctx.translate(px,py); ctx.rotate(Math.PI/4);
+    ctx.fillStyle=color; ctx.strokeStyle='#070710'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.rect(-4,-4,8,8); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  });
+
+  // Playhead
+  if (activeFrame !== null && activeFrame !== undefined) {
+    const px = tx(activeFrame);
+    if (px >= PAD.l && px <= W-PAD.r) {
+      ctx.strokeStyle='rgba(200,240,96,0.65)'; ctx.lineWidth=1.5; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(px,PAD.t); ctx.lineTo(px,H-PAD.b); ctx.stroke();
+      ctx.setLineDash([]);
+      const iv = getSplineValueAtFrame(kfs, activeFrame);
+      if (iv !== null) {
+        ctx.fillStyle='var(--accent2,#c8f060)';
+        ctx.beginPath(); ctx.arc(px,ty(iv),4,0,Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  // Interactive hover
+  canvas.onmousemove = e => {
+    const rect = canvas.getBoundingClientRect();
+    const frac = (e.clientX - rect.left - PAD.l) / gW;
+    const hf = Math.round(fMin + frac*(fMax-fMin));
+    drawSpline(canvas, param, hf);
+  };
+  canvas.onmouseleave = () => drawSpline(canvas, param, state.frame);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  11. FRAME SCRUBBER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function scrubToFrame(frame) {
+  state.frame = frame;
+  document.getElementById('frame-display').textContent = `Frame ${frame}`;
+  updateScrubberThumb();
+  renderParams();
+  renderDetail();
+}
+
+function updateScrubberThumb() {
+  const track = document.getElementById('frame-track');
+  const thumb = document.getElementById('frame-thumb');
+  if (!track || !thumb) return;
+  const range = state.maxFrame - state.minFrame || 1;
+  const pct = (state.frame - state.minFrame) / range;
+  thumb.style.left = `${Math.max(0, Math.min(100, pct*100))}%`;
+}
+
+function setupScrubber() {
+  const track = document.getElementById('frame-track');
+  const scr = document.getElementById('scrubber');
+
+  if (!state.allFrames.length) { scr.style.display = 'none'; return; }
+  scr.style.display = '';
+
+  state.minFrame = state.allFrames[0];
+  state.maxFrame = state.allFrames[state.allFrames.length-1];
+  if (state.minFrame === state.maxFrame) { state.minFrame--; state.maxFrame++; }
+
+  // Tick marks
+  const inner = document.getElementById('frame-track');
+  inner.querySelectorAll('.track-kf-tick').forEach(e => e.remove());
+  const range = state.maxFrame - state.minFrame;
+  state.allFrames.forEach(f => {
+    const tick = document.createElement('div');
+    tick.className = 'track-kf-tick';
+    tick.style.left = `${((f - state.minFrame) / range) * 100}%`;
+    inner.appendChild(tick);
+  });
+
+  function seekFromEvent(e) {
+    const rect = track.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const f = Math.round(state.minFrame + frac * range);
+    scrubToFrame(f);
+  }
+
+  let dragging = false;
+  track.addEventListener('mousedown', e => { dragging = true; seekFromEvent(e); });
+  window.addEventListener('mousemove', e => { if (dragging) seekFromEvent(e); });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  // Initialize
+  if (state.allFrames.length) scrubToFrame(state.allFrames[0]);
+  else updateScrubberThumb();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  12. COMPOSITION PARSING ENTRY POINT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function loadComposition(src) {
+  document.getElementById('parse-error').style.display = 'none';
+
+  let ast;
+  try { ast = parseLua(src); }
+  catch(e) { showError(`Parse error: ${e.message}`); return; }
+
+  if (!ast) { showError('Could not parse — check that the input is valid Fusion Lua.'); return; }
+
+  let resolved;
+  try { resolved = resolveComposition(ast); }
+  catch(e) { showError(`Resolve error: ${e.message}`); return; }
+
+  if (!resolved || !resolved.tools.length) {
+    showError('No tool nodes found. Try pasting a full composition or a Tools = ordered() { … } block.');
+    return;
+  }
+
+  state.tools = resolved.tools;
+  state.allFrames = resolved.allFrames;
+  state.frame = resolved.allFrames[0] ?? 0;
+  state.selectedTool = null;
+  state.selectedParam = null;
+  state.navHistory = [];
+
+  document.getElementById('comp-info').textContent =
+    `${state.tools.length} nodes · ${state.allFrames.length} keyframe${state.allFrames.length!==1?'s':''}`;
+  document.getElementById('clear-btn').style.display = '';
+
+  renderSidebar();
+  renderParams();
+  renderDetail();
+  setupScrubber();
+
+  // Auto-select: prefer animated+connected, then just animated, then most connected, then first
+  const first = state.tools.find(t =>
+    (Object.values(t.params).some(p=>p.kind==='keyframe'||p.kind==='animpath')) &&
+    ((t.upstream||[]).length + (t.downstream||[]).length > 0)
+  ) || state.tools.find(t =>
+    Object.values(t.params).some(p=>p.kind==='keyframe'||p.kind==='animpath')
+  ) || state.tools.reduce((best, t) => {
+    const score = (t.upstream||[]).length + (t.downstream||[]).length;
+    return score > ((best.upstream||[]).length + (best.downstream||[]).length) ? t : best;
+  }, state.tools[0]);
+  if (first) selectTool(first.name, false);
+}
+
+function showError(msg) {
+  const el = document.getElementById('parse-error');
+  el.textContent = msg; el.style.display = '';
+}
+
+function clearAll() {
+  state.tools = []; state.allFrames = []; state.frame = 0;
+  state.selectedTool = null; state.selectedParam = null;
+  document.getElementById('comp-info').textContent = '';
+  document.getElementById('clear-btn').style.display = 'none';
+  document.getElementById('parse-error').style.display = 'none';
+  document.getElementById('scrubber').style.display = 'none';
+  renderSidebar(); renderParams(); renderDetail();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  13. INIT — wire up UI events
+// ═══════════════════════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', () => {
+  const modal      = document.getElementById('paste-modal');
+  const pasteBtn   = document.getElementById('paste-btn');
+  const closeBtn   = document.getElementById('paste-box-close');
+  const submitBtn  = document.getElementById('paste-submit');
+  const ta         = document.getElementById('paste-ta');
+  const clearBtn   = document.getElementById('clear-btn');
+
+  pasteBtn.addEventListener('click', () => { modal.classList.add('open'); ta.focus(); });
+  closeBtn.addEventListener('click', () => modal.classList.remove('open'));
+  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+
+  submitBtn.addEventListener('click', () => {
+    const src = ta.value.trim();
+    if (!src) return;
+    modal.classList.remove('open');
+    loadComposition(src);
+  });
+
+  ta.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submitBtn.click();
+  });
+
+  clearBtn.addEventListener('click', clearAll);
+
+  // Global keyboard
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+    if (!state.allFrames.length) return;
+    const cur = state.allFrames.indexOf(state.frame);
+    if (e.key === 'ArrowLeft' && cur > 0) scrubToFrame(state.allFrames[cur-1]);
+    if (e.key === 'ArrowRight' && cur < state.allFrames.length-1) scrubToFrame(state.allFrames[cur+1]);
+    if (e.key === 'Home') scrubToFrame(state.allFrames[0]);
+    if (e.key === 'End') scrubToFrame(state.allFrames[state.allFrames.length-1]);
+    if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
+      modal.classList.add('open'); ta.focus();
+    }
+  });
+
+  // ── postMessage bridge: accept compositions pushed from nodegraph.html ───────
+  // When embedded inside the Composition Inspector overlay (Option A), the parent
+  // page can send { type: 'LOAD_COMPOSITION', src: '...' } to auto-load a setting.
+  window.addEventListener('message', function (e) {
+    if (!e.data) return;
+    if (e.data.type === 'LOAD_COMPOSITION' && typeof e.data.src === 'string') {
+      loadComposition(e.data.src);
+    }
+  });
+
+  // Tell the parent frame we're ready to receive
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'CI_READY' }, '*');
+  }
+
+  // Render initial empty state
+  renderSidebar(); renderParams(); renderDetail();
+});
+</script>
+</body>
+</html>
