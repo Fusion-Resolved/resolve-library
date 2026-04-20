@@ -433,6 +433,18 @@
           displayVal = _getValueAtFrame(p, scrubFrame);
           cls = ' kf';
         }
+        // Handle animated paths - calculate value at current frame
+        if (p.isPath && p.isAnimatedPath && p.keyframes && allFrames.length) {
+          const kf = p.keyframes.find(kf => kf.frame === scrubFrame) || p.keyframes[0];
+          if (kf && p.pathPoints && p.pathPoints.length >= 2) {
+            const displacement = parseFloat(kf.value ?? 0);
+            const startPt = p.pathPoints[0];
+            const endPt = p.pathPoints[p.pathPoints.length - 1];
+            const x = 0.5 + (startPt.x + (endPt.x - startPt.x) * displacement);
+            const y = 0.5 + (startPt.y + (endPt.y - startPt.y) * displacement);
+            displayVal = `${fmt(String(x))}, ${fmt(String(y))}`;
+          }
+        }
         if (!p.isExpr && !p.isConnection && !p.isPath && resolveEnum) {
           displayVal = resolveEnum(label, displayVal, tool.toolType);
         }
@@ -738,7 +750,23 @@
         const isKf = p.isKeyframe && p.keyframes && p.keyframes.length > 0;
         const isPath = p.isPath;
         const isSel = k === _bdSelParam;
-        const val = (isKf && allFrames.length) ? _getValueAtFrame(p, scrubFrame) : (p.v || '—');
+        
+        // Calculate value - handle animated paths
+        let val;
+        if (isKf && allFrames.length) {
+          val = _getValueAtFrame(p, scrubFrame);
+        } else if (p.isPath && p.isAnimatedPath && p.keyframes && allFrames.length && p.pathPoints && p.pathPoints.length >= 2) {
+          const kf = p.keyframes.find(kf => kf.frame === scrubFrame) || p.keyframes[0];
+          const displacement = parseFloat(kf.value ?? 0);
+          const startPt = p.pathPoints[0];
+          const endPt = p.pathPoints[p.pathPoints.length - 1];
+          const x = 0.5 + (startPt.x + (endPt.x - startPt.x) * displacement);
+          const y = 0.5 + (startPt.y + (endPt.y - startPt.y) * displacement);
+          val = `${fmt(String(x))}, ${fmt(String(y))}`;
+        } else {
+          val = p.v || '—';
+        }
+        
         const resolvedVal = (!p.isExpr && !p.isConnection && !p.isPath && resolveEnum) 
           ? resolveEnum(label, val, null) 
           : val;
