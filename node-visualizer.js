@@ -280,13 +280,20 @@
     // Collect all unique keyframe numbers
     const allFrames = [];
     node.fusionParams.forEach(tool => {
-      Object.values(tool.params).forEach(p => {
-        if (p.keyframes) p.keyframes.forEach(kf => { 
-          if (!allFrames.includes(kf.frame)) allFrames.push(kf.frame); 
-        });
+      Object.entries(tool.params).forEach(([k, p]) => {
+        if (p.keyframes) {
+          console.log('[NodeVisualizer] Found keyframes for param:', k, 'frames:', p.keyframes.map(kf => kf.frame));
+          p.keyframes.forEach(kf => { 
+            if (!allFrames.includes(kf.frame)) allFrames.push(kf.frame); 
+          });
+        }
+        if (p.isPath) {
+          console.log('[NodeVisualizer] Found path for param:', k, 'points:', p.pathPoints?.length);
+        }
       });
     });
     allFrames.sort((a,b) => a-b);
+    console.log('[NodeVisualizer] Total unique frames:', allFrames);
 
     // Determine active frame
     if (allFrames.length) {
