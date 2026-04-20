@@ -1529,7 +1529,7 @@ var FUSION_NODES_UNIQUE = FUSION_NODES;
         <div class="rp-sec-body">
         <div class="params-node-name" id="params-node-name"></div>
         <div class="params-node-cat" id="params-node-cat"></div>
-        <textarea class="paste-area" id="params-paste" placeholder="Select node(s) in Fusion → Ctrl+C → paste here — params extract &amp; save automatically" spellcheck="false"></textarea>
+        <textarea class="paste-area" id="params-paste" placeholder="Select node(s) in Fusion → Ctrl+C → paste here — params extract &amp; save automatically" spellcheck="false" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();parseSettingPaste();}"></textarea>
         <button class="parse-btn" onclick="parseSettingPaste()" style="opacity:0.4;font-size:8px">↳ Re-extract manually</button>
         <div class="parse-err" id="parse-err"></div>
         <div class="params-display" id="params-display"></div>

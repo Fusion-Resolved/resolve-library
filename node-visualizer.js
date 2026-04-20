@@ -370,8 +370,22 @@
       'Blur / Glow','Text','Path / Spline','Camera','Animation','Noise / Texture',
       'Particles','Mask / Edge','3D','Connections','Parameters'];
 
-    node.fusionParams.forEach(tool => {
-      if (node.fusionParams.length > 1) {
+    // Filter tools to only show those matching the current node name
+    // If node.name is "Transform", only show "Transform3" tool, not "Background5", "Merge3", etc.
+    const nodeNameLower = node.name.toLowerCase();
+    const relevantTools = node.fusionParams.filter(tool => {
+      const toolNameLower = tool.toolName.toLowerCase();
+      // Match if tool name contains node name OR node name contains tool name
+      return toolNameLower.includes(nodeNameLower) || 
+             nodeNameLower.includes(toolNameLower.replace(/\d+$/, '')) || // Remove trailing numbers
+             (nodeNameLower === 'transform' && tool.toolType === 'Transform');
+    });
+    
+    // If no specific match found, show all (fallback)
+    const toolsToShow = relevantTools.length > 0 ? relevantTools : node.fusionParams;
+
+    toolsToShow.forEach(tool => {
+      if (toolsToShow.length > 1 || node.fusionParams.length > 1) {
         const th = document.createElement('div');
         th.style.cssText = 'font-size:9px;font-family:var(--font-head);font-weight:600;color:var(--text);margin-bottom:4px;margin-top:6px;padding-bottom:4px;border-bottom:1px solid var(--border);';
         th.textContent = `${tool.toolName} (${tool.toolType})`;
@@ -656,10 +670,21 @@
       return;
     }
 
-    // Collect all keyframed params for the drawer
+    // Collect all keyframed params for the drawer (from relevant tools only)
     const kfParams = [];
     const allFramesSet = new Set();
-    node.fusionParams.forEach(tool => {
+    
+    // Filter to only relevant tools
+    const nodeNameLower = node.name.toLowerCase();
+    const relevantTools = node.fusionParams.filter(tool => {
+      const toolNameLower = tool.toolName.toLowerCase();
+      return toolNameLower.includes(nodeNameLower) || 
+             nodeNameLower.includes(toolNameLower.replace(/\d+$/, '')) ||
+             (nodeNameLower === 'transform' && tool.toolType === 'Transform');
+    });
+    const toolsToCollect = relevantTools.length > 0 ? relevantTools : node.fusionParams;
+    
+    toolsToCollect.forEach(tool => {
       Object.entries(tool.params || {}).forEach(([k, p]) => {
         // Regular keyframes
         if (p.isKeyframe && p.keyframes && p.keyframes.length) {
@@ -701,8 +726,18 @@
       html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.18);border-radius:4px;padding:3px 7px;margin-bottom:5px">⬡ Instance of ${masterNode.name}</div>`;
     }
 
-    // All non-connection params
-    node.fusionParams.forEach(tool => {
+    // Filter to only show relevant tools for this node
+    const nodeNameLower = node.name.toLowerCase();
+    const relevantTools = node.fusionParams.filter(tool => {
+      const toolNameLower = tool.toolName.toLowerCase();
+      return toolNameLower.includes(nodeNameLower) || 
+             nodeNameLower.includes(toolNameLower.replace(/\d+$/, '')) ||
+             (nodeNameLower === 'transform' && tool.toolType === 'Transform');
+    });
+    const toolsToShow = relevantTools.length > 0 ? relevantTools : node.fusionParams;
+    
+    // All non-connection params from relevant tools only
+    toolsToShow.forEach(tool => {
       Object.entries(tool.params || {}).filter(([k,v]) => !v.isConnection).forEach(([k, p]) => {
         const label = k.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^.*\./,'');
         const isKf = p.isKeyframe && p.keyframes && p.keyframes.length > 0;
