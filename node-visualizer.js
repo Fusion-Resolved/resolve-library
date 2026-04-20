@@ -704,16 +704,22 @@
       Object.entries(tool.params || {}).filter(([k,v]) => !v.isConnection).forEach(([k, p]) => {
         const label = k.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^.*\./,'');
         const isKf = p.isKeyframe && p.keyframes && p.keyframes.length > 0;
+        const isPath = p.isPath;
         const isSel = k === _bdSelParam;
         const val = (isKf && allFrames.length) ? _getValueAtFrame(p, scrubFrame) : (p.v || '—');
         const resolvedVal = (!p.isExpr && !p.isConnection && !p.isPath && resolveEnum) 
           ? resolveEnum(label, val, null) 
           : val;
         
+        // Visual indicator for path/animated params
+        let indicator = '';
+        if (isKf) indicator = '● ';
+        else if (isPath) indicator = '◆ ';
+        
         const escapedKey = k.replace(/'/g,"\\'");
         html += `<div onclick="NodeVisualizer.bdSelectParam('${nodeId}','${escapedKey}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;cursor:pointer;border:1px solid ${isSel?'rgba(200,240,96,0.35)':'transparent'};background:${isSel?'rgba(200,240,96,0.08)':'transparent'};transition:background .1s;">
-          <span style="font-size:11px;font-family:var(--font-mono);color:${isSel?'var(--accent)':isKf?'rgba(240,192,96,.8)':'var(--text2)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${label}</span>
-          <span style="font-size:11px;font-family:var(--font-mono);color:${isKf?'#f0c060':'var(--text)'};white-space:nowrap;flex-shrink:0;max-width:70px;overflow:hidden;text-overflow:ellipsis;">${resolvedVal}</span>
+          <span style="font-size:11px;font-family:var(--font-mono);color:${isSel?'var(--accent)':isKf?'rgba(240,192,96,.8)':isPath?'#b0f0c0':'var(--text2)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${indicator}${label}</span>
+          <span style="font-size:11px;font-family:var(--font-mono);color:${isKf?'#f0c060':isPath?'#b0f0c0':'var(--text)'};white-space:nowrap;flex-shrink:0;max-width:70px;overflow:hidden;text-overflow:ellipsis;">${resolvedVal}</span>
         </div>`;
       });
     });
