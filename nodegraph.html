@@ -1679,6 +1679,16 @@ function rpOpenPanel(key) {
   document.getElementById(entry.icon)?.classList.add('active');
   rpanel.classList.remove('hidden');
   _rpActive = key;
+  
+  // If opening params panel and a node is selected, also open bottom drawer
+  if (key === 'params' && selNode) {
+    const node = nodes.find(n => n.id === selNode);
+    if (node) {
+      _kfScrubFrame = null;
+      _bdSelParam = null;
+      showBottomDrawer(node);
+    }
+  }
 }
 
 function rpShowSection(key) {
