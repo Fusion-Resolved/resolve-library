@@ -282,18 +282,19 @@
     node.fusionParams.forEach(tool => {
       Object.entries(tool.params).forEach(([k, p]) => {
         if (p.keyframes) {
-          console.log('[NodeVisualizer] Found keyframes for param:', k, 'frames:', p.keyframes.map(kf => kf.frame));
           p.keyframes.forEach(kf => { 
             if (!allFrames.includes(kf.frame)) allFrames.push(kf.frame); 
           });
         }
-        if (p.isPath) {
-          console.log('[NodeVisualizer] Found path for param:', k, 'points:', p.pathPoints?.length);
+        // Also collect keyframes from animated paths
+        if (p.isPath && p.isAnimatedPath && p.keyframes) {
+          p.keyframes.forEach(kf => { 
+            if (!allFrames.includes(kf.frame)) allFrames.push(kf.frame); 
+          });
         }
       });
     });
     allFrames.sort((a,b) => a-b);
-    console.log('[NodeVisualizer] Total unique frames:', allFrames);
 
     // Determine active frame
     if (allFrames.length) {
@@ -660,12 +661,18 @@
       return;
     }
 
-    // Collect all keyframed params
+    // Collect all keyframed params for the drawer
     const kfParams = [];
     const allFramesSet = new Set();
     node.fusionParams.forEach(tool => {
       Object.entries(tool.params || {}).forEach(([k, p]) => {
+        // Regular keyframes
         if (p.isKeyframe && p.keyframes && p.keyframes.length) {
+          kfParams.push({ key: k, label: k.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^.*\./,''), param: p, tool });
+          p.keyframes.forEach(kf => allFramesSet.add(kf.frame));
+        }
+        // Animated path keyframes
+        if (p.isPath && p.isAnimatedPath && p.keyframes && p.keyframes.length) {
           kfParams.push({ key: k, label: k.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^.*\./,''), param: p, tool });
           p.keyframes.forEach(kf => allFramesSet.add(kf.frame));
         }
@@ -714,12 +721,13 @@
         // Visual indicator for path/animated params
         let indicator = '';
         if (isKf) indicator = '● ';
-        else if (isPath) indicator = '◆ ';
+        else if (isPath && p.isAnimatedPath) indicator = '◆ ';
+        else if (isPath) indicator = '◇ ';
         
         const escapedKey = k.replace(/'/g,"\\'");
         html += `<div onclick="NodeVisualizer.bdSelectParam('${nodeId}','${escapedKey}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;cursor:pointer;border:1px solid ${isSel?'rgba(200,240,96,0.35)':'transparent'};background:${isSel?'rgba(200,240,96,0.08)':'transparent'};transition:background .1s;">
-          <span style="font-size:11px;font-family:var(--font-mono);color:${isSel?'var(--accent)':isKf?'rgba(240,192,96,.8)':isPath?'#b0f0c0':'var(--text2)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${indicator}${label}</span>
-          <span style="font-size:11px;font-family:var(--font-mono);color:${isKf?'#f0c060':isPath?'#b0f0c0':'var(--text)'};white-space:nowrap;flex-shrink:0;max-width:70px;overflow:hidden;text-overflow:ellipsis;">${resolvedVal}</span>
+          <span style="font-size:11px;font-family:var(--font-mono);color:${isSel?'var(--accent)':isKf?'rgba(240,192,96,.8)':p.isAnimatedPath?'#cc44cc':isPath?'#b0f0c0':'var(--text2)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${indicator}${label}</span>
+          <span style="font-size:11px;font-family:var(--font-mono);color:${isKf?'#f0c060':p.isAnimatedPath?'#cc44cc':isPath?'#b0f0c0':'var(--text)'};white-space:nowrap;flex-shrink:0;max-width:70px;overflow:hidden;text-overflow:ellipsis;">${resolvedVal}</span>
         </div>`;
       });
     });
@@ -766,7 +774,38 @@
 
     } else if (selParamObj && selParamObj.param.isPath) {
       const pts = selParamObj.param.pathPoints || [];
-      html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">${selParamObj.label} <span style="color:var(--muted);font-size:8px;">PATH</span></div>`;
+      const isAnimated = selParamObj.param.isAnimatedPath;
+      const pathKeyframes = selParamObj.param.keyframes;
+      
+      html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">${selParamObj.label} <span style="color:var(--muted);font-size:8px;">${isAnimated ? 'ANIMATED PATH' : 'PATH'}</span></div>`;
+      
+      // Show keyframes if animated
+      if (isAnimated && pathKeyframes && pathKeyframes.length) {
+        const paramKfs = pathKeyframes.slice().sort((a,b) => a.frame - b.frame);
+        const paramFrames = paramKfs.map(k => k.frame);
+        const curIdx = paramFrames.indexOf(scrubFrame ?? paramFrames[0]);
+        const activeFr = curIdx >= 0 ? scrubFrame : paramFrames[0];
+        
+        html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Displacement @ frame <span style="color:var(--accent)">${activeFr}</span></div>`;
+        
+        // Keyframe chips
+        html += `<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:72px;overflow-y:auto;margin-bottom:8px;">`;
+        paramFrames.forEach(fr => {
+          const isActive = fr === activeFr;
+          const kf = paramKfs.find(k => k.frame === fr);
+          const kfVal = kf ? parseFloat(kf.value ?? kf.val ?? 0).toFixed(3) : '—';
+          html += `<button onclick="NodeVisualizer.bdScrubFrame('${nodeId}',${fr})" title="Frame ${fr}: ${kfVal}" style="font-size:12px;font-family:var(--font-mono);padding:4px 10px;border-radius:4px;border:1px solid ${isActive?'rgba(200,240,96,.7)':'rgba(255,255,255,.15)'};background:${isActive?'rgba(200,240,96,.15)':'rgba(255,255,255,.04)'};color:${isActive?'var(--accent)':'var(--text2)'};cursor:pointer;transition:all .1s;line-height:1;">${fr}</button>`;
+        });
+        html += `</div>`;
+        
+        // Prev/Next nav
+        html += `<div style="display:flex;gap:6px;margin-bottom:8px;">
+          <button onclick="NodeVisualizer.bdScrubStep('${nodeId}',-1)" ${curIdx<=0?'disabled':''} style="flex:1;font-size:12px;font-family:var(--font-mono);padding:5px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;opacity:${curIdx<=0?'.3':'1'}">◂ Prev</button>
+          <button onclick="NodeVisualizer.bdScrubStep('${nodeId}',1)" ${curIdx>=paramFrames.length-1?'disabled':''} style="flex:1;font-size:12px;font-family:var(--font-mono);padding:5px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;opacity:${curIdx>=paramFrames.length-1?'.3':'1'}">Next ▸</button>
+        </div>`;
+      }
+      
+      // Show path points
       if (pts.length) {
         html += `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text);background:rgba(255,255,255,.04);border-radius:4px;padding:6px 8px;margin-bottom:4px;">`;
         pts.slice(0, 6).forEach((pt, i) => {
@@ -778,7 +817,12 @@
         const defVal = selParamObj.param.v || '0.5, 0.5';
         html += `<div style="font-size:15px;font-family:var(--font-mono);color:var(--text);padding:6px 8px;background:rgba(255,255,255,.05);border-radius:4px;">${defVal}</div>`;
       }
-      html += `<div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-top:5px;">Click ⬡ Spline above to view the path curve</div>`;
+      
+      if (isAnimated) {
+        html += `<div style="font-size:9px;font-family:var(--font-mono);color:#cc44cc;margin-top:5px;">◆ Animated path — use keyframes above to scrub</div>`;
+      } else {
+        html += `<div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-top:5px;">Click ⬡ Spline above to view the path curve</div>`;
+      }
 
     } else if (selParamObj) {
       const val = selParamObj.param.v || '—';

@@ -606,12 +606,29 @@
         if (splineData) {
           if (splineData.type === 'PolyPath' && splineData.points && splineData.points.length) {
             const firstPt = splineData.points[0];
+            
+            // Check if this PolyPath has a Displacement input connected to a BezierSpline
+            let pathKeyframes = null;
+            const polyPathInputs = splineMap._inputs && splineMap._inputs[srcOpName];
+            if (polyPathInputs && polyPathInputs.Displacement) {
+              const dispSrc = polyPathInputs.Displacement;
+              const dispSpline = splineMap[dispSrc];
+              if (dispSpline && dispSpline.type === 'BezierSpline' && dispSpline.keyframes) {
+                pathKeyframes = dispSpline.keyframes;
+              }
+            }
+            
             params[pname] = {
               v: `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}`,
               isPath: true,
               pathPoints: splineData.points,
               sourceOp: srcOpName,
               displayValue: `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}`,
+              ...(pathKeyframes && { 
+                isAnimatedPath: true, 
+                keyframes: pathKeyframes,
+                splineColor: '#cc44cc'
+              }),
             };
           } else if (splineData.type === 'BezierSpline' && splineData.keyframes && splineData.keyframes.length) {
             const kf0 = splineData.keyframes[0];
@@ -793,7 +810,7 @@
     const topLevelEntries = shallowScanTools(topLevelText);
 
     // First pass: collect all spline/path nodes into a lookup map
-    const splineMap = {};
+    const splineMap = { _inputs: {} };
     for (const { name: tname, type: ttype, content: bc } of topLevelEntries) {
       if (SKIP_NAMES.has(tname)) continue;
       if (ttype === 'BezierSpline') {
@@ -804,6 +821,17 @@
       } else if (ttype === 'PolyPath') {
         const pts = parsePolyPathPoints(bc);
         splineMap[tname] = { type: 'PolyPath', points: pts };
+        
+        // Store PolyPath inputs (especially Displacement) for animated paths
+        const inputsIdx = bc.search(/\bInputs\s*=\s*\{/);
+        if (inputsIdx !== -1) {
+          const inputsOpen = bc.indexOf('{', inputsIdx) + 1;
+          const { content: inputsContent } = extractBlock(bc, inputsOpen);
+          const dispM = inputsContent.match(/Displacement\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/);
+          if (dispM) {
+            splineMap._inputs[tname] = { Displacement: dispM[1] };
+          }
+        }
       }
     }
 
