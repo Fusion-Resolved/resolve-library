@@ -1796,161 +1796,6 @@ function renderParamsDisplay(node, scrubFrame) {
 function _getValueAtFrame(param, frame) {
   return NodeVisualizer._getValueAtFrame(param, frame);
 }
-  const splineBtn = document.getElementById('bd-spline-btn');
-  const splineAllBtn = document.getElementById('bd-spline-all-btn');
-  if (splineBtn) {
-    // Detect any animated/path spline — BezierSpline OR PolyPath
-    const rawText = node._rawSetting || '';
-    const hasAnySpline = rawText && (/BezierSpline\s*\{/.test(rawText) || /PolyPath\s*\{/.test(rawText));
-    // Show "Spline" button only when selected param has spline data
-    const selP = _bdSelParam ? (() => { for (const t of node.fusionParams||[]) { const p=(t.params||{})[_bdSelParam]; if(p) return p; } return null; })() : null;
-    const paramHasSpline = selP && (selP.isKeyframe || selP.isPath);
-    splineBtn.style.display = paramHasSpline ? '' : 'none';
-    if (splineAllBtn) splineAllBtn.style.display = hasAnySpline ? '' : 'none';
-  }
-
-  const body = document.getElementById('bd-body');
-  if (!node.fusionParams || !node.fusionParams.length) {
-    body.innerHTML = '<div style="font-size:12px;color:var(--muted);font-family:var(--font-mono);padding:8px 0">No params stored — paste Fusion .setting in the panel →</div>';
-    return;
-  }
-
-  // Collect all keyframed params
-  const kfParams = []; // [{key, label, param, tool}]
-  const allFramesSet = new Set();
-  node.fusionParams.forEach(tool => {
-    Object.entries(tool.params || {}).forEach(([k, p]) => {
-      if (p.isKeyframe && p.keyframes && p.keyframes.length) {
-        kfParams.push({ key: k, label: k.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^.*\./,''), param: p, tool });
-        p.keyframes.forEach(kf => allFramesSet.add(kf.frame));
-      }
-    });
-  });
-  const allFrames = [...allFramesSet].sort((a,b) => a-b);
-
-  if (allFrames.length) {
-    if (scrubFrame === undefined || scrubFrame === null) {
-      scrubFrame = (_kfScrubFrame !== null && allFrames.includes(_kfScrubFrame)) ? _kfScrubFrame : allFrames[0];
-    }
-    _kfScrubFrame = scrubFrame;
-  }
-
-  // Auto-select first keyframed param if none selected or invalid
-  if (kfParams.length && (!_bdSelParam || !kfParams.find(p => p.key === _bdSelParam))) {
-    _bdSelParam = kfParams[0].key;
-  }
-
-  const nodeId = node.id;
-  let html = '';
-
-  // ── LEFT COLUMN: param list ──
-  html += `<div style="display:flex;gap:0;width:100%;overflow:hidden;">`;
-
-  // Param list column
-  html += `<div style="flex:0 0 auto;width:170px;min-width:130px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;max-height:260px;padding-right:8px;border-right:1px solid var(--border);margin-right:10px;">`;
-  html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;flex-shrink:0;">Parameters</div>`;
-
-  const masterNode = node.instanceOf ? nodes.find(n => n.id === node.instanceOf) : null;
-  if (masterNode) {
-    html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.18);border-radius:4px;padding:3px 7px;margin-bottom:5px">⬡ Instance of ${masterNode.name}</div>`;
-  }
-
-  // All non-connection params, clickable
-  node.fusionParams.forEach(tool => {
-    Object.entries(tool.params || {}).filter(([k,v]) => !v.isConnection).forEach(([k, p]) => {
-      const label = k.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^.*\./,'');
-      const isKf = p.isKeyframe && p.keyframes && p.keyframes.length > 0;
-      const isSel = k === _bdSelParam;
-      const val = (isKf && allFrames.length) ? _getValueAtFrame(p, scrubFrame) : (p.v || '—');
-      const resolvedVal = (!p.isExpr && !p.isConnection && !p.isPath) ? resolveEnum(label, val, null) : val;
-      html += `<div onclick="bdSelectParam('${nodeId}','${k.replace(/'/g,"\\'")}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;cursor:pointer;border:1px solid ${isSel?'rgba(200,240,96,0.35)':'transparent'};background:${isSel?'rgba(200,240,96,0.08)':'transparent'};transition:background .1s;">
-        <span style="font-size:11px;font-family:var(--font-mono);color:${isSel?'var(--accent)':isKf?'rgba(240,192,96,.8)':'var(--text2)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${label}</span>
-        <span style="font-size:11px;font-family:var(--font-mono);color:${isKf?'#f0c060':'var(--text)'};white-space:nowrap;flex-shrink:0;max-width:70px;overflow:hidden;text-overflow:ellipsis;">${resolvedVal}</span>
-      </div>`;
-    });
-  });
-  html += `</div>`; // end param list col
-
-  // ── RIGHT COLUMN: keyframes + spline for selected param ──
-  html += `<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;overflow:hidden;">`;
-
-  const selParamObj = _bdSelParam ? (() => {
-    for (const tool of node.fusionParams) {
-      const p = (tool.params||{})[_bdSelParam];
-      if (p) return { param: p, key: _bdSelParam, label: _bdSelParam.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^.*\./,'') };
-    }
-    return null;
-  })() : null;
-
-  if (selParamObj && selParamObj.param.isKeyframe && selParamObj.param.keyframes && selParamObj.param.keyframes.length) {
-    const paramKfs = selParamObj.param.keyframes.slice().sort((a,b) => a.frame - b.frame);
-    const paramFrames = paramKfs.map(k => k.frame);
-    const curIdx = paramFrames.indexOf(scrubFrame ?? paramFrames[0]);
-    const activeFr = curIdx >= 0 ? scrubFrame : paramFrames[0];
-
-    html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;">${selParamObj.label} — <span id="bd-val-lbl" style="color:var(--accent);font-size:12px;">${_getValueAtFrame(selParamObj.param, activeFr)}</span> @ frame <span id="bd-frame-lbl" style="color:var(--accent)">${activeFr}</span></div>`;
-
-    // Keyframe chips — bigger
-    html += `<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:72px;overflow-y:auto;">`;
-    paramFrames.forEach(fr => {
-      const isActive = fr === activeFr;
-      const kf = paramKfs.find(k => k.frame === fr);
-      const kfVal = kf ? parseFloat(kf.value ?? kf.val ?? 0).toFixed(3) : '—';
-      html += `<button onclick="bdScrubFrame('${nodeId}',${fr})" title="Frame ${fr}: ${kfVal}" style="font-size:12px;font-family:var(--font-mono);padding:4px 10px;border-radius:4px;border:1px solid ${isActive?'rgba(200,240,96,.7)':'rgba(255,255,255,.15)'};background:${isActive?'rgba(200,240,96,.15)':'rgba(255,255,255,.04)'};color:${isActive?'var(--accent)':'var(--text2)'};cursor:pointer;transition:all .1s;line-height:1;">${fr}</button>`;
-    });
-    html += `</div>`;
-
-    // Prev/Next nav — bigger
-    html += `<div style="display:flex;gap:6px;">
-      <button onclick="bdScrubStep('${nodeId}',-1)" ${curIdx<=0?'disabled':''} style="flex:1;font-size:12px;font-family:var(--font-mono);padding:5px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;opacity:${curIdx<=0?'.3':'1'}">◂ Prev</button>
-      <button onclick="bdScrubStep('${nodeId}',1)" ${curIdx>=paramFrames.length-1?'disabled':''} style="flex:1;font-size:12px;font-family:var(--font-mono);padding:5px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;opacity:${curIdx>=paramFrames.length-1?'.3':'1'}">Next ▸</button>
-    </div>`;
-
-    // Inline spline canvas for this param
-    const canvasId = `bd-spline-${nodeId}-${_bdSelParam.replace(/[^a-z0-9]/gi,'_')}`;
-    html += `<canvas id="${canvasId}" style="display:block;width:100%;height:110px;border-radius:6px;background:#0d0d10;flex-shrink:0;cursor:crosshair;"></canvas>`;
-
-  } else if (selParamObj && selParamObj.param.isPath) {
-    // Path / PolyPath parameter
-    const pts = selParamObj.param.pathPoints || [];
-    html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">${selParamObj.label} <span style="color:var(--muted);font-size:8px;">PATH</span></div>`;
-    if (pts.length) {
-      html += `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text);background:rgba(255,255,255,.04);border-radius:4px;padding:6px 8px;margin-bottom:4px;">`;
-      pts.slice(0, 6).forEach((pt, i) => {
-        html += `<div style="color:${i===0?'var(--accent)':'var(--text2)'};margin-bottom:2px;">[${i}] X: ${fmtNum(String(pt.x))}, Y: ${fmtNum(String(pt.y))}</div>`;
-      });
-      if (pts.length > 6) html += `<div style="color:var(--muted);font-size:9px;">…${pts.length - 6} more points</div>`;
-      html += `</div>`;
-    } else {
-      const defVal = selParamObj.param.v || '0.5, 0.5';
-      html += `<div style="font-size:15px;font-family:var(--font-mono);color:var(--text);padding:6px 8px;background:rgba(255,255,255,.05);border-radius:4px;">${defVal}</div>`;
-    }
-    html += `<div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-top:5px;">Click ⬡ Spline above to view the path curve</div>`;
-
-  } else if (selParamObj) {
-    const val = selParamObj.param.v || '—';
-    html += `<div style="font-size:12px;font-family:var(--font-mono);color:var(--text2);padding:6px 0;">${selParamObj.label}</div>`;
-    html += `<div style="font-size:15px;font-family:var(--font-mono);color:var(--text);padding:4px 8px;background:rgba(255,255,255,.05);border-radius:4px;">${val}</div>`;
-    html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:4px;">Static value — no animation data</div>`;
-  } else {
-    html += `<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);padding:8px 0;">← Select a parameter to view keyframes &amp; spline</div>`;
-  }
-
-  html += `</div>`; // end right col
-  html += `</div>`; // end flex row
-
-  body.innerHTML = html;
-
-  // Draw spline canvas for selected param if it has keyframes
-  if (selParamObj && selParamObj.param.isKeyframe && selParamObj.param.keyframes && selParamObj.param.keyframes.length) {
-    const canvasId = `bd-spline-${nodeId}-${_bdSelParam.replace(/[^a-z0-9]/gi,'_')}`;
-    requestAnimationFrame(() => {
-      const c = document.getElementById(canvasId);
-      if (!c) return;
-      _bdDrawParamSpline(c, selParamObj.param, scrubFrame ?? selParamObj.param.keyframes[0]?.frame);
-    });
-  }
-}
 
 /** Called from node param pill — opens the bottom drawer for this node */
 function openParamsDrawer(nodeId) {
@@ -1962,169 +1807,6 @@ function openParamsDrawer(nodeId) {
   showBottomDrawer(node);
   // Also open the Fusion params panel on the right if not already open
   if (_rpActive !== 'params') rpOpenPanel('params');
-}
-
-function bdSelectParam(nodeId, paramKey) {
-  _bdSelParam = paramKey;
-  const node = nodes.find(n => n.id === nodeId);
-  if (!node) return;
-  showBottomDrawer(node, _kfScrubFrame);
-  if (selNode === nodeId) renderParamsDisplay(node, _kfScrubFrame);
-}
-
-function _bdDrawParamSpline(canvas, param, activeFrame) {
-  const kfs = (param.keyframes || []).slice().sort((a,b) => a.frame - b.frame);
-  if (!kfs.length) return;
-  const dpr = window.devicePixelRatio || 1;
-  const W = canvas.offsetWidth || 300, H = 110;
-  canvas.width = W * dpr; canvas.height = H * dpr;
-  canvas.style.height = H + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  const PAD = {l:42, r:12, t:12, b:28};
-  const gW = W - PAD.l - PAD.r, gH = H - PAD.t - PAD.b;
-
-  let minF = kfs[0].frame, maxF = kfs[kfs.length-1].frame;
-  let minV = Infinity, maxV = -Infinity;
-  kfs.forEach(k => {
-    const v = parseFloat(k.value ?? k.val ?? 0);
-    minV = Math.min(minV, v); maxV = Math.max(maxV, v);
-    if (k.rh) { minV = Math.min(minV, k.rh.y); maxV = Math.max(maxV, k.rh.y); }
-    if (k.lh) { minV = Math.min(minV, k.lh.y); maxV = Math.max(maxV, k.lh.y); }
-  });
-  if (minF === maxF) { minF -= 1; maxF += 1; }
-  if (minV === maxV) { minV -= 0.1; maxV += 0.1; }
-  const fp = (maxF - minF) * 0.06, vp = (maxV - minV) * 0.18;
-  const fMin = minF - fp, fMax = maxF + fp, vMin = minV - vp, vMax = maxV + vp;
-  const tx = f => PAD.l + (f - fMin) / (fMax - fMin) * gW;
-  const ty = v => PAD.t + (1 - (v - vMin) / (vMax - vMin)) * gH;
-
-  ctx.fillStyle = '#0d0d10'; ctx.beginPath(); ctx.roundRect(0,0,W,H,6); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 0.5;
-  for (let i = 0; i <= 4; i++) {
-    const v = vMin + (vMax - vMin) * i / 4, y = ty(v);
-    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '9px DM Mono,monospace'; ctx.textAlign = 'right';
-    ctx.fillText(v.toFixed(2), PAD.l - 3, y + 3);
-  }
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(PAD.l, PAD.t); ctx.lineTo(PAD.l, H - PAD.b); ctx.lineTo(W - PAD.r, H - PAD.b); ctx.stroke();
-  [minF, maxF].forEach(f => {
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '9px DM Mono,monospace'; ctx.textAlign = 'center';
-    ctx.fillText(Math.round(f), tx(f), H - PAD.b + 14);
-  });
-
-  // Draw curve
-  ctx.strokeStyle = '#f0c060'; ctx.lineWidth = 2; ctx.beginPath();
-  for (let i = 0; i < kfs.length - 1; i++) {
-    const k0 = kfs[i], k1 = kfs[i+1];
-    const v0 = parseFloat(k0.value ?? k0.val ?? 0), v1 = parseFloat(k1.value ?? k1.val ?? 0);
-    const x0 = tx(k0.frame), y0 = ty(v0), x3 = tx(k1.frame), y3 = ty(v1);
-    const cp1x = k0.rh ? tx(k0.rh.x) : x0+(x3-x0)/3, cp1y = k0.rh ? ty(k0.rh.y) : y0;
-    const cp2x = k1.lh ? tx(k1.lh.x) : x3-(x3-x0)/3, cp2y = k1.lh ? ty(k1.lh.y) : y3;
-    if (i === 0) ctx.moveTo(x0, y0);
-    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x3, y3);
-  }
-  ctx.stroke();
-
-  // Keyframe diamonds
-  kfs.forEach(k => {
-    const v = parseFloat(k.value ?? k.val ?? 0);
-    const px = tx(k.frame), py = ty(v);
-    ctx.save(); ctx.translate(px, py); ctx.rotate(Math.PI/4);
-    ctx.fillStyle = '#f0c060'; ctx.strokeStyle = '#0d0d10'; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.rect(-4,-4,8,8); ctx.fill(); ctx.stroke();
-    ctx.restore();
-  });
-
-  // Playhead line at active frame
-  if (activeFrame !== null && activeFrame !== undefined) {
-    const px = tx(activeFrame);
-    if (px >= PAD.l && px <= W - PAD.r) {
-      ctx.strokeStyle = 'rgba(200,240,96,0.7)'; ctx.lineWidth = 1.5;
-      ctx.setLineDash([3,3]);
-      ctx.beginPath(); ctx.moveTo(px, PAD.t); ctx.lineTo(px, H - PAD.b); ctx.stroke();
-      ctx.setLineDash([]);
-      // Value dot at playhead
-      const interpVal = parseFloat(_getValueAtFrame(param, activeFrame));
-      if (!isNaN(interpVal)) {
-        const py2 = ty(interpVal);
-        ctx.fillStyle = 'var(--accent)';
-        ctx.beginPath(); ctx.arc(px, py2, 4, 0, Math.PI*2); ctx.fill();
-      }
-    }
-  }
-
-  // Make canvas interactive — mousemove shows value at playhead
-  canvas.onmousemove = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const frac = (mx - PAD.l) / gW;
-    const hoverF = fMin + frac * (fMax - fMin);
-    if (hoverF < fMin || hoverF > fMax) return;
-    const hoverFrame = Math.round(hoverF);
-    // Redraw with hover playhead
-    _bdDrawParamSpline(canvas, param, hoverFrame);
-    // Update frame label
-    const lbl = document.getElementById('bd-frame-lbl');
-    if (lbl) lbl.textContent = hoverFrame;
-    // Update value label — show interpolated value at hover position
-    const valLbl = document.getElementById('bd-val-lbl');
-    if (valLbl) valLbl.textContent = _getValueAtFrame(param, hoverFrame);
-  };
-  canvas.onmouseleave = () => {
-    _bdDrawParamSpline(canvas, param, _kfScrubFrame);
-    const lbl = document.getElementById('bd-frame-lbl');
-    if (lbl && _kfScrubFrame !== null) lbl.textContent = _kfScrubFrame;
-    const valLbl = document.getElementById('bd-val-lbl');
-    if (valLbl && _kfScrubFrame !== null) valLbl.textContent = _getValueAtFrame(param, _kfScrubFrame);
-  };
-}
-
-// Scrub to a specific frame and refresh bottom drawer + right panel
-function bdScrubFrame(nodeId, frame) {
-  _kfScrubFrame = frame;
-  const node = nodes.find(n => n.id === nodeId);
-  if (!node) return;
-  showBottomDrawer(node, frame);
-  if (selNode === nodeId) renderParamsDisplay(node, frame);
-}
-
-// Step to prev/next keyframe for the selected param
-function bdScrubStep(nodeId, dir) {
-  const node = nodes.find(n => n.id === nodeId);
-  if (!node) return;
-  // Use selected param's frames if available, else all frames
-  let frames = [];
-  if (_bdSelParam) {
-    for (const tool of node.fusionParams || []) {
-      const p = (tool.params||{})[_bdSelParam];
-      if (p && p.keyframes) { frames = p.keyframes.map(k=>k.frame).sort((a,b)=>a-b); break; }
-    }
-  }
-  if (!frames.length) {
-    node.fusionParams.forEach(tool => {
-      Object.values(tool.params || {}).forEach(p => {
-        if (p.keyframes) p.keyframes.forEach(kf => { if (!frames.includes(kf.frame)) frames.push(kf.frame); });
-      });
-    });
-    frames.sort((a,b) => a-b);
-  }
-  if (!frames.length) return;
-  const cur = _kfScrubFrame ?? frames[0];
-  const curIdx = frames.indexOf(cur);
-  const nextIdx = Math.max(0, Math.min(frames.length - 1, (curIdx === -1 ? 0 : curIdx) + dir));
-  bdScrubFrame(nodeId, frames[nextIdx]);
-}
-
-function hideBottomDrawer() {
-  const drawer = document.getElementById('bottom-drawer');
-  if (drawer) drawer.classList.add('hidden');
-}
-
-function toggleBottomDrawer() {
-  const body = document.getElementById('bd-body');
-  if (body) body.style.display = body.style.display === 'none' ? '' : 'none';
 }
 
 // ── Undo stack ───────────────────────────────────────────────
@@ -6118,6 +5800,25 @@ function submitAddComp(){
   _shToast('Comp created ✓');
   setTimeout(function(){window.location.href='nodegraph/';},600);
 }
+
+/* ═══════════════════════════════════════════════════════
+   INITIALIZATION
+   ═══════════════════════════════════════════════════════ */
+(function init() {
+  // Build left panel UI
+  buildCatChips();
+  buildSavedList();
+  
+  // Initialize canvas
+  resizeCanvas();
+  drawGrid();
+  
+  // Window resize handler
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    drawGrid();
+  });
+})();
 </script>
 <!-- PAGE TITLE FLASH -->
 <div id="page-title-flash" style="
