@@ -610,11 +610,15 @@
             // Check if this PolyPath has a Displacement input connected to a BezierSpline
             let pathKeyframes = null;
             const polyPathInputs = splineMap._inputs && splineMap._inputs[srcOpName];
+            console.log('[FusionParser] PolyPath connection found:', srcOpName, 'inputs:', polyPathInputs);
             if (polyPathInputs && polyPathInputs.Displacement) {
               const dispSrc = polyPathInputs.Displacement;
+              console.log('[FusionParser] Looking for Displacement spline:', dispSrc);
               const dispSpline = splineMap[dispSrc];
+              console.log('[FusionParser] Displacement spline found:', dispSpline);
               if (dispSpline && dispSpline.type === 'BezierSpline' && dispSpline.keyframes) {
                 pathKeyframes = dispSpline.keyframes;
+                console.log('[FusionParser] Using keyframes from Displacement:', pathKeyframes.length);
               }
             }
             
@@ -827,9 +831,13 @@
         if (inputsIdx !== -1) {
           const inputsOpen = bc.indexOf('{', inputsIdx) + 1;
           const { content: inputsContent } = extractBlock(bc, inputsOpen);
-          const dispM = inputsContent.match(/Displacement\s*=\s*Input\s*\{[^}]*SourceOp\s*=\s*"([^"]+)"/);
+          // Match Displacement input with SourceOp - handle multiline
+          const dispRe = /Displacement\s*=\s*Input\s*\{[\s\S]*?SourceOp\s*=\s*"([^"]+)"/;
+          const dispM = inputsContent.match(dispRe);
+          console.log('[FusionParser] PolyPath', tname, 'Displacement match:', dispM);
           if (dispM) {
             splineMap._inputs[tname] = { Displacement: dispM[1] };
+            console.log('[FusionParser] Stored Displacement for', tname, ':', dispM[1]);
           }
         }
       }
