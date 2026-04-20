@@ -677,17 +677,25 @@
     
     // Filter to only relevant tools
     const nodeNameLower = node.name.toLowerCase();
+    console.log('[NodeVisualizer] showBottomDrawer for node:', node.name, 'looking for tools matching:', nodeNameLower);
+    console.log('[NodeVisualizer] Available tools:', node.fusionParams.map(t => t?.toolName));
+    
     const relevantTools = node.fusionParams.filter(tool => {
       if (!tool || !tool.toolName) return false;
       const toolNameLower = tool.toolName.toLowerCase();
-      return toolNameLower.includes(nodeNameLower) || 
+      const matches = toolNameLower.includes(nodeNameLower) || 
              nodeNameLower.includes(toolNameLower.replace(/\d+$/, '')) ||
              (nodeNameLower === 'transform' && tool.toolType === 'Transform');
+      console.log('[NodeVisualizer] Tool:', tool.toolName, 'matches:', matches);
+      return matches;
     });
     const toolsToCollect = relevantTools.length > 0 ? relevantTools : node.fusionParams;
+    console.log('[NodeVisualizer] Tools to collect:', toolsToCollect.map(t => t?.toolName));
     
     toolsToCollect.forEach(tool => {
+      console.log('[NodeVisualizer] Checking tool:', tool?.toolName, 'params:', Object.keys(tool?.params || {}));
       Object.entries(tool.params || {}).forEach(([k, p]) => {
+        console.log('[NodeVisualizer] Param:', k, 'isPath:', p?.isPath, 'isAnimatedPath:', p?.isAnimatedPath, 'keyframes:', p?.keyframes?.length);
         // Regular keyframes
         if (p.isKeyframe && p.keyframes && p.keyframes.length) {
           kfParams.push({ key: k, label: k.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^.*\./,''), param: p, tool });
@@ -700,6 +708,7 @@
         }
       });
     });
+    console.log('[NodeVisualizer] Total kfParams found:', kfParams.length, 'frames:', [...allFramesSet]);
     const allFrames = [...allFramesSet].sort((a,b) => a-b);
 
     if (allFrames.length) {

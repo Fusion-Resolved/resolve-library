@@ -2389,14 +2389,15 @@ function selectNode(id){
     if (deinstBtn) deinstBtn.style.display = node?.instanceOf ? '' : 'none';
     if (syncBtn)   syncBtn.style.display   = node?.hasInstances ? '' : 'none';
     renderParamsPanel(id);
-    // Update bottom drawer only if it's already open AND we're not mid-drag
-    if (node && !_isDragging) {
-      const drawer = document.getElementById('bottom-drawer');
-      if (drawer && !drawer.classList.contains('hidden')) {
-        _kfScrubFrame = null;
-        _bdSelParam = null;
-        showBottomDrawer(node);
-      }
+    
+    // Auto-open params panel and bottom drawer if node has fusion params
+    if (node && node.fusionParams && node.fusionParams.length && !_isDragging) {
+      // Open the right params panel
+      rpOpenPanel('params');
+      // Open the bottom drawer
+      _kfScrubFrame = null;
+      _bdSelParam = null;
+      showBottomDrawer(node);
     }
   }else{
     hideBottomDrawer();
