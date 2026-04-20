@@ -602,12 +602,7 @@
     } = options;
     
     const drawer = document.getElementById('bottom-drawer');
-    if (!drawer) {
-      console.error('[NodeVisualizer] bottom-drawer element not found');
-      return;
-    }
-    
-    console.log('[NodeVisualizer] Opening drawer for node:', node.name, 'fusionParams:', node.fusionParams);
+    if (!drawer) return;
     drawer.classList.remove('hidden');
     
     const titleEl = document.getElementById('bd-title');
@@ -777,7 +772,9 @@
       const isAnimated = selParamObj.param.isAnimatedPath;
       const pathKeyframes = selParamObj.param.keyframes;
       
-      html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">${selParamObj.label} <span style="color:var(--muted);font-size:8px;">${isAnimated ? 'ANIMATED PATH' : 'PATH'}</span></div>`;
+      // Title: Parameter name + spline type
+      html += `<div style="font-size:11px;font-family:var(--font-mono);color:var(--accent);font-weight:600;margin-bottom:4px;">${selParamObj.label}</div>`;
+      html += `<div style="font-size:9px;font-family:var(--font-mono);color:#cc44cc;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">${isAnimated ? '◆ BezierSpline (Animated)' : '◇ Static Path'}</div>`;
       
       // Show keyframes if animated
       if (isAnimated && pathKeyframes && pathKeyframes.length) {
@@ -785,16 +782,22 @@
         const paramFrames = paramKfs.map(k => k.frame);
         const curIdx = paramFrames.indexOf(scrubFrame ?? paramFrames[0]);
         const activeFr = curIdx >= 0 ? scrubFrame : paramFrames[0];
+        const activeKf = paramKfs.find(k => k.frame === activeFr);
+        const activeVal = activeKf ? parseFloat(activeKf.value ?? activeKf.val ?? 0).toFixed(3) : '—';
         
-        html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Displacement @ frame <span style="color:var(--accent)">${activeFr}</span></div>`;
+        // Current value display
+        html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text2);margin-bottom:6px;">Value: <span style="color:#cc44cc;font-weight:600;">${activeVal}</span> @ frame <span style="color:var(--accent)">${activeFr}</span></div>`;
         
-        // Keyframe chips
+        // Keyframe chips with values
         html += `<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:72px;overflow-y:auto;margin-bottom:8px;">`;
-        paramFrames.forEach(fr => {
+        paramKfs.forEach(kf => {
+          const fr = kf.frame;
           const isActive = fr === activeFr;
-          const kf = paramKfs.find(k => k.frame === fr);
-          const kfVal = kf ? parseFloat(kf.value ?? kf.val ?? 0).toFixed(3) : '—';
-          html += `<button onclick="NodeVisualizer.bdScrubFrame('${nodeId}',${fr})" title="Frame ${fr}: ${kfVal}" style="font-size:12px;font-family:var(--font-mono);padding:4px 10px;border-radius:4px;border:1px solid ${isActive?'rgba(200,240,96,.7)':'rgba(255,255,255,.15)'};background:${isActive?'rgba(200,240,96,.15)':'rgba(255,255,255,.04)'};color:${isActive?'var(--accent)':'var(--text2)'};cursor:pointer;transition:all .1s;line-height:1;">${fr}</button>`;
+          const kfVal = parseFloat(kf.value ?? kf.val ?? 0).toFixed(3);
+          html += `<button onclick="NodeVisualizer.bdScrubFrame('${nodeId}',${fr})" title="Frame ${fr}: ${kfVal}" style="font-size:11px;font-family:var(--font-mono);padding:4px 8px;border-radius:4px;border:1px solid ${isActive?'rgba(204,68,204,0.7)':'rgba(255,255,255,.15)'};background:${isActive?'rgba(204,68,204,0.15)':'rgba(255,255,255,.04)'};color:${isActive?'#cc44cc':'var(--text2)'};cursor:pointer;transition:all .1s;line-height:1.4;display:flex;flex-direction:column;align-items:center;min-width:50px;">
+            <span style="font-size:9px;color:${isActive?'#cc44cc':'var(--muted)'};">${fr}</span>
+            <span style="font-size:10px;font-weight:600;">${kfVal}</span>
+          </button>`;
         });
         html += `</div>`;
         
@@ -805,7 +808,8 @@
         </div>`;
       }
       
-      // Show path points
+      // Path geometry section
+      html += `<div style="font-size:9px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;margin-top:10px;">Path Geometry</div>`;
       if (pts.length) {
         html += `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text);background:rgba(255,255,255,.04);border-radius:4px;padding:6px 8px;margin-bottom:4px;">`;
         pts.slice(0, 6).forEach((pt, i) => {
@@ -816,12 +820,6 @@
       } else {
         const defVal = selParamObj.param.v || '0.5, 0.5';
         html += `<div style="font-size:15px;font-family:var(--font-mono);color:var(--text);padding:6px 8px;background:rgba(255,255,255,.05);border-radius:4px;">${defVal}</div>`;
-      }
-      
-      if (isAnimated) {
-        html += `<div style="font-size:9px;font-family:var(--font-mono);color:#cc44cc;margin-top:5px;">◆ Animated path — use keyframes above to scrub</div>`;
-      } else {
-        html += `<div style="font-size:9px;font-family:var(--font-mono);color:var(--muted);margin-top:5px;">Click ⬡ Spline above to view the path curve</div>`;
       }
 
     } else if (selParamObj) {
