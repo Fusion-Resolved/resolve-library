@@ -438,8 +438,8 @@
         }
 
         if (p.isPath && p.pathPoints && p.pathPoints.length) {
-          const pt = p.pathPoints[0];
-          displayVal = `${fmt(String(pt.x))}, ${fmt(String(pt.y))}`;
+          // Use p.v which contains the corrected Center value (with 0.5 offset)
+          displayVal = p.v || '—';
           row.innerHTML = `<span class="pkey" title="${k}">${label}</span><span class="pval path" title="${displayVal}">${displayVal}</span>`;
           const frag = document.createDocumentFragment();
           frag.appendChild(row);
@@ -813,17 +813,27 @@
         const curIdx = paramFrames.indexOf(scrubFrame ?? paramFrames[0]);
         const activeFr = curIdx >= 0 ? scrubFrame : paramFrames[0];
         const activeKf = paramKfs.find(k => k.frame === activeFr);
-        const activeVal = activeKf ? parseFloat(activeKf.value ?? activeKf.val ?? 0).toFixed(3) : '—';
+        
+        // Calculate actual Center value with 0.5 offset
+        const displacement = parseFloat(activeKf?.value ?? 0);
+        const startPt = pts[0];
+        const endPt = pts[pts.length - 1];
+        const activeX = 0.5 + (startPt.x + (endPt.x - startPt.x) * displacement);
+        const activeY = 0.5 + (startPt.y + (endPt.y - startPt.y) * displacement);
+        const activeVal = `${fmtNum(String(activeX))}, ${fmtNum(String(activeY))}`;
         
         // Current value display
-        html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text2);margin-bottom:6px;">Value: <span style="color:#cc44cc;font-weight:600;">${activeVal}</span> @ frame <span style="color:var(--accent)">${activeFr}</span></div>`;
+        html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--text2);margin-bottom:6px;">Center: <span style="color:#cc44cc;font-weight:600;">${activeVal}</span> @ frame <span style="color:var(--accent)">${activeFr}</span></div>`;
         
-        // Keyframe chips with values
+        // Keyframe chips with Center values (not just displacement)
         html += `<div style="display:flex;flex-wrap:wrap;gap:4px;max-height:72px;overflow-y:auto;margin-bottom:8px;">`;
         paramKfs.forEach(kf => {
           const fr = kf.frame;
           const isActive = fr === activeFr;
-          const kfVal = parseFloat(kf.value ?? kf.val ?? 0).toFixed(3);
+          const kfDisplacement = parseFloat(kf.value ?? kf.val ?? 0);
+          const kfX = 0.5 + (startPt.x + (endPt.x - startPt.x) * kfDisplacement);
+          const kfY = 0.5 + (startPt.y + (endPt.y - startPt.y) * kfDisplacement);
+          const kfVal = `${fmtNum(String(kfX))}, ${fmtNum(String(kfY))}`;
           html += `<button onclick="NodeVisualizer.bdScrubFrame('${nodeId}',${fr})" title="Frame ${fr}: ${kfVal}" style="font-size:11px;font-family:var(--font-mono);padding:4px 8px;border-radius:4px;border:1px solid ${isActive?'rgba(204,68,204,0.7)':'rgba(255,255,255,.15)'};background:${isActive?'rgba(204,68,204,0.15)':'rgba(255,255,255,.04)'};color:${isActive?'#cc44cc':'var(--text2)'};cursor:pointer;transition:all .1s;line-height:1.4;display:flex;flex-direction:column;align-items:center;min-width:50px;">
             <span style="font-size:9px;color:${isActive?'#cc44cc':'var(--muted)'};">${fr}</span>
             <span style="font-size:10px;font-weight:600;">${kfVal}</span>
@@ -838,12 +848,15 @@
         </div>`;
       }
       
-      // Path geometry section
-      html += `<div style="font-size:9px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;margin-top:10px;">Path Geometry</div>`;
+      // Path geometry section - show points with 0.5 offset for Center
+      html += `<div style="font-size:9px;font-family:var(--font-mono);color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;margin-top:10px;">Path Points (offset from 0.5)</div>`;
       if (pts.length) {
         html += `<div style="font-size:11px;font-family:var(--font-mono);color:var(--text);background:rgba(255,255,255,.04);border-radius:4px;padding:6px 8px;margin-bottom:4px;">`;
         pts.slice(0, 6).forEach((pt, i) => {
-          html += `<div style="color:${i===0?'var(--accent)':'var(--text2)'};margin-bottom:2px;">[${i}] X: ${fmtNum(String(pt.x))}, Y: ${fmtNum(String(pt.y))}</div>`;
+          // Add 0.5 offset to show actual Center position
+          const x = 0.5 + pt.x;
+          const y = 0.5 + pt.y;
+          html += `<div style="color:${i===0?'var(--accent)':'var(--text2)'};margin-bottom:2px;">[${i}] X: ${fmtNum(String(x))}, Y: ${fmtNum(String(y))}</div>`;
         });
         if (pts.length > 6) html += `<div style="color:var(--muted);font-size:9px;">…${pts.length - 6} more points</div>`;
         html += `</div>`;
