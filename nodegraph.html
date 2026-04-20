@@ -573,10 +573,10 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
   .ng-node[data-cat-stripe] > .nd-header { border-top-width: 3px; border-top-style: solid; border-top-color: inherit; }
 
   /* ── Bottom drawer — Noding glass ── */
-  .bottom-drawer { position: absolute; bottom: 0; left: 0; right: 0;
+  .bottom-drawer { position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
     border-top: 1px solid var(--border-surface); backdrop-filter: blur(18px);
-    z-index: 12; max-height: 340px; display: flex; flex-direction: column; transition: max-height 0.22s ease; }
+    z-index: 1000; max-height: 340px; display: flex; flex-direction: column; transition: max-height 0.22s ease; }
   .bottom-drawer.hidden { max-height: 0; overflow: hidden; }
   .bottom-drawer-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px;
     border-bottom: 1px solid var(--border-surface); flex-shrink: 0; cursor: pointer; }
