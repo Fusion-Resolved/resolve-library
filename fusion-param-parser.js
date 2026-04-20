@@ -610,24 +610,40 @@
             // Check if this PolyPath has a Displacement input connected to a BezierSpline
             let pathKeyframes = null;
             const polyPathInputs = splineMap._inputs && splineMap._inputs[srcOpName];
-            console.log('[FusionParser] PolyPath connection found:', srcOpName, 'inputs:', polyPathInputs);
             if (polyPathInputs && polyPathInputs.Displacement) {
               const dispSrc = polyPathInputs.Displacement;
-              console.log('[FusionParser] Looking for Displacement spline:', dispSrc);
               const dispSpline = splineMap[dispSrc];
-              console.log('[FusionParser] Displacement spline found:', dispSpline);
               if (dispSpline && dispSpline.type === 'BezierSpline' && dispSpline.keyframes) {
                 pathKeyframes = dispSpline.keyframes;
-                console.log('[FusionParser] Using keyframes from Displacement:', pathKeyframes.length);
               }
             }
             
+            // For Center params, calculate value based on path displacement
+            // Center is normalized 0-1, path points may be in different coordinate space
+            // Use the first point as representative, or calculate actual position if animated
+            let displayValue;
+            if (pname === 'Center' && pathKeyframes) {
+              // Animated Center - show value at first keyframe
+              const firstKf = pathKeyframes[0];
+              const displacement = parseFloat(firstKf?.value ?? 0);
+              // Interpolate along the path based on displacement (0-1)
+              const startPt = splineData.points[0];
+              const endPt = splineData.points[splineData.points.length - 1];
+              const x = startPt.x + (endPt.x - startPt.x) * displacement;
+              const y = startPt.y + (endPt.y - startPt.y) * displacement;
+              // Normalize to 0-1 range (assuming path coordinates might be normalized)
+              displayValue = `${fmtNum(String(x))}, ${fmtNum(String(y))}`;
+            } else {
+              // Static path - use first point
+              displayValue = `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}`;
+            }
+            
             params[pname] = {
-              v: `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}`,
+              v: displayValue,
               isPath: true,
               pathPoints: splineData.points,
               sourceOp: srcOpName,
-              displayValue: `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}`,
+              displayValue: displayValue,
               ...(pathKeyframes && { 
                 isAnimatedPath: true, 
                 keyframes: pathKeyframes,
@@ -834,10 +850,8 @@
           // Match Displacement input with SourceOp - handle multiline
           const dispRe = /Displacement\s*=\s*Input\s*\{[\s\S]*?SourceOp\s*=\s*"([^"]+)"/;
           const dispM = inputsContent.match(dispRe);
-          console.log('[FusionParser] PolyPath', tname, 'Displacement match:', dispM);
           if (dispM) {
             splineMap._inputs[tname] = { Displacement: dispM[1] };
-            console.log('[FusionParser] Stored Displacement for', tname, ':', dispM[1]);
           }
         }
       }

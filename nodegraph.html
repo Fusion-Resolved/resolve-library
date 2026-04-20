@@ -3936,7 +3936,8 @@ function importFromNodeSystem(str) {
       // Store fusion params if available
       if (n.params && Object.keys(n.params).length > 0) {
         newNode.fusionParams = [{
-          table: n.name,
+          toolName: n.fusionName || n.name,
+          toolType: n.name,
           params: n.params
         }];
         newNode._rawSetting = trimmedText;
