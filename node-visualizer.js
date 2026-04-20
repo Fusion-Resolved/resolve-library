@@ -594,8 +594,12 @@
     } = options;
     
     const drawer = document.getElementById('bottom-drawer');
-    if (!drawer) return;
+    if (!drawer) {
+      console.error('[NodeVisualizer] bottom-drawer element not found');
+      return;
+    }
     
+    console.log('[NodeVisualizer] Opening drawer for node:', node.name, 'fusionParams:', node.fusionParams);
     drawer.classList.remove('hidden');
     
     const titleEl = document.getElementById('bd-title');
