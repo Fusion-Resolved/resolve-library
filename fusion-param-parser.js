@@ -619,8 +619,8 @@
             }
             
             // For Center params, calculate value based on path displacement
-            // Center is normalized 0-1, path points may be in different coordinate space
-            // Use the first point as representative, or calculate actual position if animated
+            // Center default is 0.5, 0.5 - path coordinates are OFFSETS from this default
+            // So we add 0.5 to convert path coordinates to actual Center position
             let displayValue;
             if (pname === 'Center' && pathKeyframes) {
               // Animated Center - show value at first keyframe
@@ -629,13 +629,16 @@
               // Interpolate along the path based on displacement (0-1)
               const startPt = splineData.points[0];
               const endPt = splineData.points[splineData.points.length - 1];
-              const x = startPt.x + (endPt.x - startPt.x) * displacement;
-              const y = startPt.y + (endPt.y - startPt.y) * displacement;
-              // Normalize to 0-1 range (assuming path coordinates might be normalized)
+              // Add 0.5 offset to convert from path space to Center space
+              const x = 0.5 + (startPt.x + (endPt.x - startPt.x) * displacement);
+              const y = 0.5 + (startPt.y + (endPt.y - startPt.y) * displacement);
               displayValue = `${fmtNum(String(x))}, ${fmtNum(String(y))}`;
             } else {
-              // Static path - use first point
-              displayValue = `${fmtNum(String(firstPt.x))}, ${fmtNum(String(firstPt.y))}`;
+              // Static path - use first point with 0.5 offset
+              const firstPt = splineData.points[0];
+              const x = 0.5 + firstPt.x;
+              const y = 0.5 + firstPt.y;
+              displayValue = `${fmtNum(String(x))}, ${fmtNum(String(y))}`;
             }
             
             params[pname] = {
