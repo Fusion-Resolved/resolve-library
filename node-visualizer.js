@@ -726,8 +726,7 @@
       html += `<div style="font-size:10px;font-family:var(--font-mono);color:var(--accent);background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.18);border-radius:4px;padding:3px 7px;margin-bottom:5px">⬡ Instance of ${masterNode.name}</div>`;
     }
 
-    // Filter to only show relevant tools for this node
-    const nodeNameLower = node.name.toLowerCase();
+    // Filter to only show relevant tools for this node (already have nodeNameLower from above)
     const relevantTools = node.fusionParams.filter(tool => {
       const toolNameLower = tool.toolName.toLowerCase();
       return toolNameLower.includes(nodeNameLower) || 
