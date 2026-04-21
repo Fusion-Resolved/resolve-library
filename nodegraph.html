@@ -5442,6 +5442,7 @@ function _drawSplineCanvas(canvasEl, splines) {
 
   let minF = Infinity, maxF = -Infinity, minV = Infinity, maxV = -Infinity;
   splines.forEach(sp => sp.keyframes.forEach(kf => {
+    if (typeof kf.val !== 'number') return; // skip non-numeric (e.g. un-split path strings)
     minF = Math.min(minF, kf.frame); maxF = Math.max(maxF, kf.frame);
     minV = Math.min(minV, kf.val);   maxV = Math.max(maxV, kf.val);
     if (kf.rh) { maxF = Math.max(maxF, kf.rh.x); minV = Math.min(minV, kf.rh.y); maxV = Math.max(maxV, kf.rh.y); }
@@ -5551,6 +5552,36 @@ function openSplineModal(filterSplineName) {
     if (nodeSplineNames.size > 0) {
       allSplines = allSplines.filter(s => nodeSplineNames.has(s.name));
     }
+
+    // ── Synthesise X,Y splines from PolyPath-driven params (e.g. Center) ────
+    // PolyPath keyframes store val as "X, Y" strings; split them into two
+    // separate numeric curves so _drawSplineCanvas can plot them.
+    node.fusionParams.forEach(t => {
+      Object.entries(t.params || {}).forEach(([k, p]) => {
+        if (!p.isPath || !p.keyframes || !p.keyframes.length) return;
+        const paramLabel = typeof fmtParamLabel === 'function'
+          ? fmtParamLabel(k)
+          : k.replace(/([a-z])([A-Z])/g, '$1 $2');
+        const pathName = p.sourceOp || k;
+        const xKfs = [], yKfs = [];
+        p.keyframes.forEach(kf => {
+          if (typeof kf.val === 'string') {
+            const parts = kf.val.split(',').map(s => parseFloat(s.trim()));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+              xKfs.push({ frame: kf.frame, val: parts[0] });
+              yKfs.push({ frame: kf.frame, val: parts[1] });
+            }
+          } else if (typeof kf.val === 'number') {
+            xKfs.push({ frame: kf.frame, val: kf.val });
+            yKfs.push({ frame: kf.frame, val: kf.val });
+          }
+        });
+        if (xKfs.length) {
+          allSplines.push({ name: pathName, label: paramLabel + ' X', color: '#4ae8c8', keyframes: xKfs, isSynthPath: true });
+          allSplines.push({ name: pathName, label: paramLabel + ' Y', color: '#f0a060', keyframes: yKfs, isSynthPath: true });
+        }
+      });
+    });
   }
   _spmAllSplines = allSplines;
   _spmNode = node;
@@ -5634,7 +5665,12 @@ function _spmRender(filterSplineName) {
       selEl.appendChild(btn);
     };
     mkBtn('ALL', null, null);
-    allSplines.forEach(sp => mkBtn(splineToLabel[sp.name] || sp.name, sp.name, sp.color));
+    const _seenChipNames = new Set();
+    allSplines.forEach(sp => {
+      if (_seenChipNames.has(sp.name)) return; // X and Y share one chip
+      _seenChipNames.add(sp.name);
+      mkBtn(splineToLabel[sp.name] || sp.name, sp.name, sp.color);
+    });
   } else {
     selEl.style.display = 'none';
     selEl.innerHTML = '';
@@ -5663,13 +5699,13 @@ function _spmRender(filterSplineName) {
   legendEl.innerHTML = splines.map(s =>
     `<div style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Mono',monospace;color:#a09d97">
       <div style="width:10px;height:10px;border-radius:2px;background:${s.color};flex-shrink:0"></div>
-      <span style="color:#f0ede6;font-weight:500">${s.name}</span>
+      <span style="color:#f0ede6;font-weight:500">${s.label || s.name}</span>
       <span style="opacity:.5">${s.keyframes.length} KF</span>
     </div>`
   ).join('');
 
   chipsEl.innerHTML = splines.flatMap(s => s.keyframes.map(kf =>
-    `<span style="font-size:10px;font-family:'DM Mono',monospace;color:#a09d97;background:#18181d;border:1px solid ${s.color}44;border-radius:4px;padding:2px 7px">[${kf.frame}] = ${kf.val.toFixed(3)}</span>`
+    `<span style="font-size:10px;font-family:'DM Mono',monospace;color:#a09d97;background:#18181d;border:1px solid ${s.color}44;border-radius:4px;padding:2px 7px">[${kf.frame}] = ${typeof kf.val === 'number' ? kf.val.toFixed(3) : kf.val}</span>`
   )).join('');
 
   requestAnimationFrame(() => {
@@ -6666,9 +6702,32 @@ if (typeof NodeVisualizer === 'undefined') {
     _getValueAtFrame: function (param, frame) { return _nvVal(param, frame); },
     _bdDrawParamSpline: function (canvas, param, activeFrame) {
       if (!canvas || !param || !(param.keyframes && param.keyframes.length)) return;
-      if (typeof _drawSplineCanvas === 'function') {
-        _drawSplineCanvas(canvas, [{ name: '', color: param.splineColor || '#f5c842', keyframes: param.keyframes }]);
+      if (typeof _drawSplineCanvas !== 'function') return;
+
+      // PolyPath params store keyframes as "X, Y" strings — split into two curves
+      var firstVal = param.keyframes[0] && param.keyframes[0].val;
+      if (typeof firstVal === 'string') {
+        var xKfs = [], yKfs = [];
+        param.keyframes.forEach(function(kf) {
+          var parts = typeof kf.val === 'string'
+            ? kf.val.split(',').map(function(s) { return parseFloat(s.trim()); })
+            : [kf.val, kf.val];
+          if (parts.length === 2 && !isNaN(parts[0])) {
+            xKfs.push({ frame: kf.frame, val: parts[0] });
+            yKfs.push({ frame: kf.frame, val: parts[1] });
+          }
+        });
+        if (xKfs.length) {
+          _drawSplineCanvas(canvas, [
+            { name: 'X', color: '#4ae8c8', keyframes: xKfs },
+            { name: 'Y', color: '#f0a060', keyframes: yKfs }
+          ]);
+          return;
+        }
       }
+
+      // Standard numeric keyframes
+      _drawSplineCanvas(canvas, [{ name: '', color: param.splineColor || '#f5c842', keyframes: param.keyframes }]);
     },
   };
 }
