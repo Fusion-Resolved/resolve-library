@@ -1525,6 +1525,34 @@ function bezierInterp(x0, y0, cx1, cy1, cx2, cy2, x3, y3, targetX) {
   return mt*mt*mt*y0 + 3*mt*mt*t*cy1 + 3*mt*t*t*cy2 + t*t*t*y3;
 }
 
+// ── Shared bezier evaluation — used by spline drawing, hover, and playhead dot ──
+// More robust than getSplineValueAtFrame: handles missing handles by falling back
+// to the keyframe value (constant/linear) rather than pure linear interpolation.
+function evalBezAtFrame(kfs, frame) {
+  if (!kfs || !kfs.length) return null;
+  const sorted = kfs.slice().sort((a, b) => a.frame - b.frame);
+  if (frame <= sorted[0].frame) return sorted[0].value;
+  const last = sorted[sorted.length - 1];
+  if (frame >= last.frame) return last.value;
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const k0 = sorted[i], k1 = sorted[i + 1];
+    if (frame < k0.frame || frame > k1.frame) continue;
+    const p0x = k0.frame, p1x = k0.rh ? k0.rh.x : k0.frame;
+    const p2x = k1.lh ? k1.lh.x : k1.frame, p3x = k1.frame;
+    let lo = 0, hi = 1;
+    for (let n = 0; n < 24; n++) {
+      const t = (lo + hi) / 2;
+      const bx = (1-t)**3*p0x + 3*(1-t)**2*t*p1x + 3*(1-t)*t**2*p2x + t**3*p3x;
+      bx < frame ? lo = t : hi = t;
+    }
+    const t = (lo + hi) / 2;
+    const p0y = k0.value, p1y = k0.rh ? k0.rh.y : k0.value;
+    const p2y = k1.lh ? k1.lh.y : k1.value, p3y = k1.value;
+    return (1-t)**3*p0y + 3*(1-t)**2*t*p1y + 3*(1-t)*t**2*p2y + t**3*p3y;
+  }
+  return last.value;
+}
+
 // The unified display-value getter — called by ALL display sections
 function getDisplayValue(param, pname, frame) {
   if (param.kind === 'keyframe') {
@@ -1919,12 +1947,15 @@ function renderDetail() {
       <button class="nav-btn" id="nav-next" ${curIdx>=paramFrames.length-1?'disabled':''}>Next ▸</button>
     </div>`;
 
-    // Spline canvas (keyframe only)
-    if (p.kind === 'keyframe') {
+    // Spline canvas (keyframe and animpath)
+    if (p.kind === 'keyframe' || p.kind === 'animpath') {
+      const btnColor = p.kind === 'animpath' ? 'var(--path)' : 'var(--kf)';
+      const btnBg    = p.kind === 'animpath' ? 'rgba(176,106,252,.07)' : 'rgba(245,200,66,.07)';
+      const btnBorder= p.kind === 'animpath' ? 'rgba(176,106,252,.4)' : 'rgba(245,200,66,.4)';
       html += `<button id="view-spline-btn" style="
         font-size:11px;font-family:var(--mono);padding:6px;width:100%;
-        border-radius:var(--radius-sm);border:1px solid rgba(245,200,66,.4);
-        background:rgba(245,200,66,.07);color:var(--kf);cursor:pointer;
+        border-radius:var(--radius-sm);border:1px solid ${btnBorder};
+        background:${btnBg};color:${btnColor};cursor:pointer;
         transition:.12s;display:flex;align-items:center;justify-content:center;gap:6px;
       ">⬡ View Spline  <span style="font-size:9px;opacity:.6">(${p.keyframes.length} keyframes)</span></button>`;
       html += `<div class="spline-wrap">
@@ -1973,7 +2004,7 @@ function renderDetail() {
   // Draw spline
   requestAnimationFrame(() => {
     const canvas = document.getElementById('spline-canvas');
-    if (canvas && p.kind === 'keyframe') {
+    if (canvas && (p.kind === 'keyframe' || p.kind === 'animpath')) {
       drawSpline(canvas, p, state.frame);
       canvas.addEventListener('click', () => openSplineModal(p, state.selectedParam));
     }
@@ -2070,7 +2101,7 @@ function drawSpline(canvas, param, activeFrame) {
       ctx.strokeStyle='rgba(200,240,96,0.65)'; ctx.lineWidth=1.5; ctx.setLineDash([3,3]);
       ctx.beginPath(); ctx.moveTo(px,PAD.t); ctx.lineTo(px,H-PAD.b); ctx.stroke();
       ctx.setLineDash([]);
-      const iv = getSplineValueAtFrame(kfs, activeFrame);
+      const iv = evalBezAtFrame(kfs, activeFrame);
       if (iv !== null) {
         ctx.fillStyle='var(--accent2,#c8f060)';
         ctx.beginPath(); ctx.arc(px,ty(iv),4,0,Math.PI*2); ctx.fill();
@@ -2281,7 +2312,7 @@ function spmDrawBase() {
     ctx.strokeStyle = 'rgba(200,240,96,.75)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(px, PAD.t); ctx.lineTo(px, H - PAD.b); ctx.stroke();
     ctx.setLineDash([]);
-    const iv = getSplineValueAtFrame(kfs, af);
+    const iv = evalBezAtFrame(kfs, af);
     if (iv !== null) {
       ctx.fillStyle = '#c8f060'; ctx.beginPath(); ctx.arc(px, ty(iv), 5.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#c8f060'; ctx.textAlign = 'left'; ctx.font = '10px monospace';
@@ -2306,29 +2337,8 @@ function spmAttachHover() {
   const color = param.splineColor || '#f5c842';
   const PAD = { l: 58, r: 24, t: 22, b: 36 };
 
-  // Proper bezier interpolation for hover readout
-  function evalBez(frame) {
-    if (frame <= kfs[0].frame) return kfs[0].value;
-    const last = kfs[kfs.length - 1];
-    if (frame >= last.frame) return last.value;
-    for (let i = 0; i < kfs.length - 1; i++) {
-      const k0 = kfs[i], k1 = kfs[i + 1];
-      if (frame < k0.frame || frame > k1.frame) continue;
-      const p0x = k0.frame, p1x = k0.rh ? k0.rh.x : k0.frame;
-      const p2x = k1.lh ? k1.lh.x : k1.frame, p3x = k1.frame;
-      let lo = 0, hi = 1;
-      for (let n = 0; n < 24; n++) {
-        const t = (lo + hi) / 2;
-        const bx = (1-t)**3*p0x + 3*(1-t)**2*t*p1x + 3*(1-t)*t**2*p2x + t**3*p3x;
-        bx < frame ? lo = t : hi = t;
-      }
-      const t = (lo + hi) / 2;
-      const p0y = k0.value, p1y = k0.rh ? k0.rh.y : k0.value;
-      const p2y = k1.lh ? k1.lh.y : k1.value, p3y = k1.value;
-      return (1-t)**3*p0y + 3*(1-t)**2*t*p1y + 3*(1-t)*t**2*p2y + t**3*p3y;
-    }
-    return last.value;
-  }
+  // Proper bezier interpolation for hover readout (uses shared evalBezAtFrame)
+  function evalBez(frame) { return evalBezAtFrame(kfs, frame); }
 
   canvas._spmHoverFn = function(e) {
     const rect = canvas.getBoundingClientRect();
@@ -2579,10 +2589,13 @@ document.addEventListener('DOMContentLoaded', () => {
   clearBtn.addEventListener('click', clearAll);
 
   document.getElementById('close-btn').addEventListener('click', () => {
-    document.getElementById('app').style.display = 'none';
-    // Notify parent frame if embedded
     if (window.parent !== window) {
+      // Embedded in an iframe — notify parent and hide
       window.parent.postMessage({ type: 'CI_CLOSED' }, '*');
+      document.getElementById('app').style.display = 'none';
+    } else {
+      // Standalone page — go back in history
+      window.history.back();
     }
   });
 
