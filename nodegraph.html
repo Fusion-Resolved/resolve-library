@@ -6179,6 +6179,33 @@ window._FUSION_INLINE_ENUMS = {
   'ColorRanges': { 0:'Shadows', 1:'Midtones', 2:'Highlights', 3:'Master' },
   // Rotation order (Transform3D)
   'RotOrder': { 0:'XYZ', 1:'XZY', 2:'YXZ', 3:'YZX', 4:'ZXY', 5:'ZYX' },
+  // ── Common boolean toggles — explicitly mapped ─────────────────────
+  'UseFrameFormatSettings': { 0:'Off', 1:'On' },
+  'PerformDepthMerge':      { 0:'Off', 1:'On' },
+  'MakeRenderable':         { 0:'Off', 1:'On' },
+  'EnableLighting':         { 0:'Off', 1:'On' },
+  'EnableShadows':          { 0:'Off', 1:'On' },
+  'HoldLastFrame':          { 0:'Off', 1:'On' },
+  'TwoSidedLighting':       { 0:'Off', 1:'On' },
+  'ReceivesLighting':       { 0:'Off', 1:'On' },
+  'ReceivesShadows':        { 0:'Off', 1:'On' },
+  'GroupObjects':           { 0:'Off', 1:'On' },
+  'Radial':                 { 0:'Off', 1:'On' },
+  'SmoothTransition':       { 0:'Off', 1:'On' },
+  'ShowInDisplayViews':     { 0:'Off', 1:'On' },
+  'AutoTolerance':          { 0:'Off', 1:'On' },
+  'Fracture':               { 0:'Off', 1:'On' },
+  'PreWeldPositionVertices':{ 0:'Off', 1:'On' },
+  'ReduceConstantKeys':     { 0:'Off', 1:'On' },
+  'FilePerFrame':           { 0:'Off', 1:'On' },
+  'IgnoreSmoothGroups':     { 0:'Off', 1:'On' },
+  'FlipNormals':            { 0:'Off', 1:'On' },
+  'FlipTangentsU':          { 0:'Off', 1:'On' },
+  'FlipTangentsV':          { 0:'Off', 1:'On' },
+  'PointToCamera':          { 0:'Off', 1:'On' },
+  'AdaptiveNearFarClip':    { 0:'Off', 1:'On' },
+  'PreMultiply':            { 0:'Off', 1:'On' },
+  'PremultiplyAlpha':       { 0:'Off', 1:'On' },
 };
 
 
@@ -6414,54 +6441,78 @@ window._parseNodeParams = function (body, content, fullText) {
     var p = params[k];
     if (!p || p.isKeyframe || p.isConnection || p.isExpr || p.isPath) return;
     var v = p.v;
-    if (typeof v === 'string' && /^-?\d+$/.test(v.trim())) {
-      // Strip any namespace prefix (e.g. "Transform3DOp.RotOrder" → "RotOrder")
-      var base = k.split('.').pop();
-      var enumMap = _enums[k] || _enums[base];
-      if (enumMap) {
-        var idx = parseInt(v, 10);
-        if (enumMap.hasOwnProperty(idx)) {
-          params[k] = { v: enumMap[idx], isEnum: true };
-        }
+    if (typeof v !== 'string' || !/^-?\d+$/.test(v.trim())) return;
+    var base = k.split('.').pop();
+    var enumMap = _enums[k] || _enums[base];
+    if (enumMap) {
+      var idx = parseInt(v, 10);
+      if (enumMap.hasOwnProperty(idx)) {
+        params[k] = { v: enumMap[idx], isEnum: true };
+        return;
+      }
+    }
+    // Broad boolean detection — any toggle-named param with a 0/1 value.
+    // Applied only after the enum lookup fails so explicit enums take priority.
+    // Must NOT match color components (they end in Red/Green/Blue/Alpha).
+    if (!/(?:Red|Green|Blue|Alpha)$/.test(k)) {
+      if (/^(?:Use|Enable|Is|Has|Do|Lock|Hold|Pass|Allow|Perform|Make|Show)/i.test(base) ||
+          /(?:Enabled|FrameFormat|PassThrough|AutoSize|Premult|Renderable|Cached|Inverse|Settings)$/i.test(base)) {
+        params[k] = { v: v === '1' ? 'On' : 'Off', isEnum: true };
       }
     }
   });
 
   // ── Post-process 2: synthesize RGBA color swatches ───────────────────────────
-  // Detect groups of *Red + *Green + *Blue (optionally *Alpha) and merge them
-  // into a single swatch param so the display can show a color box.
-  var _seenPrefixes = {};
+  // Fusion only exports parameters that differ from their defaults, so a solid-red
+  // background exports ONLY TopLeftRed = 1 — Green and Blue are omitted because
+  // their default is 0.  We must synthesise the swatch from whatever components
+  // ARE present and assume missing ones are 0 (Alpha defaults to 1).
+  var _colorGroups = {};   // prefix → { Red:float, Green:float, Blue:float, Alpha:float }
   Object.keys(params).forEach(function(k) {
-    if (/Red$/.test(k)) { _seenPrefixes[k.replace(/Red$/, '')] = true; }
+    var cm = k.match(/^(.+?)(Red|Green|Blue|Alpha)$/);
+    if (!cm) return;
+    var prefix = cm[1], channel = cm[2];
+    var p = params[k];
+    if (p.isKeyframe || p.isColor) return; // skip animated or already-merged
+    var num = parseFloat(p.v);
+    if (isNaN(num)) return; // skip non-numeric (enum strings etc.)
+    if (!_colorGroups[prefix]) _colorGroups[prefix] = {};
+    _colorGroups[prefix][channel] = num;
+    p.isColorComponent = true; // suppress from display
   });
-  Object.keys(_seenPrefixes).forEach(function(prefix) {
-    var rK = prefix + 'Red', gK = prefix + 'Green', bK = prefix + 'Blue', aK = prefix + 'Alpha';
-    if (!params[rK] || !params[gK] || !params[bK]) return;
-    // Only synthesize when all components are plain numeric, not keyframed
-    if (params[rK].isKeyframe || params[gK].isKeyframe || params[bK].isKeyframe) return;
-    var r = parseFloat(params[rK].v) || 0;
-    var g = parseFloat(params[gK].v) || 0;
-    var b = parseFloat(params[bK].v) || 0;
-    var a = params[aK] ? (parseFloat(params[aK].v) || 1) : 1;
-    function _ch(c) { return ('0' + Math.round(Math.max(0, Math.min(1, c)) * 255).toString(16)).slice(-2); }
+
+  function _fmtC(n) {
+    // Format a 0-1 float cleanly: integers stay as integers, others to 4 sig figs
+    var f = parseFloat(n.toPrecision(4));
+    return String(f);
+  }
+  function _ch(c) {
+    return ('0' + Math.round(Math.max(0, Math.min(1, c)) * 255).toString(16)).slice(-2);
+  }
+
+  Object.keys(_colorGroups).forEach(function(prefix) {
+    var comps = _colorGroups[prefix];
+    // Need at least one of R/G/B to justify a swatch (Alpha-only is not a color)
+    if (!comps.hasOwnProperty('Red') && !comps.hasOwnProperty('Green') && !comps.hasOwnProperty('Blue')) return;
+    var r = comps.Red   !== undefined ? comps.Red   : 0;
+    var g = comps.Green !== undefined ? comps.Green : 0;
+    var b = comps.Blue  !== undefined ? comps.Blue  : 0;
+    var a = comps.Alpha !== undefined ? comps.Alpha : 1;
     var hex = '#' + _ch(r) + _ch(g) + _ch(b);
     var rawLabel = prefix || 'Color';
-    // Build human label: "TopLeft" → "Top Left", "" → "Color"
     var lbl = rawLabel.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim() || 'Color';
     var swatchKey = '_swatch_' + (prefix || 'Color');
     params[swatchKey] = {
-      v: hex,
+      v: hex, // fallback; display code overrides with RGB string
       isColor: true,
       colorHex: hex,
       colorR: r, colorG: g, colorB: b, colorA: a,
       _colorLabel: lbl,
-      _colorAlpha: a
+      _colorAlpha: a,
+      // Pre-built RGB display string: "R: 1  G: 0  B: 0" (+ alpha if non-default)
+      _colorRGB: 'R:\u202f' + _fmtC(r) + '  G:\u202f' + _fmtC(g) + '  B:\u202f' + _fmtC(b) +
+                 (a < 0.9999 ? '  A:\u202f' + _fmtC(a) : '')
     };
-    // Mark components so they are suppressed from the param list display
-    params[rK].isColorComponent = true;
-    params[gK].isColorComponent = true;
-    params[bK].isColorComponent = true;
-    if (params[aK]) params[aK].isColorComponent = true;
   });
 
   return params;
@@ -6716,16 +6767,14 @@ if (typeof NodeVisualizer === 'undefined') {
           ? '<span style="display:inline-block;width:6px;height:6px;background:var(--kf,#f5c842);'
           + 'transform:rotate(45deg);border-radius:1px;margin-right:4px;flex-shrink:0;vertical-align:middle"></span>'
           : '';
-        // Color swatch — inline box + hex + optional alpha
+        // Color swatch — inline box + R/G/B values
         var swatchHtml = '';
         if (p.isColor) {
-          var aLabel = (typeof p._colorAlpha === 'number' && p._colorAlpha < 1)
-            ? ' A:' + parseFloat(p._colorAlpha.toPrecision(3)) : '';
           swatchHtml = '<span style="display:inline-block;width:13px;height:13px;'
             + 'background:' + (p.colorHex || val) + ';border-radius:3px;'
             + 'border:1px solid rgba(255,255,255,0.18);flex-shrink:0;margin-right:5px;'
             + 'vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,0.4)"></span>';
-          val = p.colorHex + aLabel;
+          val = p._colorRGB || p.colorHex;
           vCls = '';
         }
         html += '<div class="prow' + (isSel ? ' selected' : '') + '"'
@@ -6792,13 +6841,11 @@ if (typeof NodeVisualizer === 'undefined') {
           : '';
         var swatchHtml = '';
         if (p.isColor) {
-          var aLabel = (typeof p._colorAlpha === 'number' && p._colorAlpha < 1)
-            ? ' A:' + parseFloat(p._colorAlpha.toPrecision(3)) : '';
           swatchHtml = '<span style="display:inline-block;width:12px;height:12px;'
             + 'background:' + (p.colorHex || val) + ';border-radius:2px;'
             + 'border:1px solid rgba(255,255,255,0.18);flex-shrink:0;margin-right:4px;'
             + 'vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,0.4)"></span>';
-          val = p.colorHex + aLabel;
+          val = p._colorRGB || p.colorHex;
           vCls = '';
         }
         html += '<div class="prow">' + dot
