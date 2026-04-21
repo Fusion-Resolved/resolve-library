@@ -454,7 +454,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <div class="spm-legend">
       <div class="spm-legend-line" style="background:#57c4ff"></div> Left Handle
     </div>
-    <div id="spm-hint">Move cursor to scrub · Click keyframe diamond to jump · ← → to step · Esc to close</div>
+    <button id="spm-zoom-reset">Fit View</button>
+    <div id="spm-hint">Scroll to zoom · Drag to pan · Click keyframe diamond to jump · Esc to close</div>
   </div>
 </div>
 
@@ -1445,7 +1446,7 @@ const state = {
   tools: [], allFrames: [], frame: 0,
   selectedTool: null, selectedParam: null,
   minFrame: 0, maxFrame: 100,
-  navHistory: [],
+  navHistory: [],   // stack of tool names for back-navigation
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1920,46 +1921,50 @@ function drawSpline(canvas, param, activeFrame) {
 const spmState = {
   param: null,
   paramName: null,
+  baseView: null,   // saved for fit-view reset
+  view: null,       // { fMin, fMax, vMin, vMax }
   focusedKFIdx: 0,
+  dragging: false,
+  dragLast: null,
+  dragMoved: false,
 };
 
-function spmComputeBounds(kfs) {
-  let minF = Infinity, maxF = -Infinity, minV = Infinity, maxV = -Infinity;
+function spmFitView(kfs) {
+  let minF = kfs[0].frame, maxF = kfs[kfs.length - 1].frame;
+  let minV = Infinity, maxV = -Infinity;
   kfs.forEach(k => {
-    minF = Math.min(minF, k.frame); maxF = Math.max(maxF, k.frame);
     minV = Math.min(minV, k.value); maxV = Math.max(maxV, k.value);
-    if (k.rh) { maxF = Math.max(maxF, k.rh.x); minV = Math.min(minV, k.rh.y); maxV = Math.max(maxV, k.rh.y); }
-    if (k.lh) { maxF = Math.max(maxF, k.lh.x); minV = Math.min(minV, k.lh.y); maxV = Math.max(maxV, k.lh.y); }
+    if (k.rh) { minV = Math.min(minV, k.rh.y); maxV = Math.max(maxV, k.rh.y); }
+    if (k.lh) { minV = Math.min(minV, k.lh.y); maxV = Math.max(maxV, k.lh.y); }
   });
   if (minF === maxF) { minF -= 5; maxF += 5; }
   if (minV === maxV) { minV -= 0.1; maxV += 0.1; }
-  const fp = Math.max((maxF - minF) * 0.08, 4);
-  const vp = Math.max((maxV - minV) * 0.18, 0.15);
+  const fp = (maxF - minF) * 0.12, vp = (maxV - minV) * 0.22;
   return { fMin: minF - fp, fMax: maxF + fp, vMin: minV - vp, vMax: maxV + vp };
 }
 
 function openSplineModal(param, paramName) {
   const kfs = (param.keyframes || []).slice().sort((a, b) => a.frame - b.frame);
   if (!kfs.length) return;
+
   spmState.param = param;
   spmState.paramName = paramName;
+  spmState.view = spmFitView(kfs);
+  spmState.baseView = { ...spmState.view };
+
+  // Focus the currently active frame's keyframe (or closest)
   const curIdx = kfs.findIndex(k => k.frame === state.frame);
   spmState.focusedKFIdx = curIdx >= 0 ? curIdx : 0;
+
   document.getElementById('spm-param-name').textContent = fmtLabel(paramName);
   document.getElementById('spline-modal').classList.add('open');
   spmRefreshNav();
-  requestAnimationFrame(() => { spmDrawBase(); spmAttachHover(); });
+  requestAnimationFrame(() => { spmResizeCanvas(); spmDrawFull(); });
 }
 
 function closeSplineModal() {
   document.getElementById('spline-modal').classList.remove('open');
   spmState.param = null;
-  const canvas = document.getElementById('spm-canvas');
-  if (canvas) {
-    if (canvas._spmHoverFn) { canvas.removeEventListener('mousemove', canvas._spmHoverFn); delete canvas._spmHoverFn; }
-    if (canvas._spmLeaveFn) { canvas.removeEventListener('mouseleave', canvas._spmLeaveFn); delete canvas._spmLeaveFn; }
-    if (canvas._spmClickFn) { canvas.removeEventListener('click', canvas._spmClickFn); delete canvas._spmClickFn; }
-  }
 }
 
 function spmRefreshNav() {
@@ -1984,9 +1989,20 @@ function spmGoToKF(idx) {
   spmState.focusedKFIdx = idx;
   scrubToFrame(kfs[idx].frame);
   spmRefreshNav();
+  spmDrawFull();
 }
 
-function spmDrawBase() {
+function spmResizeCanvas() {
+  const wrap = document.getElementById('spm-canvas-wrap');
+  const canvas = document.getElementById('spm-canvas');
+  if (!wrap || !canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = wrap.offsetWidth, H = wrap.offsetHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+}
+
+function spmDrawFull() {
   const canvas = document.getElementById('spm-canvas');
   const wrap = document.getElementById('spm-canvas-wrap');
   if (!canvas || !wrap || !spmState.param) return;
@@ -1997,246 +2013,263 @@ function spmDrawBase() {
 
   const dpr = window.devicePixelRatio || 1;
   const W = wrap.offsetWidth || 800, H = wrap.offsetHeight || 500;
-  canvas.width = W * dpr; canvas.height = H * dpr;
-  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  if (canvas.width !== W * dpr) { spmResizeCanvas(); }
+
   const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr); // CSS pixel coords throughout
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const PAD = { l: 58, r: 24, t: 22, b: 36 };
   const gW = W - PAD.l - PAD.r, gH = H - PAD.t - PAD.b;
-  const { fMin, fMax, vMin, vMax } = spmComputeBounds(kfs);
-  const tx = f => PAD.l + (f - fMin) / (fMax - fMin) * gW;
-  const ty = v => PAD.t + (1 - (v - vMin) / (vMax - vMin)) * gH;
 
-  // Background
+  const v = spmState.view;
+  const fRange = v.fMax - v.fMin, vRange = v.vMax - v.vMin;
+  const tx = f => PAD.l + (f - v.fMin) / fRange * gW;
+  const ty = val => PAD.t + (1 - (val - v.vMin) / vRange) * gH;
+
+  // ── Background ────────────────────────────────────────────────
   ctx.fillStyle = '#040408'; ctx.fillRect(0, 0, W, H);
 
-  // Grid
-  ctx.font = '10px monospace';
+  // ── Grid lines ────────────────────────────────────────────────
+  ctx.font = `10px monospace`;
+
+  // Value (horizontal) lines
   const nV = Math.max(3, Math.min(8, Math.floor(gH / 60)));
   for (let i = 0; i <= nV; i++) {
-    const val = vMin + (vMax - vMin) * i / nV, y = ty(val);
-    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 0.5;
+    const val = v.vMin + vRange * i / nV;
+    const y = ty(val);
+    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.textAlign = 'right';
     ctx.fillText(parseFloat(val.toPrecision(4)), PAD.l - 5, y + 3.5);
   }
+
+  // Frame (vertical) lines
   const nF = Math.max(3, Math.min(12, Math.floor(gW / 80)));
   for (let i = 0; i <= nF; i++) {
-    const fr = fMin + (fMax - fMin) * i / nF, x = tx(fr);
-    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 0.5;
+    const fr = v.fMin + fRange * i / nF;
+    const x = tx(fr);
+    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, H - PAD.b); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.textAlign = 'center';
     ctx.fillText(Math.round(fr), x, H - PAD.b + 15);
   }
 
-  // Axes
+  // ── Axes ──────────────────────────────────────────────────────
   ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(PAD.l, PAD.t); ctx.lineTo(PAD.l, H - PAD.b); ctx.lineTo(W - PAD.r, H - PAD.b); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(PAD.l, PAD.t); ctx.lineTo(PAD.l, H - PAD.b);
+  ctx.lineTo(W - PAD.r, H - PAD.b);
+  ctx.stroke();
 
-  // Zero line
-  if (vMin < 0 && vMax > 0) {
+  // Zero value line
+  if (v.vMin < 0 && v.vMax > 0) {
     const zy = ty(0);
-    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.setLineDash([3, 5]);
+    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
     ctx.beginPath(); ctx.moveTo(PAD.l, zy); ctx.lineTo(W - PAD.r, zy); ctx.stroke();
     ctx.setLineDash([]);
   }
 
   // Axis labels
-  ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.textAlign = 'center';
+  ctx.font = '9px monospace';
   ctx.fillText('FRAME', PAD.l + gW / 2, H - 4);
-  ctx.save(); ctx.translate(10, PAD.t + gH / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('VALUE', 0, 0); ctx.restore();
+  ctx.save(); ctx.translate(10, PAD.t + gH / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillText('VALUE', 0, 0); ctx.restore();
 
-  // Bezier handles
+  // ── Bezier segment highlight band (between kf[focusIdx] and neighbour) ──
   const focusIdx = spmState.focusedKFIdx;
+  if (focusIdx >= 0 && focusIdx < kfs.length) {
+    const k = kfs[focusIdx];
+    // Shade the segment containing the focused keyframe
+    const segColor = 'rgba(245,200,66,.04)';
+    let x0 = tx(k.frame), x1 = tx(k.frame);
+    if (focusIdx > 0) x0 = tx(kfs[focusIdx - 1].frame);
+    if (focusIdx < kfs.length - 1) x1 = tx(kfs[focusIdx + 1].frame);
+    ctx.fillStyle = segColor;
+    ctx.fillRect(Math.max(PAD.l, x0), PAD.t, Math.min(W - PAD.r, x1) - Math.max(PAD.l, x0), gH);
+  }
+
+  // ── Handles ───────────────────────────────────────────────────
   kfs.forEach((k, i) => {
     const px = tx(k.frame), py = ty(k.value);
-    const isFocus = i === focusIdx, alpha = isFocus ? 1 : 0.45;
+    const isFocus = i === focusIdx;
+    const alpha = isFocus ? 1 : 0.45;
+
     if (k.rh) {
       const hx = tx(k.rh.x), hy = ty(k.rh.y);
-      ctx.globalAlpha = alpha; ctx.strokeStyle = '#ff9557'; ctx.lineWidth = 1.5;
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = '#ff9557'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(hx, hy); ctx.stroke();
-      ctx.fillStyle = '#ff9557'; ctx.beginPath(); ctx.arc(hx, hy, isFocus ? 5 : 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff9557';
+      ctx.beginPath(); ctx.arc(hx, hy, isFocus ? 5 : 3.5, 0, Math.PI * 2); ctx.fill();
     }
     if (k.lh) {
       const hx = tx(k.lh.x), hy = ty(k.lh.y);
-      ctx.globalAlpha = alpha; ctx.strokeStyle = '#57c4ff'; ctx.lineWidth = 1.5;
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = '#57c4ff'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(hx, hy); ctx.stroke();
-      ctx.fillStyle = '#57c4ff'; ctx.beginPath(); ctx.arc(hx, hy, isFocus ? 5 : 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#57c4ff';
+      ctx.beginPath(); ctx.arc(hx, hy, isFocus ? 5 : 3.5, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
   });
 
-  // Spline curve
+  // ── Spline curve ──────────────────────────────────────────────
   const color = param.splineColor || '#f5c842';
-  ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.globalAlpha = 1; ctx.beginPath();
+  ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.globalAlpha = 1;
+  ctx.beginPath();
   for (let i = 0; i < kfs.length; i++) {
-    const k0 = kfs[i], px = tx(k0.frame), py = ty(k0.value);
+    const k0 = kfs[i];
+    const px = tx(k0.frame), py = ty(k0.value);
     if (i === 0) ctx.moveTo(px, py);
     if (i < kfs.length - 1) {
       const k1 = kfs[i + 1];
       const x3 = tx(k1.frame), y3 = ty(k1.value);
-      const cp1x = k0.rh ? tx(k0.rh.x) : px + (x3 - px) / 3, cp1y = k0.rh ? ty(k0.rh.y) : py;
-      const cp2x = k1.lh ? tx(k1.lh.x) : x3 - (x3 - px) / 3, cp2y = k1.lh ? ty(k1.lh.y) : y3;
+      const cp1x = k0.rh ? tx(k0.rh.x) : px + (x3 - px) / 3;
+      const cp1y = k0.rh ? ty(k0.rh.y) : py;
+      const cp2x = k1.lh ? tx(k1.lh.x) : x3 - (x3 - px) / 3;
+      const cp2y = k1.lh ? ty(k1.lh.y) : y3;
       ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x3, y3);
     }
   }
   ctx.stroke();
 
-  // Keyframe diamonds
+  // ── Keyframe diamonds ─────────────────────────────────────────
   kfs.forEach((k, i) => {
     const px = tx(k.frame), py = ty(k.value);
-    const isFocus = i === focusIdx, sz = isFocus ? 7 : 5;
-    ctx.save(); ctx.translate(px, py); ctx.rotate(Math.PI / 4);
+    const isFocus = i === focusIdx;
+    const size = isFocus ? 7 : 5;
+
+    ctx.save();
+    ctx.translate(px, py); ctx.rotate(Math.PI / 4);
     if (isFocus) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; }
     ctx.fillStyle = isFocus ? '#ffffff' : color;
     ctx.strokeStyle = '#040408'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.rect(-sz, -sz, sz * 2, sz * 2); ctx.fill(); ctx.stroke();
-    ctx.shadowBlur = 0; ctx.restore();
+    ctx.beginPath(); ctx.rect(-size, -size, size * 2, size * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Frame label for focused keyframe
     if (isFocus) {
-      ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.textAlign = 'center'; ctx.font = 'bold 11px monospace';
-      ctx.fillText(`${k.frame}`, px, py + (k.value < (vMin + vMax) / 2 ? -14 : 16));
+      const labelY = py + (k.value < (v.vMin + v.vMax) / 2 ? -14 : 16);
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      ctx.textAlign = 'center'; ctx.font = 'bold 11px monospace';
+      ctx.fillText(`${k.frame}`, px, labelY);
     }
   });
 
-  // Current frame playhead
+  // ── Current frame playhead ────────────────────────────────────
   const af = state.frame;
-  if (af >= fMin && af <= fMax) {
+  if (af >= v.fMin && af <= v.fMax) {
     const px = tx(af);
-    ctx.strokeStyle = 'rgba(200,240,96,.75)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(200,240,96,.75)'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(px, PAD.t); ctx.lineTo(px, H - PAD.b); ctx.stroke();
     ctx.setLineDash([]);
     const iv = getSplineValueAtFrame(kfs, af);
     if (iv !== null) {
-      ctx.fillStyle = '#c8f060'; ctx.beginPath(); ctx.arc(px, ty(iv), 5.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#c8f060';
+      ctx.beginPath(); ctx.arc(px, ty(iv), 5.5, 0, Math.PI * 2); ctx.fill();
+      // Value label
       ctx.fillStyle = '#c8f060'; ctx.textAlign = 'left'; ctx.font = '10px monospace';
       ctx.fillText(fmtNum(iv), px + 8, ty(iv) + 4);
     }
   }
 }
 
-function spmAttachHover() {
+function spmInitInteraction() {
   const canvas = document.getElementById('spm-canvas');
   const wrap = document.getElementById('spm-canvas-wrap');
-  if (!canvas || !wrap || !spmState.param) return;
+  if (!canvas || !wrap) return;
 
-  // Remove stale listeners
-  if (canvas._spmHoverFn) { canvas.removeEventListener('mousemove', canvas._spmHoverFn); delete canvas._spmHoverFn; }
-  if (canvas._spmLeaveFn) { canvas.removeEventListener('mouseleave', canvas._spmLeaveFn); delete canvas._spmLeaveFn; }
-  if (canvas._spmClickFn) { canvas.removeEventListener('click', canvas._spmClickFn); delete canvas._spmClickFn; }
+  // Zoom with scroll wheel
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    if (!spmState.view) return;
+    const v = spmState.view;
+    const rect = wrap.getBoundingClientRect();
+    const frac = (e.clientX - rect.left) / rect.width;
+    const vfrac = (e.clientY - rect.top) / rect.height;
+    const factor = e.deltaY > 0 ? 1.18 : 0.85;
+    const fCenter = v.fMin + (v.fMax - v.fMin) * frac;
+    const vCenter = v.vMin + (v.vMax - v.vMin) * (1 - vfrac);
+    spmState.view = {
+      fMin: fCenter - (fCenter - v.fMin) * factor,
+      fMax: fCenter + (v.fMax - fCenter) * factor,
+      vMin: vCenter - (vCenter - v.vMin) * factor,
+      vMax: vCenter + (v.vMax - vCenter) * factor,
+    };
+    spmDrawFull();
+  }, { passive: false });
 
-  const param = spmState.param;
-  const kfs = (param.keyframes || []).slice().sort((a, b) => a.frame - b.frame);
-  const { fMin, fMax, vMin, vMax } = spmComputeBounds(kfs);
-  const color = param.splineColor || '#f5c842';
-  const PAD = { l: 58, r: 24, t: 22, b: 36 };
+  // Pan with drag
+  wrap.addEventListener('mousedown', e => {
+    spmState.dragging = true;
+    spmState.dragMoved = false;
+    spmState.dragLast = { x: e.clientX, y: e.clientY };
+    wrap.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', e => {
+    if (!spmState.dragging || !spmState.dragLast) return;
+    const v = spmState.view;
+    if (!v) return;
+    const rect = wrap.getBoundingClientRect();
+    const dx = (e.clientX - spmState.dragLast.x) / rect.width * (v.fMax - v.fMin);
+    const dy = (e.clientY - spmState.dragLast.y) / rect.height * (v.vMax - v.vMin);
+    const moved = Math.abs(e.clientX - spmState.dragLast.x) + Math.abs(e.clientY - spmState.dragLast.y);
+    if (moved > 3) spmState.dragMoved = true;
+    spmState.view = {
+      fMin: v.fMin - dx, fMax: v.fMax - dx,
+      vMin: v.vMin + dy, vMax: v.vMax + dy,
+    };
+    spmState.dragLast = { x: e.clientX, y: e.clientY };
+    spmDrawFull();
+  });
+  window.addEventListener('mouseup', () => {
+    spmState.dragging = false;
+    spmState.dragLast = null;
+    wrap.style.cursor = '';
+  });
 
-  // Proper bezier interpolation for hover readout
-  function evalBez(frame) {
-    if (frame <= kfs[0].frame) return kfs[0].value;
-    const last = kfs[kfs.length - 1];
-    if (frame >= last.frame) return last.value;
-    for (let i = 0; i < kfs.length - 1; i++) {
-      const k0 = kfs[i], k1 = kfs[i + 1];
-      if (frame < k0.frame || frame > k1.frame) continue;
-      const p0x = k0.frame, p1x = k0.rh ? k0.rh.x : k0.frame;
-      const p2x = k1.lh ? k1.lh.x : k1.frame, p3x = k1.frame;
-      let lo = 0, hi = 1;
-      for (let n = 0; n < 24; n++) {
-        const t = (lo + hi) / 2;
-        const bx = (1-t)**3*p0x + 3*(1-t)**2*t*p1x + 3*(1-t)*t**2*p2x + t**3*p3x;
-        bx < frame ? lo = t : hi = t;
-      }
-      const t = (lo + hi) / 2;
-      const p0y = k0.value, p1y = k0.rh ? k0.rh.y : k0.value;
-      const p2y = k1.lh ? k1.lh.y : k1.value, p3y = k1.value;
-      return (1-t)**3*p0y + 3*(1-t)**2*t*p1y + 3*(1-t)*t**2*p2y + t**3*p3y;
-    }
-    return last.value;
-  }
-
-  canvas._spmHoverFn = function(e) {
-    const rect = canvas.getBoundingClientRect();
-    const W = rect.width, H = rect.height;
-    const gW = W - PAD.l - PAD.r, gH = H - PAD.t - PAD.b;
-    const mx = e.clientX - rect.left;
-
-    if (mx < PAD.l || mx > PAD.l + gW) { spmDrawBase(); return; }
-
-    const frame = fMin + (mx - PAD.l) / gW * (fMax - fMin);
-    const val = evalBez(frame);
-    const tx = f => PAD.l + (f - fMin) / (fMax - fMin) * gW;
-    const ty = v => PAD.t + (1 - (v - vMin) / (vMax - vMin)) * gH;
-
-    spmDrawBase(); // redraw clean base, leaves scale(dpr,dpr) applied
-    const ctx = canvas.getContext('2d');
-
-    // Vertical scrubber line
-    const x = tx(frame);
-    ctx.save();
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, H - PAD.b); ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Dot on curve at cursor position
-    const py = ty(val);
-    ctx.beginPath(); ctx.arc(x, py, 5.5, 0, Math.PI * 2);
-    ctx.fillStyle = color; ctx.fill();
-    ctx.strokeStyle = '#040408'; ctx.lineWidth = 1.5; ctx.stroke();
-
-    // Tooltip
-    const fr = Math.round(frame);
-    const tipW = 140, tipH = 44;
-    const tipX = mx > W / 2 ? x - tipW - 10 : x + 10;
-    const tipY = PAD.t + 8;
-    ctx.fillStyle = 'rgba(6,6,14,0.92)';
-    ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 4); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '10px monospace'; ctx.textAlign = 'left';
-    ctx.fillText(`Frame  ${fr}`, tipX + 10, tipY + 16);
-    ctx.fillStyle = color;
-    ctx.fillText(`Value  ${val.toFixed(4)}`, tipX + 10, tipY + 32);
-    ctx.restore();
-
-    // Live readout in header
-    document.getElementById('spm-frame-val').textContent = `F: ${fr}  ·  V: ${val.toFixed(4)}`;
-  };
-
-  canvas._spmLeaveFn = function() {
-    spmDrawBase();
-    spmRefreshNav(); // restore nav-state header text
-  };
-
-  // Click: snap to nearest keyframe diamond
-  canvas._spmClickFn = function(e) {
-    const rect = canvas.getBoundingClientRect();
-    const W = rect.width, H = rect.height;
-    const gW = W - PAD.l - PAD.r, gH = H - PAD.t - PAD.b;
-    const tx = f => PAD.l + (f - fMin) / (fMax - fMin) * gW;
-    const ty = v => PAD.t + (1 - (v - vMin) / (vMax - vMin)) * gH;
+  // Click: jump to keyframe or scrub
+  wrap.addEventListener('click', e => {
+    if (spmState.dragMoved) return;
+    const v = spmState.view;
+    if (!v || !spmState.param) return;
+    const rect = wrap.getBoundingClientRect();
+    const PAD = { l: 58, r: 24, t: 22, b: 36 };
+    const gW = rect.width - PAD.l - PAD.r, gH = rect.height - PAD.t - PAD.b;
+    const tx = f => PAD.l + (f - v.fMin) / (v.fMax - v.fMin) * gW;
+    const ty = val => PAD.t + (1 - (val - v.vMin) / (v.vMax - v.vMin)) * gH;
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    let closest = -1, minDist = 20;
+
+    const kfs = (spmState.param.keyframes || []).slice().sort((a, b) => a.frame - b.frame);
+    let closest = -1, minDist = 18;
     kfs.forEach((k, i) => {
       const d = Math.sqrt((mx - tx(k.frame)) ** 2 + (my - ty(k.value)) ** 2);
       if (d < minDist) { minDist = d; closest = i; }
     });
-    if (closest >= 0) spmGoToKF(closest);
-  };
 
-  canvas.addEventListener('mousemove', canvas._spmHoverFn);
-  canvas.addEventListener('mouseleave', canvas._spmLeaveFn);
-  canvas.addEventListener('click', canvas._spmClickFn);
-  canvas.style.cursor = 'crosshair';
+    if (closest >= 0) {
+      spmGoToKF(closest);
+    } else {
+      // Scrub to clicked frame position
+      const frac = (mx - PAD.l) / gW;
+      const f = Math.round(v.fMin + frac * (v.fMax - v.fMin));
+      scrubToFrame(f);
+      spmDrawFull();
+    }
+  });
 
-  // Re-draw on resize
-  if (!canvas._spmResizeObs) {
-    canvas._spmResizeObs = new ResizeObserver(() => {
-      if (document.getElementById('spline-modal').classList.contains('open')) {
-        spmDrawBase(); spmAttachHover();
-      }
-    });
-    canvas._spmResizeObs.observe(wrap);
-  }
+  // Resize observer
+  const ro = new ResizeObserver(() => {
+    if (document.getElementById('spline-modal').classList.contains('open')) {
+      spmResizeCanvas(); spmDrawFull();
+    }
+  });
+  ro.observe(wrap);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2250,13 +2283,12 @@ function scrubToFrame(frame) {
   renderParams();
   renderDetail();
 
-  // If spline modal is open, sync focused KF and redraw
+  // If spline modal is open, sync focused KF to closest keyframe at this frame
   if (spmState.param && document.getElementById('spline-modal').classList.contains('open')) {
     const kfs = (spmState.param.keyframes || []).slice().sort((a, b) => a.frame - b.frame);
     const exact = kfs.findIndex(k => k.frame === frame);
     if (exact >= 0) { spmState.focusedKFIdx = exact; spmRefreshNav(); }
-    spmDrawBase();
-    spmAttachHover();
+    spmDrawFull();
   }
 }
 
@@ -2404,6 +2436,7 @@ document.addEventListener('DOMContentLoaded', () => {
   clearBtn.addEventListener('click', clearAll);
 
   // Spline modal wiring
+  spmInitInteraction();
   document.getElementById('spm-close').addEventListener('click', closeSplineModal);
   document.getElementById('spm-prev').addEventListener('click', () => {
     if (spmState.focusedKFIdx > 0) spmGoToKF(spmState.focusedKFIdx - 1);
@@ -2411,6 +2444,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('spm-next').addEventListener('click', () => {
     const kfs = spmState.param ? (spmState.param.keyframes || []) : [];
     if (spmState.focusedKFIdx < kfs.length - 1) spmGoToKF(spmState.focusedKFIdx + 1);
+  });
+  document.getElementById('spm-zoom-reset').addEventListener('click', () => {
+    if (!spmState.param) return;
+    const kfs = (spmState.param.keyframes || []).slice().sort((a, b) => a.frame - b.frame);
+    spmState.view = spmFitView(kfs);
+    spmDrawFull();
   });
 
   // Global keyboard
