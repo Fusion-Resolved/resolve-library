@@ -6134,6 +6134,90 @@ window._extractToolBody = function(toolName, fullText) {
   return src.slice(start, i - 1);
 };
 
+// ── PolyPath resolver — computes X,Y at each displacement keyframe ───────────
+// A PolyPath stores a shape (PolyLine points) and is driven by a BezierSpline
+// that controls how far along the path the position is (0–1 displacement).
+// This resolves the combination into actual normalised X,Y values per frame.
+window._resolvePolyPathKFs = function(pathName, fullText) {
+  // 1. Locate the PolyPath block
+  var escaped = pathName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var re = new RegExp('(?:^|[\\n\\r,])\\s*' + escaped + '\\s*=\\s*PolyPath\\s*\\{');
+  var m = re.exec(fullText);
+  if (!m) return [];
+  var braceStart = fullText.indexOf('{', m.index + m[0].lastIndexOf('{'));
+  var depth = 1, i = braceStart + 1;
+  while (i < fullText.length && depth > 0) {
+    if (fullText[i] === '{') depth++;
+    else if (fullText[i] === '}') depth--;
+    i++;
+  }
+  var pathBody = fullText.slice(braceStart + 1, i - 1);
+
+  // 2. Parse PolyLine points  { X = val, Y = val }
+  var points = [];
+  var plM = pathBody.match(/PolyLine\s*=\s*Input\s*\{/);
+  if (plM) {
+    var afterPL    = pathBody.slice(plM.index);
+    var polylineM  = afterPL.match(/Polyline\s*\{/);
+    if (polylineM) {
+      var plBodyStart  = plM.index + polylineM.index + polylineM[0].length;
+      var afterPolyline = pathBody.slice(plBodyStart);
+      var ptsM = afterPolyline.match(/Points\s*=\s*\{/);
+      if (ptsM) {
+        var ptsStart = plBodyStart + ptsM.index + ptsM[0].length;
+        var ptsDepth = 1, pi = ptsStart;
+        while (pi < pathBody.length && ptsDepth > 0) {
+          if (pathBody[pi] === '{') ptsDepth++;
+          else if (pathBody[pi] === '}') ptsDepth--;
+          pi++;
+        }
+        var ptsBody = pathBody.slice(ptsStart, pi - 1);
+        // Each point is a { ... X = val ... Y = val ... } block
+        var ptRe = /\{([^{}]*)\}/g;
+        var pm;
+        while ((pm = ptRe.exec(ptsBody)) !== null) {
+          var xM = pm[1].match(/\bX\s*=\s*([-\d.]+)/);
+          var yM = pm[1].match(/\bY\s*=\s*([-\d.]+)/);
+          if (xM && yM) points.push({ x: parseFloat(xM[1]), y: parseFloat(yM[1]) });
+        }
+      }
+    }
+  }
+  if (!points.length) return [];
+
+  // 3. Find the Displacement BezierSpline name
+  var dispM = pathBody.match(/Displacement\s*=\s*Input\s*\{[\s\S]*?SourceOp\s*=\s*"(\w+)"/);
+  if (!dispM) return [];
+  var dispSplineName = dispM[1];
+
+  // 4. Parse displacement keyframes
+  var dispKFs = (typeof window._parseSplineKFs === 'function')
+    ? window._parseSplineKFs(dispSplineName, fullText) : [];
+  if (!dispKFs.length) return [];
+
+  // 5. Map each keyframe: displacement 0–1 → linear position on the polyline.
+  //    Fusion PolyPath displacement is 0=first point, 1=last point, linear per segment.
+  //    X,Y stored in Fusion are CENTRE-relative offsets (−0.5..+0.5); add 0.5 → normalised 0..1.
+  var numSeg = points.length - 1;
+  function fmt5(n) { return parseFloat(n.toPrecision(5)); }
+
+  return dispKFs.map(function(kf) {
+    var d = Math.max(0, Math.min(1, kf.val));
+    var segIdx, t;
+    if (numSeg <= 0) {
+      segIdx = 0; t = 0;
+    } else {
+      segIdx = Math.min(Math.floor(d * numSeg), numSeg - 1);
+      t = (d * numSeg) - segIdx;
+    }
+    var p0 = points[segIdx];
+    var p1 = points[segIdx + 1] || p0;
+    var x = fmt5(p0.x + (p1.x - p0.x) * t + 0.5); // → normalised
+    var y = fmt5(p0.y + (p1.y - p0.y) * t + 0.5);
+    return { frame: kf.frame, val: x + ', ' + y };
+  });
+};
+
 // ── Node param parser (Inputs block → structured params object) ──────────────
 window._parseNodeParams = function (body, content, fullText) {
   var params = {};
@@ -6159,15 +6243,23 @@ window._parseNodeParams = function (body, content, fullText) {
       bi++;
     }
     var blk = inpBody.slice(m.index + m[0].length, bi - 1);
-    // SourceOp → connection or spline
+    // SourceOp → keyframed spline, animated PolyPath, or plain connection
     var srcM = blk.match(/SourceOp\s*=\s*"(\w+)"/);
     if (srcM) {
       var srcName = srcM[1];
-      var isSpline = new RegExp(srcName + '\\s*=\\s*BezierSpline').test(raw);
+      var isSpline   = new RegExp(srcName + '\\s*=\\s*BezierSpline').test(raw);
+      var isPolyPath = new RegExp(srcName + '\\s*=\\s*PolyPath').test(raw);
       if (isSpline) {
         var kfs = window._parseSplineKFs(srcName, raw);
         params[key] = { v: kfs.length ? 'keyframed (' + kfs.length + ' KF)' : '\u2014',
           isKeyframe: true, sourceOp: srcName, keyframes: kfs };
+      } else if (isPolyPath) {
+        // PolyPath drives position via a BezierSpline displacement — resolve to X,Y per frame
+        var pathKfs = (typeof window._resolvePolyPathKFs === 'function')
+          ? window._resolvePolyPathKFs(srcName, raw) : [];
+        params[key] = pathKfs.length
+          ? { v: 'path (' + pathKfs.length + ' KF)', isKeyframe: true, isPath: true, sourceOp: srcName, keyframes: pathKfs }
+          : { v: '\u2192 ' + srcName + ' (path)', isPath: true, sourceOp: srcName };
       } else {
         params[key] = { v: '\u2192 ' + srcName, isConnection: true, sourceOp: srcName };
       }
@@ -6307,6 +6399,7 @@ if (typeof NodeVisualizer === 'undefined') {
        'Noise / Texture','Particles','Mask / Edge','3D','Connections','Parameters'];
 
   function _nvFmt(n) {
+    if (typeof n === 'string') return n; // pre-formatted strings (e.g. path "X, Y") pass through
     var f = parseFloat(n);
     return isNaN(f) ? (n != null ? String(n) : '\u2014') : String(parseFloat(f.toPrecision(5)));
   }
@@ -6323,10 +6416,21 @@ if (typeof NodeVisualizer === 'undefined') {
       }
       if (lo && hi) {
         var t = (frame - lo.frame) / (hi.frame - lo.frame);
+        // Path keyframes store "X, Y" strings — interpolate as 2-component vector
+        if (typeof lo.val === 'string') {
+          var lv = lo.val.split(',').map(function(s) { return parseFloat(s.trim()); });
+          var hv = hi.val.split(',').map(function(s) { return parseFloat(s.trim()); });
+          if (lv.length === 2 && !isNaN(lv[0]) && !isNaN(hv[0])) {
+            var ix = parseFloat((lv[0] + (hv[0] - lv[0]) * t).toPrecision(5));
+            var iy = parseFloat((lv[1] + (hv[1] - lv[1]) * t).toPrecision(5));
+            return ix + ', ' + iy;
+          }
+          return t < 0.5 ? lo.val : hi.val; // fallback: nearest keyframe
+        }
         return _nvFmt(lo.val + (hi.val - lo.val) * t);
       }
-      if (lo) return _nvFmt(lo.val);
-      if (hi) return _nvFmt(hi.val);
+      if (lo) return typeof lo.val === 'string' ? lo.val : _nvFmt(lo.val);
+      if (hi) return typeof hi.val === 'string' ? hi.val : _nvFmt(hi.val);
     }
     return p.v != null ? String(p.v) : '\u2014';
   }
