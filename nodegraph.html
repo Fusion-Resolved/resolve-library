@@ -584,7 +584,7 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
   .bottom-drawer-cat   { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
   .bottom-drawer-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; }
   .bottom-drawer-close:hover { color: var(--text-primary); }
-  .bottom-drawer-body { overflow-y: auto; flex: 1; padding: 8px 14px; display: flex; flex-wrap: wrap; gap: 0 20px; align-content: flex-start; }
+  .bottom-drawer-body { overflow-y: auto; flex: 1; padding: 6px 12px; display: flex; flex-wrap: wrap; gap: 0 14px; align-content: flex-start; }
 
   /* ── Right panel — glass ── */
   .rpanel-wrap { display: flex; flex-direction: row; flex-shrink: 0; position: relative; }
@@ -686,16 +686,17 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
   .parse-err { font-size: 10px; font-family: var(--font-mono); color: var(--danger); margin-top: 4px; display: none; }
   .parse-err.show { display: block; }
   .params-display { margin-top: 10px; }
-  .pgroup { margin-bottom: 8px; }
+  .pgroup { margin-bottom: 6px; }
   .pgroup-title { font-size: 9px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--node-teal); margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px solid var(--border-surface); }
-  .prow { display: flex; justify-content: space-between; align-items: baseline; gap: 4px;
-    padding: 3px 4px; border-radius: 4px; cursor: pointer; transition: background 0.1s; border: 1px solid transparent; }
+    color: var(--node-teal); margin-bottom: 3px; padding-bottom: 2px; border-bottom: 1px solid var(--border-surface); }
+  .prow { display: flex; justify-content: space-between; align-items: center; gap: 4px;
+    padding: 2px 4px; border-radius: 4px; cursor: pointer; transition: background 0.1s; border: 1px solid transparent; }
   .prow:hover { background: rgba(255,255,255,0.05); }
   .prow.selected { background: rgba(108,123,255,0.08); border-color: rgba(108,123,255,0.3); }
-  .pkey { font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pkey { font-size: 10px; font-family: var(--font-mono); color: var(--text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prow.selected .pkey { color: var(--violet-light); }
-  .pval { font-size: 11px; font-family: var(--font-mono); color: var(--text-primary); text-align: right; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+  .pval { font-size: 10px; font-family: var(--font-mono); color: var(--text-primary); text-align: right; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+  .pval.color { max-width: none; white-space: nowrap; font-size: 10px; }
   .pval.expr { color: #f0a060; }
   .pval.conn { color: var(--node-teal); font-style: italic; }
   .pval.path { color: #b0f0c0; }
@@ -2960,6 +2961,9 @@ const PARAM_NOISE = new Set([
   'Nest','CtrlWZoom','CtrlWShown','NameSet','ViewInfo','PassThrough','Locked',
   'HoldLastFrame','ShowFrame','ImportedFrames','StartFrame','EndFrame',
   'GlobalStart','GlobalEnd','Comments','CustomData',
+  // Infrastructure / frame-format params — visible in exported Lua but not
+  // useful to a reader; the actual values (Width/Height) are shown separately.
+  'UseFrameFormatSettings','PixelAspect','Depth','MotionBlur','SubPixelMethod',
 ]);
 function isNoise(key) {
   if (PARAM_NOISE.has(key)) return true;
@@ -6509,8 +6513,8 @@ window._parseNodeParams = function (body, content, fullText) {
       colorR: r, colorG: g, colorB: b, colorA: a,
       _colorLabel: lbl,
       _colorAlpha: a,
-      // Pre-built RGB display string: "R: 1  G: 0  B: 0" (+ alpha if non-default)
-      _colorRGB: 'R:\u202f' + _fmtC(r) + '  G:\u202f' + _fmtC(g) + '  B:\u202f' + _fmtC(b) +
+      // Pre-built display string: hex + R/G/B (+ alpha if non-default)
+      _colorRGB: hex + '   R:\u202f' + _fmtC(r) + '  G:\u202f' + _fmtC(g) + '  B:\u202f' + _fmtC(b) +
                  (a < 0.9999 ? '  A:\u202f' + _fmtC(a) : '')
     };
   });
@@ -6582,6 +6586,36 @@ if (typeof FusionParamParser === 'undefined') {
         var params = {};
         if (typeof window._parseNodeParams === 'function') {
           try { params = window._parseNodeParams(body, content, trimmed); } catch (e) {}
+        }
+
+        // ── Inject implied defaults for known node types ─────────────────────
+        // Fusion omits parameters at their default value from the export.
+        // For Background nodes this means "Type = Solid Color" and fully-black
+        // corner colors simply don't appear in the Lua — but they are important
+        // context for a reader trying to recreate the node.
+        if (nodeType === 'Background') {
+          // Type: default is 0 = Solid Color
+          if (!params['Type']) {
+            params['Type'] = { v: 'Solid Color', isEnum: true, _impliedDefault: true };
+          }
+          // Corner colors: default is black (0,0,0,1).  Only inject the corners
+          // that have no component already present (i.e. fully black = all omitted).
+          var bgCorners = ['TopLeft','TopRight','BottomLeft','BottomRight'];
+          bgCorners.forEach(function(corner) {
+            var swK = '_swatch_' + corner;
+            var hasAny = params[corner+'Red'] || params[corner+'Green'] ||
+                         params[corner+'Blue'] || params[corner+'Alpha'];
+            if (!hasAny && !params[swK]) {
+              params[swK] = {
+                v: '#000000', isColor: true, colorHex: '#000000',
+                colorR: 0, colorG: 0, colorB: 0, colorA: 1,
+                _colorLabel: corner.replace(/([A-Z])/g, ' $1').trim(),
+                _colorAlpha: 1,
+                _colorRGB: '#000000   R:\u202f0  G:\u202f0  B:\u202f0',
+                _impliedDefault: true
+              };
+            }
+          });
         }
 
         results.push({ toolName: fusionName, toolType: nodeType, params: params });
@@ -6754,7 +6788,7 @@ if (typeof NodeVisualizer === 'undefined') {
     ordered.forEach(function (gname) {
       var items = groups[gname];
       if (!items || !items.length) return;
-      html += '<div class="pgroup" style="min-width:175px;flex:1 1 175px;max-width:340px">'
+      html += '<div class="pgroup" style="min-width:150px;flex:1 1 150px;max-width:320px">'
             + '<div class="pgroup-title">' + gname + '</div>';
       items.forEach(function (item) {
         var k = item[0], p = item[1];
@@ -6767,7 +6801,7 @@ if (typeof NodeVisualizer === 'undefined') {
           ? '<span style="display:inline-block;width:6px;height:6px;background:var(--kf,#f5c842);'
           + 'transform:rotate(45deg);border-radius:1px;margin-right:4px;flex-shrink:0;vertical-align:middle"></span>'
           : '';
-        // Color swatch — inline box + R/G/B values
+        // Color swatch — inline box + hex + R/G/B values
         var swatchHtml = '';
         if (p.isColor) {
           swatchHtml = '<span style="display:inline-block;width:13px;height:13px;'
@@ -6775,7 +6809,7 @@ if (typeof NodeVisualizer === 'undefined') {
             + 'border:1px solid rgba(255,255,255,0.18);flex-shrink:0;margin-right:5px;'
             + 'vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,0.4)"></span>';
           val = p._colorRGB || p.colorHex;
-          vCls = '';
+          vCls = 'color';
         }
         html += '<div class="prow' + (isSel ? ' selected' : '') + '"'
               + ' data-param="' + k.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '"'
@@ -6846,7 +6880,7 @@ if (typeof NodeVisualizer === 'undefined') {
             + 'border:1px solid rgba(255,255,255,0.18);flex-shrink:0;margin-right:4px;'
             + 'vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,0.4)"></span>';
           val = p._colorRGB || p.colorHex;
-          vCls = '';
+          vCls = 'color';
         }
         html += '<div class="prow">' + dot
               + '<span class="pkey">' + lbl + '</span>'
