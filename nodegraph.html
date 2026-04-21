@@ -6113,7 +6113,75 @@ document.addEventListener('click',function(){
 (function () {
 'use strict';
 
-// ── Spline keyframe parser ───────────────────────────────────────────────────
+// ── Comprehensive enum table — integer index → human label ───────────────────
+// Covers every common Fusion parameter that exports a plain integer (not FuID).
+window._FUSION_INLINE_ENUMS = {
+  // Background gradient type
+  'Type': { 0:'Solid Color', 1:'Horizontal', 2:'Vertical', 3:'Four Corner', 4:'Gradient' },
+  // Merge / composite blend mode
+  'ApplyMode': {
+    0:'Normal', 1:'Screen', 2:'Dissolve', 3:'Multiply', 4:'Overlay',
+    5:'Soft Light', 6:'Hard Light', 7:'Color Dodge', 8:'Color Burn',
+    9:'Darken', 10:'Lighten', 11:'Difference', 12:'Exclusion',
+    13:'Hue', 14:'Saturation', 15:'Color', 16:'Luminosity',
+    17:'In', 18:'Held Out', 19:'Atop', 20:'XOR'
+  },
+  'Operator': { 0:'Over', 1:'In', 2:'Held Out', 3:'Atop', 4:'XOR', 5:'Merge', 6:'Difference' },
+  // Blur / filter kernel
+  'Filter': {
+    0:'Box', 1:'Linear', 2:'Quadratic', 3:'Cubic', 4:'Catmull-Rom',
+    5:'Gaussian', 6:'Sinc', 7:'Bessel', 8:'Mitchell', 9:'Bartlett',
+    10:'Blackman-Harris', 11:'Fast Gaussian', 12:'Area', 13:'Nearest Neighbor'
+  },
+  // Clipping / border mode
+  'ClippingMode': { 0:'None', 1:'Frame', 2:'Domain' },
+  // Text alignment
+  'HorizAlign': { 0:'Left', 1:'Center', 2:'Right', 3:'Justified' },
+  'VertAlign':  { 0:'Top',  1:'Center', 2:'Bottom' },
+  'LayoutStyle':{ 0:'Horizontal', 1:'Vertical', 2:'Path', 3:'Frame' },
+  'LayoutType': { 0:'Point', 1:'Frame', 2:'Circle', 3:'Path' },
+  // 3D camera stereo
+  'StereoMode': { 0:'Off Axis', 1:'Toe In', 2:'Parallel' },
+  // 3D renderer type
+  'RendererType': { 0:'Software Renderer', 1:'OpenGL Renderer', 2:'OpenGL UV Renderer' },
+  // Shape3D primitive
+  'Shape': { 0:'Plane', 1:'Cube', 2:'Sphere', 3:'Cylinder', 4:'Cone', 5:'Torus' },
+  // 3D light decay
+  'DecayType': { 0:'No Decay', 1:'Linear', 2:'Quadratic' },
+  // Shadow softness
+  'Softness': { 0:'None', 1:'Constant', 2:'Variable' },
+  // Replace Normals recompute mode
+  'Recompute': { 0:'Never', 1:'Always', 2:'If Not Present' },
+  // Bender 3D type
+  'BenderType': { 0:'Bend', 1:'Taper', 2:'Twist', 3:'Shear' },
+  // Duplicate 3D transform method
+  'TransformMethod': { 0:'Linear', 1:'Accumulated' },
+  'ColorMode': { 0:'None', 1:'Constant', 2:'Modulate' },
+  // Replicate 3D input mode + alignment
+  'InputMode': { 0:'Loop', 1:'Random' },
+  'AlignmentMode': { 0:'Not Aligned', 1:'Aligned', 2:'Aligned TBN' },
+  // Region modes
+  'RegionMode': { 0:'Ignore', 1:'Inside', 2:'Outside' },
+  // Fog falloff
+  'FogType': { 0:'Linear', 1:'Exp', 2:'Exp2' },
+  // Projector 3D
+  'ProjectionMode': { 0:'Light', 1:'Ambient Light', 2:'Texture' },
+  'FitMethod':      { 0:'Inside', 1:'Width', 2:'Height', 3:'Outside', 4:'Stretch' },
+  // UV mapping
+  'MappingType': { 0:'Planar', 1:'Cylindrical', 2:'Spherical', 3:'Box' },
+  // Spherical camera layout
+  'Layout': { 0:'VCross', 1:'HCross', 2:'VStrip', 3:'HStrip', 4:'LatLong', 5:'VR180' },
+  // Text extrusion
+  'ExtrusionStyle': { 0:'Classic', 1:'Custom' },
+  // Color channel selector (Displace3D etc.)
+  'Channel': { 0:'Luma', 1:'Red', 2:'Green', 3:'Blue', 4:'Alpha' },
+  // Color ranges (Color Corrector)
+  'ColorRanges': { 0:'Shadows', 1:'Midtones', 2:'Highlights', 3:'Master' },
+  // Rotation order (Transform3D)
+  'RotOrder': { 0:'XYZ', 1:'XZY', 2:'YXZ', 3:'YZX', 4:'ZXY', 5:'ZYX' },
+};
+
+
 window._parseSplineKFs = function (splineName, fullText) {
   var re = new RegExp(splineName + '\\s*=\\s*BezierSpline\\s*\\{');
   var m = re.exec(fullText);
@@ -6338,6 +6406,64 @@ window._parseNodeParams = function (body, content, fullText) {
       params[key] = { v: v };
     }
   }
+
+  // ── Post-process 1: enum resolution for integer-valued params ────────────────
+  // FuID params are already human-readable; this handles plain 0/1/2/4 integers.
+  var _enums = window._FUSION_INLINE_ENUMS || {};
+  Object.keys(params).forEach(function(k) {
+    var p = params[k];
+    if (!p || p.isKeyframe || p.isConnection || p.isExpr || p.isPath) return;
+    var v = p.v;
+    if (typeof v === 'string' && /^-?\d+$/.test(v.trim())) {
+      // Strip any namespace prefix (e.g. "Transform3DOp.RotOrder" → "RotOrder")
+      var base = k.split('.').pop();
+      var enumMap = _enums[k] || _enums[base];
+      if (enumMap) {
+        var idx = parseInt(v, 10);
+        if (enumMap.hasOwnProperty(idx)) {
+          params[k] = { v: enumMap[idx], isEnum: true };
+        }
+      }
+    }
+  });
+
+  // ── Post-process 2: synthesize RGBA color swatches ───────────────────────────
+  // Detect groups of *Red + *Green + *Blue (optionally *Alpha) and merge them
+  // into a single swatch param so the display can show a color box.
+  var _seenPrefixes = {};
+  Object.keys(params).forEach(function(k) {
+    if (/Red$/.test(k)) { _seenPrefixes[k.replace(/Red$/, '')] = true; }
+  });
+  Object.keys(_seenPrefixes).forEach(function(prefix) {
+    var rK = prefix + 'Red', gK = prefix + 'Green', bK = prefix + 'Blue', aK = prefix + 'Alpha';
+    if (!params[rK] || !params[gK] || !params[bK]) return;
+    // Only synthesize when all components are plain numeric, not keyframed
+    if (params[rK].isKeyframe || params[gK].isKeyframe || params[bK].isKeyframe) return;
+    var r = parseFloat(params[rK].v) || 0;
+    var g = parseFloat(params[gK].v) || 0;
+    var b = parseFloat(params[bK].v) || 0;
+    var a = params[aK] ? (parseFloat(params[aK].v) || 1) : 1;
+    function _ch(c) { return ('0' + Math.round(Math.max(0, Math.min(1, c)) * 255).toString(16)).slice(-2); }
+    var hex = '#' + _ch(r) + _ch(g) + _ch(b);
+    var rawLabel = prefix || 'Color';
+    // Build human label: "TopLeft" → "Top Left", "" → "Color"
+    var lbl = rawLabel.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim() || 'Color';
+    var swatchKey = '_swatch_' + (prefix || 'Color');
+    params[swatchKey] = {
+      v: hex,
+      isColor: true,
+      colorHex: hex,
+      colorR: r, colorG: g, colorB: b, colorA: a,
+      _colorLabel: lbl,
+      _colorAlpha: a
+    };
+    // Mark components so they are suppressed from the param list display
+    params[rK].isColorComponent = true;
+    params[gK].isColorComponent = true;
+    params[bK].isColorComponent = true;
+    if (params[aK]) params[aK].isColorComponent = true;
+  });
+
   return params;
 };
 
@@ -6357,7 +6483,15 @@ if (typeof FusionParamParser === 'undefined') {
       }
       return { content: text.slice(si, i - 1), endIdx: i };
     },
-    resolveEnum: function (lbl, val) { return val; },
+    resolveEnum: function (lbl, val) {
+      var _enums = window._FUSION_INLINE_ENUMS || {};
+      var enumMap = _enums[lbl] || _enums[(lbl || '').split('.').pop()];
+      if (enumMap) {
+        var idx = parseInt(val, 10);
+        if (!isNaN(idx) && enumMap.hasOwnProperty(idx)) return enumMap[idx];
+      }
+      return val;
+    },
     fmtGradientValue: function () { return 'Gradient'; },
 
     // ── Full parseSettingText — uses the inline _parseNodeParams / _parseSplineKFs helpers ──
@@ -6473,6 +6607,7 @@ if (typeof NodeVisualizer === 'undefined') {
 
   function _nvGrp(k, p) {
     if (typeof getParamGroup === 'function') return getParamGroup(k, p);
+    if (p && p.isColor) return 'Color'; // synthesized RGBA swatch
     if (p && p.isConnection) return 'Connections';
     if (/^Transform3DOp\./i.test(k)) return '3D';
     if (/^(Center|Size|Angle|Aspect|Pivot|[XY](Offset|Size|Scale|Rotation)|Flip|Width|Height|Perspective|PivotPoint)/i.test(k)) return 'Transform';
@@ -6501,6 +6636,7 @@ if (typeof NodeVisualizer === 'undefined') {
       Object.keys(tool.params || {}).forEach(function (k) {
         var p = tool.params[k];
         if (_nvNoisy(k)) return;
+        if (p.isColorComponent) return; // suppressed — represented by its swatch
         if (p.isKeyframe || (p.keyframes && p.keyframes.length)) hasAnim = true;
         var g = _nvGrp(k, p);
         (groups[g] = groups[g] || []).push([k, p]);
@@ -6571,7 +6707,7 @@ if (typeof NodeVisualizer === 'undefined') {
             + '<div class="pgroup-title">' + gname + '</div>';
       items.forEach(function (item) {
         var k = item[0], p = item[1];
-        var lbl  = _nvLbl(k);
+        var lbl  = (p._colorLabel !== undefined) ? p._colorLabel : _nvLbl(k);
         var val  = _nvVal(p, frame);
         var isKF = !!(p.isKeyframe || (p.keyframes && p.keyframes.length));
         var isSel = k === _nvParam;
@@ -6580,11 +6716,24 @@ if (typeof NodeVisualizer === 'undefined') {
           ? '<span style="display:inline-block;width:6px;height:6px;background:var(--kf,#f5c842);'
           + 'transform:rotate(45deg);border-radius:1px;margin-right:4px;flex-shrink:0;vertical-align:middle"></span>'
           : '';
+        // Color swatch — inline box + hex + optional alpha
+        var swatchHtml = '';
+        if (p.isColor) {
+          var aLabel = (typeof p._colorAlpha === 'number' && p._colorAlpha < 1)
+            ? ' A:' + parseFloat(p._colorAlpha.toPrecision(3)) : '';
+          swatchHtml = '<span style="display:inline-block;width:13px;height:13px;'
+            + 'background:' + (p.colorHex || val) + ';border-radius:3px;'
+            + 'border:1px solid rgba(255,255,255,0.18);flex-shrink:0;margin-right:5px;'
+            + 'vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,0.4)"></span>';
+          val = p.colorHex + aLabel;
+          vCls = '';
+        }
         html += '<div class="prow' + (isSel ? ' selected' : '') + '"'
               + ' data-param="' + k.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '"'
               + ' data-kf="' + (isKF ? '1' : '0') + '">'
               + dot
               + '<span class="pkey" title="' + lbl + '">' + lbl + '</span>'
+              + swatchHtml
               + '<span class="pval ' + vCls + '" title="' + val + '">' + val + '</span>'
               + '</div>';
       });
@@ -6615,7 +6764,10 @@ if (typeof NodeVisualizer === 'undefined') {
     if (catEl)  catEl.textContent  = node ? (node.cat || node.category || '') : '';
     if (!node || !node.fusionParams || !node.fusionParams.length) return;
     var total = node.fusionParams.reduce(function (s, t) {
-      return s + Object.keys(t.params || {}).length;
+      return s + Object.keys(t.params || {}).filter(function(k) {
+        var p = (t.params || {})[k];
+        return !p.isColorComponent;
+      }).length;
     }, 0);
     if (badgeEl) badgeEl.innerHTML = '<span class="params-badge">' + total + ' params</span>';
     if (!dispEl) return;
@@ -6630,7 +6782,7 @@ if (typeof NodeVisualizer === 'undefined') {
       html += '<div class="pgroup"><div class="pgroup-title">' + gname + '</div>';
       items.forEach(function (item) {
         var k = item[0], p = item[1];
-        var lbl  = _nvLbl(k);
+        var lbl  = (p._colorLabel !== undefined) ? p._colorLabel : _nvLbl(k);
         var val  = _nvVal(p, frame);
         var isKF = !!(p.isKeyframe || (p.keyframes && p.keyframes.length));
         var vCls = isKF ? 'kf' : (p.isPath ? 'path' : (p.isConnection ? 'conn' : ''));
@@ -6638,8 +6790,20 @@ if (typeof NodeVisualizer === 'undefined') {
           ? '<span style="display:inline-block;width:5px;height:5px;background:var(--kf,#f5c842);'
           + 'transform:rotate(45deg);border-radius:1px;margin-right:3px;vertical-align:middle"></span>'
           : '';
+        var swatchHtml = '';
+        if (p.isColor) {
+          var aLabel = (typeof p._colorAlpha === 'number' && p._colorAlpha < 1)
+            ? ' A:' + parseFloat(p._colorAlpha.toPrecision(3)) : '';
+          swatchHtml = '<span style="display:inline-block;width:12px;height:12px;'
+            + 'background:' + (p.colorHex || val) + ';border-radius:2px;'
+            + 'border:1px solid rgba(255,255,255,0.18);flex-shrink:0;margin-right:4px;'
+            + 'vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,0.4)"></span>';
+          val = p.colorHex + aLabel;
+          vCls = '';
+        }
         html += '<div class="prow">' + dot
               + '<span class="pkey">' + lbl + '</span>'
+              + swatchHtml
               + '<span class="pval ' + vCls + '">' + val + '</span>'
               + '</div>';
       });
