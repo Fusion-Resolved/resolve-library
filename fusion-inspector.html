@@ -39,7 +39,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
 /* ── LAYOUT ────────────────────────────────────────────────── */
-#app { display: flex; flex-direction: column; height: 100vh; }
+#app { display: flex; flex-direction: column; height: 100vh; padding-top: 10px; }
 
 #topbar {
   display: flex; align-items: center; gap: 12px;
@@ -365,6 +365,18 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   padding: 6px 12px; background: rgba(248,113,113,.08);
   border-radius: var(--radius-sm); display: none;
 }
+
+/* ── AUTO-PASTE TOAST ──────────────────────────────────────── */
+#autopaste-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--surf3); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 8px 16px;
+  font-size: 11px; font-family: var(--mono); color: var(--accent);
+  z-index: 999; pointer-events: none;
+  opacity: 0; transition: opacity .2s;
+  white-space: nowrap;
+}
+#autopaste-toast.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -459,6 +471,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <div id="spm-hint">Move cursor to scrub · Click keyframe diamond to jump · ← → to step · Esc to close</div>
   </div>
 </div>
+
+<!-- AUTO-PASTE TOAST -->
+<div id="autopaste-toast">⬡ Composition loaded from clipboard</div>
 
 <!-- PASTE MODAL -->
 <div id="paste-modal">
@@ -2593,6 +2608,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ── GLOBAL AUTO-PASTE ────────────────────────────────────────────────────────
+  // Any paste event on the page (when not inside the modal textarea) will
+  // auto-load the composition. The manual "Paste Composition" modal remains
+  // available for editing before submitting.
+  let _autoPasteTimer = null;
+  function showAutoPasteToast(msg) {
+    const toast = document.getElementById('autopaste-toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(_autoPasteTimer);
+    _autoPasteTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  document.addEventListener('paste', function (e) {
+    // Ignore if focus is inside the modal textarea or any input
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+    // Ignore if paste modal is open (user is deliberately editing in it)
+    if (modal.classList.contains('open')) return;
+
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if (!text || !text.trim()) return;
+
+    // Heuristic: must look like Fusion Lua (contains common Fusion keywords)
+    const looksLikeFusion = /\bTools\s*=|\bordered\s*\(|\bInputs\s*=|\bViewInfo\s*=|\bOperatorInfo\s*\{/.test(text);
+    if (!looksLikeFusion) return;
+
+    e.preventDefault();
+    loadComposition(text.trim());
+    showAutoPasteToast('⬡ Composition loaded from clipboard');
+  });
+
   // ── postMessage bridge: accept compositions pushed from nodegraph.html ───────
   // When embedded inside the Composition Inspector overlay (Option A), the parent
   // page can send { type: 'LOAD_COMPOSITION', src: '...' } to auto-load a setting.
@@ -2600,6 +2647,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!e.data) return;
     if (e.data.type === 'LOAD_COMPOSITION' && typeof e.data.src === 'string') {
       loadComposition(e.data.src);
+      showAutoPasteToast('⬡ Composition received from Node Graph');
     }
   });
 
