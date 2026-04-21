@@ -57,6 +57,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 #paste-btn:hover { border-color: var(--accent); color: var(--accent); }
 #clear-btn:hover { border-color: #ef4444; color: #ef4444; }
+#close-btn {
+  font-size: 15px; line-height: 1; padding: 4px 8px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border2);
+  background: var(--surf2); color: var(--text2); cursor: pointer; transition: .12s;
+  margin-left: 4px;
+}
+#close-btn:hover { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,.08); }
 #comp-info { font-size: 10px; font-family: var(--mono); color: var(--text3); }
 
 #panels { display: flex; flex: 1; overflow: hidden; padding-top: 8px; }
@@ -388,6 +395,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <div id="parse-error"></div>
     <button id="clear-btn" style="display:none">Clear</button>
     <button id="paste-btn">Paste Composition ▸</button>
+    <button id="close-btn" title="Close Inspector">✕</button>
   </div>
 
   <div id="panels">
@@ -2569,6 +2577,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   clearBtn.addEventListener('click', clearAll);
+
+  document.getElementById('close-btn').addEventListener('click', () => {
+    document.getElementById('app').style.display = 'none';
+    // Notify parent frame if embedded
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'CI_CLOSED' }, '*');
+    }
+  });
 
   // Spline modal wiring
   document.getElementById('spm-close').addEventListener('click', closeSplineModal);
