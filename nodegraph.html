@@ -4068,6 +4068,21 @@ function importFromNodeSystem(str) {
           });
         }
       } catch(_e) { console.warn('[importFromNodeSystem] FusionParamParser pass failed:', _e); }
+    } else if (typeof _extractToolBody === 'function' && typeof _parseNodeParams === 'function') {
+      // FusionParamParser not available — extract params directly from the Lua text
+      createdNodes.forEach(function(n) {
+        var fusName = n.label || n.name;
+        try {
+          var _body = _extractToolBody(fusName, trimmedText);
+          if (_body) {
+            var _ip = _parseNodeParams(_body, null, trimmedText);
+            if (Object.keys(_ip).length) {
+              n.fusionParams = [{ toolName: fusName, toolType: n.label || n.name, params: _ip }];
+              n._rawSetting = trimmedText;
+            }
+          }
+        } catch(_e) {}
+      });
     }
     createdNodes.forEach(n => { if (!n._rawSetting) n._rawSetting = trimmedText; });
 
@@ -6099,6 +6114,24 @@ window._parseSplineKFs = function (splineName, fullText) {
   return kfs.sort(function (a, b) { return a.frame - b.frame; });
 };
 
+// ── Tool block extractor — finds a named tool's body in the full composition ──
+window._extractToolBody = function(toolName, fullText) {
+  var toolsM = fullText.match(/Tools\s*=\s*ordered\(\)\s*\{([\s\S]*)\}/);
+  var src = toolsM ? toolsM[1] : fullText;
+  var escaped = toolName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var re = new RegExp('(?:^|[\\n\\r])\\s*' + escaped + '\\s*=\\s*\\w+\\s*\\{');
+  var m = re.exec(src);
+  if (!m) return '';
+  var start = m.index + m[0].lastIndexOf('{') + 1;
+  var depth = 1, i = start;
+  while (i < src.length && depth > 0) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') depth--;
+    i++;
+  }
+  return src.slice(start, i - 1);
+};
+
 // ── Node param parser (Inputs block → structured params object) ──────────────
 window._parseNodeParams = function (body, content, fullText) {
   var params = {};
@@ -6113,7 +6146,7 @@ window._parseNodeParams = function (body, content, fullText) {
     i++;
   }
   var inpBody = body.slice(s + 1, i);
-  var inputRe = /([\w.]+)\s*=\s*Input\s*\{/g;
+  var inputRe = /([\w.]+)\s*=\s*(?:Input|InstanceInput)\s*\{/g;
   var m;
   while ((m = inputRe.exec(inpBody)) !== null) {
     var key = m[1];
@@ -6131,7 +6164,7 @@ window._parseNodeParams = function (body, content, fullText) {
       var isSpline = new RegExp(srcName + '\\s*=\\s*BezierSpline').test(raw);
       if (isSpline) {
         var kfs = window._parseSplineKFs(srcName, raw);
-        params[key] = { v: kfs.length ? 'keyframed (' + kfs.length + ' KF)' : '—',
+        params[key] = { v: kfs.length ? 'keyframed (' + kfs.length + ' KF)' : '\u2014',
           isKeyframe: true, sourceOp: srcName, keyframes: kfs };
       } else {
         params[key] = { v: '\u2192 ' + srcName, isConnection: true, sourceOp: srcName };
@@ -6141,18 +6174,36 @@ window._parseNodeParams = function (body, content, fullText) {
     // Expression
     var exM = blk.match(/Expression\s*=\s*"([^"]+)"/);
     if (exM) { params[key] = { v: exM[1], isExpr: true }; continue; }
-    // Value
-    var valM = blk.match(/Value\s*=\s*([^,\n\r\}]+)/);
-    if (valM) {
-      var rawVal = valM[1].trim().replace(/,$/, '');
-      var v = rawVal;
-      if (/^Point\b/.test(rawVal)) {
-        var pts = rawVal.match(/[\d.-]+/g);
-        v = pts && pts.length >= 2 ? (+pts[0]).toPrecision(4) + ', ' + (+pts[1]).toPrecision(4) : rawVal;
-      } else if (/^-?[\d.eE+]+$/.test(rawVal)) {
-        v = String(parseFloat((+rawVal).toPrecision(5)));
-      } else if (rawVal.charAt(0) === '"' && rawVal.charAt(rawVal.length - 1) === '"') {
-        v = rawVal.slice(1, -1);
+    // Value — brace-aware so Point { x, y } and FuID { "str" } parse correctly
+    var valKeyM = blk.match(/Value\s*=\s*/);
+    if (valKeyM) {
+      var vStart = valKeyM.index + valKeyM[0].length;
+      var vRaw = '', vDepth = 0, vi = vStart;
+      while (vi < blk.length) {
+        var vc = blk[vi];
+        if (vc === '{') { vDepth++; vRaw += vc; }
+        else if (vc === '}') { if (vDepth === 0) break; vDepth--; vRaw += vc; }
+        else if (vDepth === 0 && (vc === '\n' || vc === '\r')) break;
+        else vRaw += vc;
+        vi++;
+      }
+      vRaw = vRaw.trim().replace(/,$/, '');
+      var v = vRaw;
+      var fuM2 = vRaw.match(/^FuID\s*\{\s*"([^"]+)"\s*\}/);
+      if (fuM2) {
+        v = fuM2[1];
+      } else {
+        var ptM = vRaw.match(/^Point\s*\{\s*([\d.-]+)\s*,\s*([\d.-]+)/);
+        if (ptM) {
+          v = String(parseFloat((+ptM[1]).toPrecision(5))) + ', ' + String(parseFloat((+ptM[2]).toPrecision(5)));
+        } else if (/^-?[\d.eE+]+$/.test(vRaw)) {
+          v = String(parseFloat((+vRaw).toPrecision(5)));
+        } else if (vRaw.charAt(0) === '"') {
+          var qi = vRaw.lastIndexOf('"');
+          v = qi > 0 ? vRaw.slice(1, qi) : vRaw.slice(1);
+        } else if (/^\w+\s*\{/.test(vRaw)) {
+          v = '[table]'; // gradient, colour wheel, etc.
+        }
       }
       params[key] = { v: v };
     }
