@@ -3873,6 +3873,28 @@ function importFromFusion(str) {
   }
 
   // ── Finalise ──────────────────────────────────────────────────────────────
+  // Use FusionParamParser.parseSettingText (the same parser as the per-node
+  // paste workflow) to populate fusionParams with correct structured data.
+  // This gives proper keyframe, connection, and enum data for the bottom
+  // drawer and right panel — matching what the Composition Inspector shows.
+  if (typeof FusionParamParser !== 'undefined' && typeof FusionParamParser.parseSettingText === 'function') {
+    try {
+      const _fpResult = FusionParamParser.parseSettingText(trimmedText);
+      if (Array.isArray(_fpResult) && _fpResult.length) {
+        _fpResult.forEach(pt => {
+          const nId = nodeMap[pt.toolName];
+          const n = nodes.find(x => x.id === nId);
+          if (n && pt.params && Object.keys(pt.params).length) {
+            n.fusionParams = [pt];
+            n._rawSetting = trimmedText;
+          }
+        });
+      }
+    } catch(_e) { console.warn('[importFromFusion] FusionParamParser pass failed:', _e); }
+  }
+  // Ensure _rawSetting is set for all created nodes so spline data is always accessible
+  createdNodes.forEach(n => { if (!n._rawSetting) n._rawSetting = trimmedText; });
+
   if (typeof autoSaveParams === 'function') autoSaveParams();
   updAllPS();
   renderAllConns();
@@ -4030,6 +4052,25 @@ function importFromNodeSystem(str) {
     });
     
     // Finalize
+    // Use FusionParamParser.parseSettingText to overwrite params with correct
+    // structured data (keyframes, connections, enums) for drawer + right panel.
+    if (typeof FusionParamParser !== 'undefined' && typeof FusionParamParser.parseSettingText === 'function') {
+      try {
+        const _fpResult = FusionParamParser.parseSettingText(trimmedText);
+        if (Array.isArray(_fpResult) && _fpResult.length) {
+          _fpResult.forEach(pt => {
+            const nId = nodeMap[pt.fusionName || pt.toolName];
+            const n = createdNodes.find(x => x.id === nId);
+            if (n && pt.params && Object.keys(pt.params).length) {
+              n.fusionParams = [pt];
+              n._rawSetting = trimmedText;
+            }
+          });
+        }
+      } catch(_e) { console.warn('[importFromNodeSystem] FusionParamParser pass failed:', _e); }
+    }
+    createdNodes.forEach(n => { if (!n._rawSetting) n._rawSetting = trimmedText; });
+
     if (typeof autoSaveParams === 'function') autoSaveParams();
     updAllPS();
     renderAllConns();
@@ -6308,6 +6349,8 @@ if (typeof NodeVisualizer === 'undefined') {
       row.addEventListener('click', function (e) {
         e.stopPropagation();
         _nvParam = row.dataset.param;
+        // Sync _bdSelParam so openParamSpline() finds the right param
+        try { _bdSelParam = row.dataset.param; } catch(_e) {}
         body.querySelectorAll('.prow').forEach(function (r) { r.classList.toggle('selected', r === row); });
         if (splineBtn) splineBtn.style.display = (row.dataset.kf === '1') ? '' : 'none';
       });

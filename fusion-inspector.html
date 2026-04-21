@@ -1754,6 +1754,12 @@ function renderDetail() {
 
     // Spline canvas (keyframe only)
     if (p.kind === 'keyframe') {
+      html += `<button id="view-spline-btn" style="
+        font-size:11px;font-family:var(--mono);padding:6px;width:100%;
+        border-radius:var(--radius-sm);border:1px solid rgba(245,200,66,.4);
+        background:rgba(245,200,66,.07);color:var(--kf);cursor:pointer;
+        transition:.12s;display:flex;align-items:center;justify-content:center;gap:6px;
+      ">⬡ View Spline  <span style="font-size:9px;opacity:.6">(${p.keyframes.length} keyframes)</span></button>`;
       html += `<div class="spline-wrap">
         <canvas class="spline-canvas" id="spline-canvas" title="Click to open full spline editor"></canvas>
         <button class="spline-expand-btn" id="spline-expand-btn">⤢ Expand</button>
@@ -1806,6 +1812,8 @@ function renderDetail() {
     }
     const expandBtn = document.getElementById('spline-expand-btn');
     if (expandBtn) expandBtn.addEventListener('click', () => openSplineModal(p, state.selectedParam));
+    const viewSplineBtn = document.getElementById('view-spline-btn');
+    if (viewSplineBtn) viewSplineBtn.addEventListener('click', () => openSplineModal(p, state.selectedParam));
   });
 }
 
