@@ -6589,33 +6589,85 @@ if (typeof FusionParamParser === 'undefined') {
         }
 
         // ── Inject implied defaults for known node types ─────────────────────
-        // Fusion omits parameters at their default value from the export.
-        // For Background nodes this means "Type = Solid Color" and fully-black
-        // corner colors simply don't appear in the Lua — but they are important
-        // context for a reader trying to recreate the node.
+        // Fusion omits parameters at their default value from the export, so
+        // "Type = Solid Color" and fully-black corners don't appear in the Lua.
+        // We reconstruct the correct color entries based on the active Type so
+        // a reader sees only the colours that are actually meaningful.
         if (nodeType === 'Background') {
-          // Type: default is 0 = Solid Color
+
+          // 1. Ensure Type is present (default = 0 = Solid Color)
           if (!params['Type']) {
             params['Type'] = { v: 'Solid Color', isEnum: true, _impliedDefault: true };
           }
-          // Corner colors: default is black (0,0,0,1).  Only inject the corners
-          // that have no component already present (i.e. fully black = all omitted).
-          var bgCorners = ['TopLeft','TopRight','BottomLeft','BottomRight'];
-          bgCorners.forEach(function(corner) {
-            var swK = '_swatch_' + corner;
-            var hasAny = params[corner+'Red'] || params[corner+'Green'] ||
-                         params[corner+'Blue'] || params[corner+'Alpha'];
-            if (!hasAny && !params[swK]) {
-              params[swK] = {
-                v: '#000000', isColor: true, colorHex: '#000000',
-                colorR: 0, colorG: 0, colorB: 0, colorA: 1,
-                _colorLabel: corner.replace(/([A-Z])/g, ' $1').trim(),
-                _colorAlpha: 1,
-                _colorRGB: '#000000   R:\u202f0  G:\u202f0  B:\u202f0',
-                _impliedDefault: true
-              };
+          var _bgType = (params['Type'] && params['Type'].v) || 'Solid Color';
+          var _bgTypeMap = {'0':'Solid Color','1':'Horizontal','2':'Vertical','3':'Four Corner','4':'Gradient'};
+          if (_bgTypeMap[_bgType]) _bgType = _bgTypeMap[_bgType];
+
+          // 2. Collect any auto-synthesised corner swatches produced by _parseNodeParams,
+          //    then remove them — we'll re-add with the right labels and only the
+          //    corners that are meaningful for this gradient type.
+          var _bgSwatches = {};
+          ['TopLeft','TopRight','BottomLeft','BottomRight'].forEach(function(c) {
+            if (params['_swatch_' + c]) {
+              _bgSwatches[c] = params['_swatch_' + c];
+              delete params['_swatch_' + c];
             }
           });
+
+          // Helper — returns existing synthesised swatch for a corner, re-labelled,
+          // or creates a black default when no components were exported.
+          function _bgSwatch(corner, label) {
+            if (_bgSwatches[corner]) {
+              return Object.assign({}, _bgSwatches[corner], { _colorLabel: label });
+            }
+            return {
+              v: '#000000', isColor: true, colorHex: '#000000',
+              colorR: 0, colorG: 0, colorB: 0, colorA: 1,
+              _colorLabel: label, _colorAlpha: 1,
+              _colorRGB: '#000000   R:\u202f0  G:\u202f0  B:\u202f0',
+              _impliedDefault: true
+            };
+          }
+          // Suppress exported corner components that are not shown as swatches.
+          function _bgSuppress(corners) {
+            corners.forEach(function(c) {
+              ['Red','Green','Blue','Alpha'].forEach(function(ch) {
+                if (params[c + ch]) params[c + ch].isColorComponent = true;
+              });
+            });
+          }
+
+          // 3. Inject swatches appropriate to the gradient type.
+          if (_bgType === 'Solid Color') {
+            // Single colour — TopLeft is the one colour; the others are irrelevant.
+            params['_swatch_Color'] = _bgSwatch('TopLeft', 'Color');
+            _bgSuppress(['TopRight','BottomLeft','BottomRight']);
+
+          } else if (_bgType === 'Horizontal') {
+            // Left → right gradient.
+            params['_swatch_Left']  = _bgSwatch('TopLeft',  'Left Color');
+            params['_swatch_Right'] = _bgSwatch('TopRight', 'Right Color');
+            _bgSuppress(['BottomLeft','BottomRight']);
+
+          } else if (_bgType === 'Vertical') {
+            // Top → bottom gradient.
+            params['_swatch_Top']    = _bgSwatch('TopLeft',    'Top Color');
+            params['_swatch_Bottom'] = _bgSwatch('BottomLeft', 'Bottom Color');
+            _bgSuppress(['TopRight','BottomRight']);
+
+          } else if (_bgType === 'Four Corner') {
+            // All four corners are independent.
+            params['_swatch_TopLeft']     = _bgSwatch('TopLeft',     'Top Left');
+            params['_swatch_TopRight']    = _bgSwatch('TopRight',    'Top Right');
+            params['_swatch_BottomLeft']  = _bgSwatch('BottomLeft',  'Bottom Left');
+            params['_swatch_BottomRight'] = _bgSwatch('BottomRight', 'Bottom Right');
+
+          } else {
+            // Gradient or unknown — restore whatever _parseNodeParams found.
+            Object.keys(_bgSwatches).forEach(function(c) {
+              params['_swatch_' + c] = _bgSwatches[c];
+            });
+          }
         }
 
         results.push({ toolName: fusionName, toolType: nodeType, params: params });
