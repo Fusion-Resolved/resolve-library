@@ -137,7 +137,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .pval.conn { color: var(--conn); }
 .pval.expr { color: var(--expr); }
 .pval.inst { color: var(--inst); }
-.pval.def { color: var(--text3); font-style: italic; }
+.pval.def  { color: var(--text3); font-style: italic; }
+.pval.color { max-width: none; white-space: nowrap; overflow: visible; }
 .kf-dot { width: 6px; height: 6px; background: var(--kf); border-radius: 1px; transform: rotate(45deg); flex-shrink: 0; }
 .path-dot { width: 6px; height: 6px; background: var(--path); border-radius: 50%; flex-shrink: 0; }
 .conn-dot { width: 6px; height: 6px; background: var(--conn); border-radius: 50%; flex-shrink: 0; }
@@ -838,7 +839,14 @@ const TOOL_REGISTRY = {
   // ─── GENERATOR ──────────────────────────────────────────────────────────────
   Background: {
     cat: 'Generator',
-    defaults: { Width:1920, Height:1080, Depth:0, Type:0 }
+    defaults: {
+      Width: 1920, Height: 1080, Depth: 0, Type: 0,
+      // Corner colours — black by default; Fusion omits these from the export
+      TopLeftRed:0,     TopLeftGreen:0,     TopLeftBlue:0,     TopLeftAlpha:1,
+      TopRightRed:0,    TopRightGreen:0,    TopRightBlue:0,    TopRightAlpha:1,
+      BottomLeftRed:0,  BottomLeftGreen:0,  BottomLeftBlue:0,  BottomLeftAlpha:1,
+      BottomRightRed:0, BottomRightGreen:0, BottomRightBlue:0, BottomRightAlpha:1,
+    }
   },
   TextPlus: {
     cat: 'Generator',
@@ -1017,7 +1025,7 @@ const ENUMS = {
   'Color Space':   {0:'sRGB',1:'Linear',2:'Log',3:'Rec.709',4:'Rec.2020',5:'P3-D65',6:'DaVinci Wide Gamut'},
   'From Color Space':{0:'sRGB',1:'Linear',2:'Log',3:'Rec.709',4:'Rec.2020',5:'P3-D65',6:'DaVinci Wide Gamut'},
   'To Color Space':  {0:'sRGB',1:'Linear',2:'Log',3:'Rec.709',4:'Rec.2020',5:'P3-D65',6:'DaVinci Wide Gamut'},
-  Depth:        {0:'Auto',1:'int8',2:'int16',3:'Half Float',4:'Float32'},
+  Depth:        {0:'Auto',1:'8-bit',2:'16-bit',3:'16-bit Float',4:'32-bit Float'},
   FlipHoriz:    {0:'None',1:'Flip'}, FlipVert:{0:'None',1:'Flip'},
   Alpha:        {0:'Off',1:'On'},
   Operation:    {0:'Copy',1:'AND',2:'OR',3:'XOR',4:'Add',5:'Subtract',6:'Multiply',7:'Divide',8:'Maximum',9:'Minimum'},
@@ -1026,18 +1034,48 @@ const ENUMS = {
   ColorChannels:{0:'Master',1:'Red',2:'Yellow',3:'Green',4:'Cyan',5:'Blue',6:'Magenta'},
   GradientType: {0:'Linear',1:'Reflect',2:'Square',3:'Cross',4:'Radial'},
   'Gradient Type':{0:'Linear',1:'Reflect',2:'Square',3:'Cross',4:'Radial'},
-  Type:         {0:'Fast Noise',1:'Turbulent Noise',2:'Gradient Noise',3:'Multi-Fractal Noise'},
   LayoutStyle:  {0:'Horizontal',1:'Vertical',2:'Path'},
   HorizAlign:   {0:'Left',1:'Centre',2:'Right',3:'Justified'},
   VertAlign:    {0:'Top',1:'Centre',2:'Bottom'},
+  // Common boolean toggles
+  UseFrameFormatSettings:{0:'Off',1:'On'},
+  PerformDepthMerge:{0:'Off',1:'On'},
+  PreDivide:    {0:'Off',1:'On'},
+  Clamp:        {0:'Off',1:'On'},
+  Invert:       {0:'Off',1:'On'},
+  Loop:         {0:'Off',1:'On'},
+  Reverse:      {0:'Off',1:'On'},
+  CreateDir:    {0:'Off',1:'On'},
+  KeepCentered: {0:'Off',1:'On'},
 };
 
-function resolveEnum(paramName, val) {
+// Per-tool enum overrides — checked before the global ENUMS table.
+// Necessary when the same param name means different things in different nodes
+// (e.g. Background.Type vs FastNoise.Type).
+const TOOL_ENUMS = {
+  Background: {
+    Type:  {0:'Solid Color', 1:'Horizontal', 2:'Vertical', 3:'Four Corner', 4:'Gradient'},
+    Depth: {0:'Auto', 1:'8-bit', 2:'16-bit', 3:'16-bit Float', 4:'32-bit Float'},
+  },
+  FastNoise: {
+    Type: {0:'Fast Noise', 1:'Turbulent Noise', 2:'Gradient Noise', 3:'Multi-Fractal Noise'},
+  },
+  Merge: {
+    Operator: {0:'Over',1:'In',2:'Held Out',3:'Atop',4:'XOR',19:'Over'},
+  },
+};
+
+function resolveEnum(paramName, val, toolType) {
   if (val === null || val === undefined || val === '—') return val;
   const s = String(val).trim();
   if (!/^-?\d+$/.test(s)) return val;
   const n = parseInt(s);
-  // Direct name match
+  // Tool-specific lookup first (prevents FastNoise.Type clobbering Background.Type etc.)
+  if (toolType && TOOL_ENUMS[toolType] && TOOL_ENUMS[toolType][paramName] !== undefined) {
+    const tbl = TOOL_ENUMS[toolType][paramName];
+    if (tbl[n] !== undefined) return tbl[n];
+  }
+  // Global enum — direct name match
   for (const [k, table] of Object.entries(ENUMS)) {
     if (k.toLowerCase() === paramName.toLowerCase() && table[n] !== undefined) return table[n];
   }
@@ -1164,6 +1202,7 @@ function resolveComposition(ast) {
       : null;
 
     const params = resolveInputs(obj.Inputs || {}, splineMap, type);
+    postProcessParams(params, type);
     tools.push({ name, type, params, pos, raw: JSON.stringify(obj, null, 2) });
   }
 
@@ -1268,6 +1307,91 @@ function resolveInputs(inputs, splineMap, toolType) {
   }
 
   return params;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  5b. POST-PROCESS PARAMS — colour synthesis + Background type restructuring
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function postProcessParams(params, toolType) {
+  // ── Step 1: detect *Red/*Green/*Blue/*Alpha groups, create colour swatches ──
+  const colorGroups = {};
+  for (const k of Object.keys(params)) {
+    const m = k.match(/^(.+?)(Red|Green|Blue|Alpha)$/);
+    if (!m) continue;
+    const [, prefix, channel] = m;
+    const p = params[k];
+    if (!p || p.kind === 'keyframe' || p.kind === 'animpath' || p.kind === 'conn') continue;
+    const num = parseFloat(p.v);
+    if (isNaN(num)) continue;
+    if (!colorGroups[prefix]) colorGroups[prefix] = {};
+    colorGroups[prefix][channel] = num;
+    p._isColorComponent = true;
+  }
+
+  function fmtC(n) { return String(parseFloat(n.toPrecision(4))); }
+  function ch(c)   { return ('0' + Math.round(Math.max(0, Math.min(1, c)) * 255).toString(16)).slice(-2); }
+
+  for (const [prefix, comps] of Object.entries(colorGroups)) {
+    if (!('Red' in comps) && !('Green' in comps) && !('Blue' in comps)) continue;
+    const r = comps.Red   ?? 0;
+    const g = comps.Green ?? 0;
+    const b = comps.Blue  ?? 0;
+    const a = comps.Alpha ?? 1;
+    const hex = '#' + ch(r) + ch(g) + ch(b);
+    const rawLabel = prefix || 'Color';
+    const lbl = rawLabel.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim() || 'Color';
+    params['_swatch_' + prefix] = {
+      v: hex, kind: 'color', isColor: true,
+      colorHex: hex, colorR: r, colorG: g, colorB: b, colorA: a,
+      _colorLabel: lbl,
+      _colorRGB: hex + '   R:\u202f' + fmtC(r) + '  G:\u202f' + fmtC(g) + '  B:\u202f' + fmtC(b) +
+                 (a < 0.9999 ? '  A:\u202f' + fmtC(a) : ''),
+    };
+  }
+
+  // ── Step 2: Background — type-aware colour restructuring ──────────────────────
+  if (toolType === 'Background') {
+    const typeP = params['Type'];
+    let bgTypeRaw = typeP ? String(typeP.v) : '0';
+    const typeMap = {
+      '0':'Solid Color','1':'Horizontal','2':'Vertical','3':'Four Corner','4':'Gradient',
+      'Solid Color':'Solid Color','Horizontal':'Horizontal','Vertical':'Vertical',
+      'Four Corner':'Four Corner','Gradient':'Gradient',
+    };
+    const bgType = typeMap[bgTypeRaw] || 'Solid Color';
+
+    const cs = {};
+    for (const corner of ['TopLeft','TopRight','BottomLeft','BottomRight']) {
+      const swK = '_swatch_' + corner;
+      if (params[swK]) { cs[corner] = params[swK]; delete params[swK]; }
+    }
+
+    const BLACK = (label) => ({
+      v:'#000000', kind:'color', isColor:true, colorHex:'#000000',
+      colorR:0, colorG:0, colorB:0, colorA:1, _colorLabel: label,
+      _colorRGB:'#000000   R:\u202f0  G:\u202f0  B:\u202f0',
+    });
+    const sw = (corner, label) =>
+      cs[corner] ? { ...cs[corner], _colorLabel: label } : BLACK(label);
+
+    if (bgType === 'Solid Color') {
+      params['_swatch_Color'] = sw('TopLeft', 'Color');
+    } else if (bgType === 'Horizontal') {
+      params['_swatch_Left']  = sw('TopLeft',  'Left Color');
+      params['_swatch_Right'] = sw('TopRight', 'Right Color');
+    } else if (bgType === 'Vertical') {
+      params['_swatch_Top']    = sw('TopLeft',    'Top Color');
+      params['_swatch_Bottom'] = sw('BottomLeft', 'Bottom Color');
+    } else if (bgType === 'Four Corner') {
+      params['_swatch_TopLeft']     = sw('TopLeft',     'Top Left');
+      params['_swatch_TopRight']    = sw('TopRight',    'Top Right');
+      params['_swatch_BottomLeft']  = sw('BottomLeft',  'Bottom Left');
+      params['_swatch_BottomRight'] = sw('BottomRight', 'Bottom Right');
+    } else {
+      for (const [c, sv] of Object.entries(cs)) params['_swatch_' + c] = sv;
+    }
+  }
 }
 
 function extractValue(raw) {
@@ -1412,6 +1536,8 @@ const GROUP_PATTERNS = [
 const GROUP_ORDER = ['Transform','3D Transform','Opacity','Color','Color Space','Blur','Mask','Animation','Text','Noise','Particles','Light','Geometry','Connections','Other'];
 
 function getParamGroup(pname, param) {
+  if (param._isColorComponent) return '__hidden__';
+  if (param.kind === 'color' || param.isColor) return 'Color';
   if (param.kind === 'conn') return 'Connections';
   for (const g of GROUP_PATTERNS) { if (g.re.test(pname)) return g.name; }
   return 'Other';
@@ -1558,10 +1684,11 @@ function renderParams() {
   typeEl.textContent = tool.type;
   typeEl.style.display = '';
 
-  // Group params
+  // Group params — skip hidden colour components
   const groups = {};
   for (const [k, p] of Object.entries(tool.params)) {
     const g = getParamGroup(k, p);
+    if (g === '__hidden__') continue;
     if (!groups[g]) groups[g] = [];
     groups[g].push(k);
   }
@@ -1574,7 +1701,24 @@ function renderParams() {
     ks.forEach(k => {
       const p = tool.params[k];
       const isSel = k === state.selectedParam;
-      const label = fmtLabel(k);
+      const label = p._colorLabel || fmtLabel(k);
+
+      // ── Colour swatch row ─────────────────────────────────────────────────
+      if (p.isColor || p.kind === 'color') {
+        const swStyle = `display:inline-block;width:13px;height:13px;background:${p.colorHex};` +
+          `border-radius:3px;border:1px solid rgba(255,255,255,0.18);flex-shrink:0;` +
+          `margin-right:5px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,0.45)`;
+        const rgb = p._colorRGB || p.colorHex;
+        html += `<div class="prow${isSel?' selected':''}" data-param="${k}">
+          <div class="empty-dot"></div>
+          <span class="pkey" title="${label}">${label}</span>
+          <span style="${swStyle}"></span>
+          <span class="pval color" title="${rgb}">${rgb}</span>
+        </div>`;
+        return;
+      }
+
+      // ── Standard param row ────────────────────────────────────────────────
       let displayVal = getDisplayValue(p, k, state.frame);
       let valClass = '';
       let dotHtml = '<div class="empty-dot"></div>';
@@ -1586,9 +1730,8 @@ function renderParams() {
       else if (p.kind === 'expr') { valClass = 'expr'; }
       else if (p.kind === 'default') { valClass = 'def'; }
 
-      // Enum resolution for static/default values
       if (p.kind === 'static' || p.kind === 'default') {
-        const enumed = resolveEnum(k, displayVal);
+        const enumed = resolveEnum(k, displayVal, tool.type);
         if (enumed !== displayVal) displayVal = enumed;
       }
 
