@@ -38,10 +38,7 @@
   <script src="spline-evaluator.js"></script>
   <script src="timeline-component.js"></script>
   <script src="value-display.js"></script>
-  <!-- Fusion parameter parser - shared across all pages -->
-  <script src="fusion-param-parser.js"></script>
-  <!-- Node visualizer - shared UI rendering across all pages -->
-  <script src="node-visualizer.js"></script>
+  <!-- Fusion parameter parser & Node visualizer loaded inline below as fallbacks -->
   <!-- Theme/UI flash prevention (preserved verbatim) -->
   <script>
 (function(){try{var t=JSON.parse(localStorage.getItem('noding-theme')||'{}'),s=document.documentElement.style,h=function(x){var r=parseInt(x.slice(1,3),16),g=parseInt(x.slice(3,5),16),b=parseInt(x.slice(5,7),16);return[r,g,b]};if(t.accent){s.setProperty('--accent',t.accent);var a=h(t.accent);s.setProperty('--accent-dim','rgba('+a+',0.08)');s.setProperty('--tag-bg','rgba('+a+',0.08)');s.setProperty('--tag-color',t.accent);}if(t.accent2){s.setProperty('--accent2',t.accent2);var c=h(t.accent2);s.setProperty('--accent2-dim','rgba('+c+',0.08)');}if(t.bg)s.setProperty('--bg',t.bg);if(t.surface)s.setProperty('--surface',t.surface);if(t.surface2)s.setProperty('--surface2',t.surface2);if(t.surface3)s.setProperty('--surface3',t.surface3);if(t.text)s.setProperty('--text',t.text);}catch(e){}
@@ -6706,6 +6703,8 @@ if (typeof NodeVisualizer === 'undefined') {
   var _nvParam = null;
   var _nvNode  = null;
   var _nvOpen  = true;
+  var _nvRightNode  = null; // tracks node shown in right params panel
+  var _nvRightParam = null; // tracks selected param in right params panel
 
   var _NV_GRP_ORDER = (typeof PARAM_GROUP_ORDER !== 'undefined') ? PARAM_GROUP_ORDER
     : ['Transform','Opacity / Blend','Color','Shadow','Light','Material',
@@ -6878,21 +6877,60 @@ if (typeof NodeVisualizer === 'undefined') {
               + swatchHtml
               + '<span class="pval ' + vCls + '" title="' + val + '">' + val + '</span>'
               + '</div>';
+
+        // ── Inline KF chips when this param is selected ──────────────────────
+        if (isSel && isKF && p.keyframes && p.keyframes.length) {
+          var kfs = p.keyframes.slice().sort(function(a,b){return a.frame-b.frame;});
+          var curF2 = (frame != null) ? frame : kfs[0].frame;
+          html += '<div style="padding:4px 6px 6px;margin:-1px 0 2px;'
+            + 'background:rgba(245,200,66,0.04);border:1px solid rgba(245,200,66,0.14);'
+            + 'border-top:none;border-radius:0 0 4px 4px;display:flex;flex-wrap:wrap;gap:3px">';
+          kfs.forEach(function(kf) {
+            var isAct = kf.frame === curF2;
+            var chipVal = typeof kf.val === 'string'
+              ? kf.val.replace(/(\d+\.\d{3})\d*/g,'$1')
+              : _nvFmt(kf.val);
+            html += '<div class="bd-kf-chip" data-frame="' + kf.frame + '" data-nodeid="' + node.id + '"'
+              + ' style="font-size:9px;font-family:var(--font-mono,monospace);padding:2px 6px 3px;'
+              + 'border-radius:3px;cursor:pointer;user-select:none;'
+              + 'border:1px solid ' + (isAct ? 'rgba(245,200,66,0.6)' : 'rgba(255,255,255,0.08)') + ';'
+              + 'background:' + (isAct ? 'rgba(245,200,66,0.1)' : 'transparent') + ';'
+              + 'color:' + (isAct ? '#f5c842' : 'var(--text-secondary)') + '">'
+              + '<div style="font-size:7px;opacity:0.65;line-height:1.3">F:' + kf.frame + '</div>'
+              + '<div style="line-height:1.3">' + chipVal + '</div>'
+              + '</div>';
+          });
+          html += '</div>';
+        }
       });
       html += '</div>';
     });
 
     body.innerHTML = scrubHtml + (html || '<div style="font-size:10px;color:var(--text-muted);padding:4px">No displayable parameters</div>');
 
-    // Row click → select param, show spline button if keyframed
+    // Row click → select param, rebuild with chips inline
     body.querySelectorAll('.prow').forEach(function (row) {
       row.addEventListener('click', function (e) {
         e.stopPropagation();
+        var prevParam = _nvParam;
         _nvParam = row.dataset.param;
-        // Sync _bdSelParam so openParamSpline() finds the right param
         try { _bdSelParam = row.dataset.param; } catch(_e) {}
-        body.querySelectorAll('.prow').forEach(function (r) { r.classList.toggle('selected', r === row); });
         if (splineBtn) splineBtn.style.display = (row.dataset.kf === '1') ? '' : 'none';
+        // Toggle: clicking same param again deselects
+        if (prevParam === _nvParam) { _nvParam = null; try { _bdSelParam = null; } catch(_e) {} if (splineBtn) splineBtn.style.display = 'none'; }
+        var scrollTop = body.scrollTop;
+        _nvBuildBody(node, _nvFrame != null ? _nvFrame : frame);
+        body.scrollTop = scrollTop;
+      });
+    });
+
+    // KF chip click → scrub to that frame
+    body.querySelectorAll('.bd-kf-chip').forEach(function(chip) {
+      chip.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var f = parseInt(chip.dataset.frame);
+        var nid = chip.dataset.nodeid;
+        if (!isNaN(f) && typeof bdScrubFrame === 'function') bdScrubFrame(nid, f);
       });
     });
   }
@@ -6905,6 +6943,8 @@ if (typeof NodeVisualizer === 'undefined') {
     if (nameEl) nameEl.textContent = node ? (node.name || '') : '';
     if (catEl)  catEl.textContent  = node ? (node.cat || node.category || '') : '';
     if (!node || !node.fusionParams || !node.fusionParams.length) return;
+    _nvRightNode = node; // persist for click-handler rebuilds
+
     var total = node.fusionParams.reduce(function (s, t) {
       return s + Object.keys(t.params || {}).filter(function(k) {
         var p = (t.params || {})[k];
@@ -6913,6 +6953,8 @@ if (typeof NodeVisualizer === 'undefined') {
     }, 0);
     if (badgeEl) badgeEl.innerHTML = '<span class="params-badge">' + total + ' params</span>';
     if (!dispEl) return;
+
+    var curFrame = frame != null ? frame : _nvFrame;
 
     var res = _nvCollectGroups(node);
     var groups = res.groups;
@@ -6925,8 +6967,9 @@ if (typeof NodeVisualizer === 'undefined') {
       items.forEach(function (item) {
         var k = item[0], p = item[1];
         var lbl  = (p._colorLabel !== undefined) ? p._colorLabel : _nvLbl(k);
-        var val  = _nvVal(p, frame);
+        var val  = _nvVal(p, curFrame);
         var isKF = !!(p.isKeyframe || (p.keyframes && p.keyframes.length));
+        var isSel = k === _nvRightParam;
         var vCls = isKF ? 'kf' : (p.isPath ? 'path' : (p.isConnection ? 'conn' : ''));
         var dot  = isKF
           ? '<span style="display:inline-block;width:5px;height:5px;background:var(--kf,#f5c842);'
@@ -6941,15 +6984,67 @@ if (typeof NodeVisualizer === 'undefined') {
           val = p._colorRGB || p.colorHex;
           vCls = 'color';
         }
-        html += '<div class="prow">' + dot
+        html += '<div class="prow' + (isSel ? ' selected' : '') + '"'
+              + ' data-param="' + k.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '"'
+              + ' data-kf="' + (isKF ? '1' : '0') + '">'
+              + dot
               + '<span class="pkey">' + lbl + '</span>'
               + swatchHtml
               + '<span class="pval ' + vCls + '">' + val + '</span>'
               + '</div>';
+
+        // ── Inline KF chips for selected KF param ────────────────────────────
+        if (isSel && isKF && p.keyframes && p.keyframes.length) {
+          var kfs2 = p.keyframes.slice().sort(function(a,b){return a.frame-b.frame;});
+          var cf2 = curFrame != null ? curFrame : kfs2[0].frame;
+          html += '<div style="padding:4px 6px 6px;margin:-1px 0 2px;'
+            + 'background:rgba(245,200,66,0.04);border:1px solid rgba(245,200,66,0.14);'
+            + 'border-top:none;border-radius:0 0 4px 4px;display:flex;flex-wrap:wrap;gap:3px">';
+          kfs2.forEach(function(kf) {
+            var isAct = kf.frame === cf2;
+            var chipVal = typeof kf.val === 'string'
+              ? kf.val.replace(/(\d+\.\d{3})\d*/g,'$1')
+              : _nvFmt(kf.val);
+            html += '<div class="rp-kf-chip" data-frame="' + kf.frame + '" data-nodeid="' + node.id + '"'
+              + ' style="font-size:9px;font-family:var(--font-mono,monospace);padding:2px 6px 3px;'
+              + 'border-radius:3px;cursor:pointer;user-select:none;'
+              + 'border:1px solid ' + (isAct ? 'rgba(245,200,66,0.6)' : 'rgba(255,255,255,0.08)') + ';'
+              + 'background:' + (isAct ? 'rgba(245,200,66,0.1)' : 'transparent') + ';'
+              + 'color:' + (isAct ? '#f5c842' : 'var(--text-secondary)') + '">'
+              + '<div style="font-size:7px;opacity:0.65;line-height:1.3">F:' + kf.frame + '</div>'
+              + '<div style="line-height:1.3">' + chipVal + '</div>'
+              + '</div>';
+          });
+          html += '</div>';
+        }
       });
       html += '</div>';
     });
     dispEl.innerHTML = html;
+
+    // Wire row click → select param + show chips
+    dispEl.querySelectorAll('.prow').forEach(function(row) {
+      row.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var prev = _nvRightParam;
+        _nvRightParam = row.dataset.param;
+        // Toggle off if same param clicked again
+        if (prev === _nvRightParam) _nvRightParam = null;
+        var scrollTop = dispEl.parentElement ? dispEl.parentElement.scrollTop : 0;
+        _nvPopulateRightPanel(_nvRightNode || node, _nvFrame != null ? _nvFrame : curFrame);
+        if (dispEl.parentElement) dispEl.parentElement.scrollTop = scrollTop;
+      });
+    });
+
+    // Wire KF chip click → scrub to frame
+    dispEl.querySelectorAll('.rp-kf-chip').forEach(function(chip) {
+      chip.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var f = parseInt(chip.dataset.frame);
+        var nid = chip.dataset.nodeid;
+        if (!isNaN(f) && typeof bdScrubFrame === 'function') bdScrubFrame(nid, f);
+      });
+    });
   }
 
   window.NodeVisualizer = {
