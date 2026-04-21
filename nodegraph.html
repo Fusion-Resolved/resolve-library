@@ -1467,6 +1467,7 @@ var FUSION_NODES_UNIQUE = FUSION_NODES;
           <span id="bd-instance-dot"></span>
           <button id="bd-spline-btn" onclick="event.stopPropagation();openParamSpline()" style="display:none;font-size:8px;font-family:var(--font-mono);padding:3px 8px;border-radius:3px;border:1px solid rgba(255,0,255,0.4);background:rgba(255,0,255,0.08);color:#ff88ff;cursor:pointer;transition:all .12s" title="View spline graph for selected parameter">⬡ Spline</button>
           <button id="bd-spline-all-btn" onclick="event.stopPropagation();openAllSplines()" style="display:none;font-size:8px;font-family:var(--font-mono);padding:3px 8px;border-radius:3px;border:1px solid rgba(160,0,255,0.3);background:rgba(160,0,255,0.06);color:#b060ff;cursor:pointer;transition:all .12s" title="View all splines for this node">All</button>
+          <button id="bd-filter-btn" onclick="event.stopPropagation();bdToggleFilter()" style="font-size:8px;font-family:var(--font-mono);padding:3px 8px;border-radius:3px;border:1px solid rgba(15,168,136,0.5);background:rgba(15,168,136,0.1);color:var(--node-teal,#0fa888);cursor:pointer;transition:all .12s;white-space:nowrap" title="Toggle: show only parameters changed from default">◈ Changed</button>
         </div>
         <button class="bottom-drawer-close" onclick="event.stopPropagation();hideBottomDrawer()">✕</button>
       </div>
@@ -1794,6 +1795,12 @@ function hideBottomDrawer() {
 
 function toggleBottomDrawer() {
   NodeVisualizer.toggleBottomDrawer();
+}
+
+function bdToggleFilter() {
+  if (typeof NodeVisualizer !== 'undefined' && NodeVisualizer.toggleFilter) {
+    NodeVisualizer.toggleFilter();
+  }
 }
 
 function renderParamsPanel(nodeId) {
@@ -6150,11 +6157,110 @@ if (typeof NodeVisualizer === 'undefined') {
   var _nvParam = null;
   var _nvNode  = null;
   var _nvOpen  = true;
+  var _nvShowChanged = true; // default: show only changed params
 
   var _NV_GRP_ORDER = (typeof PARAM_GROUP_ORDER !== 'undefined') ? PARAM_GROUP_ORDER
     : ['Transform','Opacity / Blend','Color','Shadow','Light','Material',
        'Blur / Glow','Text','Path / Spline','Camera','Animation',
        'Noise / Texture','Particles','Mask / Edge','3D','Connections','Parameters'];
+
+  // ── Comprehensive default values for common Fusion parameters ──────────────
+  // Generic defaults apply to any tool type; tool-specific ones take precedence.
+  var _NV_GENERIC_DEFAULTS = {
+    // Blend / opacity
+    'Blend':'1', 'Alpha':'1', 'Opacity':'1',
+    // Transform
+    'Angle':'0', 'Aspect':'1', 'Pivot':'0.5, 0.5', 'PivotPoint':'0.5, 0.5',
+    'XOffset':'0.5', 'YOffset':'0.5',
+    'XSize':'1', 'YSize':'1', 'ZSize':'1',
+    'XRotation':'0', 'YRotation':'0', 'ZRotation':'0',
+    'XScale':'1', 'YScale':'1',
+    'FlipHoriz':'0', 'FlipVert':'0',
+    'Perspective':'1',
+    // Color
+    'Gain':'1', 'Gamma':'1', 'Lift':'0',
+    'Brightness':'1', 'Contrast':'1', 'Saturation':'1', 'Hue':'0',
+    'Red':'1', 'Green':'1', 'Blue':'1',
+    'RGain':'1', 'GGain':'1', 'BGain':'1', 'AGain':'1',
+    'RGamma':'1', 'GGamma':'1', 'BGamma':'1',
+    'Low':'0', 'High':'1', 'OutLow':'0', 'OutHigh':'1',
+    'Brightness':'0',
+    // Blur / effects
+    'XBlurSize':'0', 'YBlurSize':'0', 'BlurSize':'0',
+    'XGlowSize':'0', 'YGlowSize':'0',
+    'XDefocusSize':'0', 'YDefocusSize':'0',
+    'XSharpenSize':'0', 'YSharpenSize':'0',
+    'XSoftenSize':'0', 'YSoftenSize':'0',
+    'Filter':'4', 'Passes':'1', 'Threshold':'0',
+    // Mask
+    'SoftEdge':'0', 'Level':'1', 'Invert':'0',
+    // Merge / composite
+    'ApplyMode':'0', 'Operator':'19',
+    'FgAddSub':'0', 'BgAddSub':'0', 'PreDivide':'0', 'Clamp':'0',
+    // 3D transform
+    'Transform3DOp.Translate.X':'0', 'Transform3DOp.Translate.Y':'0', 'Transform3DOp.Translate.Z':'0',
+    'Transform3DOp.Rotate.X':'0', 'Transform3DOp.Rotate.Y':'0', 'Transform3DOp.Rotate.Z':'0',
+    'Transform3DOp.Scale.X':'1', 'Transform3DOp.Scale.Y':'1', 'Transform3DOp.Scale.Z':'1',
+    // Light / camera
+    'Intensity':'1', 'Decay':'0', 'ConeAngle':'45', 'ConeEdge':'10',
+    'FLength':'36', 'ApertureW':'24.576', 'ApertureH':'18.672', 'PlaneFocus':'2',
+    'Near':'0.1', 'Far':'10000',
+    // Noise / texture
+    'Detail':'1', 'Contrast':'1', 'XScale':'5', 'YScale':'5',
+    'Seethe':'0', 'SeetheRate':'0',
+    // Color channels
+    'ColorChannels':'0',
+    // Misc
+    'ObjectID':'1',
+  };
+  // Tool-specific overrides (key = toolType, value = {paramName: defaultStr})
+  var _NV_TOOL_DEFAULTS = {
+    'Transform':     { 'Center':'0.5, 0.5', 'Size':'1' },
+    'Merge':         { 'Center':'0.5, 0.5', 'Size':'1', 'XOffset':'0.5', 'YOffset':'0.5' },
+    'DVE':           { 'Center':'0.5, 0.5' },
+    'Scale':         { 'Center':'0.5, 0.5' },
+    'Rotate':        { 'Center':'0.5, 0.5' },
+    'Crop':          { 'XOffset':'0', 'YOffset':'0', 'XSize':'1', 'YSize':'1' },
+    'RectangleMask': { 'Center':'0.5, 0.5', 'Width':'0.5', 'Height':'0.25' },
+    'EllipseMask':   { 'Center':'0.5, 0.5', 'Width':'0.5', 'Height':'0.25' },
+    'FastNoise':     { 'XScale':'5', 'YScale':'5', 'X':'0.5', 'Y':'0.5', 'Z':'0', 'Detail':'1', 'Contrast':'1', 'Brightness':'0' },
+    'Blur':          { 'Filter':'4' },
+    'Glow':          { 'Passes':'1', 'Threshold':'0' },
+    'Camera3D':      { 'Transform3DOp.Translate.Z':'-2' },
+    'BrightnessContrast': { 'Brightness':'1', 'Contrast':'1', 'Gain':'1', 'Gamma':'1', 'Lift':'0', 'Saturation':'1' },
+    'HueSaturation': { 'MasterHue':'0', 'MasterSaturation':'1', 'MasterLum':'1' },
+  };
+
+  // Normalize a value string for comparison (handles numbers and "x, y" points)
+  function _nvNorm(s) {
+    s = String(s == null ? '' : s).trim();
+    if (s.indexOf(',') !== -1) {
+      return s.split(',').map(function(x) {
+        var n = parseFloat(x.trim());
+        return isNaN(n) ? x.trim() : n.toFixed(4);
+      }).join(',');
+    }
+    var n = parseFloat(s);
+    return isNaN(n) ? s.toLowerCase() : n.toFixed(4);
+  }
+
+  // Returns true if param value equals the known default for this key/toolType
+  function _nvIsDefault(key, val, toolType) {
+    // Look up default: tool-specific first, then generic, then FUSION_PARAM_DEFAULTS
+    var def;
+    if (toolType && _NV_TOOL_DEFAULTS[toolType] && _NV_TOOL_DEFAULTS[toolType][key] !== undefined) {
+      def = _NV_TOOL_DEFAULTS[toolType][key];
+    }
+    if (def === undefined && _NV_GENERIC_DEFAULTS[key] !== undefined) {
+      def = _NV_GENERIC_DEFAULTS[key];
+    }
+    if (def === undefined && typeof FUSION_PARAM_DEFAULTS !== 'undefined' && FUSION_PARAM_DEFAULTS[key]) {
+      var pd = FUSION_PARAM_DEFAULTS[key];
+      if (!pd.toolTypes || (toolType && pd.toolTypes.has(toolType))) def = pd.v;
+    }
+    if (def === undefined) return false; // unknown — show it
+    return _nvNorm(String(val)) === _nvNorm(String(def));
+  }
 
   function _nvFmt(n) {
     var f = parseFloat(n);
@@ -6208,10 +6314,17 @@ if (typeof NodeVisualizer === 'undefined') {
     var groups = {};
     var hasAnim = false;
     (node.fusionParams || []).forEach(function (tool) {
+      var toolType = tool.toolType || '';
       Object.keys(tool.params || {}).forEach(function (k) {
         var p = tool.params[k];
         if (_nvNoisy(k)) return;
-        if (p.isKeyframe || (p.keyframes && p.keyframes.length)) hasAnim = true;
+        var isAnim = !!(p.isKeyframe || (p.keyframes && p.keyframes.length));
+        if (isAnim) hasAnim = true;
+        // When filter is active, hide params at their default value
+        // (animated, connected, expression, and path params are always shown)
+        if (_nvShowChanged && !isAnim && !p.isConnection && !p.isExpr && !p.isPath) {
+          if (_nvIsDefault(k, p.v, toolType)) return;
+        }
         var g = _nvGrp(k, p);
         (groups[g] = groups[g] || []).push([k, p]);
       });
@@ -6231,8 +6344,17 @@ if (typeof NodeVisualizer === 'undefined') {
 
     var splineBtn    = document.getElementById('bd-spline-btn');
     var splineAllBtn = document.getElementById('bd-spline-all-btn');
+    var filterBtn    = document.getElementById('bd-filter-btn');
     if (splineBtn)    splineBtn.style.display    = 'none';
     if (splineAllBtn) splineAllBtn.style.display = 'none';
+
+    // Sync filter button appearance
+    if (filterBtn) {
+      filterBtn.textContent = _nvShowChanged ? '\u25c8 Changed' : '\u229e All';
+      filterBtn.style.borderColor  = _nvShowChanged ? 'rgba(15,168,136,0.5)' : 'rgba(255,255,255,0.12)';
+      filterBtn.style.background   = _nvShowChanged ? 'rgba(15,168,136,0.1)' : 'transparent';
+      filterBtn.style.color        = _nvShowChanged ? 'var(--node-teal,#0fa888)' : 'var(--text-muted)';
+    }
 
     if (!node || !node.fusionParams || !node.fusionParams.length) {
       body.innerHTML = '<div style="font-size:11px;font-family:var(--font-mono,monospace);color:var(--text-muted);padding:6px 2px">'
@@ -6301,7 +6423,9 @@ if (typeof NodeVisualizer === 'undefined') {
       html += '</div>';
     });
 
-    body.innerHTML = scrubHtml + (html || '<div style="font-size:10px;color:var(--text-muted);padding:4px">No displayable parameters</div>');
+    body.innerHTML = scrubHtml + (html || '<div style="font-size:10px;color:var(--text-muted);padding:4px">'
+      + (_nvShowChanged ? 'All parameters are at their default values — <button onclick="event.stopPropagation();bdToggleFilter()" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:10px;font-family:var(--font-mono,monospace);text-decoration:underline;padding:0">show all</button>' : 'No displayable parameters')
+      + '</div>');
 
     // Row click → select param, show spline button if keyframed
     body.querySelectorAll('.prow').forEach(function (row) {
@@ -6391,6 +6515,10 @@ if (typeof NodeVisualizer === 'undefined') {
       var drawer = document.getElementById('bottom-drawer');
       if (bd) bd.style.display = _nvOpen ? '' : 'none';
       if (drawer) drawer.style.maxHeight = _nvOpen ? '' : '40px';
+    },
+    toggleFilter: function () {
+      _nvShowChanged = !_nvShowChanged;
+      if (_nvNode) _nvBuildBody(_nvNode, _nvFrame);
     },
     bdSelectParam: function (nodeId, paramKey) { _nvParam = paramKey; },
     bdScrubFrame: function (nodeId, frame) {
