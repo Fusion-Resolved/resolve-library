@@ -396,7 +396,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <div id="params-head">
         <div id="params-node-name" style="color:var(--text3)">No node selected</div>
         <div id="params-node-type" style="display:none"></div>
-        <button id="params-filter-btn" onclick="toggleParamsFilter()" title="Show only parameters changed from default" style="display:none;font-size:9px;font-family:var(--mono);padding:2px 8px;border-radius:3px;border:1px solid rgba(74,158,255,.4);background:rgba(74,158,255,.08);color:var(--accent);cursor:pointer;transition:.1s;white-space:nowrap;margin-left:auto">◈ Changed</button>
       </div>
       <div id="params-body">
         <div class="empty-state">
@@ -1447,40 +1446,7 @@ const state = {
   selectedTool: null, selectedParam: null,
   minFrame: 0, maxFrame: 100,
   navHistory: [],
-  filterChanged: true, // show only non-default params by default
 };
-
-// Returns true if param is at its default value and should be hidden in "Changed" mode
-function isParamAtDefault(pname, p, toolType) {
-  // Synthesized default — Fusion never exported it
-  if (p.kind === 'default') return true;
-  // Animated, connected, expression, path → never consider default
-  if (p.kind !== 'static') return false;
-  // Static: compare value against TOOL_REGISTRY defaults
-  const toolDef = (TOOL_REGISTRY[toolType] || {}).defaults || {};
-  const def = toolDef[pname] ?? UNIVERSAL_DEFAULTS[pname];
-  if (def === undefined) return false; // unknown param — show it
-  const defStr = Array.isArray(def) ? fmtPoint(def[0], def[1]) : fmtNum(def);
-  function norm(s) {
-    s = String(s == null ? '' : s).trim();
-    if (s.includes(',')) return s.split(',').map(x => { const n = parseFloat(x.trim()); return isNaN(n) ? x.trim() : n.toFixed(4); }).join(',');
-    const n = parseFloat(s);
-    return isNaN(n) ? s.toLowerCase() : n.toFixed(4);
-  }
-  return norm(p.v) === norm(defStr);
-}
-
-function toggleParamsFilter() {
-  state.filterChanged = !state.filterChanged;
-  const btn = document.getElementById('params-filter-btn');
-  if (btn) {
-    btn.textContent    = state.filterChanged ? '◈ Changed' : '⊞ All';
-    btn.style.borderColor  = state.filterChanged ? 'rgba(74,158,255,.4)'  : 'rgba(255,255,255,.1)';
-    btn.style.background   = state.filterChanged ? 'rgba(74,158,255,.08)' : 'transparent';
-    btn.style.color        = state.filterChanged ? 'var(--accent)'        : 'var(--text3)';
-  }
-  renderParams();
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  9. UI RENDERING
@@ -1592,20 +1558,9 @@ function renderParams() {
   typeEl.textContent = tool.type;
   typeEl.style.display = '';
 
-  // Show filter toggle
-  const filterBtn = document.getElementById('params-filter-btn');
-  if (filterBtn) {
-    filterBtn.style.display = '';
-    filterBtn.textContent   = state.filterChanged ? '◈ Changed' : '⊞ All';
-    filterBtn.style.borderColor  = state.filterChanged ? 'rgba(74,158,255,.4)'  : 'rgba(255,255,255,.1)';
-    filterBtn.style.background   = state.filterChanged ? 'rgba(74,158,255,.08)' : 'transparent';
-    filterBtn.style.color        = state.filterChanged ? 'var(--accent)'        : 'var(--text3)';
-  }
-
-  // Group params, applying the "changed only" filter when active
+  // Group params
   const groups = {};
   for (const [k, p] of Object.entries(tool.params)) {
-    if (state.filterChanged && isParamAtDefault(k, p, tool.type)) continue;
     const g = getParamGroup(k, p);
     if (!groups[g]) groups[g] = [];
     groups[g].push(k);
@@ -1646,11 +1601,7 @@ function renderParams() {
     html += `</div>`;
   });
 
-  body.innerHTML = html || `<div class="empty-state"><div class="hint">${
-    state.filterChanged
-      ? 'All parameters are at default values<br><button onclick="toggleParamsFilter()" style="margin-top:8px;font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:3px;border:1px solid var(--border2);background:var(--surf2);color:var(--text2);cursor:pointer">⊞ Show all</button>'
-      : 'No parameters'
-  }</div></div>`;
+  body.innerHTML = html || '<div class="empty-state"><div class="hint">No parameters</div></div>';
   body.querySelectorAll('.prow').forEach(el => {
     el.addEventListener('click', () => {
       state.selectedParam = el.dataset.param;
