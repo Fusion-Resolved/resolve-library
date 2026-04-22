@@ -68,19 +68,58 @@
     }
 
     try {
-      // Force fresh fetch by adding a timestamp to bypass any caching
-      const cacheBuster = Date.now();
-      const { data: effect, error } = await window._supabase
-        .from('effects')
-        .select('*')
-        .eq('id', effectId)
-        .eq('is_public', true)
-        .single()
-        .abortSignal(AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined);
+      // First, try to find the effect in the already-loaded local effects array
+      // This includes both public effects and the user's private effects (via RLS)
+      var localEffect = null;
+      if (typeof window.effects !== 'undefined' && Array.isArray(window.effects)) {
+        localEffect = window.effects.find(function(e) { return e.id === effectId; });
+      }
+      
+      var effect = null;
+      
+      if (localEffect) {
+        // Found locally - use this effect (works for both public and private)
+        console.log('[Effect Modal] Found effect locally:', localEffect.name);
+        effect = {
+          id: localEffect.id,
+          name: localEffect.name,
+          cat: localEffect.cat,
+          difficulty: localEffect.difficulty,
+          desc: localEffect.desc || localEffect.explanation,
+          explanation: localEffect.explanation,
+          node_code: localEffect.node_code || localEffect.nodeCode,
+          graph_payload: localEffect.graph_payload,
+          nodes: localEffect.nodes,
+          video_url: localEffect.video_url || localEffect.videoUrl,
+          videoUrl: localEffect.videoUrl,
+          gif_url: localEffect.gif_url || localEffect.gifUrl,
+          gifUrl: localEffect.gifUrl,
+          tool: localEffect.tool,
+          render_weight: localEffect.render_weight,
+          fusion_env: localEffect.fusion_env,
+          version: localEffect.version,
+          steps: localEffect.steps,
+          date: localEffect.date,
+          created_at: localEffect.created_at,
+          user_id: localEffect.user_id,
+          is_public: localEffect.is_public,
+          _graphData: localEffect._graphData
+        };
+      } else {
+        // Not found locally - fetch from Supabase
+        // Query without is_public filter to allow access to private effects via RLS
+        const { data: fetchedEffect, error } = await window._supabase
+          .from('effects')
+          .select('*')
+          .eq('id', effectId)
+          .single()
+          .abortSignal(AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined);
 
-      if (error || !effect) {
-        console.log('[Effect Modal] Effect not found:', error);
-        return;
+        if (error || !fetchedEffect) {
+          console.log('[Effect Modal] Effect not found:', error);
+          return;
+        }
+        effect = fetchedEffect;
       }
 
       // Re-fetch to get fresh data
