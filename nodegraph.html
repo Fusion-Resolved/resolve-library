@@ -6933,6 +6933,18 @@ if (typeof NodeVisualizer === 'undefined') {
         if (!isNaN(f) && typeof bdScrubFrame === 'function') bdScrubFrame(nid, f);
       });
     });
+
+    // Restore spline button visibility — _nvBuildBody hides it at the top,
+    // so after a rebuild we must re-show it if a KF param is selected.
+    if (splineBtn && _nvParam) {
+      var selRow = body.querySelector('.prow[data-param]');
+      body.querySelectorAll('.prow').forEach(function(r) {
+        if (r.dataset.param === _nvParam) selRow = r;
+      });
+      if (selRow && selRow.dataset.param === _nvParam) {
+        splineBtn.style.display = (selRow.dataset.kf === '1') ? '' : 'none';
+      }
+    }
   }
 
   function _nvPopulateRightPanel(node, frame) {
