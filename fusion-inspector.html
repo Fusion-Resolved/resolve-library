@@ -1537,9 +1537,8 @@ function evalBezAtFrame(kfs, frame) {
   for (let i = 0; i < sorted.length - 1; i++) {
     const k0 = sorted[i], k1 = sorted[i + 1];
     if (frame < k0.frame || frame > k1.frame) continue;
-    const seg = k1.frame - k0.frame;
-    const p0x = k0.frame, p1x = k0.rh ? k0.rh.x : k0.frame + seg / 3;
-    const p2x = k1.lh ? k1.lh.x : k1.frame - seg / 3, p3x = k1.frame;
+    const p0x = k0.frame, p1x = k0.rh ? k0.rh.x : k0.frame;
+    const p2x = k1.lh ? k1.lh.x : k1.frame, p3x = k1.frame;
     let lo = 0, hi = 1;
     for (let n = 0; n < 24; n++) {
       const t = (lo + hi) / 2;
