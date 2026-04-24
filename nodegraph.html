@@ -650,15 +650,16 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
     background: rgba(4,4,12,0.8); position: relative;
     border: 1px solid var(--border-surface); flex-shrink: 0;
   }
-  .bd-spline-canvas { display: block; width: 100%; height: 110px; cursor: pointer; }
+  .bd-spline-canvas { display: block; width: 100%; height: 68px; cursor: crosshair; transition: height .22s cubic-bezier(.4,0,.2,1); }
+  .bd-spline-canvas.expanded { height: 180px; }
   .bd-spline-expand-btn {
     position: absolute; top: 5px; right: 5px;
     font-size: 9px; font-family: var(--font-mono); padding: 2px 8px;
     border-radius: 3px; border: 1px solid var(--border-surface);
     background: rgba(5,5,14,0.88); color: var(--text-muted);
-    cursor: pointer; opacity: 0; transition: opacity .15s; pointer-events: none;
+    cursor: pointer; opacity: 0.5; transition: opacity .15s, border-color .12s, color .12s;
   }
-  .bd-spline-wrap:hover .bd-spline-expand-btn { opacity: 1; pointer-events: auto; }
+  .bd-spline-wrap:hover .bd-spline-expand-btn { opacity: 1; }
   .bd-spline-expand-btn:hover { border-color: var(--violet); color: var(--violet-light); }
 
   /* Large KF chips */
@@ -7076,27 +7077,22 @@ if (typeof NodeVisualizer === 'undefined') {
       var kfs = param.keyframes.slice().sort(function(a,b){return a.frame-b.frame;});
       var activeFrame = frame != null ? frame : kfs[0].frame;
 
-      // Spline canvas
-      html += '<div class="bd-detail-section">'
-            + '<div class="bd-kf-section-label">Spline</div>'
-            + '<div class="bd-spline-wrap">'
-            + '<canvas class="bd-spline-canvas" id="bd-detail-spline-canvas"></canvas>'
-            + '<button class="bd-spline-expand-btn" onclick="event.stopPropagation();openParamSpline()">\u26a1 Expand</button>'
-            + '</div>'
-            + '</div>';
-
-      // KF navigation
+      // KF nav + spline preview side-by-side (narrower = better curve aspect ratio)
       var kfIdx = kfs.findIndex(function(k){ return k.frame === activeFrame; });
       var prevKf = kfIdx > 0 ? kfs[kfIdx - 1] : null;
       var nextKf = kfIdx < kfs.length - 1 ? kfs[kfIdx + 1] : (kfIdx === -1 && kfs.length ? kfs[0] : null);
       var navLbl = (kfIdx >= 0) ? ('KF\u00a0' + (kfIdx+1) + '\u00a0/\u00a0' + kfs.length) : (kfs.length + '\u00a0keyframes');
 
-      html += '<div class="bd-kf-nav">'
-            + '<button class="bd-kf-nav-btn" id="bd-kf-prev"' + (prevKf ? '' : ' disabled') + '>'
-            + '\u25c2 Prev</button>'
+      html += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0">'
+            + '<div class="bd-kf-nav" style="flex:1">'
+            + '<button class="bd-kf-nav-btn" id="bd-kf-prev"' + (prevKf ? '' : ' disabled') + '>\u25c2 Prev</button>'
             + '<div class="bd-kf-nav-lbl" id="bd-kf-nav-lbl">' + navLbl + '</div>'
-            + '<button class="bd-kf-nav-btn" id="bd-kf-next"' + (nextKf ? '' : ' disabled') + '>'
-            + 'Next \u25b8</button>'
+            + '<button class="bd-kf-nav-btn" id="bd-kf-next"' + (nextKf ? '' : ' disabled') + '>Next \u25b8</button>'
+            + '</div>'
+            + '<div class="bd-spline-wrap" style="width:50%;flex-shrink:0">'
+            + '<canvas class="bd-spline-canvas" id="bd-detail-spline-canvas"></canvas>'
+            + '<button class="bd-spline-expand-btn" onclick="event.stopPropagation();_nvToggleSplineExpand(this)">\u25bd Expand</button>'
+            + '</div>'
             + '</div>';
 
       // KF chips (larger)
@@ -7116,29 +7112,26 @@ if (typeof NodeVisualizer === 'undefined') {
               + '</div>';
       });
       html += '</div></div>';
-    } else if (isPath && param.keyframes && param.keyframes.length) {
-      // Path points
-      html += '<div class="bd-detail-section">'
-            + '<div class="bd-kf-section-label">Path points</div>'
-            + '<div class="bd-kf-chips">';
-      param.keyframes.slice(0,20).forEach(function(kf, i) {
-        html += '<div class="bd-kf-chip-lg path-chip">'
-              + '<div class="bd-kf-fr">Pt\u00a0' + (i+1) + '</div>'
-              + '<div class="bd-kf-v" style="font-size:10px">' + (kf.val || '\u2014') + '</div>'
-              + '</div>';
-      });
-      html += '</div></div>';
-    } else if (isConn) {
-      html += '<div style="font-size:11px;font-family:var(--font-mono);color:var(--node-teal);padding:4px 0">'
-            + '\u2192 ' + val + '</div>';
+    // ── Static value box (non-keyframed) ──
+    } else {
+      var curValLabel = isPath ? 'Path' : (isConn ? 'Source' : 'Value');
+      html += '<div class="bd-detail-value-box">'
+            + '<div class="bd-detail-value-label">' + curValLabel + '</div>'
+            + '<div class="bd-detail-value-main ' + valCls + '">' + val + '</div>'
+            + '</div>';
+      if (isConn) {
+        html += '<div style="font-size:11px;font-family:var(--font-mono);color:var(--node-teal);padding:2px 0">'
+              + '\u2192 ' + val + '</div>';
+      }
     }
 
     detailCol.innerHTML = html;
 
-    // Wire spline canvas
+    // Wire mini spline canvas + hover scrubber
     if (isKF && param.keyframes && param.keyframes.length) {
       var canvas = document.getElementById('bd-detail-spline-canvas');
-      if (canvas && typeof _drawSplineCanvas === 'function') {
+      if (canvas) {
+        var miniSplines = [];
         var firstVal = param.keyframes[0] && param.keyframes[0].val;
         if (typeof firstVal === 'string') {
           var xKfs = [], yKfs = [];
@@ -7151,14 +7144,17 @@ if (typeof NodeVisualizer === 'undefined') {
               yKfs.push({ frame: kf.frame, val: parts[1] });
             }
           });
-          if (xKfs.length) _drawSplineCanvas(canvas, [
+          if (xKfs.length) miniSplines = [
             { name: 'X', color: '#4ae8c8', keyframes: xKfs },
             { name: 'Y', color: '#f0a060', keyframes: yKfs }
-          ], frame);
+          ];
         } else {
-          _drawSplineCanvas(canvas, [
-            { name: '', color: param.splineColor || '#f5c842', keyframes: param.keyframes }
-          ], frame);
+          miniSplines = [{ name: '', color: param.splineColor || '#f5c842', keyframes: param.keyframes }];
+        }
+        if (miniSplines.length) {
+          canvas._nvMiniSplines = miniSplines;
+          window._nvDrawMiniSpline(canvas, miniSplines, null);
+          window._nvAttachMiniHover(canvas, miniSplines);
         }
       }
 
@@ -7304,6 +7300,175 @@ if (typeof NodeVisualizer === 'undefined') {
       });
     });
   }
+
+  // ── Mini spline helpers (preview canvas in detail panel) ──────────────────
+  // Proper cubic Bezier evaluation — binary-search t where x(t)=frame, then eval y(t)
+  window._nvEvalBez = function(kfs, frame) {
+    if (!kfs.length) return 0;
+    var s = kfs.slice().sort(function(a,b){return a.frame-b.frame;});
+    if (frame <= s[0].frame) return typeof s[0].val==='number' ? s[0].val : 0;
+    var last = s[s.length-1];
+    if (frame >= last.frame) return typeof last.val==='number' ? last.val : 0;
+    for (var i=0; i<s.length-1; i++) {
+      var k0=s[i], k1=s[i+1];
+      if (frame < k0.frame || frame > k1.frame) continue;
+      var span = k1.frame - k0.frame;
+      var p0x=k0.frame,
+          p1x=k0.rh ? k0.rh.x : k0.frame + span/3,
+          p2x=k1.lh ? k1.lh.x : k1.frame - span/3,
+          p3x=k1.frame;
+      var lo=0, hi=1, t=0.5;
+      for (var n=0; n<22; n++) {
+        t=(lo+hi)/2;
+        var mt=1-t;
+        var bx=mt*mt*mt*p0x+3*mt*mt*t*p1x+3*mt*t*t*p2x+t*t*t*p3x;
+        if (bx < frame) lo=t; else hi=t;
+      }
+      var mt2=1-t;
+      var p0y=typeof k0.val==='number'?k0.val:0,
+          p1y=k0.rh?k0.rh.y:p0y,
+          p2y=k1.lh?k1.lh.y:(typeof k1.val==='number'?k1.val:0),
+          p3y=typeof k1.val==='number'?k1.val:0;
+      return mt2*mt2*mt2*p0y+3*mt2*mt2*t*p1y+3*mt2*t*t*p2y+t*t*t*p3y;
+    }
+    return typeof last.val==='number' ? last.val : 0;
+  };
+
+  window._nvDrawMiniSpline = function(canvas, splines, hoverFrame) {
+    var dpr = window.devicePixelRatio || 1;
+    var W = canvas.offsetWidth || 240;
+    var H = canvas.offsetHeight || 68;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    var PAD = { l:4, r:4, t:5, b:5 };
+    var gW = W-PAD.l-PAD.r, gH = H-PAD.t-PAD.b;
+    // Compute frame/value range
+    var minF=Infinity,maxF=-Infinity,minV=Infinity,maxV=-Infinity,hasN=false;
+    splines.forEach(function(sp) { (sp.keyframes||[]).forEach(function(kf) {
+      if (typeof kf.val!=='number') return;
+      hasN=true; minF=Math.min(minF,kf.frame); maxF=Math.max(maxF,kf.frame);
+      minV=Math.min(minV,kf.val); maxV=Math.max(maxV,kf.val);
+      if (kf.rh){maxF=Math.max(maxF,kf.rh.x);minV=Math.min(minV,kf.rh.y);maxV=Math.max(maxV,kf.rh.y);}
+      if (kf.lh){maxF=Math.max(maxF,kf.lh.x);minV=Math.min(minV,kf.lh.y);maxV=Math.max(maxV,kf.lh.y);}
+    }); });
+    if (!hasN) return;
+    var fp = Math.max((maxF-minF)*0.08, 4);
+    var vp = Math.max((maxV-minV)*0.12, 0.001);
+    var fMin=minF-fp, fMax=maxF+fp, vMin=minV-vp, vMax=maxV+vp;
+    var tx = function(f){return PAD.l+(f-fMin)/(fMax-fMin)*gW;};
+    var ty = function(v){return PAD.t+(1-(v-vMin)/(vMax-vMin))*gH;};
+    // Background
+    ctx.fillStyle='rgba(4,4,12,0.92)'; ctx.fillRect(0,0,W,H);
+    // Mid grid line
+    var midY = ty((vMin+vMax)/2);
+    ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(PAD.l,midY); ctx.lineTo(W-PAD.r,midY); ctx.stroke();
+    // Splines
+    splines.forEach(function(sp) {
+      var kfs = (sp.keyframes||[]).filter(function(k){return typeof k.val==='number';});
+      if (kfs.length<2) return;
+      ctx.strokeStyle = sp.color; ctx.lineWidth = 1.5;
+      ctx.shadowColor = sp.color; ctx.shadowBlur = 3;
+      ctx.beginPath();
+      for (var i=0; i<kfs.length-1; i++) {
+        var k0=kfs[i],k1=kfs[i+1];
+        var x0=tx(k0.frame),y0=ty(k0.val),x3=tx(k1.frame),y3=ty(k1.val);
+        var dx=Math.abs(x3-x0)*0.35;
+        if (i===0) ctx.moveTo(x0,y0);
+        ctx.bezierCurveTo(
+          k0.rh?tx(k0.rh.x):x0+dx, k0.rh?ty(k0.rh.y):y0,
+          k1.lh?tx(k1.lh.x):x3-dx, k1.lh?ty(k1.lh.y):y3,
+          x3,y3
+        );
+      }
+      ctx.stroke(); ctx.shadowBlur=0;
+      // KF dots
+      kfs.forEach(function(kf) {
+        ctx.beginPath(); ctx.arc(tx(kf.frame),ty(kf.val),2,0,Math.PI*2);
+        ctx.fillStyle=sp.color; ctx.fill();
+      });
+    });
+    // Hover scrubber
+    if (hoverFrame!=null && hoverFrame>=fMin && hoverFrame<=fMax) {
+      var hx = tx(hoverFrame);
+      ctx.setLineDash([2,3]); ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(hx,PAD.t); ctx.lineTo(hx,H-PAD.b); ctx.stroke();
+      ctx.setLineDash([]);
+      var tipLines=['F\u00a0'+Math.round(hoverFrame)], hasDots=false;
+      splines.forEach(function(sp) {
+        var nkfs=(sp.keyframes||[]).filter(function(k){return typeof k.val==='number';});
+        if (!nkfs.length) return;
+        var v=window._nvEvalBez(nkfs, hoverFrame);
+        if (typeof v!=='number') return;
+        var hy=ty(v);
+        ctx.beginPath(); ctx.arc(hx,hy,3.5,0,Math.PI*2);
+        ctx.fillStyle=sp.color; ctx.fill();
+        ctx.strokeStyle='rgba(0,0,0,0.7)'; ctx.lineWidth=1.2; ctx.stroke();
+        hasDots=true;
+        tipLines.push((sp.name?sp.name+': ':'')+parseFloat(v.toFixed(4)));
+      });
+      if (hasDots) {
+        ctx.font='8px DM Mono,monospace';
+        var mw=0; tipLines.forEach(function(l){var w=ctx.measureText(l).width;if(w>mw)mw=w;});
+        var tw=mw+14, th=tipLines.length*11+7;
+        var tipX=(hx>W/2)?hx-tw-5:hx+5, tipY=Math.min(PAD.t+2, H-PAD.b-th-2);
+        ctx.fillStyle='rgba(6,6,16,0.94)';
+        ctx.beginPath(); if(ctx.roundRect)ctx.roundRect(tipX,tipY,tw,th,3);else ctx.rect(tipX,tipY,tw,th); ctx.fill();
+        ctx.textAlign='left';
+        tipLines.forEach(function(line,i){
+          ctx.fillStyle = i===0?'rgba(210,210,210,0.9)':splines[i-1]?splines[i-1].color:'rgba(180,180,180,0.8)';
+          ctx.fillText(line, tipX+7, tipY+9+i*11);
+        });
+      }
+    }
+  };
+
+  window._nvAttachMiniHover = function(canvas, splines) {
+    if (!canvas || !splines || !splines.length) return;
+    if (canvas._nvHoverFn) {
+      canvas.removeEventListener('mousemove',canvas._nvHoverFn);
+      canvas.removeEventListener('mouseleave',canvas._nvLeaveFn);
+    }
+    var _raf=null;
+    canvas._nvHoverFn = function(e) {
+      if (_raf) cancelAnimationFrame(_raf);
+      _raf = requestAnimationFrame(function() {
+        var r=canvas.getBoundingClientRect();
+        var W=canvas.offsetWidth, PAD_L=4, PAD_R=4, gW=W-PAD_L-PAD_R;
+        var minF=Infinity, maxF=-Infinity;
+        splines.forEach(function(sp){(sp.keyframes||[]).forEach(function(kf){
+          if(typeof kf.val!=='number')return; minF=Math.min(minF,kf.frame); maxF=Math.max(maxF,kf.frame);
+        });});
+        var fp=Math.max((maxF-minF)*0.08,4), fMin=minF-fp, fMax=maxF+fp;
+        var mx=e.clientX-r.left;
+        var frame=(mx>=PAD_L&&mx<=W-PAD_R)?fMin+(mx-PAD_L)/gW*(fMax-fMin):null;
+        window._nvDrawMiniSpline(canvas, splines, frame);
+      });
+    };
+    canvas._nvLeaveFn = function() {
+      if (_raf) cancelAnimationFrame(_raf);
+      window._nvDrawMiniSpline(canvas, splines, null);
+    };
+    canvas.addEventListener('mousemove',canvas._nvHoverFn);
+    canvas.addEventListener('mouseleave',canvas._nvLeaveFn);
+  };
+
+  window._nvToggleSplineExpand = function(btn) {
+    var wrap = btn.closest && btn.closest('.bd-spline-wrap');
+    if (!wrap) return;
+    var canvas = wrap.querySelector('canvas');
+    if (!canvas) return;
+    var exp = canvas.classList.toggle('expanded');
+    btn.textContent = exp ? '\u25b3' : '\u25bd';
+    wrap.style.width = exp ? '60%' : '44%';
+    setTimeout(function() {
+      if (canvas._nvMiniSplines) {
+        window._nvDrawMiniSpline(canvas, canvas._nvMiniSplines, null);
+        window._nvAttachMiniHover(canvas, canvas._nvMiniSplines);
+      }
+    }, 230);
+  };
 
   window.NodeVisualizer = {
     showBottomDrawer: function (node, scrubFrame, callbacks) {
