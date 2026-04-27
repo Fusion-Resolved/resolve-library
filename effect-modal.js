@@ -1517,9 +1517,9 @@
         '<div id="em-dwr-cat" style="font-size:9px;color:rgba(143,143,168,0.55);font-family:var(--font-mono,monospace);text-transform:uppercase;letter-spacing:0.07em;flex-shrink:0;"></div>'+
         '<button id="em-dwr-close" style="background:none;border:none;color:rgba(143,143,168,0.5);cursor:pointer;font-size:16px;padding:0 4px;line-height:1;flex-shrink:0;transition:color 0.15s;">&#x2715;</button>'+
       '</div>'+
-      '<div style="display:flex;gap:0;overflow:hidden;height:240px;">'+
+      '<div style="display:flex;gap:0;overflow:hidden;height:290px;">'+
         '<div id="em-dwr-left" style="flex:0 0 158px;border-right:1px solid rgba(255,255,255,0.05);overflow-y:auto;padding:6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;"></div>'+
-        '<div id="em-dwr-right" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding:10px 12px;overflow:hidden;"></div>'+
+        '<div id="em-dwr-right" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding:10px 12px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.07) transparent;"></div>'+
       '</div>'+
       '<div id="em-dwr-timeline" style="padding:6px 12px;border-top:1px solid rgba(255,255,255,0.05);background:rgba(6,6,13,0.5);display:none;"></div>';
 
@@ -1618,17 +1618,24 @@
       kfs.forEach(function(kf){var chip=document.createElement('button');var isAct=kf.frame===_emInspFrame;chip.style.cssText='font-size:10px;font-family:var(--font-mono,monospace);padding:2px 7px;border-radius:4px;border:1px solid '+(isAct?'rgba(245,200,66,0.6)':'rgba(255,255,255,0.1)')+';background:'+(isAct?'rgba(245,200,66,0.1)':'rgba(255,255,255,0.03)')+';color:'+(isAct?'#f5c842':'rgba(143,143,168,0.7)')+';cursor:pointer;transition:all 0.1s;';chip.textContent=kf.frame;chip.title='F:'+kf.frame+' V:'+(typeof kf.value==='number'?kf.value.toFixed(3):String(kf.value));chip.addEventListener('click',(function(f){return function(){_emInspFrame=f;emDrawerBuildTimeline(tool);emDrawerBuildParams(tool);emDrawerBuildDetail(tool,paramKey);};})(kf.frame));chipsWrap.appendChild(chip);});right.appendChild(chipsWrap);
 
       // Prev/Next nav
-      var nav=document.createElement('div');nav.style.cssText='display:flex;gap:4px;margin-top:4px;flex-shrink:0;';
-      var prevBtn=document.createElement('button');prevBtn.style.cssText='flex:1;font-size:10px;font-family:var(--font-mono,monospace);padding:4px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(143,143,168,0.7);cursor:pointer;';prevBtn.textContent='&#9666; Prev';prevBtn.disabled=curIdx<=0;prevBtn.style.opacity=curIdx<=0?'0.3':'1';
+      var nav=document.createElement('div');nav.style.cssText='display:flex;gap:4px;margin-top:2px;flex-shrink:0;';
+      var prevBtn=document.createElement('button');prevBtn.style.cssText='flex:1;font-size:10px;font-family:var(--font-mono,monospace);padding:4px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(143,143,168,0.7);cursor:pointer;';prevBtn.textContent='Prev';prevBtn.disabled=curIdx<=0;prevBtn.style.opacity=curIdx<=0?'0.3':'1';
       prevBtn.addEventListener('click',(function(){return function(){var ci=frames.indexOf(_emInspFrame);if(ci>0){_emInspFrame=frames[ci-1];emDrawerBuildTimeline(tool);emDrawerBuildParams(tool);emDrawerBuildDetail(tool,paramKey);}};}())  );
-      var nextBtn=document.createElement('button');nextBtn.style.cssText='flex:1;font-size:10px;font-family:var(--font-mono,monospace);padding:4px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(143,143,168,0.7);cursor:pointer;';nextBtn.textContent='Next &#9656;';nextBtn.disabled=curIdx>=frames.length-1;nextBtn.style.opacity=curIdx>=frames.length-1?'0.3':'1';
+      var nextBtn=document.createElement('button');nextBtn.style.cssText='flex:1;font-size:10px;font-family:var(--font-mono,monospace);padding:4px;border-radius:4px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(143,143,168,0.7);cursor:pointer;';nextBtn.textContent='Next';nextBtn.disabled=curIdx>=frames.length-1;nextBtn.style.opacity=curIdx>=frames.length-1?'0.3':'1';
       nextBtn.addEventListener('click',(function(){return function(){var ci=frames.indexOf(_emInspFrame);if(ci<frames.length-1){_emInspFrame=frames[ci+1];emDrawerBuildTimeline(tool);emDrawerBuildParams(tool);emDrawerBuildDetail(tool,paramKey);}};}())  );
       nav.appendChild(prevBtn);nav.appendChild(nextBtn);right.appendChild(nav);
 
-      // Spline canvas — same as nodegraph bd-detail-spline-canvas
-      var cWrap=document.createElement('div');cWrap.style.cssText='flex:1;min-height:60px;display:flex;flex-direction:column;margin-top:5px;border-radius:5px;overflow:hidden;';
-      var c=document.createElement('canvas');c.style.cssText='display:block;width:100%;flex:1;border-radius:5px;background:#0d0d10;cursor:crosshair;';
-      cWrap.appendChild(c);right.appendChild(cWrap);
+      // Spline canvas — fixed height so it always renders fully, with expand button overlay
+      var cWrap=document.createElement('div');cWrap.style.cssText='position:relative;height:110px;flex-shrink:0;margin-top:4px;border-radius:5px;overflow:hidden;';
+      var c=document.createElement('canvas');c.style.cssText='display:block;width:100%;height:100%;border-radius:5px;background:#0d0d10;cursor:crosshair;';
+      // Expand button — bottom-right corner of canvas
+      var expBtn=document.createElement('button');
+      expBtn.style.cssText='position:absolute;bottom:5px;right:5px;background:rgba(6,6,13,0.75);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:rgba(255,255,255,0.5);cursor:pointer;font-size:9px;font-family:var(--font-mono,monospace);padding:2px 7px;line-height:1.6;letter-spacing:0.04em;transition:all 0.12s;z-index:2;';
+      expBtn.textContent='expand';
+      expBtn.onmouseover=function(){this.style.color='#fff';this.style.borderColor='rgba(108,123,255,0.5)';};
+      expBtn.onmouseleave=function(){this.style.color='rgba(255,255,255,0.5)';this.style.borderColor='rgba(255,255,255,0.12)';};
+      expBtn.addEventListener('click',function(ev){ev.stopPropagation();emDrawerSplineExpand(p,paramKey,tool);});
+      cWrap.appendChild(c);cWrap.appendChild(expBtn);right.appendChild(cWrap);
       requestAnimationFrame(function(){emDrawerSpline(c,p,_emInspFrame);});
       return;}
 
@@ -1687,6 +1694,97 @@
     // Hover scrubber
     canvas.onmousemove=function(e){var rect=canvas.getBoundingClientRect();var frac=(e.clientX-rect.left-PAD.l)/gW;var hf=Math.round(fMin+frac*(fMax-fMin));if(hf>=fMin&&hf<=fMax){emDrawerSpline(canvas,param,hf);}};
     canvas.onmouseleave=function(){emDrawerSpline(canvas,param,_emInspFrame);};}
+
+  // ── Expanded spline overlay ───────────────────────────────────────────────
+  function emDrawerSplineExpand(param, paramKey, tool) {
+    // Overlay backdrop
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(6,6,13,0.82);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;';
+
+    // Container
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#0d0d10;border:1px solid rgba(108,123,255,0.25);border-radius:12px;overflow:hidden;width:min(680px,94vw);box-shadow:0 20px 60px rgba(0,0,0,0.6);display:flex;flex-direction:column;';
+
+    // Header
+    var hd = document.createElement('div');
+    hd.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(108,123,255,0.06);flex-shrink:0;';
+    var hdLabel = document.createElement('span');
+    hdLabel.style.cssText = 'font-size:11px;font-family:var(--font-mono,monospace);color:rgba(156,168,255,0.9);text-transform:uppercase;letter-spacing:0.07em;flex:1;';
+    hdLabel.textContent = (fiLbl(paramKey) || paramKey) + ' — ' + (tool.name || '');
+    var hdClose = document.createElement('button');
+    hdClose.style.cssText = 'background:none;border:none;color:rgba(143,143,168,0.5);cursor:pointer;font-size:16px;padding:0 4px;line-height:1;transition:color 0.12s;';
+    hdClose.innerHTML = '&#x2715;';
+    hdClose.onclick = function() { document.body.removeChild(ov); };
+    hd.appendChild(hdLabel); hd.appendChild(hdClose); box.appendChild(hd);
+
+    // KF nav strip
+    var kfs = (param.keyframes||[]).slice().sort(function(a,b){return a.frame-b.frame;});
+    var frames = kfs.map(function(k){return k.frame;});
+    var nav = document.createElement('div');
+    nav.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0;flex-wrap:wrap;';
+    var navLbl = document.createElement('span');
+    navLbl.style.cssText = 'font-size:9px;font-family:var(--font-mono,monospace);color:rgba(143,143,168,0.5);text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0;';
+    navLbl.textContent = kfs.length + ' keyframes';
+    nav.appendChild(navLbl);
+    var prevE = document.createElement('button');
+    prevE.style.cssText = 'font-size:10px;font-family:var(--font-mono,monospace);padding:3px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(143,143,168,0.7);cursor:pointer;';
+    prevE.textContent = 'Prev';
+    var nextE = document.createElement('button');
+    nextE.style.cssText = prevE.style.cssText;
+    nextE.textContent = 'Next';
+    var frameSpan = document.createElement('span');
+    frameSpan.style.cssText = 'font-size:10px;font-family:var(--font-mono,monospace);color:rgba(156,168,255,0.9);flex:1;text-align:right;';
+
+    var expFrame = _emInspFrame;
+    function refreshExpandNav() {
+      var ci = frames.indexOf(expFrame);
+      prevE.style.opacity = ci <= 0 ? '0.3' : '1';
+      nextE.style.opacity = ci >= frames.length - 1 ? '0.3' : '1';
+      frameSpan.textContent = 'Frame ' + expFrame;
+      redrawExpand();
+    }
+    prevE.addEventListener('click', function() {
+      var ci = frames.indexOf(expFrame);
+      if (ci > 0) { expFrame = frames[ci - 1]; refreshExpandNav(); }
+    });
+    nextE.addEventListener('click', function() {
+      var ci = frames.indexOf(expFrame);
+      if (ci < frames.length - 1) { expFrame = frames[ci + 1]; refreshExpandNav(); }
+    });
+    // Chips
+    var chipsDiv = document.createElement('div');
+    chipsDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;margin-left:6px;';
+    kfs.forEach(function(kf) {
+      var chip = document.createElement('button');
+      chip.style.cssText = 'font-size:10px;font-family:var(--font-mono,monospace);padding:2px 8px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(143,143,168,0.7);cursor:pointer;';
+      chip.textContent = kf.frame;
+      chip.addEventListener('click', (function(f) { return function() { expFrame = f; refreshExpandNav(); }; })(kf.frame));
+      chipsDiv.appendChild(chip);
+    });
+    nav.appendChild(prevE); nav.appendChild(nextE); nav.appendChild(chipsDiv); nav.appendChild(frameSpan);
+    box.appendChild(nav);
+
+    // Large canvas
+    var cBig = document.createElement('canvas');
+    cBig.style.cssText = 'display:block;width:100%;height:300px;background:#070710;cursor:crosshair;';
+    box.appendChild(cBig);
+
+    function redrawExpand() {
+      // Sync active chip styling
+      chipsDiv.querySelectorAll('button').forEach(function(ch, i) {
+        var isAct = kfs[i] && kfs[i].frame === expFrame;
+        ch.style.borderColor = isAct ? 'rgba(245,200,66,0.6)' : 'rgba(255,255,255,0.1)';
+        ch.style.background = isAct ? 'rgba(245,200,66,0.1)' : 'rgba(255,255,255,0.03)';
+        ch.style.color = isAct ? '#f5c842' : 'rgba(143,143,168,0.7)';
+      });
+      requestAnimationFrame(function() { emDrawerSpline(cBig, param, expFrame); });
+    }
+
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e) { if (e.target === ov) document.body.removeChild(ov); });
+    refreshExpandNav();
+  }
 
   // ── Convert fusionParams (nodegraph format) to FI params format ───────────
   // Enables reading data stored from nodegraph.html saves (node.fusionParams)
