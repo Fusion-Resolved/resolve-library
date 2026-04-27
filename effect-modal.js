@@ -1955,10 +1955,18 @@
       fitGraph();
     }, 200);
     
-    // Third call as safety net
+    // Third call as safety net + scroll to node section if returning from nodegraph
     setTimeout(function() {
       console.log('[initGraphViewport] Third fit call (safety)');
       fitGraph();
+      // If user came back from "Open in Editor", scroll the node graph section into view
+      if (window._gotoNodesSection) {
+        window._gotoNodesSection = false;
+        var nodeSection = document.getElementById('modal-node-section');
+        if (nodeSection) {
+          nodeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
     }, 500);
   }
 

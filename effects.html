@@ -5202,6 +5202,11 @@ async function handleSharedLink() {
   var id = params.get('id');
   if (!id) return;
 
+  // If opened from nodegraph "Back to effect", flag to scroll to the node section
+  if (params.get('goto') === 'nodes') {
+    window._gotoNodesSection = true;
+  }
+
   // ── Attempt 1: effect already in local list (e.g. owner viewing own effect) ──
   var localEffect = (typeof effects !== 'undefined') ? effects.find(function(x){ return x.id === id; }) : null;
 

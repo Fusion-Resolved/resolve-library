@@ -4989,7 +4989,7 @@ buildSavedList();applyVP();buildCatChips();
       var _backBtn = document.getElementById('back-to-effect-btn');
       var _backName = document.getElementById('back-to-effect-name');
       if (_backBtn) {
-        _backBtn.href = 'effects.html?id=' + encodeURIComponent(row.id);
+        _backBtn.href = 'effects.html?id=' + encodeURIComponent(row.id) + '&goto=nodes';
         _backBtn.style.display = 'flex';
         if (_backName) _backName.textContent = row.name || 'Back to effect';
       }
