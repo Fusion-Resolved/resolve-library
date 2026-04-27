@@ -331,13 +331,13 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 
   <!-- tab bar -->
   <div class="tab-bar" id="tabBar">
-    <button class="tab-btn active" data-tab="0">Details</button>
-    <button class="tab-btn" data-tab="1">
-      Nodes
-      <span class="tab-dirty" id="dirty-1" style="display:none"></span>
-    </button>
-    <button class="tab-btn" data-tab="2">
+    <button class="tab-btn active" data-tab="0">
       Media
+      <span class="tab-dirty" id="dirty-0" style="display:none"></span>
+    </button>
+    <button class="tab-btn" data-tab="1">Details</button>
+    <button class="tab-btn" data-tab="2">
+      Nodes
       <span class="tab-dirty" id="dirty-2" style="display:none"></span>
     </button>
     <button class="tab-btn" data-tab="3">Access</button>
@@ -350,8 +350,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   <!-- body -->
   <div class="sh-bd">
 
-    <!-- TAB 0: DETAILS -->
-    <div class="tab-panel active" id="tab0">
+    <!-- TAB 1: DETAILS -->
+    <div class="tab-panel" id="tab1">
       <div class="frow two">
         <div class="fg">
           <div class="fg-hd"><label class="fl">Effect Name <span>*</span></label><span class="cc" id="nameCC">19 / 60</span></div>
@@ -427,8 +427,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       </div>
     </div>
 
-    <!-- TAB 1: NODES -->
-    <div class="tab-panel" id="tab1">
+    <!-- TAB 2: NODES -->
+    <div class="tab-panel" id="tab2">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div class="node-mode-row">
           <button class="nm-btn on" id="nmGraph">
@@ -521,8 +521,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       </div>
     </div>
 
-    <!-- TAB 2: MEDIA -->
-    <div class="tab-panel" id="tab2">
+    <!-- TAB 0: MEDIA -->
+    <div class="tab-panel active" id="tab0">
       <div class="sec-lbl">Current preview</div>
       <div class="cur-media" id="curMedia">
         <div class="cur-media-label" id="curMediaLabel">No media — GIF or video not yet added</div>
@@ -543,9 +543,13 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         </button>
       </div>
       <div id="gifUpSec">
-        <div style="border:1.5px dashed var(--bc);border-radius:var(--r);padding:1.5rem;text-align:center;cursor:pointer;" id="dropZone">
-          <div style="font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--tm);margin-bottom:6px;">Drop new GIF here</div>
-          <div style="font-size:12px;color:var(--tm);">or <span style="color:var(--violet-light);cursor:pointer;" id="browseBtn">browse files</span></div>
+        <div class="fg">
+          <label class="fl">GIF URL</label>
+          <div style="display:flex;gap:8px;">
+            <input class="fi" style="flex:1;" type="text" id="gifUrl" placeholder="https://media.giphy.com/media/…/giphy.gif">
+            <button class="copy-link-btn" id="btnGifConfirm">Apply</button>
+          </div>
+          <div class="fhint">Paste a direct GIF link from Giphy, Tenor, or any public URL ending in .gif</div>
         </div>
       </div>
       <div id="vidLinkSec" style="display:none;">
@@ -838,13 +842,13 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     gNodes.push({ id: id, name: td.name, cat: td.cat, col: td.col, bg: td.bg, x: x, y: y });
     var prev = selId || (gNodes.length > 1 ? gNodes[gNodes.length - 2].id : null);
     if (prev && prev !== id) { addEdge(prev, id); }
-    selectNode(id); updateCounts(); renderEd(); markDirty(1);
+    selectNode(id); updateCounts(); renderEd(); markDirty(2);
   }
   function removeNode (id) {
     gNodes = gNodes.filter(function (n) { return n.id !== id; });
     gEdges = gEdges.filter(function (e) { return e.from !== id && e.to !== id; });
     if (selId === id) { selectNode(null); }
-    updateCounts(); renderEd(); markDirty(1);
+    updateCounts(); renderEd(); markDirty(2);
   }
   function addEdge (f, t) {
     if (f === t) { return; }
@@ -1043,7 +1047,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if (!edCanvas) { return; }
     if (istate === 'connecting' && cxFrom) {
       var sc = cxy(e), w = toW(sc.x, sc.y), ip = inAt(w.x, w.y);
-      if (ip && ip.id !== cxFrom) { addEdge(cxFrom, ip.id); updateCounts(); markDirty(1); showToast('Connection created'); }
+      if (ip && ip.id !== cxFrom) { addEdge(cxFrom, ip.id); updateCounts(); markDirty(2); showToast('Connection created'); }
       document.getElementById('conBadge').classList.remove('show');
       edCanvas.classList.remove('connecting');
     }
@@ -1113,7 +1117,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if (p) { p.classList.add('active'); }
     if (btns[n]) { btns[n].classList.add('active'); }
     curTab = n;
-    if (n === 1) { setTimeout(function () { resizeEd(); resizeLua(); }, 40); }
+    if (n === 2) { setTimeout(function () { resizeEd(); resizeLua(); }, 40); }
   }
 
   /* ── PRE-LOAD GRAPH ── */
@@ -1596,7 +1600,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
 
     document.getElementById('btnLayout').addEventListener('click', autoLayout);
-    document.getElementById('btnClear').addEventListener('click', function () { gNodes=[]; gEdges=[]; selId=null; selectNode(null); updateCounts(); renderEd(); markDirty(1); showToast('Graph cleared'); });
+    document.getElementById('btnClear').addEventListener('click', function () { gNodes=[]; gEdges=[]; selId=null; selectNode(null); updateCounts(); renderEd(); markDirty(2); showToast('Graph cleared'); });
     document.getElementById('btnDel').addEventListener('click', function () { if (selId) { removeNode(selId); } });
     document.getElementById('btnViewAnim').addEventListener('click', function () { 
       if (selId && window.NodeSystem) {
@@ -1684,7 +1688,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     var fields = ['fName','fDesc','fSteps','fCat','fVer','fWeight','fSelf'];
     for (var f = 0; f < fields.length; f++) {
       var el = document.getElementById(fields[f]);
-      if (el) { el.addEventListener('input', function () { markDirty(0); }); el.addEventListener('change', function () { markDirty(0); }); }
+      if (el) { el.addEventListener('input', function () { markDirty(); }); el.addEventListener('change', function () { markDirty(); }); }
     }
     var nbCountEl = document.getElementById('nameCC');
     var nameEl = document.getElementById('fName');
@@ -1692,7 +1696,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       nameEl.addEventListener('input', function () {
         nbCountEl.textContent = this.value.length + ' / 60';
         nbCountEl.className = 'cc' + (this.value.length > 50 ? ' warn' : '');
-        markDirty(0);
+        markDirty();
       });
     }
     var descEl = document.getElementById('fDesc'), dcEl = document.getElementById('descCC');
@@ -1700,7 +1704,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       descEl.addEventListener('input', function () {
         dcEl.textContent = this.value.length + ' / 400';
         dcEl.className = 'cc' + (this.value.length > 360 ? ' warn' : '');
-        markDirty(0);
+        markDirty();
       });
     }
     var stepsEl = document.getElementById('fSteps'), scEl = document.getElementById('stepsCC');
@@ -1708,19 +1712,19 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       stepsEl.addEventListener('input', function () {
         scEl.textContent = this.value.length + ' / 2000';
         scEl.className = 'cc' + (this.value.length > 1800 ? ' warn' : '');
-        markDirty(0);
+        markDirty();
       });
     }
     var dbtns = document.querySelectorAll('.db');
     for (var di = 0; di < dbtns.length; di++) {
       dbtns[di].addEventListener('click', function () {
         for (var x = 0; x < dbtns.length; x++) { dbtns[x].classList.remove('on'); }
-        this.classList.add('on'); markDirty(0);
+        this.classList.add('on'); markDirty();
       });
     }
     var ttoggs = document.querySelectorAll('.ttog');
     for (var ti = 0; ti < ttoggs.length; ti++) {
-      ttoggs[ti].addEventListener('click', function () { this.classList.toggle('on'); markDirty(0); });
+      ttoggs[ti].addEventListener('click', function () { this.classList.toggle('on'); markDirty(); });
     }
 
     /* switches */
@@ -1760,19 +1764,17 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       
       var mt0 = document.getElementById('mt0');
       var mt1 = document.getElementById('mt1');
-      var dropZone = document.getElementById('dropZone');
-      var browseBtn = document.getElementById('browseBtn');
       var btnVidConfirm = document.getElementById('btnVidConfirm');
       var btnReplace = document.getElementById('btnReplace');
       var btnRemoveMedia = document.getElementById('btnRemoveMedia');
       
       if (mt0) mt0.addEventListener('click', function () { setMediaMode('gif'); });
       if (mt1) mt1.addEventListener('click', function () { setMediaMode('video'); });
-      if (dropZone) dropZone.addEventListener('click', function () { showToast('GIF uploaded'); markDirty(2); });
-      if (browseBtn) browseBtn.addEventListener('click', function (e) { e.stopPropagation(); showToast('GIF uploaded'); markDirty(2); });
-      if (btnVidConfirm) btnVidConfirm.addEventListener('click', function () { showToast('Video link updated'); markDirty(2); });
+      if (dropZone) dropZone.addEventListener('click', function () { showToast('GIF uploaded'); markDirty(0); });
+      if (browseBtn) browseBtn.addEventListener('click', function (e) { e.stopPropagation(); showToast('GIF uploaded'); markDirty(0); });
+      if (btnVidConfirm) btnVidConfirm.addEventListener('click', function () { showToast('Video link updated'); markDirty(0); });
       if (btnReplace) btnReplace.addEventListener('click', function () { showToast('Ready to replace media'); });
-      if (btnRemoveMedia) btnRemoveMedia.addEventListener('click', function () { showToast('Media removed'); markDirty(2); });
+      if (btnRemoveMedia) btnRemoveMedia.addEventListener('click', function () { showToast('Media removed'); markDirty(0); });
     } catch (e) { console.error('[init] Error attaching media listeners:', e); }
 
     /* danger zone */
