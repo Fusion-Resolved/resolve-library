@@ -446,16 +446,6 @@
         console.log('[effect-modal] accordionEl not found!');
       }
       
-      // Update copy button
-      var copyBtn = document.getElementById('btnCopy');
-      if (copyBtn) {
-        copyBtn.onclick = function() {
-          navigator.clipboard.writeText(effect.node_code).then(function() {
-            showToast('Node code copied!');
-          });
-        };
-      }
-      
     } else {
       console.log('[effect-modal] No valid node data found or NodeSystem not loaded');
       if (nodeSection) nodeSection.style.display = 'none';
