@@ -534,7 +534,10 @@
   function showModal() {
     const modal = document.getElementById('effect-modal-overlay');
     if (modal) {
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;display:flex;opacity:1;pointer-events:auto;visibility:visible;';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,14,0.72);z-index:300;backdrop-filter:blur(6px);-webkit-backdrop-filter:var(--glass-blur);align-items:flex-end;justify-content:center;display:flex;opacity:1;pointer-events:auto;visibility:visible;';
+      // Reset scroll to top every time the modal opens
+      const body = modal.querySelector('.eds-bd');
+      if (body) body.scrollTop = 0;
       document.body.style.overflow = 'hidden';
       console.log('[Effect Modal] Modal opened with full inline styles');
     }
