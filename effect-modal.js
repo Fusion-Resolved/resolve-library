@@ -465,12 +465,16 @@
         effect.steps;
       
       steps.forEach((step, idx) => {
-        const stepText = typeof step === 'string' ? step : step.text || step.description || '';
+        let stepText = typeof step === 'string' ? step : step.text || step.description || '';
+        // Strip any leading "1. " or "01. " numbering already in the text
+        stepText = stepText.replace(/^\d+[\.\)]\s*/, '');
         if (stepText) {
-          stepsContainer.innerHTML += `
-            <li><span class="sn">${String(idx + 1).padStart(2, '0')}</span>
-            <span>${escapeHtml(stepText)}</span></li>
-          `;
+          const item = document.createElement('div');
+          item.className = 'modal-step-item';
+          item.innerHTML =
+            '<span class="modal-step-num">' + String(idx + 1).padStart(2, '0') + '</span>' +
+            '<span class="modal-step-body">' + escapeHtml(stepText) + '</span>';
+          stepsContainer.appendChild(item);
         }
       });
     }

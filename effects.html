@@ -2050,6 +2050,13 @@ header { z-index: 100 !important; }
 .node-accordion-content .param-row{margin-bottom:8px;font-size:11px;padding:6px;background:rgba(255,255,255,0.03);border-radius:4px;}
 .node-accordion-content .param-row:last-child{margin-bottom:0;}
 
+/* Modal Step-by-step — matches effect-full-page.html style */
+.modal-step-item{display:flex;gap:14px;padding:11px 13px;background:var(--glass-bg-2);border:1px solid var(--border-surface);border-radius:var(--radius-sm);transition:border-color 150ms ease-out;}
+.modal-step-item:hover{border-color:var(--border-color);}
+.modal-step-num{font-family:var(--font-mono);font-size:11px;color:var(--violet-light);min-width:24px;padding-top:1px;flex-shrink:0;}
+.modal-step-body{font-size:12px;color:var(--text-secondary);line-height:1.65;}
+.modal-step-code{display:inline;font-family:var(--font-mono);font-size:11px;color:var(--node-teal);background:rgba(15,168,136,0.08);border:1px solid rgba(15,168,136,0.2);border-radius:3px;padding:1px 5px;}
+
 /* Modal Footer Buttons */
 .btn-glass {
   display:inline-flex; align-items:center; justify-content:center; gap:6px;
@@ -10264,7 +10271,7 @@ if (typeof window._shToast !== 'function') {
         <!-- Steps -->
         <div class="sec" style="display:flex;flex-direction:column;gap:8px;padding-top:6px;border-top:1px solid var(--border-surface);">
           <div class="sec-lbl" style="font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);">Step-by-step</div>
-          <ol class="steps" id="modal-steps" style="list-style:none;display:flex;flex-direction:column;gap:8px;padding:0;margin:0;"></ol>
+          <div id="modal-steps" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
 
         <!-- Details -->
