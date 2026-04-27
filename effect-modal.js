@@ -1918,30 +1918,41 @@
   function initGraphViewport(nodeData) {
     graphState.nodes = nodeData.nodes || [];
     graphState.edges = nodeData.edges || [];
-    
-    // Try to find existing elements first
-    graphState.vp = document.getElementById('graphVp');
+
+    // Always tear down the existing graph container and rebuild from scratch.
+    // Trying to clear .gn-card children in-place is unreliable across multiple
+    // populateModal calls: stale DOM references cause the removal loop to operate
+    // on a detached subtree while the live DOM keeps its original stale nodes.
+    var existingVp = document.getElementById('graphVp');
+    if (existingVp) {
+      // graphVp sits inside .graph-outer — remove the whole wrapper
+      var outerContainer = existingVp.parentElement;
+      if (outerContainer && outerContainer.parentNode) {
+        outerContainer.parentNode.removeChild(outerContainer);
+      } else if (existingVp.parentNode) {
+        existingVp.parentNode.removeChild(existingVp);
+      }
+    }
+
+    // Cancel any running flow animation before the canvas is destroyed
+    if (typeof flowAnimId !== 'undefined' && flowAnimId) {
+      cancelAnimationFrame(flowAnimId);
+      flowAnimId = null;
+    }
+
+    console.log('[effect-modal] (Re)creating graph container...');
+    createGraphContainer();
+
+    graphState.vp    = document.getElementById('graphVp');
     graphState.world = document.getElementById('graphWorld');
     graphState.svgEl = document.getElementById('graphSvg');
-    graphState.zLbl = document.getElementById('gZoomLbl');
-    
-    // If elements don't exist, create them dynamically
-    if (!graphState.vp) {
-      console.log('[effect-modal] Creating graph container dynamically...');
-      createGraphContainer();
-      
-      // Re-fetch after creation
-      graphState.vp = document.getElementById('graphVp');
-      graphState.world = document.getElementById('graphWorld');
-      graphState.svgEl = document.getElementById('graphSvg');
-      graphState.zLbl = document.getElementById('gZoomLbl');
-    }
-    
+    graphState.zLbl  = document.getElementById('gZoomLbl');
+
     if (!graphState.vp || !graphState.world || !graphState.svgEl) {
       console.error('[effect-modal] Failed to create graph elements');
       return;
     }
-    
+
     buildGraphDOM();
     wireGraphEvents();
     
