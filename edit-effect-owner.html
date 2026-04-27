@@ -1689,15 +1689,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if (_importedLuaCode) {
       updates.node_code    = _importedLuaCode;
       updates.graph_payload = serializeGraphPayload();
+      updates.nodes        = null; // clear stale JSONB so effect.nodes doesn't shadow the new Lua
       console.log('[doSave] Saving imported Lua as node_code, length:', _importedLuaCode.length);
     } else if (_graphEditedCanvas && (_emParsedNodes||[]).length > 0) {
       updates.node_code    = serializeGraph();
       updates.graph_payload = serializeGraphPayload();
+      updates.nodes        = null; // clear stale JSONB
       console.log('[doSave] Saving canvas-edited graph as node_code:', updates.node_code.substring(0, 80));
     } else if (_graphEditedCanvas && !(_emParsedNodes||[]).length) {
       // User explicitly cleared the graph
       updates.node_code    = '';
       updates.graph_payload = null;
+      updates.nodes        = null; // clear stale JSONB
       console.log('[doSave] Saving cleared graph');
     } else {
       console.log('[doSave] No graph changes — node_code unchanged in Supabase');
