@@ -7638,19 +7638,21 @@ async function openDetail(id) {
   let e = effects.find(x => x.id === id);
   if (!e) return;
   
-    // Re-fetch to get latest nodes JSONB data
-    try {
-      const { data: freshEffect, error } = await window._supabase
-        .from('effects')
-        .select('*, nodes')
-        .eq('id', id)
-        .single();
-      
-      if (!error && freshEffect) {
-        e = Object.assign({}, e, freshEffect);
+    // Re-fetch to get latest data — only if the client is ready
+    if (window._supabase) {
+      try {
+        const { data: freshEffect, error } = await window._supabase
+          .from('effects')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (!error && freshEffect) {
+          e = Object.assign({}, e, freshEffect);
+        }
+      } catch (err) {
+        console.warn('[effects] Failed to fetch fresh effect data:', err);
       }
-    } catch (err) {
-      console.warn('[effects] Failed to fetch fresh effect data:', err);
     }
   
   activeDetail = id;
