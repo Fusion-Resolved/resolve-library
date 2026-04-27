@@ -4375,4 +4375,55 @@
   // Expose graph control functions
   window.fitModalGraph = fitGraph;
 
+  /* ════════════════════════════════════════════════════════════════
+     REFRESH GRAPH AFTER EDIT-MODAL SAVE
+     Listens for the postMessage sent by edit-effect-owner.html once
+     it has successfully written to Supabase. We do a full fresh
+     SELECT (bypassing the local window.effects cache) so that the
+     updated node_code and graph_payload are actually used when
+     re-drawing the graph.
+     ════════════════════════════════════════════════════════════════ */
+  window.addEventListener('message', async function(e) {
+    if (!e.data || e.data.action !== 'effect-updated' || !e.data.id) return;
+    var effectId = e.data.id;
+    console.log('[Effect Modal] effect-updated received — refreshing graph for:', effectId);
+
+    if (!window._supabase) return;
+
+    try {
+      // Full fresh fetch — bypasses the local cache so we get the
+      // updated node_code and graph_payload that were just written.
+      var result = await window._supabase
+        .from('effects')
+        .select('*')
+        .eq('id', effectId)
+        .single();
+
+      var fresh = result.data;
+      var fetchError = result.error;
+
+      if (fetchError || !fresh) {
+        console.warn('[Effect Modal] Failed to re-fetch effect after edit save:', fetchError);
+        return;
+      }
+
+      // Patch the in-memory cache so any subsequent open also sees fresh data.
+      if (typeof window.effects !== 'undefined' && Array.isArray(window.effects)) {
+        var idx = window.effects.findIndex(function(ef) { return ef.id === effectId; });
+        if (idx !== -1) {
+          window.effects[idx] = Object.assign(window.effects[idx], fresh);
+        }
+      }
+
+      // Re-populate the modal — this rebuilds the graph, accordion, and
+      // all display fields from the freshly fetched effect record.
+      await populateModal(fresh);
+      showModal();
+
+      console.log('[Effect Modal] Graph refreshed successfully after edit save.');
+    } catch (err) {
+      console.error('[Effect Modal] Error refreshing graph after edit save:', err);
+    }
+  });
+
 })();
