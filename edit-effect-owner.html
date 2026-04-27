@@ -131,6 +131,20 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 .cc{font-family:var(--fm);font-size:9px;color:var(--tm);}
 .cc.warn{color:var(--signal-amber);}
 
+/* ── Step builder ── */
+.steps-builder{display:flex;flex-direction:column;gap:0;}
+.step-row{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--bs);position:relative;animation:stepIn 0.18s var(--ease);}
+.step-row:last-child{border-bottom:none;}
+@keyframes stepIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.step-num{font-family:var(--fm);font-size:11px;color:var(--tm);min-width:22px;flex-shrink:0;padding-top:1px;user-select:none;}
+.step-input{flex:1;background:transparent;border:none;color:var(--tp);font-size:13px;font-family:var(--fb);font-weight:300;line-height:1.55;padding:0;outline:none;}
+.step-input::placeholder{color:var(--tm);}
+.step-del{opacity:0;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--tm);background:none;border:1px solid transparent;cursor:pointer;flex-shrink:0;transition:all 0.12s;padding:0;}
+.step-row:hover .step-del{opacity:1;}
+.step-del:hover{color:var(--danger);border-color:rgba(240,96,96,0.35);background:rgba(240,96,96,0.08);}
+.steps-hint{font-size:11px;color:var(--tm);margin-top:6px;display:flex;align-items:center;gap:5px;}
+.steps-hint kbd{font-family:var(--fm);font-size:9px;padding:1px 5px;border-radius:3px;border:1px solid var(--bc);background:var(--bg3);color:var(--ts);}
+
 /* diff */
 .diff-row{display:flex;gap:8px;}
 .db{flex:1;padding:9px 0;border-radius:var(--rsm);border:1px solid var(--bc);background:var(--gb2);font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--tm);cursor:pointer;transition:var(--tr);text-align:center;}
@@ -373,8 +387,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         <textarea class="ft" id="fDesc" maxlength="400" style="min-height:90px;">Uses optical flow vectors to warp a source clip — creates a liquid smear without third-party plugins. Works best on clips with strong directional motion. Chain two passes for a more pronounced effect.</textarea>
       </div>
       <div class="fg">
-        <div class="fg-hd"><label class="fl">Step-by-Step</label><span class="cc" id="stepsCC">0 / 2000</span></div>
-        <textarea class="ft" id="fSteps" maxlength="2000" style="min-height:120px;" placeholder="1. Create MediaIn node&#10;2. Add OpticalFlow&#10;3. Connect to DisplaceDistort&#10;4. Adjust scale settings"></textarea>
+        <div class="fg-hd"><label class="fl">Step-by-Step</label><span class="cc" id="stepsCC">0 steps</span></div>
+        <div class="steps-builder" id="stepsBuilder"></div>
+        <div class="steps-hint">Press <kbd>↵ Enter</kbd> to add the next step &nbsp;·&nbsp; <kbd>⌫ Backspace</kbd> on an empty step to remove it</div>
+        <!-- Hidden field keeps save logic working unchanged -->
+        <textarea id="fSteps" style="display:none;" maxlength="2000"></textarea>
       </div>
       <div class="fg">
         <label class="fl">Difficulty</label>
@@ -1083,6 +1100,129 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
   }
 
+  /* ══════════════════════════════
+     STEP BUILDER
+     ══════════════════════════════ */
+  function padNum(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function syncHiddenSteps() {
+    var inputs = document.querySelectorAll('.step-input');
+    var lines = [];
+    for (var i = 0; i < inputs.length; i++) {
+      var v = inputs[i].value.trim();
+      if (v) { lines.push(v); }
+    }
+    var hidden = document.getElementById('fSteps');
+    if (hidden) { hidden.value = lines.join('\n'); }
+    var cc = document.getElementById('stepsCC');
+    if (cc) { cc.textContent = lines.length + (lines.length === 1 ? ' step' : ' steps'); }
+  }
+
+  function renumberSteps() {
+    var rows = document.querySelectorAll('.step-row');
+    for (var i = 0; i < rows.length; i++) {
+      var num = rows[i].querySelector('.step-num');
+      if (num) { num.textContent = padNum(i + 1); }
+    }
+  }
+
+  function addStepRow(value, focusIt) {
+    var builder = document.getElementById('stepsBuilder');
+    if (!builder) { return null; }
+    var idx = builder.querySelectorAll('.step-row').length + 1;
+
+    var row = document.createElement('div');
+    row.className = 'step-row';
+
+    var num = document.createElement('span');
+    num.className = 'step-num';
+    num.textContent = padNum(idx);
+
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'step-input';
+    inp.value = value || '';
+    inp.placeholder = idx === 1 ? 'Describe the first step…' : 'Next step…';
+    inp.setAttribute('autocomplete', 'off');
+
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'step-del';
+    del.title = 'Remove step';
+    del.innerHTML = '&#x2715;';
+
+    row.appendChild(num);
+    row.appendChild(inp);
+    row.appendChild(del);
+    builder.appendChild(row);
+
+    /* Enter → create next row */
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var newRow = addStepRow('', true);
+        syncHiddenSteps();
+        markDirty(1);
+      }
+      if (e.key === 'Backspace' && inp.value === '') {
+        e.preventDefault();
+        var rows = document.querySelectorAll('.step-row');
+        if (rows.length <= 1) { return; } /* keep at least one */
+        var prev = row.previousElementSibling;
+        row.parentNode.removeChild(row);
+        renumberSteps();
+        syncHiddenSteps();
+        markDirty(1);
+        if (prev) {
+          var pi = prev.querySelector('.step-input');
+          if (pi) { pi.focus(); var l = pi.value.length; pi.setSelectionRange(l, l); }
+        }
+      }
+    });
+
+    inp.addEventListener('input', function() {
+      syncHiddenSteps();
+      markDirty(1);
+    });
+
+    del.addEventListener('click', function() {
+      var rows = document.querySelectorAll('.step-row');
+      if (rows.length <= 1) { inp.value = ''; syncHiddenSteps(); inp.focus(); return; }
+      var prev = row.previousElementSibling;
+      row.parentNode.removeChild(row);
+      renumberSteps();
+      syncHiddenSteps();
+      markDirty(1);
+      if (prev) {
+        var pi = prev.querySelector('.step-input');
+        if (pi) { pi.focus(); }
+      }
+    });
+
+    if (focusIt) { setTimeout(function() { inp.focus(); }, 0); }
+    return row;
+  }
+
+  function initStepBuilder(stepsValue) {
+    var builder = document.getElementById('stepsBuilder');
+    if (!builder) { return; }
+    builder.innerHTML = '';
+    var lines = [];
+    if (stepsValue) {
+      if (Array.isArray(stepsValue)) {
+        lines = stepsValue;
+      } else {
+        lines = stepsValue.split('\n').map(function(l) {
+          /* strip leading "1. " or "01. " patterns */
+          return l.replace(/^\s*\d+[\.\)]\s*/, '').trim();
+        }).filter(function(l) { return l.length > 0; });
+      }
+    }
+    if (lines.length === 0) { lines = ['']; }
+    for (var i = 0; i < lines.length; i++) { addStepRow(lines[i], false); }
+    syncHiddenSteps();
+  }
+
   /* ── DIRTY TRACKING ── */
   var isDirty = false;
   function markDirty (tabIdx) {
@@ -1425,15 +1565,14 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     // Set steps
     const stepsEl = document.getElementById('fSteps');
     console.log('[populateForm] Steps element found:', !!stepsEl, 'Effect steps:', effect.steps ? (Array.isArray(effect.steps) ? 'array['+effect.steps.length+']' : typeof effect.steps) : 'null/undefined');
-    if (stepsEl && effect.steps) {
-      stepsEl.value = Array.isArray(effect.steps) ? effect.steps.join('\n') : effect.steps;
+    initStepBuilder(effect.steps || '');
+    if (stepsEl) {
       const stepsCC = document.getElementById('stepsCC');
       if (stepsCC) {
-        const stepsLen = stepsEl.value.length;
-        stepsCC.textContent = stepsLen + ' / 2000';
-        stepsCC.className = 'cc' + (stepsLen > 1800 ? ' warn' : '');
+        const cnt = document.querySelectorAll('.step-row').length;
+        stepsCC.textContent = cnt + (cnt === 1 ? ' step' : ' steps');
       }
-      console.log('[populateForm] Steps loaded, length:', stepsEl.value.length);
+      console.log('[populateForm] Steps builder initialised');
     }
     
     // Set category - direct value assignment (options have proper value attributes now)
@@ -1685,7 +1824,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     } catch (e) { console.error('[init] Error attaching save button listeners:', e); }
 
     /* field dirty listeners */
-    var fields = ['fName','fDesc','fSteps','fCat','fVer','fWeight','fSelf'];
+    var fields = ['fName','fDesc','fCat','fVer','fWeight','fSelf'];
     for (var f = 0; f < fields.length; f++) {
       var el = document.getElementById(fields[f]);
       if (el) { el.addEventListener('input', function () { markDirty(); }); el.addEventListener('change', function () { markDirty(); }); }
@@ -1704,14 +1843,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       descEl.addEventListener('input', function () {
         dcEl.textContent = this.value.length + ' / 400';
         dcEl.className = 'cc' + (this.value.length > 360 ? ' warn' : '');
-        markDirty();
-      });
-    }
-    var stepsEl = document.getElementById('fSteps'), scEl = document.getElementById('stepsCC');
-    if (stepsEl && scEl) {
-      stepsEl.addEventListener('input', function () {
-        scEl.textContent = this.value.length + ' / 2000';
-        scEl.className = 'cc' + (this.value.length > 1800 ? ' warn' : '');
         markDirty();
       });
     }
@@ -1841,6 +1972,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   function openSheet () {
     clearDirty();
     goTab(0);
+    initStepBuilder(''); /* always start with one blank step row */
     setTimeout(function () { resizeEd(); }, 80);
   }
   function closeSheet () {
