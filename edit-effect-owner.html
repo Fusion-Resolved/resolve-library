@@ -204,9 +204,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 .nsr-chip:hover{filter:brightness(1.2);}
 .nsr-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 .nsr-cat{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.06em;opacity:0.65;}
-.node-mode-row{display:flex;gap:4px;padding:4px;background:var(--bg3);border:1px solid var(--bs);border-radius:var(--rp);width:fit-content;}
-.nm-btn{font-family:var(--fm);font-size:9.5px;text-transform:uppercase;letter-spacing:0.07em;padding:6px 14px;border-radius:var(--rp);color:var(--tm);cursor:pointer;transition:var(--tr);display:flex;align-items:center;gap:6px;border:none;background:none;}
-.nm-btn.on{background:var(--gb2);color:var(--tp);box-shadow:var(--gsh);}
 .graph-editor-layout{display:flex;gap:0;border:1px solid var(--bs);border-radius:var(--r);overflow:hidden;height:260px;}
 .ed-canvas-wrap{flex:1;position:relative;overflow:hidden;background:#06060d;}
 .ed-canvas{width:100%;height:100%;display:block;cursor:grab;}
@@ -236,17 +233,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 .vso{font-family:var(--fm);font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;padding:4px 10px;border-radius:var(--rsm);border:1px solid var(--bc);background:var(--gb2);color:var(--tm);cursor:pointer;transition:var(--tr);}
 .vso.on{border-color:rgba(108,123,255,0.45);background:rgba(108,123,255,0.12);color:var(--violet-light);}
 
-/* lua */
-.lua-ta{width:100%;min-height:130px;background:#06060d;border:1px solid rgba(255,255,255,0.07);border-radius:var(--r);padding:12px;font-family:var(--fm);font-size:11.5px;color:var(--node-teal);line-height:1.65;resize:vertical;transition:border-color var(--df);}
+/* lua import panel */
+.lua-import-panel{display:none;flex-direction:column;gap:8px;background:rgba(6,6,13,0.72);border:1px solid rgba(108,123,255,0.25);border-radius:var(--r);padding:13px 14px;}
+.lua-import-panel.open{display:flex;}
+.lua-ta{width:100%;min-height:110px;background:#06060d;border:1px solid rgba(255,255,255,0.07);border-radius:var(--rsm);padding:10px 12px;font-family:var(--fm);font-size:11px;color:var(--node-teal);line-height:1.65;resize:vertical;transition:border-color var(--df);box-sizing:border-box;}
 .lua-ta:focus{border-color:rgba(108,123,255,0.4);outline:none;}
 .lua-ta::placeholder{color:rgba(88,88,112,0.7);}
-.parse-r{display:flex;align-items:center;gap:8px;padding:7px 11px;border-radius:var(--rsm);font-family:var(--fm);font-size:10px;letter-spacing:0.04em;}
+.parse-r{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--rsm);font-family:var(--fm);font-size:10px;letter-spacing:0.04em;}
 .pr-idle{background:var(--gb2);border:1px solid var(--bsb);color:var(--tm);}
 .pr-ok{background:rgba(15,168,136,0.08);border:1px solid rgba(15,168,136,0.25);color:var(--node-teal);}
 .pr-err{background:rgba(240,96,96,0.07);border:1px solid rgba(240,96,96,0.25);color:var(--danger);}
-.lua-prev{height:160px;border-radius:var(--r);overflow:hidden;border:1px solid rgba(255,255,255,0.05);background:#06060d;position:relative;}
-.lua-prev canvas{width:100%;height:100%;display:block;}
-.lua-prev-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(88,88,112,0.55);pointer-events:none;}
+.lua-import-actions{display:flex;align-items:center;gap:7px;}
+.lua-import-hint{font-family:var(--fm);font-size:10px;color:var(--tm);flex:1;}
 
 /* media tab */
 .cur-media{aspect-ratio:16/9;border-radius:var(--r);background:#06060d;border:1px solid var(--bs);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;}
@@ -445,19 +443,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       </div>
     </div>
 
+
+
     <!-- TAB 1: NODES -->
     <div class="tab-panel" id="tab1">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <div class="node-mode-row">
-          <button class="nm-btn on" id="nmGraph">
-            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M8 5.5h8M5.5 8v8M19 8v3a2 2 0 0 1-2 2h-3"/></svg>
-            Graph Editor
-          </button>
-          <button class="nm-btn" id="nmLua">
-            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Lua / Comp
-          </button>
-        </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
         <div class="tb-nc" id="nodeCountLbl">Loading graph…</div>
       </div>
 
@@ -469,12 +459,27 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           <input class="node-search-input" id="palSearch" type="text" placeholder="Search nodes to add…" autocomplete="off">
         </div>
         <div class="node-search-results" id="palList"></div>
+
+        <!-- Lua import panel (hidden until toggled) -->
+        <div class="lua-import-panel" id="luaImportPanel">
+          <textarea class="lua-ta" id="luaInput" placeholder="Paste Fusion comp data or arrow notation: MediaIn &#x2192; OpticalFlow &#x2192; DisplaceDistort&#10;&#10;In Fusion: select all nodes → Edit → Copy → paste here."></textarea>
+          <div class="parse-r pr-idle" id="luaParseResult">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            Paste Lua comp data or arrow notation to parse
+          </div>
+          <div class="lua-import-actions">
+            <span class="lua-import-hint">Importing will replace the current graph</span>
+            <button class="tb" id="btnLuaCancel">Cancel</button>
+            <button class="tb" id="btnLuaImport" style="background:rgba(108,123,255,0.15);border-color:rgba(108,123,255,0.4);color:var(--violet);" disabled>Import nodes</button>
+          </div>
+        </div>
+
         <div class="graph-editor-layout">
           <div class="ed-canvas-wrap" id="edWrap">
             <canvas class="ed-canvas" id="edCanvas"></canvas>
             <div class="ed-empty" id="edEmpty" style="display:none;">
               <div class="ed-empty-t">No nodes</div>
-              <div class="ed-empty-s">Search above to add nodes</div>
+              <div class="ed-empty-s">Search above to add nodes, or import from Lua</div>
             </div>
             <div class="con-badge" id="conBadge">Connecting — click an input port &middot; Esc to cancel</div>
             <div class="ed-hint">Drag bg to pan &middot; Drag &#x25b7; port to connect</div>
@@ -485,9 +490,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
               <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;" id="npNodeName">Node Name</div>
               <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;" id="npNodeType">Type</div>
             </div>
-            <div id="npInputsList" style="padding:10px 14px;">
-              <!-- Inputs will be populated here -->
-            </div>
+            <div id="npInputsList" style="padding:10px 14px;"></div>
             <div style="padding:10px 14px;border-top:1px solid var(--border);font-size:10px;color:var(--text-muted);">
               <em>Click parameter to view • Click <span style="color:var(--violet);">View Animation</span> for all curves</em>
             </div>
@@ -496,6 +499,10 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         <div class="ed-toolbar">
           <button class="tb" id="btnLayout">Auto-layout</button>
           <button class="tb" id="btnClear">Clear</button>
+          <button class="tb" id="btnLuaToggle" title="Import node tree from Fusion Lua / comp data">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Import Lua
+          </button>
           <div class="tb-sep"></div>
           <div class="tb-sel" id="tbSel" style="display:none;">
             <div class="tb-sn" id="tbSelName"></div>
@@ -504,26 +511,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
             <button class="tb tbd" id="btnDel">Delete</button>
           </div>
           <div class="tb-nc" id="tbCount">Search above to add nodes</div>
-        </div>
-      </div>
-
-      <!-- Lua editor -->
-      <div id="luaSec" style="display:none;">
-        <div class="fg">
-          <label class="fl">Fusion Comp / Lua Code</label>
-          <textarea class="lua-ta" id="luaInput" placeholder="Paste Fusion comp data or use arrow notation: A &#x2192; B &#x2192; C"></textarea>
-          <div class="fhint">Copy from Fusion: select all nodes, Edit &#x2192; Copy, paste here.</div>
-        </div>
-        <div class="parse-r pr-idle" id="luaParseResult">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-          Paste Lua comp data or arrow notation to parse
-        </div>
-        <div class="fg">
-          <label class="fl" style="margin-bottom:6px;">Parsed graph preview</label>
-          <div class="lua-prev" id="luaPrevWrap">
-            <canvas id="luaCanvas"></canvas>
-            <div class="lua-prev-empty" id="luaEmpty">No comp data yet</div>
-          </div>
         </div>
       </div>
 
@@ -851,7 +838,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   var istate = 'idle', dragId = null, dragOX = 0, dragOY = 0;
   var panX = 0, panY = 0, panLX = 0, panLY = 0;
   var cxFrom = null, ghostX = 0, ghostY = 0;
-  var edCanvas, edCtx, luaCanvas, luaCtx;
+  var edCanvas, edCtx;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   function fNode (id) { for (var i = 0; i < gNodes.length; i++) { if (gNodes[i].id === id) { return gNodes[i]; } } return null; }
@@ -1008,16 +995,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     edCtx.setTransform(1, 0, 0, 1, 0, 0); edCtx.scale(dpr, dpr);
     renderEd();
   }
-  function resizeLua () {
-    if (!luaCanvas) { return; }
-    var w2 = luaCanvas.parentElement;
-    var W = w2.offsetWidth, H = w2.offsetHeight;
-    luaCanvas.width = W * dpr; luaCanvas.height = H * dpr;
-    luaCanvas.style.width = W + 'px'; luaCanvas.style.height = H + 'px';
-    if (luaCtx) {
-      luaCtx.setTransform(1, 0, 0, 1, 0, 0); luaCtx.scale(dpr, dpr);
-    }
-  }
   function renderEd () {
     if (!edCtx || !edCanvas) { return; }
     var W = edCanvas.offsetWidth, H = edCanvas.offsetHeight;
@@ -1076,16 +1053,112 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   }
 
   /* ── UNIVERSAL NODE SYSTEM (via nodes-system.js) ── */
-  // parseLua() now uses window.NodeSystem.parse() for consistent parsing across all pages
+  /* ══════════════════════════════
+     LUA IMPORT
+     ══════════════════════════════ */
+  var _luaImportOpen = false;
+  var _luaParsed = null; // last valid parse result ready to import
+
   function parseLua (str) {
-    if (!str || !str.trim()) { return { nodes: [], edges: [] }; }
-    return window.NodeSystem.parse(str);
+    if (!str || !str.trim()) { return null; }
+    try {
+      var r = window.NodeSystem.parse(str);
+      return r;
+    } catch (e) { return null; }
   }
 
-  /* ── LUA INPUT HANDLER (stub - prevents ReferenceError) ── */
+  function setLuaImportOpen (open) {
+    _luaImportOpen = open;
+    var panel = document.getElementById('luaImportPanel');
+    var btn   = document.getElementById('btnLuaToggle');
+    if (panel) { open ? panel.classList.add('open') : panel.classList.remove('open'); }
+    if (btn)   { btn.classList.toggle('on', open); }
+    if (open) {
+      var ta = document.getElementById('luaInput');
+      if (ta) { ta.value = ''; ta.focus(); }
+      _luaParsed = null;
+      setLuaFeedback('idle', null);
+      setLuaImportEnabled(false);
+    }
+  }
+
+  function setLuaFeedback (state, msg) {
+    var el = document.getElementById('luaParseResult');
+    if (!el) { return; }
+    el.className = 'parse-r pr-' + state;
+    var icons = {
+      idle: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+      ok:   '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      err:  '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+    };
+    el.innerHTML = (icons[state] || icons.idle) + ' ' + (msg || {
+      idle: 'Paste Lua comp data or arrow notation to parse',
+      ok:   'Ready to import',
+      err:  'Could not parse — check your Lua or arrow notation'
+    }[state]);
+  }
+
+  function setLuaImportEnabled (enabled) {
+    var btn = document.getElementById('btnLuaImport');
+    if (btn) { btn.disabled = !enabled; btn.style.opacity = enabled ? '1' : '0.4'; }
+  }
+
   function onLuaInput () {
-    // Stub function - prevents ReferenceError during init
-    console.log('[onLuaInput] Lua input changed (stub)');
+    var ta = document.getElementById('luaInput');
+    var str = ta ? ta.value : '';
+    if (!str.trim()) {
+      _luaParsed = null;
+      setLuaFeedback('idle', null);
+      setLuaImportEnabled(false);
+      return;
+    }
+    var result = parseLua(str);
+    var normalized = result ? window.NodeSystem.normalize(result) : null;
+    if (normalized && normalized.nodes && normalized.nodes.length > 0) {
+      _luaParsed = normalized;
+      setLuaFeedback('ok', normalized.nodes.length + ' node' + (normalized.nodes.length !== 1 ? 's' : '') + ' · ' + normalized.edges.length + ' connection' + (normalized.edges.length !== 1 ? 's' : '') + ' found');
+      setLuaImportEnabled(true);
+    } else {
+      _luaParsed = null;
+      setLuaFeedback('err', null);
+      setLuaImportEnabled(false);
+    }
+  }
+
+  function doLuaImport () {
+    if (!_luaParsed) { return; }
+    var normalized = _luaParsed;
+    gNodes = []; gEdges = []; selId = null; nodeIdCtr = 0;
+    for (var i = 0; i < normalized.nodes.length; i++) {
+      nodeIdCtr++;
+      var n = normalized.nodes[i];
+      gNodes.push({
+        id: 'n' + nodeIdCtr,
+        name: n.name,
+        fusionName: n.fusionName,
+        inst: n.fusionName,
+        category: n.category,
+        cat: n.category,
+        catColor: n.catColor,
+        col: n.catColor,
+        x: n.x || 0,
+        y: n.y || 0,
+        params: n.params || {}
+      });
+    }
+    for (var e = 0; e < normalized.edges.length; e++) {
+      gEdges.push({
+        from: 'n' + (parseInt(normalized.edges[e].from.replace('n', ''))),
+        to:   'n' + (parseInt(normalized.edges[e].to.replace('n', '')))
+      });
+    }
+    var needsLayout = gNodes.every(function (n) { return n.x === 0 && n.y === 0; });
+    if (needsLayout && window.NodeSystem.autoLayout) {
+      window.NodeSystem.autoLayout(gNodes, { cols: 4, xGap: 40, yGap: 30, startX: 18, startY: 24 });
+    }
+    updateCounts(); renderEd(); markDirty(1);
+    setLuaImportOpen(false);
+    showToast('Imported ' + gNodes.length + ' node' + (gNodes.length !== 1 ? 's' : ''));
   }
 
   /* ── NODE SEARCH (replaces side palette) ── */
@@ -1275,7 +1348,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if (p) { p.classList.add('active'); }
     if (btns[n]) { btns[n].classList.add('active'); }
     curTab = n;
-    if (n === 1) { setTimeout(function () { resizeEd(); resizeLua(); }, 40); }
+    if (n === 1) { setTimeout(function () { resizeEd(); }, 40); }
   }
 
   /* ── PRE-LOAD GRAPH ── */
@@ -1290,16 +1363,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
     for (var j = 0; j < gNodes.length - 1; j++) { gEdges.push({ from: gNodes[j].id, to: gNodes[j + 1].id }); }
     updateCounts();
-  }
-
-  /* ── NODE MODE ── */
-  var nodeMode = 'graph';
-  function setNodeMode (m) {
-    nodeMode = m;
-    var gs = document.getElementById('graphSec'), ls = document.getElementById('luaSec');
-    var ng = document.getElementById('nmGraph'), nl = document.getElementById('nmLua');
-    if (m === 'graph') { gs.style.display=''; ls.style.display='none'; ng.classList.add('on'); nl.classList.remove('on'); setTimeout(resizeEd, 30); }
-    else { gs.style.display='none'; ls.style.display=''; ng.classList.remove('on'); nl.classList.add('on'); setTimeout(resizeLua, 30); }
   }
 
   /* ── SAVE ── */
@@ -1742,9 +1805,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   console.log('[init] edit-effect-owner.html v1.1 - Steps field added');
   function init () {
     edCanvas  = document.getElementById('edCanvas');
-    luaCanvas = document.getElementById('luaCanvas');
     if (edCanvas)  { edCtx  = edCanvas.getContext('2d'); }
-    if (luaCanvas) { luaCtx = luaCanvas.getContext('2d'); }
 
     buildNodeSearch('');
     var ps = document.getElementById('palSearch');
@@ -1774,8 +1835,10 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         }
       }
     });
-    document.getElementById('nmGraph').addEventListener('click', function () { setNodeMode('graph'); });
-    document.getElementById('nmLua').addEventListener('click', function () { setNodeMode('lua'); });
+    /* lua import panel */
+    document.getElementById('btnLuaToggle').addEventListener('click', function () { setLuaImportOpen(!_luaImportOpen); });
+    document.getElementById('btnLuaCancel').addEventListener('click', function () { setLuaImportOpen(false); });
+    document.getElementById('btnLuaImport').addEventListener('click', doLuaImport);
     document.getElementById('luaInput').addEventListener('input', onLuaInput);
 
     /* version save opts */
@@ -1976,7 +2039,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 
 
 
-    window.addEventListener('resize', function () { resizeEd(); resizeLua(); });
+    window.addEventListener('resize', function () { resizeEd(); });
     // preloadGraph() removed - nodes now load from actual effect data
     // Load actual effect data from Supabase (replaces hardcoded metadata)
     console.log('[init] Calling loadEffectData...');
