@@ -310,6 +310,11 @@
     // Store raw Lua for the FI inspector (lazy parsed on first node click)
     window._emRawNodeCode = rawLua || null;
     _emInspectorTools = null; // reset on new effect load
+
+    // Populate the node-code display element so copyNodeCode() reads the right text
+    if (canvasContainer) {
+      canvasContainer.textContent = rawLua || '';
+    }
     if (rawLua && window.NodeSystem && window.NodeSystem._parseAll) {
       // Check if this is full Fusion Lua or just arrow notation
       var isFullLua = rawLua.includes('Tools') || rawLua.includes('SourceOp') || rawLua.includes('Inputs');
