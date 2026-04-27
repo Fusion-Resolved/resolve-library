@@ -1664,17 +1664,46 @@
     allF.forEach(function(fr){var chip=document.createElement('button');var isAct=fr===_emInspFrame;chip.style.cssText='font-size:10px;font-family:var(--font-mono,monospace);padding:2px 7px;border-radius:4px;border:1px solid '+(isAct?'rgba(245,200,66,0.6)':'rgba(255,255,255,0.1)')+';background:'+(isAct?'rgba(245,200,66,0.1)':'rgba(255,255,255,0.03)')+';color:'+(isAct?'#f5c842':'rgba(143,143,168,0.7)')+';cursor:pointer;';chip.textContent=fr;
       chip.addEventListener('click',(function(f){return function(){_emInspFrame=f;emDrawerBuildTimeline(tool);emDrawerBuildParams(tool);emDrawerBuildDetail(tool,_emInspSelParam);};})(fr));wrap.appendChild(chip);});tl.appendChild(wrap);}
 
-  // ── Spline canvas drawing (matches nodegraph _nvDrawMiniSpline) ───────────
-  function emDrawerSpline(canvas,param,activeFrame){
+  // ── Bezier helpers for accurate curve tracking ────────────────────────────
+  function fiBezEval(t,p0,p1,p2,p3){var u=1-t;return u*u*u*p0+3*u*u*t*p1+3*u*t*t*p2+t*t*t*p3;}
+  // Bisect to find bezier parameter t where x-component equals targetX
+  function fiBezSolveT(targetX,x0,x1,x2,x3){
+    if(targetX<=x0)return 0;if(targetX>=x3)return 1;
+    var lo=0,hi=1,mid=0.5;
+    for(var i=0;i<48;i++){mid=(lo+hi)*0.5;var x=fiBezEval(mid,x0,x1,x2,x3);if(Math.abs(x-targetX)<0.00005)break;if(x<targetX)lo=mid;else hi=mid;}
+    return mid;}
+  // Evaluate value at a frame using the actual bezier curve (not linear interpolation)
+  function fiBezValAtFrame(kfs,frame){
+    if(!kfs||!kfs.length)return null;
+    // Exact keyframe hit
+    for(var i=0;i<kfs.length;i++){if(Math.abs(kfs[i].frame-frame)<0.001)return kfs[i].value;}
+    // Find enclosing segment
+    var lo=null,hi=null;
+    for(var j=0;j<kfs.length;j++){if(kfs[j].frame<=frame)lo=kfs[j];else if(!hi)hi=kfs[j];}
+    if(!lo)return hi?hi.value:null;if(!hi)return lo.value;
+    // Control point x/y in frame/value space
+    var span=hi.frame-lo.frame;
+    var x0=lo.frame,x3=hi.frame;
+    var x1=lo.rh?lo.rh.x:x0+span/3;
+    var x2=hi.lh?hi.lh.x:x3-span/3;
+    var y0=parseFloat(lo.value),y3=parseFloat(hi.value);
+    var y1=lo.rh?lo.rh.y:y0;
+    var y2=hi.lh?hi.lh.y:y3;
+    var t=fiBezSolveT(frame,x0,x1,x2,x3);
+    return fiBezEval(t,y0,y1,y2,y3);}
+
+  // ── Spline canvas drawing ─────────────────────────────────────────────────
+  function emDrawerSpline(canvas,param,activeFrame,isHover){
     var kfs=(param.keyframes||[]).slice().sort(function(a,b){return a.frame-b.frame;});if(!kfs.length)return;
     var dpr=window.devicePixelRatio||1;var W=canvas.offsetWidth||200,H=canvas.offsetHeight||80;
     canvas.width=W*dpr;canvas.height=H*dpr;var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
-    var PAD={l:36,r:8,t:8,b:20};var gW=W-PAD.l-PAD.r,gH=H-PAD.t-PAD.b;
+    var PAD={l:36,r:8,t:12,b:20};var gW=W-PAD.l-PAD.r,gH=H-PAD.t-PAD.b;
     var minF=kfs[0].frame,maxF=kfs[kfs.length-1].frame;var minV=Infinity,maxV=-Infinity;
     kfs.forEach(function(k){var v=parseFloat(k.value!=null?k.value:0);minV=Math.min(minV,v);maxV=Math.max(maxV,v);if(k.rh){minV=Math.min(minV,k.rh.y);maxV=Math.max(maxV,k.rh.y);}if(k.lh){minV=Math.min(minV,k.lh.y);maxV=Math.max(maxV,k.lh.y);}});
     if(minF===maxF){minF--;maxF++;}if(minV===maxV){minV-=0.1;maxV+=0.1;}
     var fp=(maxF-minF)*0.07,vp=(maxV-minV)*0.2;var fMin=minF-fp,fMax=maxF+fp,vMin=minV-vp,vMax=maxV+vp;
-    var tX=function(f){return PAD.l+(f-fMin)/(fMax-fMin)*gW;};var tY=function(v){return PAD.t+(1-(v-vMin)/(vMax-vMin))*gH;};
+    var tX=function(f){return PAD.l+(f-fMin)/(fMax-fMin)*gW;};
+    var tY=function(v){return PAD.t+(1-(v-vMin)/(vMax-vMin))*gH;};
     // Background
     ctx.fillStyle='#070710';ctx.fillRect(0,0,W,H);
     // Grid
@@ -1683,17 +1712,56 @@
     // Axes
     ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,H-PAD.b);ctx.lineTo(W-PAD.r,H-PAD.b);ctx.stroke();
     [minF,maxF].forEach(function(f){ctx.fillStyle='rgba(255,255,255,0.25)';ctx.textAlign='center';ctx.font='8px DM Mono,monospace';ctx.fillText(Math.round(f),tX(f),H-PAD.b+13);});
-    // Spline colour — use stored colour or default amber like nodegraph
+    // Spline
     var color=param.splineColor||'#f5c842';
     ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.beginPath();
-    for(var ci=0;ci<kfs.length-1;ci++){var k0=kfs[ci],k1=kfs[ci+1];var v0=parseFloat(k0.value!=null?k0.value:0),v1=parseFloat(k1.value!=null?k1.value:0);var x0=tX(k0.frame),y0=tY(v0),x3=tX(k1.frame),y3=tY(v1);var cp1x=k0.rh?tX(k0.rh.x):x0+(x3-x0)/3,cp1y=k0.rh?tY(k0.rh.y):y0;var cp2x=k1.lh?tX(k1.lh.x):x3-(x3-x0)/3,cp2y=k1.lh?tY(k1.lh.y):y3;if(ci===0)ctx.moveTo(x0,y0);ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,x3,y3);}ctx.stroke();
-    // KF diamonds — same as nodegraph
+    for(var ci=0;ci<kfs.length-1;ci++){
+      var k0=kfs[ci],k1=kfs[ci+1];
+      var v0=parseFloat(k0.value!=null?k0.value:0),v1=parseFloat(k1.value!=null?k1.value:0);
+      var x0=tX(k0.frame),y0=tY(v0),x3=tX(k1.frame),y3=tY(v1);
+      var cp1x=k0.rh?tX(k0.rh.x):x0+(x3-x0)/3,cp1y=k0.rh?tY(k0.rh.y):y0;
+      var cp2x=k1.lh?tX(k1.lh.x):x3-(x3-x0)/3,cp2y=k1.lh?tY(k1.lh.y):y3;
+      if(ci===0)ctx.moveTo(x0,y0);ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,x3,y3);}
+    ctx.stroke();
+    // KF diamonds
     kfs.forEach(function(k){var v=parseFloat(k.value!=null?k.value:0);var px=tX(k.frame),py=tY(v);ctx.save();ctx.translate(px,py);ctx.rotate(Math.PI/4);ctx.fillStyle=color;ctx.strokeStyle='#070710';ctx.lineWidth=1;ctx.beginPath();ctx.rect(-4,-4,8,8);ctx.fill();ctx.stroke();ctx.restore();});
-    // Playhead
-    if(activeFrame!=null){var px2=tX(activeFrame);if(px2>=PAD.l&&px2<=W-PAD.r){ctx.strokeStyle='rgba(245,200,66,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(px2,PAD.t);ctx.lineTo(px2,H-PAD.b);ctx.stroke();ctx.setLineDash([]);var iv=fiGetValAtFrame(kfs,activeFrame);if(iv!==null){ctx.fillStyle='#f5c842';ctx.beginPath();ctx.arc(px2,tY(iv),4,0,Math.PI*2);ctx.fill();}}}
-    // Hover scrubber
-    canvas.onmousemove=function(e){var rect=canvas.getBoundingClientRect();var frac=(e.clientX-rect.left-PAD.l)/gW;var hf=Math.round(fMin+frac*(fMax-fMin));if(hf>=fMin&&hf<=fMax){emDrawerSpline(canvas,param,hf);}};
-    canvas.onmouseleave=function(){emDrawerSpline(canvas,param,_emInspFrame);};}
+    // Playhead + tracking dot + value label
+    if(activeFrame!=null){
+      var px2=tX(activeFrame);
+      if(px2>=PAD.l-2&&px2<=W-PAD.r+2){
+        // Vertical crosshair
+        ctx.strokeStyle=isHover?'rgba(255,255,255,0.3)':'rgba(245,200,66,0.6)';
+        ctx.lineWidth=1;ctx.setLineDash([2,3]);
+        ctx.beginPath();ctx.moveTo(px2,PAD.t);ctx.lineTo(px2,H-PAD.b);ctx.stroke();ctx.setLineDash([]);
+        // Bezier-accurate dot on curve
+        var iv=fiBezValAtFrame(kfs,activeFrame);
+        if(iv!==null){
+          var dotY=tY(iv);
+          var dotColor=isHover?'rgba(255,255,255,0.9)':color;
+          ctx.fillStyle=dotColor;
+          ctx.strokeStyle='#070710';ctx.lineWidth=1.5;
+          ctx.beginPath();ctx.arc(px2,dotY,4,0,Math.PI*2);ctx.fill();ctx.stroke();
+          // Value + frame label
+          var valStr=parseFloat(iv.toPrecision(5))+'';
+          var frmStr='f'+Math.round(activeFrame);
+          var lblText=valStr+'  '+frmStr;
+          ctx.font='bold 9px DM Mono,monospace';
+          var lblW=ctx.measureText(lblText).width+10;
+          // Position label: right of dot if room, else left; above dot if near bottom
+          var lblX=px2+8;if(lblX+lblW>W-PAD.r)lblX=px2-lblW-4;
+          var lblY=dotY-10;if(lblY<PAD.t+12)lblY=dotY+18;
+          ctx.fillStyle='rgba(6,6,13,0.82)';
+          ctx.beginPath();ctx.roundRect(lblX-2,lblY-11,lblW,15,3);ctx.fill();
+          ctx.fillStyle=isHover?'rgba(255,255,255,0.88)':color;
+          ctx.textAlign='left';ctx.fillText(lblText,lblX+3,lblY);}}}
+    // Hover scrubber — fractional frame for smooth tracking
+    canvas.onmousemove=function(e){
+      var rect=canvas.getBoundingClientRect();
+      var frac=(e.clientX-rect.left-PAD.l)/gW;
+      if(frac>=0&&frac<=1){
+        var hf=fMin+frac*(fMax-fMin);
+        emDrawerSpline(canvas,param,hf,true);}};
+    canvas.onmouseleave=function(){emDrawerSpline(canvas,param,_emInspFrame,false);};}
 
   // ── Expanded spline overlay ───────────────────────────────────────────────
   function emDrawerSplineExpand(param, paramKey, tool) {
@@ -1777,8 +1845,29 @@
         ch.style.background = isAct ? 'rgba(245,200,66,0.1)' : 'rgba(255,255,255,0.03)';
         ch.style.color = isAct ? '#f5c842' : 'rgba(143,143,168,0.7)';
       });
-      requestAnimationFrame(function() { emDrawerSpline(cBig, param, expFrame); });
+      requestAnimationFrame(function() { emDrawerSpline(cBig, param, expFrame, false); });
     }
+
+    // Fractional hover on expanded canvas — updates frameSpan live
+    cBig.addEventListener('mousemove', function(e) {
+      var rect = cBig.getBoundingClientRect();
+      var kfsSorted = (param.keyframes||[]).slice().sort(function(a,b){return a.frame-b.frame;});
+      if (!kfsSorted.length) return;
+      var minFe = kfsSorted[0].frame, maxFe = kfsSorted[kfsSorted.length-1].frame;
+      var fpE = (maxFe-minFe)*0.07; var fMinE=minFe-fpE, fMaxE=maxFe+fpE;
+      var PAD_l = 36, PAD_r = 8;
+      var gWe = rect.width - PAD_l - PAD_r;
+      var frac = (e.clientX - rect.left - PAD_l) / gWe;
+      if (frac < 0 || frac > 1) return;
+      var hf = fMinE + frac * (fMaxE - fMinE);
+      var iv = fiBezValAtFrame(kfsSorted, hf);
+      frameSpan.textContent = 'f' + Math.round(hf) + '  ' + (iv !== null ? parseFloat(iv.toPrecision(5)) : '—');
+      emDrawerSpline(cBig, param, hf, true);
+    });
+    cBig.addEventListener('mouseleave', function() {
+      frameSpan.textContent = 'Frame ' + expFrame;
+      emDrawerSpline(cBig, param, expFrame, false);
+    });
 
     ov.appendChild(box);
     document.body.appendChild(ov);
