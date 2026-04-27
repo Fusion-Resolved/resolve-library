@@ -1104,16 +1104,23 @@
      ═══════════════════════════════════════════════════════════════ */
   window.copyNodeCode = function() {
     const code = document.getElementById('modal-node-code')?.textContent || '';
-    try {
-      navigator.clipboard.writeText(code);
-    } catch (e) {}
-    
-    const toast = document.getElementById('modal-toast');
-    if (toast) {
-      toast.classList.add('show');
-      clearTimeout(toast._tid);
-      toast._tid = setTimeout(() => toast.classList.remove('show'), 2200);
-    }
+    navigator.clipboard.writeText(code).then(function() {
+      showToast('Node code copied!');
+    }).catch(function() {
+      // Fallback for older browsers
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Node code copied!');
+      } catch(e) {
+        showToast('Copy failed — select code manually');
+      }
+    });
   };
 
   // Close modal when clicking overlay

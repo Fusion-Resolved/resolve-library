@@ -10244,12 +10244,19 @@ if (typeof window._shToast !== 'function') {
               <!-- Populated by JS - accordion items for each node -->
             </div>
 
-            <!-- Node tree code — lives under the accordion -->
-            <div style="display:flex;flex-direction:column;gap:8px;padding-top:8px;">
-              <div class="sec-lbl" style="font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);">Node tree code</div>
-              <div class="code-wrap" style="position:relative;">
-                <code class="node-code" id="modal-node-code" style="display:block;background:#0f0f16;border:1px solid var(--border-surface);border-radius:var(--radius);padding:1rem;font-family:var(--font-mono);font-size:11.5px;color:var(--node-teal);white-space:pre-wrap;word-break:break-all;line-height:1.6;">Node code</code>
-                <button class="copy-btn" onclick="copyNodeCode()" style="position:absolute;top:8px;right:8px;background:var(--glass-bg-2);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);box-shadow:var(--glass-shine);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:3px 9px;font-size:11px;font-family:var(--font-mono);color:var(--text-secondary);cursor:pointer;transition:var(--tr);">copy</button>
+            <!-- Node tree code — accordion, starts closed -->
+            <div style="padding-top:8px;">
+              <!-- Header: label + copy always visible + arrow toggle -->
+              <div id="node-code-acc-hd" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;cursor:pointer;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;user-select:none;transition:background 0.12s;" onmouseenter="this.style.background='rgba(255,255,255,0.04)'" onmouseleave="this.style.background='rgba(255,255,255,0.02)'" onclick="(function(hd){var body=document.getElementById('node-code-acc-body');var arrow=hd.querySelector('.ntc-arrow');var isOpen=body.style.display!=='none';body.style.display=isOpen?'none':'block';arrow.style.transform=isOpen?'rotate(0deg)':'rotate(90deg)';hd.style.borderRadius=isOpen?'8px':'8px 8px 0 0';})(this)">
+                <span style="font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.09em;color:var(--text-muted);">Node tree code</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <button onclick="event.stopPropagation();copyNodeCode()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 9px;font-size:10px;font-family:var(--font-mono);color:var(--text-muted);cursor:pointer;transition:all 0.12s;line-height:1.5;" onmouseenter="this.style.color='var(--text-primary)';this.style.borderColor='rgba(255,255,255,0.25)'" onmouseleave="this.style.color='var(--text-muted)';this.style.borderColor='rgba(255,255,255,0.1)'">copy</button>
+                  <span class="ntc-arrow" style="font-size:9px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;">▶</span>
+                </div>
+              </div>
+              <!-- Body: hidden by default -->
+              <div id="node-code-acc-body" style="display:none;border:1px solid rgba(255,255,255,0.06);border-top:none;border-radius:0 0 8px 8px;overflow:hidden;">
+                <code class="node-code" id="modal-node-code" style="display:block;background:#0f0f16;padding:1rem;font-family:var(--font-mono);font-size:11.5px;color:var(--node-teal);white-space:pre-wrap;word-break:break-all;line-height:1.6;margin:0;border:none;border-radius:0;">Node code</code>
               </div>
             </div>
           </div>
