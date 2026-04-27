@@ -1009,6 +1009,11 @@ input:focus,select:focus,textarea:focus{font-size:max(16px,1em);}
 .sh-modal-bd,.modal-body-scroll,
 .sh-sidebar,[class*="overlay"],[class*="panel"]{-webkit-overflow-scrolling:touch;}
 body{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+/* Back-to-effect button hover */
+#back-to-effect-btn:hover { background:rgba(108,123,255,0.15) !important; border-color:rgba(108,123,255,0.4) !important; color:var(--violet-light) !important; }
+#back-to-effect-btn svg { transition: transform 0.12s; }
+#back-to-effect-btn:hover svg { transform: translateX(-2px); }
+
 /* Full-height fix: avoids 100vh Safari toolbar issue */
 .app,.full-h{height:-webkit-fill-available;}
 /* Momentum scroll on all overflow containers */
@@ -1543,6 +1548,11 @@ var FUSION_NODES_UNIQUE = FUSION_NODES;
 
   <!-- CANVAS -->
   <div class="canvas-wrap" id="canvas-wrap">
+    <!-- Back to effect — shown only when opened via ?id= from the effect modal -->
+    <a id="back-to-effect-btn" href="#" style="display:none;position:absolute;top:12px;left:12px;z-index:20;align-items:center;gap:6px;padding:6px 12px 6px 9px;background:rgba(6,6,13,0.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:7px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.04em;color:rgba(255,255,255,0.65);text-decoration:none;transition:background 0.12s,border-color 0.12s,color 0.12s;">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;"><polyline points="15 18 9 12 15 6"/></svg>
+      <span id="back-to-effect-name">Back to effect</span>
+    </a>
     <canvas id="ng-canvas"></canvas>
     <svg id="svg-layer" xmlns="http://www.w3.org/2000/svg"><defs></defs></svg>
     <svg id="draw-svg" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -4974,6 +4984,15 @@ buildSavedList();applyVP();buildCatChips();
       currentEffectOwnerId = row.user_id;
       isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
       console.log('[nodegraph] Loaded effect:', row.id, 'Name:', row.name, 'Owner:', row.user_id, 'Is owner:', isCurrentUserOwner);
+
+      // ── Show "Back to effect" button ────────────────────────────────────────
+      var _backBtn = document.getElementById('back-to-effect-btn');
+      var _backName = document.getElementById('back-to-effect-name');
+      if (_backBtn) {
+        _backBtn.href = 'effects.html?id=' + encodeURIComponent(row.id);
+        _backBtn.style.display = 'flex';
+        if (_backName) _backName.textContent = row.name || 'Back to effect';
+      }
       // Update UI with a slight delay to ensure DOM is ready
       setTimeout(function() {
         updateSaveButtonVisibility();
