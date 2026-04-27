@@ -5202,9 +5202,16 @@ async function handleSharedLink() {
   var id = params.get('id');
   if (!id) return;
 
-  // If opened from nodegraph "Back to effect", flag to scroll to the node section
+  // ── Returning from "Open in Editor" in nodegraph ──────────────────────────
+  // Open the glass modal (openEffectModal) directly — not the inline openDetail panel.
+  // Set the scroll flag so effect-modal.js scrolls to the node graph section once rendered.
   if (params.get('goto') === 'nodes') {
     window._gotoNodesSection = true;
+    // openEffectModal is defined by effect-modal.js and does its own Supabase fetch
+    if (typeof window.openEffectModal === 'function') {
+      window.openEffectModal(id);
+    }
+    return;
   }
 
   // ── Attempt 1: effect already in local list (e.g. owner viewing own effect) ──
