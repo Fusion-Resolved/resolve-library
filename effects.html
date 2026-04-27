@@ -4807,8 +4807,27 @@ async function loadEffectsFromSupabase() {
   }
 
   if (window.CURRENT_USER_ID === null) {
-    console.log('loadEffectsFromSupabase: no active session — skipping DB fetch.');
-    return;
+    // auth.js reported no session — verify directly via getUser() in case of a
+    // timing issue where INITIAL_SESSION fired before the token was resolved.
+    if (window._supabase) {
+      try {
+        const { data: { user } } = await window._supabase.auth.getUser();
+        if (user) {
+          console.log('loadEffectsFromSupabase: recovered session via getUser(), user:', user.id);
+          window.CURRENT_USER_ID = user.id;
+          window.CURRENT_USER = user;
+        } else {
+          console.log('loadEffectsFromSupabase: no active session — skipping DB fetch.');
+          return;
+        }
+      } catch (authErr) {
+        console.log('loadEffectsFromSupabase: getUser() failed — skipping DB fetch.', authErr);
+        return;
+      }
+    } else {
+      console.log('loadEffectsFromSupabase: no active session — skipping DB fetch.');
+      return;
+    }
   }
 
   // ── Sanity-check: make sure window._supabase is available ────────────────
@@ -9839,12 +9858,27 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('authStateChanged', async function(e) {
     console.log('[Effects] Auth state changed:', e.detail.event, 'User:', e.detail.user?.id);
     
-    // Ensure CURRENT_USER_ID is set
+    // Ensure CURRENT_USER_ID is set from the event detail
     if (e.detail.user) {
       window.CURRENT_USER_ID = e.detail.user.id;
       window.CURRENT_USER = e.detail.user;
+    } else if (window._supabase) {
+      // auth.js fired with no user — verify directly via getUser() in case
+      // INITIAL_SESSION fired before the token was fully resolved from storage.
+      try {
+        const { data: { user } } = await window._supabase.auth.getUser();
+        if (user) {
+          console.log('[Effects] Recovered session via getUser(), user:', user.id);
+          window.CURRENT_USER_ID = user.id;
+          window.CURRENT_USER = user;
+        }
+      } catch (err) {
+        console.warn('[Effects] getUser() check failed:', err);
+      }
     }
-    
+
+    const resolvedUser = window.CURRENT_USER_ID;
+
     // Re-render cards so the Delete button visibility reflects login state.
     if (typeof effects !== 'undefined' && effects.length > 0) {
       render();
@@ -9855,7 +9889,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Show/hide Saved tab based on login state
     const savedTab = document.getElementById('saved-tab-btn');
     if (savedTab) {
-      if (e.detail.user) {
+      if (resolvedUser) {
         savedTab.style.display = '';
         console.log('[Effects] Showing Saved tab');
       } else {
