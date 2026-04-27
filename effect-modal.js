@@ -1546,9 +1546,13 @@
       '</div>'+
       '<div id="em-dwr-timeline" style="padding:6px 12px;border-top:1px solid rgba(255,255,255,0.05);background:rgba(6,6,13,0.5);display:none;"></div>';
 
-    // Insert after the graph-outer div in nodeSection
-    var graphOuter=nodeSection&&nodeSection.querySelector('.graph-outer');
-    if(graphOuter&&graphOuter.parentNode===nodeSection){nodeSection.insertBefore(drawer,graphOuter.nextSibling);}else if(nodeSection){nodeSection.appendChild(drawer);}
+    // Insert after the accordion so the drawer sits below the node list
+    var accordionEl = nodeSection && document.getElementById('modal-node-accordion');
+    if(accordionEl && accordionEl.parentNode === nodeSection){
+      nodeSection.insertBefore(drawer, accordionEl.nextSibling);
+    } else if(nodeSection){
+      nodeSection.appendChild(drawer);
+    }
 
     document.getElementById('em-dwr-close').addEventListener('click',function(){
       drawer.style.display='none';
@@ -1925,8 +1929,7 @@
     // on a detached subtree while the live DOM keeps its original stale nodes.
     var existingVp = document.getElementById('graphVp');
     if (existingVp) {
-      // graphVp sits inside .graph-outer — remove the whole wrapper
-      var outerContainer = existingVp.parentElement;
+      var outerContainer = existingVp.parentElement; // .graph-outer
       if (outerContainer && outerContainer.parentNode) {
         outerContainer.parentNode.removeChild(outerContainer);
       } else if (existingVp.parentNode) {
@@ -1951,6 +1954,22 @@
     if (!graphState.vp || !graphState.world || !graphState.svgEl) {
       console.error('[effect-modal] Failed to create graph elements');
       return;
+    }
+
+    // After createGraphContainer inserts the new .graph-outer before the
+    // accordion, reposition the param drawer so it stays BELOW the accordion.
+    // The teardown removes .graph-outer (the drawer's previous sibling),
+    // leaving the drawer floating above the newly-inserted canvas if we don't
+    // move it.
+    var drawer = document.getElementById('em-param-drawer');
+    if (drawer) {
+      var nodeSection = document.getElementById('modal-node-section');
+      var accordionEl = document.getElementById('modal-node-accordion');
+      if (nodeSection && accordionEl && accordionEl.parentNode === nodeSection) {
+        nodeSection.insertBefore(drawer, accordionEl.nextSibling);
+      } else if (nodeSection && drawer.parentNode === nodeSection) {
+        nodeSection.appendChild(drawer);
+      }
     }
 
     buildGraphDOM();
@@ -4403,7 +4422,7 @@
 
     try {
       // Full fresh fetch — bypasses the local cache so we get the
-      // updated node_code and graph_payload that were just written.
+      // updated node_code, graph_payload, and nodes that were just written.
       var result = await window._supabase
         .from('effects')
         .select('*')
