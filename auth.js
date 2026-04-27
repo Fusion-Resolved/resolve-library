@@ -48,7 +48,15 @@ function startAuthSystem() {
     const user = session ? session.user : null;
     currentUser = user;
 
-    // Set global user ID for other scripts
+    // Set global user ID for other scripts.
+    // Guard: if this is a null INITIAL_SESSION firing before localStorage has
+    // been read, don't overwrite a user ID that checkInitialSession may have
+    // already resolved from a valid stored session.
+    if (event === 'INITIAL_SESSION' && !user && window.CURRENT_USER_ID) {
+      // checkInitialSession already set a valid user — skip the null clobber.
+      return;
+    }
+
     window.CURRENT_USER_ID = user ? user.id : null;
     window.CURRENT_USER = user;
 
@@ -80,7 +88,16 @@ async function checkInitialSession() {
     // Set global user ID immediately on init
     window.CURRENT_USER_ID = currentUser ? currentUser.id : null;
     window.CURRENT_USER = currentUser;
-    
+
+    // Re-dispatch authStateChanged so any listeners that received the early
+    // INITIAL_SESSION (with a null session before localStorage was read) can
+    // react to the now-resolved state. This closes the race between
+    // onAuthStateChange firing before the stored session is available and
+    // this getSession() call which runs after full client initialisation.
+    window.dispatchEvent(new CustomEvent('authStateChanged', {
+      detail: { event: 'INITIAL_SESSION', session: session, user: currentUser }
+    }));
+
     await updateSidebarUserEmail(currentUser);
   } catch (err) {
     console.error("[auth.js] Failed to get initial session:", err);
