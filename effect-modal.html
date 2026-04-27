@@ -252,6 +252,20 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 .em-path-pt.first{color:var(--violet-light);}
 .em-section-lbl{font-size:9px;font-family:var(--font-mono);color:var(--violet-light);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}
 
+/* ─── Inspector param group headers ─── */
+.em-pg-title{font-size:9px;font-family:var(--font-mono);color:var(--violet-light);text-transform:uppercase;letter-spacing:.09em;padding:7px 0 3px;margin-top:2px;border-bottom:1px solid var(--border-surface);margin-bottom:2px;flex-shrink:0;}
+.em-pg-title:first-child{margin-top:0;padding-top:0;}
+/* Indicator dots */
+.em-ind{display:inline-block;width:6px;height:6px;flex-shrink:0;border-radius:1px;vertical-align:middle;}
+.em-ind.kf-ind{background:#f5c842;transform:rotate(45deg);}
+.em-ind.path-ind{background:#b06afc;border-radius:50%;}
+.em-ind.conn-ind{background:#34d399;border-radius:50%;}
+/* Value colour classes on param rows */
+.em-param-val.kf{color:#f5c842;}
+.em-param-val.path{color:#b06afc;}
+.em-param-val.conn{color:#34d399;}
+.em-param-val.def{color:var(--text-muted);font-style:italic;}
+
 /* Timeline component container */
 #em-timeline-container{padding:8px 12px;border-top:1px solid var(--border-surface);background:rgba(6,6,13,0.6);}
 </style>
@@ -544,6 +558,10 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
     var analysisSec = document.getElementById('analysis-section');
     var analysisContent = document.getElementById('analysis-content');
     var nodeCode = effect.node_code || (effect.nodes && typeof effect.nodes === 'string' ? effect.nodes : null);
+
+    // Store raw Lua for inspector and reset stale parse from a previous effect
+    _emRawNodeCode = nodeCode || null;
+    _emInspectorTools = null;
 
     if (nodeCode && analysisContent && typeof window.NodeSystem !== 'undefined') {
       try {
@@ -1153,6 +1171,9 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
   var _emActiveNodeId = null;
   var _emSelParam = null;
   var _emScrubFrame = null;
+  /* Inspector integration state */
+  var _emRawNodeCode = null;     // raw Fusion Lua from Supabase — fed to FI parser
+  var _emInspectorTools = null;  // resolved tool list from FI parser
 
   /* ════════════════════════════════
      UTILITY: number formatting + interpolation
@@ -1532,9 +1553,766 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
   function emCloseParams() {
     document.getElementById('em-param-panel').style.display = 'none';
     _emActiveNodeId = null; _emSelParam = null; _emScrubFrame = null;
+    _emInspSelTool = null; _emInspSelParam = null;
     // Deselect node card
     document.querySelectorAll('.gn-card.g-active').forEach(function(el){ el.classList.remove('g-active'); });
     activeGnEl = null;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     FUSION INSPECTOR INTEGRATION
+     Ports the lexer / parser / resolver from fusion-inspector.html so the
+     effect modal can display grouped parameters, keyframe chips, and a live
+     spline canvas when a node card is clicked — without any API call.
+     All identifiers are prefixed "fi" / "FI" to avoid collisions.
+     ══════════════════════════════════════════════════════════════════════════ */
+
+  /* ── Lexer ────────────────────────────────────────────────────────────── */
+  function FILexer(src) { this.src = src; this.pos = 0; this.len = src.length; }
+  FILexer.prototype.skipWS = function() {
+    while (this.pos < this.len) {
+      var c = this.src[this.pos];
+      if (c === ' ' || c === '\t' || c === '\r' || c === '\n') { this.pos++; continue; }
+      if (this.src.slice(this.pos, this.pos + 4) === '--[[') {
+        var e = this.src.indexOf(']]', this.pos + 4); this.pos = e < 0 ? this.len : e + 2; continue;
+      }
+      if (this.src.slice(this.pos, this.pos + 2) === '--') {
+        while (this.pos < this.len && this.src[this.pos] !== '\n') this.pos++; continue;
+      }
+      break;
+    }
+  };
+  FILexer.prototype.next = function() {
+    this.skipWS();
+    if (this.pos >= this.len) return { t: 'EOF' };
+    var c = this.src[this.pos];
+    if ('{}[]()=,'.indexOf(c) >= 0) return { t: c, pos: this.pos++ };
+    if (c === '"') {
+      var s = ''; var i = this.pos + 1;
+      while (i < this.len && this.src[i] !== '"') {
+        if (this.src[i] === '\\' && i + 1 < this.len) { s += this.src[i + 1]; i += 2; } else s += this.src[i++];
+      }
+      var tok = { t: 'STR', v: s }; this.pos = i + 1; return tok;
+    }
+    if (this.src.slice(this.pos, this.pos + 2) === '[[') {
+      var e2 = this.src.indexOf(']]', this.pos + 2);
+      var s2 = e2 < 0 ? '' : this.src.slice(this.pos + 2, e2);
+      var tok2 = { t: 'STR', v: s2 }; this.pos = e2 < 0 ? this.len : e2 + 2; return tok2;
+    }
+    var nm = this.src.slice(this.pos).match(/^-?(?:0x[\da-fA-F]+|[\d]*\.?[\d]+(?:[eE][+-]?\d+)?)/);
+    if (nm && (nm[0][0] === '-' ? nm[0].length > 1 : true)) {
+      var tok3 = { t: 'NUM', v: parseFloat(nm[0]) }; this.pos += nm[0].length; return tok3;
+    }
+    var im = this.src.slice(this.pos).match(/^[a-zA-Z_]\w*/);
+    if (im) {
+      var v = im[0]; this.pos += v.length;
+      if (v === 'true') return { t: 'BOOL', v: true };
+      if (v === 'false') return { t: 'BOOL', v: false };
+      if (v === 'nil') return { t: 'NIL', v: null };
+      return { t: 'ID', v: v };
+    }
+    return { t: 'UNK', v: this.src[this.pos++] };
+  };
+
+  /* ── Parser ───────────────────────────────────────────────────────────── */
+  function FIParser(src) { this.lex = new FILexer(src); this._buf = null; }
+  FIParser.prototype.peek = function() { if (!this._buf) this._buf = this.lex.next(); return this._buf; };
+  FIParser.prototype.next = function() { var t = this._buf || this.lex.next(); this._buf = null; return t; };
+  FIParser.prototype.tryEat = function(type) { if (this.peek().t === type) { this.next(); return true; } return false; };
+  FIParser.prototype.parse = function() {
+    var t = this.peek();
+    if (t.t === '{') return this.table();
+    if (t.t === 'ID') { var id = this.next(); var p = this.peek(); if (p.t === '{' || p.t === '(') return this.typedVal(id.v); }
+    return this.table();
+  };
+  FIParser.prototype.table = function() {
+    this.next(); var obj = {}; var arr = 1;
+    while (this.peek().t !== '}' && this.peek().t !== 'EOF') {
+      if (this.peek().t === '[') {
+        this.next(); var k = this.next(); this.next(); this.next(); obj[k.v] = this.val();
+      } else if (this.peek().t === 'ID') {
+        var id2 = this.next();
+        if (this.peek().t === '=') { this.next(); obj[id2.v] = this.val(); }
+        else { var p2 = this.peek(); if (p2.t === '{' || p2.t === '(') obj[arr++] = this.typedVal(id2.v); else obj[arr++] = id2.v; }
+      } else { var vv = this.val(); if (vv !== undefined) obj[arr++] = vv; }
+      this.tryEat(',');
+    }
+    this.next(); return obj;
+  };
+  FIParser.prototype.val = function() {
+    var t = this.peek();
+    if (t.t === '{') return this.table();
+    if (t.t === 'STR' || t.t === 'NUM' || t.t === 'BOOL' || t.t === 'NIL') { this.next(); return t.v; }
+    if (t.t === 'ID') { this.next(); var p = this.peek(); if (p.t === '{' || p.t === '(') return this.typedVal(t.v); return t.v; }
+    this.next(); return null;
+  };
+  FIParser.prototype.typedVal = function(typeName) {
+    if (this.peek().t === '(') {
+      this.next(); var depth = 1;
+      while (depth > 0 && this.peek().t !== 'EOF') { var x = this.next(); if (x.t === '(') depth++; else if (x.t === ')') depth--; }
+    }
+    var obj = { __type: typeName };
+    if (this.peek().t === '{') {
+      this.next(); var arr = 1;
+      while (this.peek().t !== '}' && this.peek().t !== 'EOF') {
+        if (this.peek().t === '[') {
+          this.next(); var k2 = this.next(); this.next(); this.next(); obj[k2.v] = this.val();
+        } else if (this.peek().t === 'ID') {
+          var id3 = this.next();
+          if (this.peek().t === '=') { this.next(); obj[id3.v] = this.val(); }
+          else { var p3 = this.peek(); if (p3.t === '{' || p3.t === '(') obj[arr++] = this.typedVal(id3.v); else obj[arr++] = id3.v; }
+        } else { var v2 = this.val(); if (v2 !== undefined) obj[arr++] = v2; }
+        this.tryEat(',');
+      }
+      this.next();
+    }
+    return obj;
+  };
+
+  function fiParseLua(src) {
+    try { return new FIParser(src).parse(); } catch(e) { console.warn('[fi] Parse error:', e); return null; }
+  }
+
+  /* ── Skip sets ────────────────────────────────────────────────────────── */
+  var FI_SKIP_TYPES = { BezierSpline:1, PolyPath:1, Input:1, Polyline:1, Point:1, OperatorInfo:1, GroupInfo:1, InstanceInput:1, InstanceOutput:1 };
+  var FI_SKIP_NAMES = { Tools:1, Inputs:1, ViewInfo:1, ordered:1, OperatorInfo:1, Flags:1, Points:1, KeyFrames:1 };
+  var FI_POINT_DEFAULTS = { Center:[0.5,0.5], Pivot:[0.5,0.5], Start:[0,0.5], End:[1,0.5], PivotPoint:[0.5,0.5], XOffset:0.5, YOffset:0.5 };
+  var FI_UNIVERSAL_DEFAULTS = { Blend: 1 };
+
+  /* ── Tool registry (common tools + categories) ────────────────────────── */
+  var FI_TOOL_REGISTRY = {
+    Merge:{cat:'Composite',defaults:{Blend:1}}, AlphaDivide:{cat:'Composite',defaults:{}},
+    Transform:{cat:'Transform',defaults:{Center:[0.5,0.5],Size:1,Angle:0}},
+    DVE:{cat:'Transform',defaults:{Center:[0.5,0.5],Pivot:[0.5,0.5]}},
+    Crop:{cat:'Transform',defaults:{XOffset:0,YOffset:0}}, ReScale:{cat:'Transform',defaults:{}},
+    Blur:{cat:'Blur',defaults:{XBlurSize:0,YBlurSize:0}},
+    Defocus:{cat:'Blur',defaults:{BlurSize:0}}, Sharpen:{cat:'Blur',defaults:{XBlurSize:0}},
+    Glow:{cat:'Blur',defaults:{XGlowSize:0,YGlowSize:0}},
+    ColorCorrector:{cat:'Color',defaults:{Saturation:1,Contrast:1}},
+    Brightness:{cat:'Color',defaults:{Brightness:0,Contrast:1}},
+    ColorGain:{cat:'Color',defaults:{Gain:1,Saturation:1}},
+    HueRotation:{cat:'Color',defaults:{ColorRange:0}},
+    ChannelBooleans:{cat:'Color',defaults:{}}, Gamut:{cat:'Color',defaults:{}},
+    LUTCubeApply:{cat:'Color',defaults:{}}, SoftClip:{cat:'Color',defaults:{}},
+    Background:{cat:'Generator',defaults:{Width:1920,Height:1080}},
+    FastNoise:{cat:'Generator',defaults:{Detail:1,Contrast:1}},
+    Gradient:{cat:'Generator',defaults:{}},
+    PolyMask:{cat:'Mask',defaults:{SoftEdge:0}}, BSplineMask:{cat:'Mask',defaults:{SoftEdge:0}},
+    EllipseMask:{cat:'Mask',defaults:{Width:0.5,Height:0.5}},
+    RectangleMask:{cat:'Mask',defaults:{Width:0.5,Height:0.5}},
+    MatteControl:{cat:'Mask',defaults:{}}, MaskPaint:{cat:'Mask',defaults:{}},
+    DisplaceDistort:{cat:'Effect',defaults:{XScale:0.5,YScale:0.5}},
+    GridWarp:{cat:'Effect',defaults:{}}, Paint:{cat:'Effect',defaults:{}},
+    OpticalFlow:{cat:'Effect',defaults:{}},
+    MediaIn:{cat:'Source',defaults:{}}, Loader:{cat:'Source',defaults:{Loop:0}},
+    MediaOut:{cat:'Output',defaults:{}}, Saver:{cat:'Output',defaults:{}},
+    TimeSpeed:{cat:'Utility',defaults:{Speed:1}}, Tracker:{cat:'Utility',defaults:{}},
+    Note:{cat:'Utility',defaults:{}},
+  };
+
+  /* ── Enums ────────────────────────────────────────────────────────────── */
+  var FI_ENUMS = {
+    ApplyMode:{0:'Normal',1:'Screen',2:'Dissolve',3:'Multiply',4:'Overlay',5:'Soft Light',6:'Hard Light',7:'Color Dodge',8:'Color Burn',9:'Darken',10:'Lighten',11:'Difference',12:'Exclusion',13:'Hue',14:'Saturation',15:'Color',16:'Luminosity',19:'Over',20:'Under',21:'In',22:'Held Out',23:'Atop'},
+    Operator:{0:'Normal',1:'Screen',3:'Multiply',5:'Soft Light',9:'Darken',10:'Lighten',19:'Over',20:'Under',21:'In',22:'Held Out',23:'Atop'},
+    Filter:{0:'Box',1:'Bartlett',2:'Multi-box',3:'Gaussian',4:'Catmull-Rom',5:'Mitchell',6:'Lanczos'},
+    Depth:{0:'Auto',1:'8-bit',2:'16-bit',3:'16-bit Float',4:'32-bit Float'},
+    LayoutStyle:{0:'Horizontal',1:'Vertical',2:'Path'},
+    HorizAlign:{0:'Left',1:'Centre',2:'Right',3:'Justified'}, VertAlign:{0:'Top',1:'Centre',2:'Bottom'},
+    Loop:{0:'Off',1:'On'}, Reverse:{0:'Off',1:'On'}, Invert:{0:'Off',1:'On'},
+    FlipHoriz:{0:'None',1:'Flip'}, FlipVert:{0:'None',1:'Flip'},
+    PreDivide:{0:'Off',1:'On'}, Clamp:{0:'Off',1:'On'},
+  };
+  var FI_TOOL_ENUMS = {
+    Background:{ Type:{0:'Solid Color',1:'Horizontal',2:'Vertical',3:'Four Corner',4:'Gradient'} },
+    FastNoise:{ Type:{0:'Fast Noise',1:'Turbulent',2:'Gradient',3:'Multi-Fractal'} },
+    Merge:{ Operator:{0:'Over',1:'In',2:'Held Out',3:'Atop',4:'XOR',19:'Over'} },
+  };
+
+  function fiResolveEnum(pname, val, toolType) {
+    if (val === null || val === undefined) return val;
+    var s = String(val).trim();
+    if (!/^-?\d+$/.test(s)) return val;
+    var n = parseInt(s);
+    if (toolType && FI_TOOL_ENUMS[toolType] && FI_TOOL_ENUMS[toolType][pname] !== undefined) {
+      var tbl = FI_TOOL_ENUMS[toolType][pname]; if (tbl[n] !== undefined) return tbl[n];
+    }
+    var eks = Object.keys(FI_ENUMS);
+    for (var ei = 0; ei < eks.length; ei++) {
+      var ek = eks[ei];
+      if (ek.toLowerCase() === pname.toLowerCase() && FI_ENUMS[ek][n] !== undefined) return FI_ENUMS[ek][n];
+    }
+    return val;
+  }
+
+  /* ── Value utilities ──────────────────────────────────────────────────── */
+  function fiFmtNum(n) {
+    if (typeof n !== 'number') n = parseFloat(n);
+    if (isNaN(n)) return '—';
+    return String(parseFloat(n.toPrecision(5)));
+  }
+  function fiFmtPt(x, y) { return fiFmtNum(x) + ', ' + fiFmtNum(y); }
+
+  function fiExtractValue(raw) {
+    if (raw === null || raw === undefined) return '—';
+    if (typeof raw === 'number') return fiFmtNum(raw);
+    if (typeof raw === 'boolean' || typeof raw === 'string') return String(raw);
+    if (typeof raw === 'object') {
+      var t = raw.__type;
+      if (t === 'Point') return fiFmtPt(raw[1] !== undefined ? raw[1] : (raw.X || 0), raw[2] !== undefined ? raw[2] : (raw.Y || 0));
+      if (t === 'FuID') { var fk = Object.keys(raw).find(function(k){ return k !== '__type'; }); return raw[1] || (fk ? raw[fk] : 'FuID'); }
+      if (t === 'Gradient') return 'Gradient';
+      if (raw[1] !== undefined && raw[2] !== undefined) return fiFmtPt(raw[1], raw[2]);
+      if (raw[1] !== undefined) return fiFmtNum(raw[1]);
+      return '[' + (t || 'table') + ']';
+    }
+    return String(raw);
+  }
+
+  function fiParseBezierSpline(obj) {
+    var kfBlock = obj.KeyFrames; if (!kfBlock) return [];
+    var kfs = []; var keys = Object.keys(kfBlock);
+    for (var ki = 0; ki < keys.length; ki++) {
+      var frame = parseFloat(keys[ki]); if (isNaN(frame)) continue;
+      var vv = kfBlock[keys[ki]], value, rh = null, lh = null;
+      if (typeof vv === 'object') {
+        value = (vv[1] !== undefined) ? parseFloat(vv[1]) : NaN;
+        if (vv.RH && typeof vv.RH === 'object') rh = { x: vv.RH[1] !== undefined ? vv.RH[1] : (vv.RH.X || 0), y: vv.RH[2] !== undefined ? vv.RH[2] : (vv.RH.Y || 0) };
+        if (vv.LH && typeof vv.LH === 'object') lh = { x: vv.LH[1] !== undefined ? vv.LH[1] : (vv.LH.X || 0), y: vv.LH[2] !== undefined ? vv.LH[2] : (vv.LH.Y || 0) };
+      } else { value = parseFloat(vv); }
+      if (!isNaN(value)) kfs.push({ frame: frame, value: value, rh: rh, lh: lh });
+    }
+    return kfs.sort(function(a, b) { return a.frame - b.frame; });
+  }
+
+  function fiFindToolsBlock(obj, depth) {
+    if (!obj || typeof obj !== 'object' || (depth || 0) > 6) return null;
+    if (obj.Tools) return obj.Tools;
+    var vs = Object.values(obj);
+    for (var i = 0; i < vs.length; i++) {
+      if (vs[i] && typeof vs[i] === 'object' && !Array.isArray(vs[i])) {
+        var found = fiFindToolsBlock(vs[i], (depth || 0) + 1); if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function fiComputePathValue(pname, pts, displacement) {
+    var ptDef = FI_POINT_DEFAULTS[pname];
+    var ox = ptDef ? (Array.isArray(ptDef) ? ptDef[0] : ptDef) : 0;
+    var oy = ptDef ? (Array.isArray(ptDef) ? ptDef[1] : ptDef) : 0;
+    if (!pts || !pts.length) return fiFmtPt(ox, oy);
+    if (pts.length === 1) return fiFmtPt(ox + pts[0].x, oy + pts[0].y);
+    var segs = [], total = 0;
+    for (var i = 0; i < pts.length - 1; i++) {
+      var dx = pts[i+1].x - pts[i].x, dy = pts[i+1].y - pts[i].y;
+      var len = Math.sqrt(dx*dx + dy*dy); segs.push({ from: pts[i], to: pts[i+1], len: len }); total += len;
+    }
+    if (!total) return fiFmtPt(ox + pts[0].x, oy + pts[0].y);
+    var d = displacement * total, acc = 0;
+    for (var si = 0; si < segs.length; si++) {
+      var seg = segs[si];
+      if (d <= acc + seg.len || si === segs.length - 1) {
+        var tt = seg.len > 0 ? Math.max(0, Math.min(1, (d - acc) / seg.len)) : 0;
+        return fiFmtPt(ox + seg.from.x + (seg.to.x - seg.from.x) * tt, oy + seg.from.y + (seg.to.y - seg.from.y) * tt);
+      }
+      acc += seg.len;
+    }
+    return fiFmtPt(ox + pts[pts.length-1].x, oy + pts[pts.length-1].y);
+  }
+
+  function fiGetSplineValueAtFrame(kfs, frame) {
+    if (!kfs || !kfs.length) return null;
+    for (var i = 0; i < kfs.length; i++) { if (kfs[i].frame === frame) return kfs[i].value; }
+    var lo = null, hi = null;
+    for (var j = 0; j < kfs.length; j++) {
+      if (kfs[j].frame <= frame) lo = kfs[j]; else if (!hi) hi = kfs[j];
+    }
+    if (lo && hi) { var t = (frame - lo.frame) / (hi.frame - lo.frame); return lo.value + (hi.value - lo.value) * t; }
+    return lo ? lo.value : (hi ? hi.value : null);
+  }
+
+  function fiGetDisplayValue(param, pname, frame) {
+    if (!param) return '—';
+    if (param.kind === 'keyframe') { var v = fiGetSplineValueAtFrame(param.keyframes, frame); return v !== null ? fiFmtNum(v) : (param.v || '—'); }
+    if (param.kind === 'animpath' && param.keyframes && param.pathPoints) {
+      var disp = fiGetSplineValueAtFrame(param.keyframes, frame);
+      if (disp !== null) return fiComputePathValue(pname, param.pathPoints, disp);
+    }
+    return param.v || '—';
+  }
+
+  /* ── Input resolver ───────────────────────────────────────────────────── */
+  function fiResolveInputs(inputs, splineMap, toolType) {
+    var params = {}, toolDef = FI_TOOL_REGISTRY[toolType] || {}, toolDefaults = toolDef.defaults || {};
+    var iks = Object.keys(inputs);
+    for (var ik = 0; ik < iks.length; ik++) {
+      var pname = iks[ik], inp = inputs[pname];
+      if (!inp || typeof inp !== 'object') continue;
+      if (inp.__type !== 'Input' && inp.__type !== 'InstanceInput') continue;
+      if (inp.SourceOp) {
+        var srcName = inp.SourceOp, spline = splineMap[srcName];
+        if (spline) {
+          if (spline.type === 'BezierSpline' && spline.keyframes.length) {
+            params[pname] = { v: fiFmtNum(spline.keyframes[0].value), kind: 'keyframe', keyframes: spline.keyframes, splineColor: spline.color, sourceOp: srcName };
+          } else if (spline.type === 'PolyPath') {
+            var ptDef = FI_POINT_DEFAULTS[pname], ox = ptDef ? (Array.isArray(ptDef)?ptDef[0]:ptDef) : 0, oy = ptDef ? (Array.isArray(ptDef)?ptDef[1]:ptDef) : 0;
+            var pts = spline.points, fPt = pts[0];
+            var baseV = fPt ? fiFmtPt(ox + fPt.x, oy + fPt.y) : fiFmtPt(ox, oy);
+            var isAnim = !!(spline.dispSpline && spline.dispSpline.keyframes && spline.dispSpline.keyframes.length);
+            if (isAnim) { var kf0b = spline.dispSpline.keyframes[0]; baseV = fiComputePathValue(pname, pts, kf0b.value); }
+            params[pname] = { v: baseV, kind: isAnim ? 'animpath' : 'path', pathPoints: pts, keyframes: isAnim ? spline.dispSpline.keyframes : null, splineColor: '#b06afc', sourceOp: srcName };
+          } else { params[pname] = { v: '→ ' + srcName, kind: 'conn', sourceOp: srcName }; }
+        } else { params[pname] = { v: '→ ' + srcName, kind: 'conn', sourceOp: srcName }; }
+        continue;
+      }
+      if (inp.Expression !== undefined) { params[pname] = { v: String(inp.Expression), kind: 'expr' }; continue; }
+      var rawVal = inp.Value;
+      if (rawVal !== undefined) { params[pname] = { v: fiExtractValue(rawVal), kind: 'static' }; continue; }
+      var def = toolDefaults[pname] !== undefined ? toolDefaults[pname] : FI_UNIVERSAL_DEFAULTS[pname];
+      if (def !== undefined) { params[pname] = { v: Array.isArray(def) ? fiFmtPt(def[0], def[1]) : fiFmtNum(def), kind: 'default' }; }
+      else { params[pname] = { v: '—', kind: 'static' }; }
+    }
+    var dks = Object.keys(toolDefaults);
+    for (var di = 0; di < dks.length; di++) {
+      if (!params[dks[di]]) { var ddv = Array.isArray(toolDefaults[dks[di]]) ? fiFmtPt(toolDefaults[dks[di]][0], toolDefaults[dks[di]][1]) : fiFmtNum(toolDefaults[dks[di]]); params[dks[di]] = { v: ddv, kind: 'default' }; }
+    }
+    return params;
+  }
+
+  function fiPostProcessParams(params) {
+    // Synthesise colour swatches from *Red/*Green/*Blue triplets
+    var colorGroups = {}; var pks = Object.keys(params);
+    for (var i = 0; i < pks.length; i++) {
+      var m = pks[i].match(/^(.+?)(Red|Green|Blue|Alpha)$/); if (!m) continue;
+      var prefix = m[1], channel = m[2], p = params[pks[i]];
+      if (!p || p.kind === 'keyframe' || p.kind === 'animpath' || p.kind === 'conn') continue;
+      var num = parseFloat(p.v); if (isNaN(num)) continue;
+      if (!colorGroups[prefix]) colorGroups[prefix] = {};
+      colorGroups[prefix][channel] = num; p._isColorComponent = true;
+    }
+    function ch(c) { return ('0' + Math.round(Math.max(0, Math.min(1, c)) * 255).toString(16)).slice(-2); }
+    var cks = Object.keys(colorGroups);
+    for (var ci = 0; ci < cks.length; ci++) {
+      var comps = colorGroups[cks[ci]];
+      if (!('Red' in comps) && !('Green' in comps) && !('Blue' in comps)) continue;
+      var r = comps.Red || 0, g = comps.Green || 0, b = comps.Blue || 0, a = comps.Alpha !== undefined ? comps.Alpha : 1;
+      var hex = '#' + ch(r) + ch(g) + ch(b);
+      var lbl = (cks[ci] || 'Color').replace(/([a-z])([A-Z])/g,'$1 $2').trim() || 'Color';
+      params['_swatch_' + cks[ci]] = {
+        v: hex, kind: 'color', isColor: true, colorHex: hex, _colorLabel: lbl,
+        _colorRGB: hex + '  R:' + parseFloat(r.toPrecision(4)) + '  G:' + parseFloat(g.toPrecision(4)) + '  B:' + parseFloat(b.toPrecision(4)) + (a < 0.9999 ? '  A:' + parseFloat(a.toPrecision(4)) : ''),
+      };
+    }
+  }
+
+  /* ── Composition resolver ─────────────────────────────────────────────── */
+  function fiResolveComposition(ast) {
+    if (!ast) return null;
+    var toolsBlock = fiFindToolsBlock(ast) || ast;
+    // Pass 1: splines + paths
+    var splineMap = {}; var tbks = Object.keys(toolsBlock);
+    for (var ti = 0; ti < tbks.length; ti++) {
+      var tname = tbks[ti], tobj = toolsBlock[tname];
+      if (!tobj || typeof tobj !== 'object') continue;
+      var ttype = tobj.__type;
+      if (ttype === 'BezierSpline') {
+        var color = tobj.SplineColor ? 'rgb(' + Math.round((tobj.SplineColor.Red||0.8)*255) + ',' + Math.round((tobj.SplineColor.Green||0.4)*255) + ',' + Math.round((tobj.SplineColor.Blue||0.8)*255) + ')' : '#cc44cc';
+        splineMap[tname] = { type: 'BezierSpline', keyframes: fiParseBezierSpline(tobj), color: color };
+      } else if (ttype === 'PolyPath') {
+        var ppInputs = tobj.Inputs || {}, ppPL = ppInputs.PolyLine, ppPts = [];
+        if (ppPL) { var ppV = ppPL.Value || ppPL; if (ppV && ppV.__type === 'Polyline') { var ppPs = ppV.Points || ppV; Object.values(ppPs).forEach(function(pt){ if (pt && 'X' in pt && 'Y' in pt) ppPts.push({ x: parseFloat(pt.X), y: parseFloat(pt.Y) }); }); } }
+        var dspName = (ppInputs.Displacement && ppInputs.Displacement.SourceOp) || null;
+        splineMap[tname] = { type: 'PolyPath', points: ppPts, dispSplineName: dspName };
+      }
+    }
+    // Resolve PolyPath displacement splines
+    Object.keys(splineMap).forEach(function(k) { var s = splineMap[k]; if (s.type === 'PolyPath' && s.dispSplineName && splineMap[s.dispSplineName]) s.dispSpline = splineMap[s.dispSplineName]; });
+    // Pass 2: real tools
+    var tools = [], seen = {};
+    for (var tki = 0; tki < tbks.length; tki++) {
+      var tn = tbks[tki], to = toolsBlock[tn];
+      if (!to || typeof to !== 'object') continue;
+      var tt = to.__type;
+      if (!tt || FI_SKIP_NAMES[tn] || FI_SKIP_TYPES[tt] || seen[tn]) continue;
+      seen[tn] = true;
+      var tparams = fiResolveInputs(to.Inputs || {}, splineMap, tt);
+      fiPostProcessParams(tparams);
+      tools.push({ name: tn, type: tt, params: tparams });
+    }
+    return { tools: tools };
+  }
+
+  /* ── Param grouping ───────────────────────────────────────────────────── */
+  var FI_GROUP_PATTERNS = [
+    { name:'Transform',   re:/^(Center|Size$|Angle$|Aspect|Pivot|[XY]Offset|Flip[HV]|Width$|Height$|XScale|YScale|Tilt|Skew|Corner[A-Z]|PivotPoint|XSize|YSize)/i },
+    { name:'Opacity',     re:/^(Blend$|Alpha$|Opacity|PreDivide|Clamp$|FgAddSub|BgAddSub|ApplyMode|Operator$)/i },
+    { name:'Color',       re:/^(Gain$|Gamma$|Lift$|Saturation|Hue$|Brightness|Contrast|Red$|Green$|Blue$|RGB|Luma|Color$|Tint|Temperature|RGain|GGain|BGain|RGamma|GGamma|BGamma|Midtone|Highlight|Shadow$)/i },
+    { name:'Blur',        re:/^([XY]?(Blur|Glow|Defocus|Sharpen|Soften)Size|Passes$|Filter$|Samples$)/i },
+    { name:'Mask',        re:/^(SoftEdge|Level$|Invert$|Threshold$|Low$|High$|Erode|Dilate|ClipBlack|ClipWhite|Matte|Mask|Edge$)/i },
+    { name:'Animation',   re:/^(TimeOffset|Speed$|Hold|Rate|Duration|Frame|Loop|Reverse|MotionBlur|ShutterAngle)/i },
+    { name:'Text',        re:/^(StyledText|Font|Size$|Tracking|Leading|LineSpacing|LayoutStyle|HorizAlign|VertAlign|Bold|Italic)/i },
+    { name:'Noise',       re:/^(Noise|Phase|Amplitude|Frequency|Seethe|Detail|Roughness|Scale$|Lacunarity|Octave)/i },
+  ];
+  var FI_GROUP_ORDER = ['Transform','Opacity','Color','Blur','Mask','Animation','Text','Noise','Connections','Other'];
+
+  function fiGetParamGroup(pname, param) {
+    if (param && param._isColorComponent) return '__hidden__';
+    if (param && (param.kind === 'color' || param.isColor)) return 'Color';
+    if (param && param.kind === 'conn') return 'Connections';
+    for (var i = 0; i < FI_GROUP_PATTERNS.length; i++) { if (FI_GROUP_PATTERNS[i].re.test(pname)) return FI_GROUP_PATTERNS[i].name; }
+    return 'Other';
+  }
+
+  var FI_LABEL_OVERRIDES = {
+    XBlurSize:'Blur Width', YBlurSize:'Blur Height', BlurSize:'Blur Size',
+    XGlowSize:'Glow Width', YGlowSize:'Glow Height', FgAddSub:'Fg Add/Sub', BgAddSub:'Bg Add/Sub',
+    ApplyMode:'Apply Mode', FlipHoriz:'Flip Horiz', FlipVert:'Flip Vert',
+    XOffset:'X Offset', YOffset:'Y Offset', XSize:'X Size', YSize:'Y Size',
+    XRotation:'X Rotation', YRotation:'Y Rotation', ZRotation:'Z Rotation',
+    FLength:'Focal Length', ApertureW:'Aperture W', ApertureH:'Aperture H',
+    StyledText:'Styled Text', LayoutStyle:'Layout Style', PivotPoint:'Pivot Point', SeetheRate:'Seethe Rate',
+  };
+  function fiFmtLabel(k) {
+    if (FI_LABEL_OVERRIDES[k]) return FI_LABEL_OVERRIDES[k];
+    return k.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g,'$1 $2').trim();
+  }
+
+  /* ── Inspector state (per-session) ───────────────────────────────────── */
+  var _emInspSelTool  = null;
+  var _emInspSelParam = null;
+  var _emInspFrame    = 0;
+
+  /* Node-type → display colour for the dot */
+  var FI_TYPE_COLORS = { Source:'#0fa888', Output:'#4ade80', Color:'#eab308', Blur:'#ef4444', Composite:'#94a3b8', Transform:'#22d3ee', Effect:'#a855f7', Mask:'#fb923c', Generator:'#22d3ee', Utility:'#6c7bff', Particle:'#a855f7' };
+
+  /* ── Lazy inspector parse ─────────────────────────────────────────────── */
+  function emEnsureInspectorParsed() {
+    if (_emInspectorTools || !_emRawNodeCode) return;
+    try {
+      var ast = fiParseLua(_emRawNodeCode);
+      var result = fiResolveComposition(ast);
+      if (result && result.tools && result.tools.length) {
+        _emInspectorTools = result.tools;
+        console.log('[effect-modal] FI parsed', _emInspectorTools.length, 'tools with params');
+      }
+    } catch(e) { console.warn('[effect-modal] FI parse failed:', e); }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     LIVE NODE PARAM DISPLAY — uses FI data when available, NodeSystem fallback
+     ══════════════════════════════════════════════════════════════════════════ */
+  function emShowInspectorNodeParams(fusionName) {
+    emEnsureInspectorParsed();
+
+    // Try exact match, then base-name match (strips trailing digits)
+    var tool = null;
+    if (_emInspectorTools) {
+      tool = _emInspectorTools.find(function(t) { return t.name === fusionName; });
+      if (!tool) tool = _emInspectorTools.find(function(t) { return t.name.replace(/\d+$/, '') === fusionName.replace(/\d+$/, ''); });
+    }
+
+    // Fallback: NodeSystem path
+    if (!tool) {
+      var pn = (_emParsedNodes || []).find(function(n) { return (n.fusionName || n.id) === fusionName; });
+      if (pn) { emShowNodeParams(pn.id, null); return; }
+      // Nothing at all — show placeholder
+      var panel0 = document.getElementById('em-param-panel'); panel0.style.display = '';
+      document.getElementById('em-pp-dot').style.background = '#6c7bff';
+      document.getElementById('em-pp-title').textContent = fusionName;
+      document.getElementById('em-pp-cat').textContent = 'No param data available';
+      document.getElementById('em-pp-left').innerHTML = '<div style="font-size:10px;color:var(--text-muted);padding:14px 4px;text-align:center;font-family:var(--font-mono);line-height:1.7;">No parameters found<br><span style="font-size:9px;opacity:.5;">Paste the full Fusion .setting<br>into the node graph to populate</span></div>';
+      document.getElementById('em-pp-right').innerHTML = '';
+      document.getElementById('em-timeline-container').innerHTML = '';
+      return;
+    }
+
+    _emInspSelTool  = tool.name;
+    _emInspSelParam = null;
+
+    // Derive display colour from tool category
+    var toolDef = FI_TOOL_REGISTRY[tool.type] || {};
+    var col = FI_TYPE_COLORS[toolDef.cat] || '#6c7bff';
+
+    var panel = document.getElementById('em-param-panel'); panel.style.display = '';
+    document.getElementById('em-pp-dot').style.background = col;
+    document.getElementById('em-pp-title').textContent = tool.name;
+    document.getElementById('em-pp-cat').textContent = tool.type + (toolDef.cat ? ' · ' + toolDef.cat : '');
+
+    emRenderInspectorParams(tool);
+    emRenderInspectorDetail(tool, null);
+    emRenderInspectorTimeline(tool);
+  }
+
+  /* ── Left panel: grouped parameter list ──────────────────────────────── */
+  function emRenderInspectorParams(tool) {
+    var left = document.getElementById('em-pp-left');
+    // Group params
+    var groups = {};
+    var pks = Object.keys(tool.params);
+    for (var i = 0; i < pks.length; i++) {
+      var k = pks[i], p = tool.params[k];
+      var g = fiGetParamGroup(k, p); if (g === '__hidden__') continue;
+      if (!groups[g]) groups[g] = []; groups[g].push(k);
+    }
+
+    var html = '';
+    FI_GROUP_ORDER.forEach(function(gname) {
+      var ks = groups[gname]; if (!ks || !ks.length) return;
+      html += '<div class="em-pg-title">' + gname + '</div>';
+      ks.forEach(function(k) {
+        var p = tool.params[k], isSel = (k === _emInspSelParam);
+        var label = p._colorLabel || fiFmtLabel(k);
+        var val = (p.kind === 'static' || p.kind === 'default') ? fiResolveEnum(k, fiGetDisplayValue(p, k, _emInspFrame), tool.type) : fiGetDisplayValue(p, k, _emInspFrame);
+
+        // Indicator dot
+        var dot = '<span class="em-ind"></span>', vCls = '';
+        if (p.kind === 'keyframe')              { dot = '<span class="em-ind kf-ind"></span>';   vCls = 'kf'; }
+        else if (p.kind === 'animpath')         { dot = '<span class="em-ind path-ind"></span>'; vCls = 'path'; }
+        else if (p.kind === 'path')             { dot = '<span class="em-ind path-ind"></span>'; vCls = 'path'; }
+        else if (p.kind === 'conn')             { dot = '<span class="em-ind conn-ind"></span>'; vCls = 'conn'; }
+        else if (p.kind === 'default')          { vCls = 'def'; }
+
+        // Colour swatch inline
+        var swatch = '';
+        if (p.isColor || p.kind === 'color') {
+          swatch = '<span style="display:inline-block;width:10px;height:10px;background:' + p.colorHex + ';border-radius:2px;border:1px solid rgba(255,255,255,.18);flex-shrink:0;margin-right:2px;vertical-align:middle;"></span>';
+          val = p._colorRGB || p.colorHex; dot = '<span class="em-ind"></span>'; vCls = '';
+        }
+
+        html += '<div class="em-param-row' + (isSel?' sel':'') + '" data-key="' + k.replace(/['"]/g,'') + '">'
+              + dot + '<span class="em-param-name">' + label + '</span>'
+              + swatch + '<span class="em-param-val ' + vCls + '">' + val + '</span>'
+              + '</div>';
+      });
+    });
+
+    if (!html) html = '<div style="font-size:10px;color:var(--text-muted);padding:8px 4px;font-family:var(--font-mono);">No parameters</div>';
+    left.innerHTML = html;
+
+    left.querySelectorAll('.em-param-row').forEach(function(row) {
+      row.addEventListener('click', function() {
+        _emInspSelParam = row.dataset.key;
+        left.querySelectorAll('.em-param-row').forEach(function(r) { r.classList.remove('sel'); });
+        row.classList.add('sel');
+        emRenderInspectorDetail(tool, _emInspSelParam);
+      });
+    });
+  }
+
+  /* ── Right panel: selected parameter detail ───────────────────────────── */
+  function emRenderInspectorDetail(tool, paramKey) {
+    var right = document.getElementById('em-pp-right');
+    right.innerHTML = '';
+
+    if (!paramKey) {
+      right.innerHTML = '<div style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);padding:4px 0;line-height:1.7;opacity:.8;">← Select a parameter<br><span style="font-size:9px;opacity:.6;">Click any row to inspect its<br>value, keyframes, or spline</span></div>';
+      return;
+    }
+
+    var p = tool.params[paramKey];
+    if (!p) { right.innerHTML = '<div style="font-size:10px;color:var(--text-muted);">Not found</div>'; return; }
+
+    var label = p._colorLabel || fiFmtLabel(paramKey);
+    var val = (p.kind === 'static' || p.kind === 'default') ? fiResolveEnum(paramKey, fiGetDisplayValue(p, paramKey, _emInspFrame), tool.type) : fiGetDisplayValue(p, paramKey, _emInspFrame);
+
+    // Label header
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--violet-light);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;flex-shrink:0;';
+    hdr.textContent = label; right.appendChild(hdr);
+
+    // Value display
+    var vbox = document.createElement('div'); vbox.className = 'em-val-big';
+    if (p.kind === 'keyframe')                        vbox.style.color = '#f5c842';
+    else if (p.kind === 'animpath' || p.kind === 'path') vbox.style.color = '#b06afc';
+    else if (p.kind === 'conn')                        vbox.style.color = '#34d399';
+    vbox.textContent = val; right.appendChild(vbox);
+
+    // ── Colour swatch ──
+    if (p.isColor || p.kind === 'color') {
+      var sw = document.createElement('div');
+      sw.style.cssText = 'width:100%;height:28px;background:' + p.colorHex + ';border-radius:4px;margin-top:6px;border:1px solid rgba(255,255,255,.12);flex-shrink:0;';
+      right.appendChild(sw);
+      var swLbl = document.createElement('div');
+      swLbl.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin-top:4px;line-height:1.5;word-break:break-all;';
+      swLbl.textContent = p._colorRGB || p.colorHex; right.appendChild(swLbl);
+      return;
+    }
+
+    // ── Keyframe / animpath: chips + nav + spline canvas ──
+    if ((p.kind === 'keyframe' || p.kind === 'animpath') && p.keyframes && p.keyframes.length) {
+      var kfs = p.keyframes.slice().sort(function(a,b){ return a.frame - b.frame; });
+      var frames = kfs.map(function(k){ return k.frame; });
+      var curIdx = frames.indexOf(_emInspFrame);
+
+      // Frame indicator
+      var frHdr = document.createElement('div');
+      frHdr.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin-top:4px;flex-shrink:0;';
+      frHdr.innerHTML = 'Frame\u00a0<span style="color:var(--violet-light)">' + _emInspFrame + '</span>\u00a0·\u00a0<span style="color:#f5c842">' + kfs.length + ' keyframes</span>';
+      right.appendChild(frHdr);
+
+      // KF chips
+      var chipsWrap = document.createElement('div');
+      chipsWrap.className = 'em-kf-chips'; chipsWrap.style.cssText = 'margin-top:5px;flex-shrink:0;';
+      kfs.forEach(function(kf) {
+        var chip = document.createElement('button');
+        chip.className = 'em-kf-chip' + (kf.frame === _emInspFrame ? ' act' : '');
+        chip.textContent = kf.frame;
+        chip.title = 'F:' + kf.frame + ' V:' + (typeof kf.value === 'number' ? kf.value.toFixed(3) : String(kf.value));
+        chip.addEventListener('click', (function(f) { return function() {
+          _emInspFrame = f;
+          emRenderInspectorTimeline(tool); emRenderInspectorParams(tool); emRenderInspectorDetail(tool, paramKey);
+        }; })(kf.frame));
+        chipsWrap.appendChild(chip);
+      });
+      right.appendChild(chipsWrap);
+
+      // Prev / Next nav
+      var nav = document.createElement('div'); nav.className = 'em-kf-nav'; nav.style.cssText = 'margin-top:5px;flex-shrink:0;';
+      var prevBtn = document.createElement('button'); prevBtn.textContent = '◂ Prev'; prevBtn.disabled = curIdx <= 0;
+      prevBtn.addEventListener('click', (function(){ return function() {
+        var ci = frames.indexOf(_emInspFrame); if (ci > 0) { _emInspFrame = frames[ci-1]; emRenderInspectorTimeline(tool); emRenderInspectorParams(tool); emRenderInspectorDetail(tool, paramKey); }
+      }; })());
+      var nextBtn = document.createElement('button'); nextBtn.textContent = 'Next ▸'; nextBtn.disabled = curIdx >= frames.length - 1;
+      nextBtn.addEventListener('click', (function(){ return function() {
+        var ci = frames.indexOf(_emInspFrame); if (ci < frames.length-1) { _emInspFrame = frames[ci+1]; emRenderInspectorTimeline(tool); emRenderInspectorParams(tool); emRenderInspectorDetail(tool, paramKey); }
+      }; })());
+      nav.appendChild(prevBtn); nav.appendChild(nextBtn); right.appendChild(nav);
+
+      // Spline canvas — reuse emDrawSpline (FI keyframe format {frame,value,rh,lh} is compatible)
+      var canvasWrap = document.createElement('div');
+      canvasWrap.style.cssText = 'flex:1;min-height:70px;display:flex;flex-direction:column;margin-top:6px;border-radius:5px;overflow:hidden;';
+      var c = document.createElement('canvas');
+      c.style.cssText = 'display:block;width:100%;flex:1;border-radius:5px;background:#0d0d10;cursor:crosshair;';
+      canvasWrap.appendChild(c); right.appendChild(canvasWrap);
+      requestAnimationFrame(function() { emDrawSpline(c, p, _emInspFrame); });
+      return;
+    }
+
+    // ── Path points ──
+    if ((p.kind === 'path' || p.kind === 'animpath') && p.pathPoints && p.pathPoints.length) {
+      var ptHdr = document.createElement('div');
+      ptHdr.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin-top:6px;flex-shrink:0;';
+      ptHdr.textContent = p.pathPoints.length + ' path points'; right.appendChild(ptHdr);
+      p.pathPoints.slice(0, 5).forEach(function(pt, i) {
+        var ptRow = document.createElement('div');
+        ptRow.style.cssText = 'font-size:10px;font-family:var(--font-mono);color:var(--text-muted);line-height:1.4;';
+        if (i === 0) ptRow.style.color = '#b06afc';
+        ptRow.textContent = '[' + i + '] X:\u00a0' + fiFmtNum(pt.x) + '  Y:\u00a0' + fiFmtNum(pt.y);
+        right.appendChild(ptRow);
+      });
+      if (p.pathPoints.length > 5) { var more = document.createElement('div'); more.style.cssText = 'font-size:9px;color:var(--text-muted);'; more.textContent = '…' + (p.pathPoints.length - 5) + ' more points'; right.appendChild(more); }
+      return;
+    }
+
+    // ── Connection ──
+    if (p.kind === 'conn') {
+      var cNote = document.createElement('div');
+      cNote.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin-top:4px;';
+      cNote.textContent = 'Connected to: ' + (p.sourceOp || '—'); right.appendChild(cNote);
+      return;
+    }
+
+    // ── Static / default ──
+    var note = document.createElement('div');
+    note.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin-top:4px;opacity:.7;';
+    note.textContent = p.kind === 'default' ? 'Default value — not explicitly set' : 'Static — no animation data';
+    right.appendChild(note);
+  }
+
+  /* ── Bottom timeline: global keyframe chips across all params ─────────── */
+  function emRenderInspectorTimeline(tool) {
+    var tc = document.getElementById('em-timeline-container');
+    tc.innerHTML = '';
+    var allFramesSet = {}, pks = Object.keys(tool.params);
+    for (var i = 0; i < pks.length; i++) {
+      var kfArr = tool.params[pks[i]].keyframes;
+      if (kfArr) kfArr.forEach(function(k) { allFramesSet[k.frame] = true; });
+    }
+    var allFrames = Object.keys(allFramesSet).map(Number).sort(function(a,b){ return a-b; });
+    if (!allFrames.length) return;
+
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;';
+    var lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-right:4px;flex-shrink:0;';
+    lbl.textContent = 'Frames'; wrap.appendChild(lbl);
+    allFrames.forEach(function(fr) {
+      var chip = document.createElement('button');
+      chip.className = 'em-kf-chip' + (fr === _emInspFrame ? ' act' : '');
+      chip.textContent = fr;
+      chip.addEventListener('click', (function(f) { return function() {
+        _emInspFrame = f;
+        var t = _emInspectorTools && _emInspectorTools.find(function(x){ return x.name === _emInspSelTool; });
+        if (t) { emRenderInspectorTimeline(t); emRenderInspectorParams(t); emRenderInspectorDetail(t, _emInspSelParam); }
+      }; })(fr));
+      wrap.appendChild(chip);
+    });
+    tc.appendChild(wrap);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     STATIC NODE PARAM DISPLAY — GNODES fallback (demo / no live data)
+     ══════════════════════════════════════════════════════════════════════════ */
+  function emShowStaticNodeParams(node, el) {
+    if (activeGnEl && activeGnEl !== el) activeGnEl.classList.remove('g-active');
+    activeGnEl = el; el.classList.add('g-active');
+    _emInspSelParam = null;
+
+    var panel = document.getElementById('em-param-panel'); panel.style.display = '';
+    var col = tc(node.type);
+    document.getElementById('em-pp-dot').style.background = col.dot;
+    document.getElementById('em-pp-title').textContent = node.name;
+    document.getElementById('em-pp-cat').textContent = node.type + ' · demo data';
+
+    var left = document.getElementById('em-pp-left');
+    left.innerHTML = '';
+
+    // Group label
+    var grpLbl = document.createElement('div');
+    grpLbl.className = 'em-pg-title'; grpLbl.textContent = 'Parameters'; left.appendChild(grpLbl);
+
+    var firstParam = null;
+    (node.params || []).forEach(function(p, i) {
+      if (i === 0) firstParam = p;
+      var row = document.createElement('div');
+      row.className = 'em-param-row' + (i === 0 ? ' sel' : '');
+      row.innerHTML = '<span class="em-ind"></span>'
+                    + '<span class="em-param-name">' + p.name + '</span>'
+                    + '<span class="em-param-val">' + p.val + '</span>';
+      row.addEventListener('click', (function(param) { return function() {
+        left.querySelectorAll('.em-param-row').forEach(function(r) { r.classList.remove('sel'); });
+        row.classList.add('sel');
+        emShowStaticParamDetail(param);
+      }; })(p));
+      left.appendChild(row);
+    });
+
+    if (firstParam) emShowStaticParamDetail(firstParam);
+    else document.getElementById('em-pp-right').innerHTML = '<div style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);">No params</div>';
+
+    document.getElementById('em-timeline-container').innerHTML = '';
+  }
+
+  function emShowStaticParamDetail(param) {
+    var right = document.getElementById('em-pp-right');
+    right.innerHTML = '';
+
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--violet-light);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;';
+    hdr.textContent = param.name; right.appendChild(hdr);
+
+    var vbox = document.createElement('div'); vbox.className = 'em-val-big';
+    vbox.textContent = param.val || '—'; right.appendChild(vbox);
+
+    if (param.desc) {
+      var desc = document.createElement('div');
+      desc.style.cssText = 'font-size:11px;color:var(--text-secondary);margin-top:8px;line-height:1.55;';
+      desc.textContent = param.desc; right.appendChild(desc);
+    }
+
+    var note = document.createElement('div');
+    note.style.cssText = 'font-size:9px;font-family:var(--font-mono);color:var(--text-muted);margin-top:6px;opacity:.6;';
+    note.textContent = 'Demo data · no animation'; right.appendChild(note);
   }
 
   /* ════════════════════════════════
@@ -1689,7 +2467,8 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
             if (activeGnEl) activeGnEl.classList.remove('g-active');
             activeGnEl = el; el.classList.add('g-active');
             _emSelParam = null;
-            emShowNodeParams(node.id, null);
+            _emInspSelParam = null;
+            emShowInspectorNodeParams(node.fusionName || node.id);
           });
         })(n, card);
       }
@@ -1741,7 +2520,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
       pi2.style.top = (NH/2-4.5)+'px'; pi2.style.borderColor = col2.border; card2.appendChild(pi2);
       var po2 = document.createElement('div'); po2.className = 'gn-port gn-port-out';
       po2.style.top = (NH/2-4.5)+'px'; po2.style.borderColor = col2.border; card2.appendChild(po2);
-      (function(node, el){ el.addEventListener('click', function(ev){ ev.stopPropagation(); openPop(node, el); }); }(n, card2));
+      (function(node, el){ el.addEventListener('click', function(ev){ ev.stopPropagation(); emShowStaticNodeParams(node, el); }); }(n, card2));
       world.appendChild(card2);
     }
   }
