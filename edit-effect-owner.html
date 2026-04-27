@@ -132,17 +132,17 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 .cc.warn{color:var(--signal-amber);}
 
 /* ── Step builder ── */
-.steps-builder{display:flex;flex-direction:column;gap:0;}
-.step-row{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--bs);position:relative;animation:stepIn 0.18s var(--ease);}
-.step-row:last-child{border-bottom:none;}
-@keyframes stepIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.step-num{font-family:var(--fm);font-size:11px;color:var(--tm);min-width:22px;flex-shrink:0;padding-top:1px;user-select:none;}
-.step-input{flex:1;background:transparent;border:none;color:var(--tp);font-size:13px;font-family:var(--fb);font-weight:300;line-height:1.55;padding:0;outline:none;}
+.steps-builder{display:flex;flex-direction:column;gap:6px;}
+@keyframes stepIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.step-row{display:flex;align-items:center;gap:0;background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rp);box-shadow:var(--gs);transition:border-color var(--df);animation:stepIn 0.18s var(--ease);overflow:hidden;}
+.step-row:focus-within{border-color:rgba(108,123,255,0.45);}
+.step-num{font-family:var(--fm);font-size:11px;color:var(--tm);min-width:44px;flex-shrink:0;padding:0 4px 0 16px;user-select:none;line-height:1;}
+.step-input{flex:1;background:transparent;border:none;color:var(--tp);font-size:13px;font-family:var(--fb);font-weight:300;line-height:1;height:38px;padding:0;outline:none;}
 .step-input::placeholder{color:var(--tm);}
-.step-del{opacity:0;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--tm);background:none;border:1px solid transparent;cursor:pointer;flex-shrink:0;transition:all 0.12s;padding:0;}
-.step-row:hover .step-del{opacity:1;}
-.step-del:hover{color:var(--danger);border-color:rgba(240,96,96,0.35);background:rgba(240,96,96,0.08);}
-.steps-hint{font-size:11px;color:var(--tm);margin-top:6px;display:flex;align-items:center;gap:5px;}
+.step-del{opacity:0;width:34px;height:38px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--tm);background:none;border:none;border-left:1px solid transparent;cursor:pointer;flex-shrink:0;transition:all 0.12s;padding:0;}
+.step-row:hover .step-del{opacity:1;border-left-color:var(--bs);}
+.step-del:hover{color:var(--danger);background:rgba(240,96,96,0.08);}
+.steps-hint{font-size:11px;color:var(--tm);margin-top:4px;display:flex;align-items:center;gap:5px;}
 .steps-hint kbd{font-family:var(--fm);font-size:9px;padding:1px 5px;border-radius:3px;border:1px solid var(--bc);background:var(--bg3);color:var(--ts);}
 
 /* diff */
@@ -192,21 +192,22 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 /* ═══════════════════════════════
    NODE GRAPH EDITOR (Tab 2)
    ═══════════════════════════════ */
+/* node search bar (replaces side palette) */
+.node-search-wrap{position:relative;display:flex;align-items:center;gap:0;background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rp);box-shadow:var(--gs);transition:border-color var(--df);}
+.node-search-wrap:focus-within{border-color:rgba(108,123,255,0.45);}
+.node-search-icon{flex-shrink:0;margin-left:13px;color:var(--tm);pointer-events:none;}
+.node-search-input{flex:1;background:transparent;border:none;height:38px;padding:0 13px;font-size:13px;font-family:var(--fb);color:var(--tp);outline:none;}
+.node-search-input::placeholder{color:var(--tm);}
+.node-search-results{display:flex;flex-wrap:wrap;gap:5px;min-height:0;transition:all 0.15s;}
+.node-search-results:not(:empty){padding:2px 0 4px;}
+.nsr-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 8px;border-radius:var(--rp);border:1px solid;background:var(--gb2);cursor:pointer;font-family:var(--fb);font-size:12px;color:var(--tp);transition:var(--tr);white-space:nowrap;}
+.nsr-chip:hover{filter:brightness(1.2);}
+.nsr-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.nsr-cat{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.06em;opacity:0.65;}
 .node-mode-row{display:flex;gap:4px;padding:4px;background:var(--bg3);border:1px solid var(--bs);border-radius:var(--rp);width:fit-content;}
 .nm-btn{font-family:var(--fm);font-size:9.5px;text-transform:uppercase;letter-spacing:0.07em;padding:6px 14px;border-radius:var(--rp);color:var(--tm);cursor:pointer;transition:var(--tr);display:flex;align-items:center;gap:6px;border:none;background:none;}
 .nm-btn.on{background:var(--gb2);color:var(--tp);box-shadow:var(--gsh);}
 .graph-editor-layout{display:flex;gap:0;border:1px solid var(--bs);border-radius:var(--r);overflow:hidden;height:260px;}
-.pal-col{width:128px;flex-shrink:0;background:#06060d;border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;}
-.pal-si{padding:7px 7px 5px;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0;}
-.pal-sinput{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:var(--rsm);padding:5px 8px;font-size:10px;font-family:var(--fm);color:rgba(244,244,251,0.7);letter-spacing:0.04em;}
-.pal-sinput::placeholder{color:rgba(88,88,112,0.8);}
-.pal-sinput:focus{border-color:rgba(108,123,255,0.4);outline:none;}
-.pal-list{flex:1;overflow-y:auto;padding:5px 0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.05) transparent;}
-.pal-item{display:flex;align-items:center;gap:7px;padding:6px 9px;cursor:pointer;transition:background 0.1s;}
-.pal-item:hover{background:rgba(255,255,255,0.04);}
-.pal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
-.pal-nm{font-family:var(--fd);font-weight:600;font-size:10px;color:rgba(244,244,251,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;}
-.pal-ct{font-family:var(--fm);font-size:7.5px;text-transform:uppercase;letter-spacing:0.06em;color:rgba(88,88,112,0.9);}
 .ed-canvas-wrap{flex:1;position:relative;overflow:hidden;background:#06060d;}
 .ed-canvas{width:100%;height:100%;display:block;cursor:grab;}
 .ed-canvas.panning{cursor:grabbing;}
@@ -349,11 +350,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       Media
       <span class="tab-dirty" id="dirty-0" style="display:none"></span>
     </button>
-    <button class="tab-btn" data-tab="1">Details</button>
-    <button class="tab-btn" data-tab="2">
+    <button class="tab-btn" data-tab="1">
       Nodes
-      <span class="tab-dirty" id="dirty-2" style="display:none"></span>
+      <span class="tab-dirty" id="dirty-1" style="display:none"></span>
     </button>
+    <button class="tab-btn" data-tab="2">Details</button>
     <button class="tab-btn" data-tab="3">Access</button>
     <button class="tab-btn danger-tab" data-tab="4">
       <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -364,8 +365,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   <!-- body -->
   <div class="sh-bd">
 
-    <!-- TAB 1: DETAILS -->
-    <div class="tab-panel" id="tab1">
+    <!-- TAB 2: DETAILS -->
+    <div class="tab-panel" id="tab2">
       <div class="frow two">
         <div class="fg">
           <div class="fg-hd"><label class="fl">Effect Name <span>*</span></label><span class="cc" id="nameCC">19 / 60</span></div>
@@ -444,8 +445,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       </div>
     </div>
 
-    <!-- TAB 2: NODES -->
-    <div class="tab-panel" id="tab2">
+    <!-- TAB 1: NODES -->
+    <div class="tab-panel" id="tab1">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div class="node-mode-row">
           <button class="nm-btn on" id="nmGraph">
@@ -462,16 +463,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 
       <!-- Graph editor -->
       <div id="graphSec">
+        <!-- Node search -->
+        <div class="node-search-wrap">
+          <svg class="node-search-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input class="node-search-input" id="palSearch" type="text" placeholder="Search nodes to add…" autocomplete="off">
+        </div>
+        <div class="node-search-results" id="palList"></div>
         <div class="graph-editor-layout">
-          <div class="pal-col">
-            <div class="pal-si"><input class="pal-sinput" id="palSearch" type="text" placeholder="Filter…"></div>
-            <div class="pal-list" id="palList"></div>
-          </div>
           <div class="ed-canvas-wrap" id="edWrap">
             <canvas class="ed-canvas" id="edCanvas"></canvas>
             <div class="ed-empty" id="edEmpty" style="display:none;">
               <div class="ed-empty-t">No nodes</div>
-              <div class="ed-empty-s">Click a type from the palette to add</div>
+              <div class="ed-empty-s">Search above to add nodes</div>
             </div>
             <div class="con-badge" id="conBadge">Connecting — click an input port &middot; Esc to cancel</div>
             <div class="ed-hint">Drag bg to pan &middot; Drag &#x25b7; port to connect</div>
@@ -500,7 +503,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
             <button class="tb" id="btnViewAnim" style="background:rgba(108,123,255,0.15);border-color:rgba(108,123,255,0.4);color:var(--violet);" title="View animation curves">View Animation</button>
             <button class="tb tbd" id="btnDel">Delete</button>
           </div>
-          <div class="tb-nc" id="tbCount">Click palette to add nodes</div>
+          <div class="tb-nc" id="tbCount">Search above to add nodes</div>
         </div>
       </div>
 
@@ -859,13 +862,13 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     gNodes.push({ id: id, name: td.name, cat: td.cat, col: td.col, bg: td.bg, x: x, y: y });
     var prev = selId || (gNodes.length > 1 ? gNodes[gNodes.length - 2].id : null);
     if (prev && prev !== id) { addEdge(prev, id); }
-    selectNode(id); updateCounts(); renderEd(); markDirty(2);
+    selectNode(id); updateCounts(); renderEd(); markDirty(1);
   }
   function removeNode (id) {
     gNodes = gNodes.filter(function (n) { return n.id !== id; });
     gEdges = gEdges.filter(function (e) { return e.from !== id && e.to !== id; });
     if (selId === id) { selectNode(null); }
-    updateCounts(); renderEd(); markDirty(2);
+    updateCounts(); renderEd(); markDirty(1);
   }
   function addEdge (f, t) {
     if (f === t) { return; }
@@ -1064,7 +1067,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if (!edCanvas) { return; }
     if (istate === 'connecting' && cxFrom) {
       var sc = cxy(e), w = toW(sc.x, sc.y), ip = inAt(w.x, w.y);
-      if (ip && ip.id !== cxFrom) { addEdge(cxFrom, ip.id); updateCounts(); markDirty(2); showToast('Connection created'); }
+      if (ip && ip.id !== cxFrom) { addEdge(cxFrom, ip.id); updateCounts(); markDirty(1); showToast('Connection created'); }
       document.getElementById('conBadge').classList.remove('show');
       edCanvas.classList.remove('connecting');
     }
@@ -1085,18 +1088,33 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     console.log('[onLuaInput] Lua input changed (stub)');
   }
 
-  /* ── PALETTE ── */
-  function buildPalette (f) {
+  /* ── NODE SEARCH (replaces side palette) ── */
+  function buildNodeSearch(f) {
     var list = document.getElementById('palList'); if (!list) { return; }
     list.innerHTML = '';
     var lo = (f || '').toLowerCase();
+    // Only show results when something is typed; show all if input is focused but empty? No — only show when searching
+    if (!lo) { return; }
+    var count = 0;
     for (var i = 0; i < NT.length; i++) {
       var t = NT[i];
-      if (lo && t.name.toLowerCase().indexOf(lo) === -1 && t.cat.toLowerCase().indexOf(lo) === -1) { continue; }
-      var item = document.createElement('div'); item.className = 'pal-item';
-      item.innerHTML = '<div class="pal-dot" style="background:' + t.col + '"></div><div><div class="pal-nm">' + t.name + '</div><div class="pal-ct">' + t.cat + '</div></div>';
-      (function (td) { item.addEventListener('click', function () { addNode(td); }); }(t));
-      list.appendChild(item);
+      if (t.name.toLowerCase().indexOf(lo) === -1 && t.cat.toLowerCase().indexOf(lo) === -1) { continue; }
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'nsr-chip';
+      chip.style.borderColor = t.col + '55';
+      chip.innerHTML = '<span class="nsr-dot" style="background:' + t.col + '"></span>'
+        + t.name
+        + '<span class="nsr-cat">' + t.cat + '</span>';
+      (function (td) { chip.addEventListener('click', function () {
+        addNode(td);
+        // clear search after adding
+        var inp = document.getElementById('palSearch');
+        if (inp) { inp.value = ''; buildNodeSearch(''); inp.focus(); }
+      }); }(t));
+      list.appendChild(chip);
+      count++;
+      if (count >= 12) { break; } // cap results to keep UI clean
     }
   }
 
@@ -1257,7 +1275,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if (p) { p.classList.add('active'); }
     if (btns[n]) { btns[n].classList.add('active'); }
     curTab = n;
-    if (n === 2) { setTimeout(function () { resizeEd(); resizeLua(); }, 40); }
+    if (n === 1) { setTimeout(function () { resizeEd(); resizeLua(); }, 40); }
   }
 
   /* ── PRE-LOAD GRAPH ── */
@@ -1728,9 +1746,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if (edCanvas)  { edCtx  = edCanvas.getContext('2d'); }
     if (luaCanvas) { luaCtx = luaCanvas.getContext('2d'); }
 
-    buildPalette('');
+    buildNodeSearch('');
     var ps = document.getElementById('palSearch');
-    if (ps) { ps.addEventListener('input', function () { buildPalette(this.value); }); }
+    if (ps) { ps.addEventListener('input', function () { buildNodeSearch(this.value); }); }
 
     if (edCanvas) {
       edCanvas.addEventListener('mousedown', onMD);
@@ -1739,7 +1757,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
 
     document.getElementById('btnLayout').addEventListener('click', autoLayout);
-    document.getElementById('btnClear').addEventListener('click', function () { gNodes=[]; gEdges=[]; selId=null; selectNode(null); updateCounts(); renderEd(); markDirty(2); showToast('Graph cleared'); });
+    document.getElementById('btnClear').addEventListener('click', function () { gNodes=[]; gEdges=[]; selId=null; selectNode(null); updateCounts(); renderEd(); markDirty(1); showToast('Graph cleared'); });
     document.getElementById('btnDel').addEventListener('click', function () { if (selId) { removeNode(selId); } });
     document.getElementById('btnViewAnim').addEventListener('click', function () { 
       if (selId && window.NodeSystem) {
