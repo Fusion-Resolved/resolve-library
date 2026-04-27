@@ -367,67 +367,81 @@
         initGraphViewport(nodeData);
       }, 50);
       
-      // Build accordion
+      // Eagerly parse FI data so accordion items have params immediately
+      if (!_emInspectorTools && window._emRawNodeCode) {
+        try {
+          var ast = fiParseLua(window._emRawNodeCode);
+          var result = fiResolveComposition(ast);
+          if (result && result.tools && result.tools.length) {
+            _emInspectorTools = result.tools;
+          }
+        } catch(e) { /* silent — lazy fallback still available */ }
+      }
+
+      // Build accordion inside a master collapsible (starts FOLDED)
       if (accordionEl) {
         accordionEl.innerHTML = '';
-        
-        nodeData.nodes.forEach(function(node, idx) {
-          var hasParams = Object.keys(node.params || {}).length > 0;
-          var hasAnimation = hasParams && Object.values(node.params).some(function(p) {
-            return p.keyframes && p.keyframes.length > 0;
-          });
-          
-          // Accordion item
-          var item = document.createElement('div');
-          item.className = 'node-accordion-item';
-          item.style.cssText = 'border-bottom:1px solid rgba(255,255,255,0.05);';
-          
-          // Header
-          var header = document.createElement('div');
-          header.className = 'node-accordion-header';
-          header.style.cssText = 'padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background 0.15s;';
-          header.innerHTML = '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<span style="width:8px;height:8px;border-radius:50%;background:' + (node.catColor || '#6c7bff') + ';"></span>' +
-            '<span style="font-size:12px;color:var(--text);">' + (node.fusionName || node.name) + '</span>' +
-            '<span style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">' + (node.category || 'Node') + '</span>' +
+
+        // ── Master toggle wrapper ──────────────────────────────────────────
+        var masterWrap = document.createElement('div');
+        masterWrap.style.cssText = 'border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;';
+
+        var masterToggle = document.createElement('div');
+        masterToggle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:pointer;background:rgba(255,255,255,0.02);user-select:none;';
+        masterToggle.innerHTML =
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="font-size:9px;font-family:var(--font-mono,monospace);color:var(--text-muted,#585870);text-transform:uppercase;letter-spacing:0.09em;">Nodes</span>' +
+            '<span style="font-size:9px;font-family:var(--font-mono,monospace);color:var(--violet,#6c7bff);background:rgba(108,123,255,0.12);padding:1px 7px;border-radius:10px;">' + nodeData.nodes.length + '</span>' +
           '</div>' +
-          '<div style="display:flex;align-items:center;gap:6px;">' +
-            (hasAnimation ? '<span style="font-size:8px;color:var(--violet);">◆</span>' : '') +
-            '<span style="font-size:10px;color:var(--text-muted);transition:transform 0.2s;" class="accordion-arrow">▾</span>' +
-          '</div>';
-          
-          // Content (hidden by default)
-          var content = document.createElement('div');
-          content.className = 'node-accordion-content';
-          content.style.cssText = 'display:none;padding:0 12px 12px 32px;';
-          
-          if (hasParams) {
-            var paramsDiv = document.createElement('div');
-            paramsDiv.style.cssText = 'background:rgba(0,0,0,0.3);border-radius:4px;padding:8px;';
-            window.NodeSystem.renderParams(paramsDiv, node, {
-              readOnly: true,
-              showSplines: true
-            });
-            content.appendChild(paramsDiv);
-          } else {
-            content.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No parameters</div>';
-          }
-          
-          // Toggle handler
-          var isOpen = false;
-          header.onmouseenter = function() { header.style.background = 'rgba(255,255,255,0.03)'; };
-          header.onmouseleave = function() { header.style.background = 'transparent'; };
-          header.onclick = function() {
-            isOpen = !isOpen;
-            content.style.display = isOpen ? 'block' : 'none';
-            var arrow = header.querySelector('.accordion-arrow');
-            if (arrow) arrow.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-          };
-          
-          item.appendChild(header);
-          item.appendChild(content);
-          accordionEl.appendChild(item);
+          '<span class="master-acc-arrow" style="font-size:9px;color:var(--text-muted,#585870);transition:transform 0.2s;display:inline-block;">▶</span>';
+
+        var masterContent = document.createElement('div');
+        masterContent.id = 'em-accordion-list';
+        masterContent.style.cssText = 'display:none;border-top:1px solid rgba(255,255,255,0.05);';
+
+        var masterIsOpen = false;
+        masterToggle.addEventListener('mouseenter', function(){ masterToggle.style.background='rgba(255,255,255,0.04)'; });
+        masterToggle.addEventListener('mouseleave', function(){ masterToggle.style.background='rgba(255,255,255,0.02)'; });
+        masterToggle.addEventListener('click', function() {
+          masterIsOpen = !masterIsOpen;
+          masterContent.style.display = masterIsOpen ? 'block' : 'none';
+          var arr = masterToggle.querySelector('.master-acc-arrow');
+          if (arr) arr.style.transform = masterIsOpen ? 'rotate(90deg)' : 'rotate(0deg)';
         });
+
+        // ── Individual node rows ───────────────────────────────────────────
+        nodeData.nodes.forEach(function(node) {
+          var hasAnimation = false;
+          if (_emInspectorTools) {
+            var ft = _emInspectorTools.find(function(t){ return t.name === (node.fusionName||node.name) || t.name.replace(/\d+$/,'') === (node.fusionName||node.name).replace(/\d+$/,''); });
+            if (ft) hasAnimation = Object.values(ft.params||{}).some(function(p){ return p.keyframes && p.keyframes.length; });
+          }
+
+          var row = document.createElement('div');
+          row.className = 'em-acc-node-row';
+          row.dataset.nodeId = node.id;
+          row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.12s;';
+          row.innerHTML =
+            '<span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:' + (node.catColor||'#6c7bff') + ';"></span>' +
+            '<span style="font-size:11px;color:rgba(244,244,251,0.85);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (node.fusionName||node.name) + '</span>' +
+            '<span style="font-size:9px;color:rgba(143,143,168,0.55);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono,monospace);">' + (node.category||'') + '</span>' +
+            (hasAnimation ? '<span title="Has keyframes" style="font-size:8px;color:var(--violet,#6c7bff);flex-shrink:0;">◆</span>' : '');
+
+          row.addEventListener('mouseenter', function(){ if(!row.classList.contains('em-acc-active')) row.style.background='rgba(255,255,255,0.03)'; });
+          row.addEventListener('mouseleave', function(){ if(!row.classList.contains('em-acc-active')) row.style.background='transparent'; });
+          row.addEventListener('click', function(ev) {
+            ev.stopPropagation();
+            // Find matching graph card for highlight
+            var card = graphState.world && graphState.world.querySelector('[data-id="' + node.id + '"]');
+            openNodeDetail(node, card);
+          });
+
+          masterContent.appendChild(row);
+        });
+
+        masterWrap.appendChild(masterToggle);
+        masterWrap.appendChild(masterContent);
+        accordionEl.appendChild(masterWrap);
       } else {
         console.log('[effect-modal] accordionEl not found!');
       }
@@ -1527,7 +1541,11 @@
     var graphOuter=nodeSection&&nodeSection.querySelector('.graph-outer');
     if(graphOuter&&graphOuter.parentNode===nodeSection){nodeSection.insertBefore(drawer,graphOuter.nextSibling);}else if(nodeSection){nodeSection.appendChild(drawer);}
 
-    document.getElementById('em-dwr-close').addEventListener('click',function(){drawer.style.display='none';if(graphState.selNodeEl){graphState.selNodeEl.classList.remove('g-active');graphState.selNodeEl=null;}});}
+    document.getElementById('em-dwr-close').addEventListener('click',function(){
+      drawer.style.display='none';
+      if(graphState.selNodeEl){graphState.selNodeEl.classList.remove('g-active');graphState.selNodeEl=null;}
+      document.querySelectorAll('.em-acc-node-row').forEach(function(r){r.classList.remove('em-acc-active');r.style.background='transparent';});
+    });}
 
   function showNodeInParamDrawer(node,fiTool){
     var drawer=document.getElementById('em-param-drawer');
@@ -2246,6 +2264,25 @@
       graphState.dX = e.clientX - graphState.tx;
       graphState.dY = e.clientY - graphState.ty;
       vp.classList.add('panning');
+    });
+
+    // Click empty graph area → deselect without touching accordion open/close state
+    vp.addEventListener('click', function(e) {
+      if (e.target.closest('.gn-card')) return;
+      if (graphState.dragging) return; // ignore if was a pan drag
+      // Clear graph card highlight
+      if (graphState.selNodeEl) {
+        graphState.selNodeEl.classList.remove('g-active');
+        graphState.selNodeEl = null;
+      }
+      // Clear accordion row highlight
+      document.querySelectorAll('.em-acc-node-row').forEach(function(r) {
+        r.classList.remove('em-acc-active');
+        r.style.background = 'transparent';
+      });
+      // Hide param drawer
+      var drawer = document.getElementById('em-param-drawer');
+      if (drawer) drawer.style.display = 'none';
     });
     
     // Pan move
@@ -4255,10 +4292,21 @@
   }
 
   function openNodeDetail(node, cardEl) {
-    // Highlight selected node
+    // Highlight graph card (cardEl may be null when clicking from accordion)
     if (graphState.selNodeEl) graphState.selNodeEl.classList.remove('g-active');
-    graphState.selNodeEl = cardEl;
-    cardEl.classList.add('g-active');
+    if (cardEl) {
+      graphState.selNodeEl = cardEl;
+      cardEl.classList.add('g-active');
+    } else {
+      graphState.selNodeEl = null;
+    }
+
+    // Sync accordion row highlight — always, regardless of source
+    document.querySelectorAll('.em-acc-node-row').forEach(function(r) {
+      var isMatch = r.dataset.nodeId === node.id;
+      r.classList.toggle('em-acc-active', isMatch);
+      r.style.background = isMatch ? 'rgba(108,123,255,0.1)' : 'transparent';
+    });
 
     // Lazy-parse FI inspector data from raw Lua on first click
     if (!_emInspectorTools && window._emRawNodeCode) {
