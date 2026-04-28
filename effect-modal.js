@@ -103,6 +103,7 @@
           created_at: localEffect.created_at,
           user_id: localEffect.user_id,
           is_public: localEffect.is_public,
+          allow_node_copy: localEffect.allow_node_copy,
           _graphData: localEffect._graphData
         };
       } else {
@@ -122,15 +123,18 @@
         effect = fetchedEffect;
       }
 
-      // Re-fetch to get fresh data
+      // Re-fetch to get fresh data (nodes + permissions)
       const { data: freshEffect } = await window._supabase
         .from('effects')
-        .select('id, nodes')
+        .select('id, nodes, allow_node_copy')
         .eq('id', effectId)
         .single();
       
-      if (freshEffect && freshEffect.nodes) {
-        effect.nodes = freshEffect.nodes;
+      if (freshEffect) {
+        if (freshEffect.nodes) effect.nodes = freshEffect.nodes;
+        // Always use the freshly fetched permission value — overrides any
+        // stale/missing value that came from the local window.effects cache.
+        effect.allow_node_copy = freshEffect.allow_node_copy;
       }
 
       populateModal(effect);
