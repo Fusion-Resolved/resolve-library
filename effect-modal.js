@@ -401,7 +401,7 @@
         masterWrap.style.cssText = 'border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;';
 
         var masterToggle = document.createElement('div');
-        masterToggle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:' + (canCopy ? 'pointer' : 'default') + ';background:rgba(255,255,255,0.02);user-select:none;' + (!canCopy ? 'opacity:0.45;' : '');
+        masterToggle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:pointer;background:rgba(255,255,255,0.02);user-select:none;';
         masterToggle.innerHTML =
           '<div style="display:flex;align-items:center;gap:8px;">' +
             '<span style="font-size:9px;font-family:var(--font-mono,monospace);color:var(--text-muted,#585870);text-transform:uppercase;letter-spacing:0.09em;">Nodes</span>' +
@@ -414,10 +414,9 @@
         masterContent.style.cssText = 'display:none;border-top:1px solid rgba(255,255,255,0.05);';
 
         var masterIsOpen = false;
-        masterToggle.addEventListener('mouseenter', function(){ if (canCopy) masterToggle.style.background='rgba(255,255,255,0.04)'; });
-        masterToggle.addEventListener('mouseleave', function(){ if (canCopy) masterToggle.style.background='rgba(255,255,255,0.02)'; });
+        masterToggle.addEventListener('mouseenter', function(){ masterToggle.style.background='rgba(255,255,255,0.04)'; });
+        masterToggle.addEventListener('mouseleave', function(){ masterToggle.style.background='rgba(255,255,255,0.02)'; });
         masterToggle.addEventListener('click', function() {
-          if (!canCopy) return;
           masterIsOpen = !masterIsOpen;
           masterContent.style.display = masterIsOpen ? 'block' : 'none';
           var arr = masterToggle.querySelector('.master-acc-arrow');
@@ -4755,8 +4754,8 @@
 
   // ── Node tree copy permission guard ──────────────────────────────────────
   // Intercepts clicks (capture phase) on any element that is an ancestor of
-  // modal-node-section. If window._nodeTreeCopyAllowed is false the click is
-  // swallowed before any collapse/expand handler can fire.
+  // modal-node-code (the "Node Tree Code" raw Lua section defined in effects.html).
+  // The "Nodes" accordion (modal-node-accordion) is intentionally NOT blocked.
   // Registered once; populateModal updates _nodeTreeCopyAllowed each open.
   (function() {
     var _interceptRegistered = false;
@@ -4765,31 +4764,27 @@
       _interceptRegistered = true;
       document.addEventListener('click', function(e) {
         if (window._nodeTreeCopyAllowed !== false) return;
-        var nodeSection = document.getElementById('modal-node-section');
-        if (!nodeSection) return;
-        // Check if the clicked element is an ANCESTOR of modal-node-section
-        // (i.e. a toggle that wraps it) but NOT a descendant (inner UI)
+        // Target: the "Node Tree Code" section, identified by its content element
+        var codeEl = document.getElementById('modal-node-code');
+        if (!codeEl) return;
         var t = e.target;
-        var isAncestorToggle = false;
-        var el = nodeSection.parentElement;
+        // Walk up from modal-node-code to find an ancestor that contains the click
+        // but where the click is NOT inside modal-node-code itself
+        var el = codeEl.parentElement;
         while (el && el !== document.body) {
           if (el === t || el.contains(t)) {
-            // The click is on this ancestor or something inside it but
-            // outside modal-node-section — this is the outer toggle
-            if (!nodeSection.contains(t)) {
-              isAncestorToggle = true;
+            if (!codeEl.contains(t)) {
+              // Click is on this ancestor but outside the code content —
+              // this is the toggle header. Block it.
+              e.stopImmediatePropagation();
+              e.preventDefault();
             }
             break;
           }
           el = el.parentElement;
         }
-        if (isAncestorToggle) {
-          e.stopImmediatePropagation();
-          e.preventDefault();
-        }
-      }, true); // capture phase — fires before any bubbling handlers
+      }, true); // capture phase
     }
-    // Register immediately and also retry after DOM is fully ready
     _registerNodeSectionGuard();
     if (document.readyState !== 'complete') {
       window.addEventListener('load', _registerNodeSectionGuard);
