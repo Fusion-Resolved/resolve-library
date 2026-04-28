@@ -1,0 +1,5 @@
+# mynodes.app — Netlify URL routing
+# Clean effect URLs: /effects/:username/:slug → effects.html
+# The 200 rewrite keeps the pretty URL in the browser address bar
+# while serving effects.html, which reads username + slug from query params.
+/effects/:username/:slug  /effects.html?username=:username&slug=:slug  200

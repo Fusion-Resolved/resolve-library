@@ -1748,7 +1748,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       is_public: isPublic,
       status: visState,
       share_password: sharePassword,
-      share_limit: shareLimit
+      share_limit: shareLimit,
+      slug: generateSlug(nameEl ? nameEl.value : '')
     };
 
     // ── Node graph ──────────────────────────────────────────────
@@ -2098,13 +2099,34 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       buildGraph();
     }
     
-    // ── Access tab: share link + embed code ──────────────────────────────
-    var pageBase = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+    // ── Access tab: share link ─────────────────────────────────────────
+    // Build the pretty URL using the creator's display_name + effect slug.
+    // Falls back to the ?open= ID link while the profile fetch is in flight.
     var effectId  = effect.id || '';
-    var shareUrl  = pageBase + 'effects.html?open=' + effectId;
-
+    var effectSlug = effect.slug || generateSlug(effect.name || '');
     var shareLinkEl = document.getElementById('shareLinkInput');
-    if (shareLinkEl) shareLinkEl.value = shareUrl;
+
+    // Temporary fallback while we fetch the display_name
+    if (shareLinkEl) shareLinkEl.value = 'https://mynodes.app/effects/' + effectSlug;
+
+    // Async: resolve owner display_name then update to the full pretty URL
+    (async function fetchDisplayName() {
+      try {
+        var userId = effect.user_id;
+        if (!userId || !supabase) return;
+        var res = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', userId)
+          .single();
+        var displayName = res.data && res.data.display_name
+          ? res.data.display_name
+          : null;
+        if (displayName && effectSlug && shareLinkEl) {
+          shareLinkEl.value = 'https://mynodes.app/effects/' + encodeURIComponent(displayName) + '/' + effectSlug;
+        }
+      } catch(e) { /* leave fallback URL in place */ }
+    }());
 
     // ── Visibility: derive state from is_public + status ──────────────────
     // Mapping: is_public=true → 'Public'; is_public=false + status='Sharing' → 'Sharing'; else → 'Private'
@@ -2127,6 +2149,19 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     
     // Open the sheet after populating
     openSheet();
+  }
+
+  /* ── SLUG HELPER ── */
+  function generateSlug(name) {
+    return (name || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')  // strip diacritics
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
   }
 
   /* ── VISIBILITY HELPER ── */

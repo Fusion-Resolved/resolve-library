@@ -4406,6 +4406,240 @@
   window.fitModalGraph = fitGraph;
 
   /* ════════════════════════════════════════════════════════════════
+     PASSWORD PROMPT UI
+     Shown when validate_effect_access returns {requires_password:true}.
+     Submits to the RPC and either opens the effect or shows an error.
+     ════════════════════════════════════════════════════════════════ */
+  function showPasswordPrompt(username, slug, onSuccess) {
+    // Remove any existing prompt
+    var existing = document.getElementById('em-pw-overlay');
+    if (existing) existing.parentNode.removeChild(existing);
+
+    var ov = document.createElement('div');
+    ov.id = 'em-pw-overlay';
+    ov.style.cssText = [
+      'position:fixed;inset:0;z-index:9999',
+      'background:rgba(9,9,14,0.82)',
+      'backdrop-filter:blur(8px)',
+      '-webkit-backdrop-filter:blur(8px)',
+      'display:flex;align-items:center;justify-content:center',
+      'padding:1.5rem;font-family:var(--font-body,"DM Sans",sans-serif)'
+    ].join(';');
+
+    ov.innerHTML = [
+      '<div style="background:#0f0f16;border:1px solid rgba(255,255,255,0.08);border-radius:16px;',
+        'box-shadow:0 24px 64px rgba(0,0,0,0.7);padding:2rem;max-width:360px;width:100%;',
+        'animation:sheetUp 0.22s cubic-bezier(0.16,1,0.3,1)">',
+
+        '<div style="width:44px;height:44px;border-radius:50%;',
+          'background:rgba(108,123,255,0.1);border:1px solid rgba(108,123,255,0.25);',
+          'display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">',
+          '<svg width="18" height="18" fill="none" stroke="#6c7bff" stroke-width="1.8"',
+            ' stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">',
+            '<rect x="3" y="11" width="18" height="11" rx="2"/>',
+            '<path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+          '</svg>',
+        '</div>',
+
+        '<h2 style="font-family:var(--font-display,'Syne',sans-serif);font-size:1rem;',
+          'font-weight:700;letter-spacing:-0.02em;text-align:center;',
+          'color:#f4f4fb;margin:0 0 6px;">Password required</h2>',
+
+        '<p style="font-size:12px;color:#8f8fa8;text-align:center;margin:0 0 20px;line-height:1.5;">',
+          '<span style="font-family:'DM Mono',monospace;color:#9ca8ff;">',
+            username + '/' + slug,
+          '</span><br>This effect is private.',
+        '</p>',
+
+        '<input id="em-pw-input" type="password" placeholder="Enter password"',
+          ' style="width:100%;background:#16161f;border:1px solid #1e1e2a;border-radius:7px;',
+          'height:42px;padding:0 14px;font-size:13px;color:#f4f4fb;outline:none;',
+          'font-family:inherit;margin-bottom:8px;box-sizing:border-box;transition:border-color 0.15s;"',
+          ' autocomplete="current-password"/>',
+
+        '<div id="em-pw-error" style="display:none;font-size:11px;color:#f06060;',
+          'margin-bottom:8px;min-height:16px;text-align:center;"></div>',
+
+        '<div style="display:flex;gap:8px;margin-top:4px;">',
+          '<button id="em-pw-cancel" style="flex:1;padding:10px;border-radius:7px;',
+            'border:1px solid #1e1e2a;background:#16161f;color:#8f8fa8;',
+            'font-size:13px;cursor:pointer;transition:all 0.13s;">Cancel</button>',
+          '<button id="em-pw-submit" style="flex:1;padding:10px;border-radius:7px;',
+            'border:none;background:#6c7bff;color:#09090e;font-size:13px;',
+            'font-weight:600;cursor:pointer;transition:all 0.13s;">Unlock</button>',
+        '</div>',
+      '</div>'
+    ].join('');
+
+    document.body.appendChild(ov);
+
+    var input  = document.getElementById('em-pw-input');
+    var errEl  = document.getElementById('em-pw-error');
+    var submit = document.getElementById('em-pw-submit');
+    var cancel = document.getElementById('em-pw-cancel');
+
+    input.focus();
+
+    function setError(msg) {
+      errEl.textContent = msg;
+      errEl.style.display = msg ? 'block' : 'none';
+      input.style.borderColor = msg ? 'rgba(240,96,96,0.5)' : '#1e1e2a';
+    }
+    function setLoading(loading) {
+      submit.textContent  = loading ? 'Checking…' : 'Unlock';
+      submit.disabled     = loading;
+      input.disabled      = loading;
+      cancel.disabled     = loading;
+      submit.style.opacity = loading ? '0.6' : '1';
+    }
+
+    async function attempt() {
+      var pw = input.value.trim();
+      if (!pw) { setError('Please enter a password.'); return; }
+
+      setLoading(true);
+      setError('');
+
+      try {
+        var res = await window._supabase.rpc('validate_effect_access', {
+          p_username: username,
+          p_slug:     slug,
+          p_password: pw
+        });
+
+        if (res.error) throw res.error;
+
+        var data = res.data;
+
+        if (!data) {
+          setError('Incorrect password.');
+        } else if (data.error === 'wrong_password') {
+          setError('Incorrect password.');
+        } else if (data.error === 'rate_limited') {
+          setError('Too many attempts. Try again in an hour.');
+        } else if (data.error === 'limit_reached') {
+          setError('This effect has reached its maximum number of viewers.');
+        } else if (data.error === 'not_found') {
+          setError('Effect not found.');
+        } else if (data.id) {
+          // Success — close prompt and open the effect
+          ov.parentNode.removeChild(ov);
+          onSuccess(data);
+        } else {
+          setError('Unexpected response. Please try again.');
+        }
+      } catch (err) {
+        console.error('[Effect Modal] Password attempt error:', err);
+        setError('Connection error. Please try again.');
+      }
+
+      setLoading(false);
+    }
+
+    submit.addEventListener('click', attempt);
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') attempt();
+      if (e.key === 'Escape') ov.parentNode.removeChild(ov);
+    });
+    cancel.addEventListener('click', function() {
+      ov.parentNode.removeChild(ov);
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     SLUG-BASED EFFECT LOOKUP
+     All slug resolution goes through the validate_effect_access RPC
+     so RLS is always enforced server-side. The client never gets a
+     raw SELECT on private effect rows.
+     ════════════════════════════════════════════════════════════════ */
+  window.openEffectModalBySlug = async function(username, slug) {
+    if (!window._supabase) {
+      console.warn('[Effect Modal] Supabase not ready for slug lookup');
+      return;
+    }
+    try {
+      console.log('[Effect Modal] Resolving slug via RPC:', username, '/', slug);
+
+      var res = await window._supabase.rpc('validate_effect_access', {
+        p_username: username,
+        p_slug:     slug
+        // p_password omitted → RPC returns requires_password if private
+      });
+
+      if (res.error) {
+        console.error('[Effect Modal] RPC error:', res.error);
+        return;
+      }
+
+      var data = res.data;
+
+      if (!data) {
+        console.warn('[Effect Modal] Effect not found:', username, '/', slug);
+        return;
+      }
+
+      if (data.error === 'not_found') {
+        console.warn('[Effect Modal] Not found:', username, '/', slug);
+        return;
+      }
+
+      if (data.error === 'rate_limited') {
+        console.warn('[Effect Modal] Rate limited for:', username, '/', slug);
+        // Still show the prompt so user sees the lockout message
+        showPasswordPrompt(username, slug, function(effect) {
+          populateModal(effect);
+          showModal();
+        });
+        return;
+      }
+
+      if (data.requires_password) {
+        // Private effect — ask for password
+        showPasswordPrompt(username, slug, function(effect) {
+          populateModal(effect);
+          showModal();
+        });
+        return;
+      }
+
+      if (data.id) {
+        // Public or Sharing — open directly
+        populateModal(data);
+        showModal();
+        console.log('[Effect Modal] Opened via slug:', data.name);
+        return;
+      }
+
+      console.warn('[Effect Modal] Unexpected RPC response:', data);
+    } catch (err) {
+      console.error('[Effect Modal] Slug lookup error:', err);
+    }
+  };
+
+  /* ── Auto-open on page load: handle both ?open=id and ?username=+?slug= ── */
+  (function autoOpenFromUrl() {
+    var p        = new URLSearchParams(window.location.search);
+    var username = p.get('username');
+    var slug     = p.get('slug');
+    var openId   = p.get('open') || p.get('id');
+
+    function waitForSupabase(fn) {
+      if (window._supabase) { fn(); return; }
+      var tries = 0;
+      var t = setInterval(function() {
+        if (window._supabase) { clearInterval(t); fn(); }
+        else if (++tries > 40) clearInterval(t);
+      }, 150);
+    }
+
+    if (username && slug) {
+      waitForSupabase(function() { window.openEffectModalBySlug(username, slug); });
+    } else if (openId) {
+      waitForSupabase(function() { window.openEffectModal(openId); });
+    }
+  }());
+
+  /* ════════════════════════════════════════════════════════════════
      REFRESH GRAPH AFTER EDIT-MODAL SAVE
      Listens for the postMessage sent by edit-effect-owner.html once
      it has successfully written to Supabase. We do a full fresh
