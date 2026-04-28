@@ -2125,11 +2125,17 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       } catch(e) { /* leave fallback URL in place */ }
     }());
 
-    // ── Visibility: derive state from is_public + status ──────────────────
-    // Mapping: is_public=true → 'Public'; is_public=false + status='Sharing' → 'Sharing'; else → 'Private'
-    var visState = 'Public';
-    if (effect.is_public === false || effect.is_public === 'false') {
-      visState = (effect.status === 'Sharing') ? 'Sharing' : 'Private';
+    // ── Visibility: use status as primary source of truth ────────────────
+    // status ('Public'|'Sharing'|'Private') is always written by doSave.
+    // Fall back to is_public only for effects that pre-date the status column.
+    var _knownStatuses = ['Public', 'Sharing', 'Private'];
+    var visState;
+    if (effect.status && _knownStatuses.indexOf(effect.status) !== -1) {
+      visState = effect.status;
+    } else if (effect.is_public === false || effect.is_public === 'false') {
+      visState = 'Private';
+    } else {
+      visState = 'Public';
     }
     document.querySelectorAll('.vis-card').forEach(function (card) {
       card.classList.toggle('on', card.dataset.vis === visState);
@@ -2315,12 +2321,15 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       setTimeout(function () { btn.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy link'; btn.classList.remove('copied'); }, 2000);
       showToast('Link copied');
     });
-    document.getElementById('btnCopyEmbed').addEventListener('click', function () {
-      var embedBoxEl = document.getElementById('embedBox');
-      var code = embedBoxEl ? (embedBoxEl.dataset.embedCode || embedBoxEl.textContent.replace('Copy','').trim()) : '';
-      try { navigator.clipboard.writeText(code); } catch(e) {}
-      showToast('Embed code copied');
-    });
+    var btnCopyEmbed = document.getElementById('btnCopyEmbed');
+    if (btnCopyEmbed) {
+      btnCopyEmbed.addEventListener('click', function () {
+        var embedBoxEl = document.getElementById('embedBox');
+        var code = embedBoxEl ? (embedBoxEl.dataset.embedCode || embedBoxEl.textContent.replace('Copy','').trim()) : '';
+        try { navigator.clipboard.writeText(code); } catch(e) {}
+        showToast('Embed code copied');
+      });
+    }
 
     /* media */
     /* media & other buttons - wrapped in try-catch for safety */
