@@ -619,9 +619,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           <div class="vis-name">Public</div>
           <div class="vis-desc">Everyone can see</div>
         </div>
-        <div class="vis-card" data-vis="Unlisted">
+        <div class="vis-card" data-vis="Sharing">
           <div class="vis-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
-          <div class="vis-name">Unlisted</div>
+          <div class="vis-name">Sharing</div>
           <div class="vis-desc">Link only</div>
         </div>
         <div class="vis-card" data-vis="Private">
@@ -630,15 +630,37 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           <div class="vis-desc">Only you</div>
         </div>
       </div>
+
+      <!-- Private sharing fields: password + share limit. Shown only when Private is selected. -->
+      <div id="privateShareFields" style="display:none;flex-direction:column;gap:10px;padding:12px;background:rgba(108,123,255,0.04);border:1px solid rgba(108,123,255,0.15);border-radius:var(--rsm);margin-top:4px;">
+        <div class="frow two">
+          <div class="fg">
+            <div class="fg-hd"><label class="fl">Share password <span></span></label></div>
+            <input class="fi" type="text" id="fSharePassword" placeholder="Set a password…" autocomplete="off">
+            <div class="fhint">Anyone with this link and password can view the effect</div>
+          </div>
+          <div class="fg">
+            <div class="fg-hd"><label class="fl">Max viewers</label></div>
+            <input class="fi" type="number" id="fShareLimit" placeholder="Unlimited" min="1" max="999">
+            <div class="fhint">Leave blank to allow unlimited access</div>
+          </div>
+        </div>
+      </div>
+
       <div class="sec-lbl">Sharing</div>
       <div class="fg">
-        <label class="fl">Public link</label>
+        <label class="fl">Link</label>
         <div class="share-link-row">
-          <input class="share-link-input" type="text" id="shareLinkInput" value="https://noding.io/e/optical-flow-warp" readonly>
+          <input class="share-link-input" type="text" id="shareLinkInput" value="" readonly>
           <button class="copy-link-btn" id="btnCopyLink">
             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             Copy link
           </button>
+        </div>
+        <!-- Shown only when Private + at least one person has opened the link -->
+        <div id="shareViewCount" style="display:none;align-items:center;gap:6px;margin-top:4px;">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--violet-light);flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span id="shareViewCountTxt" style="font-family:var(--fm);font-size:10px;color:var(--violet-light);letter-spacing:0.04em;"></span>
         </div>
       </div>
       <div class="fg">
@@ -1701,6 +1723,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     const renderWeight = weightEl ? weightEl.value : '';
     
     const selfEl = document.getElementById('fSelf');
+
+    // Visibility
+    var visCard = document.querySelector('.vis-card.on');
+    var visState = visCard ? visCard.dataset.vis : 'Public';
+    var isPublic = (visState === 'Public');
+
+    // Share password + limit (only meaningful for Private)
+    var pwEl    = document.getElementById('fSharePassword');
+    var limitEl = document.getElementById('fShareLimit');
+    var sharePassword = (visState === 'Private' && pwEl && pwEl.value.trim()) ? pwEl.value.trim() : null;
+    var shareLimit    = (visState === 'Private' && limitEl && limitEl.value.trim()) ? parseInt(limitEl.value.trim(), 10) : null;
+
     const updates = {
       name: nameEl ? nameEl.value : '',
       desc: descEl ? descEl.value : '',
@@ -1710,7 +1744,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       difficulty: difficulty,
       tags: tags,
       render_weight: renderWeight,
-      self_contained: selfEl ? selfEl.value : ''
+      self_contained: selfEl ? selfEl.value : '',
+      is_public: isPublic,
+      status: visState,
+      share_password: sharePassword,
+      share_limit: shareLimit
     };
 
     // ── Node graph ──────────────────────────────────────────────
@@ -2061,31 +2099,59 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
     
     // ── Access tab: share link + embed code ──────────────────────────────
-    // Derive the base URL from the current page's origin + path so this works
-    // on any host (GitHub Pages, custom domain, localhost, etc.)
     var pageBase = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
     var effectId  = effect.id || '';
     var shareUrl  = pageBase + 'effects.html?open=' + effectId;
-    var embedUrl  = pageBase + 'embed.html?id=' + effectId;
-    var embedCode = '<iframe src="' + embedUrl + '" width="640" height="360" frameborder="0" allowfullscreen></iframe>';
 
     var shareLinkEl = document.getElementById('shareLinkInput');
     if (shareLinkEl) shareLinkEl.value = shareUrl;
 
-    var embedBoxEl = document.getElementById('embedBox');
-    if (embedBoxEl) {
-      // Replace text node with live value (keep the Copy button)
-      var copyBtn = embedBoxEl.querySelector('#btnCopyEmbed');
-      embedBoxEl.textContent = embedCode;
-      if (copyBtn) embedBoxEl.appendChild(copyBtn);
-      // Store the raw code for the copy handler
-      embedBoxEl.dataset.embedCode = embedCode;
+    // ── Visibility: derive state from is_public + status ──────────────────
+    // Mapping: is_public=true → 'Public'; is_public=false + status='Sharing' → 'Sharing'; else → 'Private'
+    var visState = 'Public';
+    if (effect.is_public === false || effect.is_public === 'false') {
+      visState = (effect.status === 'Sharing') ? 'Sharing' : 'Private';
     }
+    document.querySelectorAll('.vis-card').forEach(function (card) {
+      card.classList.toggle('on', card.dataset.vis === visState);
+    });
+    updatePrivateShareFields(visState, effect.view_count || 0);
+
+    // ── Private sharing fields ─────────────────────────────────────────────
+    var pwEl = document.getElementById('fSharePassword');
+    if (pwEl) pwEl.value = effect.share_password || '';
+    var limitEl = document.getElementById('fShareLimit');
+    if (limitEl) limitEl.value = effect.share_limit != null ? effect.share_limit : '';
 
     console.log('[populateForm] ========== COMPLETE ==========');
     
     // Open the sheet after populating
     openSheet();
+  }
+
+  /* ── VISIBILITY HELPER ── */
+  function updatePrivateShareFields(visState, viewCount) {
+    var fields = document.getElementById('privateShareFields');
+    var viewCountEl = document.getElementById('shareViewCount');
+    var viewCountTxt = document.getElementById('shareViewCountTxt');
+
+    if (fields) {
+      fields.style.display = (visState === 'Private') ? 'flex' : 'none';
+    }
+
+    // Show the "X people have accessed this" indicator only for Private
+    // effects that have actually been opened by at least one person
+    if (viewCountEl && viewCountTxt) {
+      var count = viewCount != null ? parseInt(viewCount, 10) : 0;
+      if (visState === 'Private' && count > 0) {
+        viewCountEl.style.display = 'flex';
+        viewCountTxt.textContent = count === 1
+          ? '1 person has accessed this link'
+          : count + ' people have accessed this link';
+      } else {
+        viewCountEl.style.display = 'none';
+      }
+    }
   }
 
   /* ── INIT ── */
@@ -2200,7 +2266,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     for (var vc = 0; vc < vcards.length; vc++) {
       vcards[vc].addEventListener('click', function () {
         for (var x = 0; x < vcards.length; x++) { vcards[x].classList.remove('on'); }
-        this.classList.add('on'); markDirty(3);
+        this.classList.add('on');
+        updatePrivateShareFields(this.dataset.vis, null);
+        markDirty(3);
       });
     }
 
