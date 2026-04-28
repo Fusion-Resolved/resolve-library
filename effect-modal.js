@@ -595,51 +595,12 @@
         }
       }
 
-      // 3. Lock the "Node Tree Code" accordion toggle (defined in effects.html,
-      //    wraps #modal-node-code). Walk up from modal-node-code to find the
-      //    toggle header element and attach/detach a named block handler on it only.
+      // 3. When copying is blocked, hide the content of #modal-node-code so
+      //    the accordion can open but shows nothing. This avoids any DOM
+      //    traversal that could accidentally intercept unrelated clicks.
       var _codeEl = document.getElementById('modal-node-code');
       if (_codeEl) {
-        var _codeWrap = _codeEl.parentElement;
-        var _depth = 0;
-        while (_codeWrap && _codeWrap !== document.body && _depth < 5) {
-          var _toggleHdr = null;
-          var _children = Array.from(_codeWrap.children);
-          for (var _ci = 0; _ci < _children.length; _ci++) {
-            var _ch = _children[_ci];
-            var _chStyle = _ch.getAttribute('style') || '';
-            var _chOnclick = _ch.getAttribute('onclick') || '';
-            var _chClass = _ch.className || '';
-            if (_chOnclick || _chStyle.indexOf('cursor') !== -1 ||
-                _chClass.indexOf('toggle') !== -1 || _chClass.indexOf('header') !== -1 ||
-                _chClass.indexOf('sec-lbl') !== -1) {
-              _toggleHdr = _ch;
-              break;
-            }
-          }
-          if (_toggleHdr) {
-            if (_toggleHdr._nodeCodeBlockHandler) {
-              _toggleHdr.removeEventListener('click', _toggleHdr._nodeCodeBlockHandler, true);
-              _toggleHdr._nodeCodeBlockHandler = null;
-            }
-            if (!canCopy) {
-              var _blockFn = function(e) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-              };
-              _toggleHdr._nodeCodeBlockHandler = _blockFn;
-              _toggleHdr.addEventListener('click', _blockFn, true);
-              _toggleHdr.style.cursor = 'default';
-              _toggleHdr.style.opacity = '0.45';
-            } else {
-              _toggleHdr.style.cursor = '';
-              _toggleHdr.style.opacity = '';
-            }
-            break;
-          }
-          _codeWrap = _codeWrap.parentElement;
-          _depth++;
-        }
+        _codeEl.style.display = canCopy ? '' : 'none';
       }
     }
 
