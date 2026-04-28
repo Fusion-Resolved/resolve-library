@@ -408,9 +408,6 @@
         masterToggle.addEventListener('mouseenter', function(){ masterToggle.style.background='rgba(255,255,255,0.04)'; });
         masterToggle.addEventListener('mouseleave', function(){ masterToggle.style.background='rgba(255,255,255,0.02)'; });
         masterToggle.addEventListener('click', function() {
-          // Respect the copy permission — accordion exposes the node list which
-          // would let users read the structure even without the copy button.
-          if (!window._canCopyNodes) return;
           masterIsOpen = !masterIsOpen;
           masterContent.style.display = masterIsOpen ? 'block' : 'none';
           var arr = masterToggle.querySelector('.master-acc-arrow');
@@ -533,9 +530,6 @@
     // Owners always see copy; for others respect allow_node_copy (default true).
     const canCopy = isOwner || !(effect.allow_node_copy === false || effect.allow_node_copy === 'false');
 
-    // Expose for the accordion click handler (built earlier in this function)
-    window._canCopyNodes = canCopy;
-
     // 1. Gate the copy function itself — this is the definitive block regardless
     //    of what button wires up to it.
     window.copyNodeCode = canCopy
@@ -592,18 +586,11 @@
         }
       }
 
-      // 3. Lock the node accordion visually when copying is blocked.
-      //    The click handler already checks window._canCopyNodes, so this
-      //    just makes the disabled state obvious to the user.
+      // 3. Hide the entire accordion when copying is blocked — no partial
+      //    access, no pointer-event tricks, just not rendered.
       var _accEl = document.getElementById('modal-node-accordion');
-      if (_accEl && _accEl.firstElementChild) {
-        // masterWrap > masterToggle is the first child of the first child
-        var _masterToggle = _accEl.firstElementChild.firstElementChild;
-        if (_masterToggle) {
-          _masterToggle.style.cursor        = canCopy ? 'pointer' : 'default';
-          _masterToggle.style.pointerEvents = canCopy ? ''        : 'none';
-          _masterToggle.style.opacity       = canCopy ? ''        : '0.4';
-        }
+      if (_accEl) {
+        _accEl.style.display = canCopy ? '' : 'none';
       }
     }
 
