@@ -526,6 +526,15 @@
       `;
     }
 
+    // ── Allow node tree copying ──────────────────────────────────
+    // Owners always see the button; for others, respect allow_node_copy.
+    // Default to visible (true) when the field is absent (legacy effects).
+    const btnCopyEl = document.getElementById('modal-btn-copy') || document.getElementById('btnCopy');
+    if (btnCopyEl) {
+      const canCopy = isOwner || !(effect.allow_node_copy === false || effect.allow_node_copy === 'false');
+      btnCopyEl.style.display = canCopy ? '' : 'none';
+    }
+
   }
 
   /* ═══════════════════════════════════════════════════════════════

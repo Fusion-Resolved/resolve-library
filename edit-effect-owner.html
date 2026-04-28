@@ -1746,7 +1746,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       status: visState,
       share_password: sharePassword,
       share_limit: shareLimit,
-      slug: generateSlug(nameEl ? nameEl.value : '')
+      slug: generateSlug(nameEl ? nameEl.value : ''),
+      allow_node_copy: document.getElementById('sw0') ? document.getElementById('sw0').classList.contains('on') : true
     };
 
     // ── Node graph ──────────────────────────────────────────────
@@ -2147,6 +2148,14 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if (pwEl) pwEl.value = effect.share_password || '';
     var limitEl = document.getElementById('fShareLimit');
     if (limitEl) limitEl.value = effect.share_limit != null ? effect.share_limit : '';
+
+    // ── Allow node tree copying toggle (sw0) ───────────────────────────────
+    // Default to ON (true) when field is absent (legacy effects)
+    var sw0El = document.getElementById('sw0');
+    if (sw0El) {
+      var allowCopy = (effect.allow_node_copy === false || effect.allow_node_copy === 'false') ? false : true;
+      sw0El.classList.toggle('on', allowCopy);
+    }
 
     console.log('[populateForm] ========== COMPLETE ==========');
     

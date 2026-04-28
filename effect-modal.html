@@ -564,6 +564,15 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
         console.warn('[effect-modal] Analysis failed:', e);
       }
     }
+
+    // ── Allow node tree copying ────────────────────────────────
+    // Owners always see the button; for others, respect the allow_node_copy flag.
+    // Default to visible (true) when the field is absent (legacy effects).
+    var btnCopyEl = document.getElementById('btnCopy');
+    if (btnCopyEl) {
+      var canCopy = (effect.allow_node_copy === false || effect.allow_node_copy === 'false') ? false : true;
+      btnCopyEl.style.display = canCopy ? '' : 'none';
+    }
   }
 
   /* ════════════════════════════════
@@ -843,7 +852,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 
     var _a = await sb
       .from('effects')
-      .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, created_at, user_id, node_code, nodes')
+      .select('id, name, cat, desc, version, difficulty, tags, render_weight, self_contained, created_at, user_id, node_code, nodes, allow_node_copy')
       .eq('id', effectId)
       .single();
     var data = _a.data, error = _a.error;
