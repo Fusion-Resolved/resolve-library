@@ -160,6 +160,10 @@
     const isOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === effect.user_id;
     const canCopy = isOwner || !(effect.allow_node_copy === false || effect.allow_node_copy === 'false');
 
+    console.log('[Effect Modal] allow_node_copy RAW value:', effect.allow_node_copy, '| type:', typeof effect.allow_node_copy);
+    console.log('[Effect Modal] isOwner:', isOwner, '| CURRENT_USER_ID:', window.CURRENT_USER_ID, '| effect.user_id:', effect.user_id);
+    console.log('[Effect Modal] canCopy resolved to:', canCopy);
+
     // Title and header
     document.getElementById('modal-sheet-title').textContent = effect.name;
     document.getElementById('modal-effect-title').textContent = effect.name;
