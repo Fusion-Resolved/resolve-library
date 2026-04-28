@@ -530,9 +530,29 @@
     // Owners always see the button; for others, respect allow_node_copy.
     // Default to visible (true) when the field is absent (legacy effects).
     const btnCopyEl = document.getElementById('modal-btn-copy') || document.getElementById('btnCopy');
+    const blockedCopyEl = document.getElementById('modal-node-copy-blocked') || document.getElementById('node-copy-blocked');
+    const canCopy = isOwner || !(effect.allow_node_copy === false || effect.allow_node_copy === 'false');
     if (btnCopyEl) {
-      const canCopy = isOwner || !(effect.allow_node_copy === false || effect.allow_node_copy === 'false');
       btnCopyEl.style.display = canCopy ? '' : 'none';
+    }
+    if (blockedCopyEl) {
+      blockedCopyEl.style.display = canCopy ? 'none' : 'flex';
+    }
+    // If no dedicated blocked element exists, inject one adjacent to the copy button
+    if (!canCopy && btnCopyEl && !blockedCopyEl) {
+      var existingBlock = btnCopyEl.parentNode.querySelector('#modal-node-copy-blocked-dyn');
+      if (!existingBlock) {
+        var blockDiv = document.createElement('div');
+        blockDiv.id = 'modal-node-copy-blocked-dyn';
+        blockDiv.style.cssText = 'margin-top:8px;width:100%;box-sizing:border-box;border-radius:var(--radius,8px);border:1px solid rgba(255,255,255,0.07);background:rgba(9,9,14,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:14px 16px;display:flex;align-items:center;gap:10px;pointer-events:none;';
+        blockDiv.innerHTML = '<svg width="13" height="13" fill="none" stroke="rgba(143,143,168,0.5)" stroke-width="1.8" viewBox="0 0 24 24" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
+          '<span style="font-family:var(--font-mono,monospace);font-size:10px;color:rgba(143,143,168,0.5);letter-spacing:0.05em;">node tree copying blocked by owner</span>';
+        btnCopyEl.parentNode.insertBefore(blockDiv, btnCopyEl.nextSibling);
+      }
+    } else if (canCopy) {
+      // Remove injected block if it exists from a prior view
+      var dynBlock = document.getElementById('modal-node-copy-blocked-dyn');
+      if (dynBlock) dynBlock.remove();
     }
 
   }
