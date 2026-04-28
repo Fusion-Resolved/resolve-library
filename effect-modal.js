@@ -408,6 +408,9 @@
         masterToggle.addEventListener('mouseenter', function(){ masterToggle.style.background='rgba(255,255,255,0.04)'; });
         masterToggle.addEventListener('mouseleave', function(){ masterToggle.style.background='rgba(255,255,255,0.02)'; });
         masterToggle.addEventListener('click', function() {
+          // Respect the copy permission — accordion exposes the node list which
+          // would let users read the structure even without the copy button.
+          if (!window._canCopyNodes) return;
           masterIsOpen = !masterIsOpen;
           masterContent.style.display = masterIsOpen ? 'block' : 'none';
           var arr = masterToggle.querySelector('.master-acc-arrow');
@@ -530,6 +533,9 @@
     // Owners always see copy; for others respect allow_node_copy (default true).
     const canCopy = isOwner || !(effect.allow_node_copy === false || effect.allow_node_copy === 'false');
 
+    // Expose for the accordion click handler (built earlier in this function)
+    window._canCopyNodes = canCopy;
+
     // 1. Gate the copy function itself — this is the definitive block regardless
     //    of what button wires up to it.
     window.copyNodeCode = canCopy
@@ -583,6 +589,20 @@
             '<svg width="13" height="13" fill="none" stroke="rgba(143,143,168,0.5)" stroke-width="1.8" viewBox="0 0 24 24" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
             '<span style="font-family:var(--font-mono,monospace);font-size:10px;color:rgba(143,143,168,0.5);letter-spacing:0.05em;">node tree copying blocked by owner</span>';
           _copyBtn.parentNode.insertBefore(_block, _copyBtn.nextSibling);
+        }
+      }
+
+      // 3. Lock the node accordion visually when copying is blocked.
+      //    The click handler already checks window._canCopyNodes, so this
+      //    just makes the disabled state obvious to the user.
+      var _accEl = document.getElementById('modal-node-accordion');
+      if (_accEl && _accEl.firstElementChild) {
+        // masterWrap > masterToggle is the first child of the first child
+        var _masterToggle = _accEl.firstElementChild.firstElementChild;
+        if (_masterToggle) {
+          _masterToggle.style.cursor        = canCopy ? 'pointer' : 'default';
+          _masterToggle.style.pointerEvents = canCopy ? ''        : 'none';
+          _masterToggle.style.opacity       = canCopy ? ''        : '0.4';
         }
       }
     }
