@@ -4441,12 +4441,12 @@
           '</svg>',
         '</div>',
 
-        '<h2 style="font-family:var(--font-display,'Syne',sans-serif);font-size:1rem;',
+        '<h2 style="font-family:var(--font-display,sans-serif);font-size:1rem;',
           'font-weight:700;letter-spacing:-0.02em;text-align:center;',
           'color:#f4f4fb;margin:0 0 6px;">Password required</h2>',
 
         '<p style="font-size:12px;color:#8f8fa8;text-align:center;margin:0 0 20px;line-height:1.5;">',
-          '<span style="font-family:'DM Mono',monospace;color:#9ca8ff;">',
+          '<span style="font-family:var(--font-mono,monospace);color:#9ca8ff;">',
             username + '/' + slug,
           '</span><br>This effect is private.',
         '</p>',
