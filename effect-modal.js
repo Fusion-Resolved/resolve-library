@@ -154,6 +154,7 @@
     
     const colors = getCatColor(effect.cat);
     const isOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === effect.user_id;
+    const canCopy = isOwner || !(effect.allow_node_copy === false || effect.allow_node_copy === 'false');
 
     // Title and header
     document.getElementById('modal-sheet-title').textContent = effect.name;
@@ -447,6 +448,8 @@
         masterWrap.appendChild(masterToggle);
         masterWrap.appendChild(masterContent);
         accordionEl.appendChild(masterWrap);
+        // Hide the entire accordion for non-owners when copying is blocked
+        accordionEl.style.display = canCopy ? '' : 'none';
       } else {
         console.log('[effect-modal] accordionEl not found!');
       }
@@ -528,7 +531,7 @@
 
     // ── Allow node tree copying ──────────────────────────────────
     // Owners always see copy; for others respect allow_node_copy (default true).
-    const canCopy = isOwner || !(effect.allow_node_copy === false || effect.allow_node_copy === 'false');
+    // (canCopy is computed at the top of populateModal and used throughout)
 
     // 1. Gate the copy function itself — this is the definitive block regardless
     //    of what button wires up to it.
