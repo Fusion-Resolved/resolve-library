@@ -401,7 +401,7 @@
         masterWrap.style.cssText = 'border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;';
 
         var masterToggle = document.createElement('div');
-        masterToggle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:pointer;background:rgba(255,255,255,0.02);user-select:none;';
+        masterToggle.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:' + (canCopy ? 'pointer' : 'default') + ';background:rgba(255,255,255,0.02);user-select:none;' + (!canCopy ? 'opacity:0.45;' : '');
         masterToggle.innerHTML =
           '<div style="display:flex;align-items:center;gap:8px;">' +
             '<span style="font-size:9px;font-family:var(--font-mono,monospace);color:var(--text-muted,#585870);text-transform:uppercase;letter-spacing:0.09em;">Nodes</span>' +
@@ -414,9 +414,10 @@
         masterContent.style.cssText = 'display:none;border-top:1px solid rgba(255,255,255,0.05);';
 
         var masterIsOpen = false;
-        masterToggle.addEventListener('mouseenter', function(){ masterToggle.style.background='rgba(255,255,255,0.04)'; });
-        masterToggle.addEventListener('mouseleave', function(){ masterToggle.style.background='rgba(255,255,255,0.02)'; });
+        masterToggle.addEventListener('mouseenter', function(){ if (canCopy) masterToggle.style.background='rgba(255,255,255,0.04)'; });
+        masterToggle.addEventListener('mouseleave', function(){ if (canCopy) masterToggle.style.background='rgba(255,255,255,0.02)'; });
         masterToggle.addEventListener('click', function() {
+          if (!canCopy) return;
           masterIsOpen = !masterIsOpen;
           masterContent.style.display = masterIsOpen ? 'block' : 'none';
           var arr = masterToggle.querySelector('.master-acc-arrow');
@@ -456,8 +457,6 @@
         masterWrap.appendChild(masterToggle);
         masterWrap.appendChild(masterContent);
         accordionEl.appendChild(masterWrap);
-        // Hide the entire accordion for non-owners when copying is blocked
-        accordionEl.style.display = canCopy ? '' : 'none';
       } else {
         console.log('[effect-modal] accordionEl not found!');
       }
@@ -597,12 +596,12 @@
         }
       }
 
-      // 3. Hide the entire accordion when copying is blocked — no partial
-      //    access, no pointer-event tricks, just not rendered.
-      var _accEl = document.getElementById('modal-node-accordion');
-      if (_accEl) {
-        _accEl.style.display = canCopy ? '' : 'none';
-      }
+      // 3. The accordion click handler is already gated on canCopy (set at build time above).
+      // Also lock whatever outer collapsible section wraps modal-node-section in the
+      // parent page (e.g. the "NODE TREE CODE" section in effects.html).
+      // Store the current permission so the document-level interceptor (registered once
+      // below) can check it on every click.
+      window._nodeTreeCopyAllowed = canCopy;
     }
 
   }
@@ -4753,5 +4752,48 @@
       console.error('[Effect Modal] Error refreshing graph after edit save:', err);
     }
   });
+
+  // ── Node tree copy permission guard ──────────────────────────────────────
+  // Intercepts clicks (capture phase) on any element that is an ancestor of
+  // modal-node-section. If window._nodeTreeCopyAllowed is false the click is
+  // swallowed before any collapse/expand handler can fire.
+  // Registered once; populateModal updates _nodeTreeCopyAllowed each open.
+  (function() {
+    var _interceptRegistered = false;
+    function _registerNodeSectionGuard() {
+      if (_interceptRegistered) return;
+      _interceptRegistered = true;
+      document.addEventListener('click', function(e) {
+        if (window._nodeTreeCopyAllowed !== false) return;
+        var nodeSection = document.getElementById('modal-node-section');
+        if (!nodeSection) return;
+        // Check if the clicked element is an ANCESTOR of modal-node-section
+        // (i.e. a toggle that wraps it) but NOT a descendant (inner UI)
+        var t = e.target;
+        var isAncestorToggle = false;
+        var el = nodeSection.parentElement;
+        while (el && el !== document.body) {
+          if (el === t || el.contains(t)) {
+            // The click is on this ancestor or something inside it but
+            // outside modal-node-section — this is the outer toggle
+            if (!nodeSection.contains(t)) {
+              isAncestorToggle = true;
+            }
+            break;
+          }
+          el = el.parentElement;
+        }
+        if (isAncestorToggle) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      }, true); // capture phase — fires before any bubbling handlers
+    }
+    // Register immediately and also retry after DOM is fully ready
+    _registerNodeSectionGuard();
+    if (document.readyState !== 'complete') {
+      window.addEventListener('load', _registerNodeSectionGuard);
+    }
+  })();
 
 })();
