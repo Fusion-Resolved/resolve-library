@@ -681,10 +681,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           <div class="tog-info"><div class="tog-title">Allow node tree copying</div><div class="tog-desc">Other users can copy the node structure to their own comp</div></div>
           <div class="sw-track on" id="sw0"><div class="sw-thumb"></div></div>
         </div>
-        <div class="tog-row">
-          <div class="tog-info"><div class="tog-title">Show in search results</div><div class="tog-desc">Effect appears in browse and search on public pages</div></div>
-          <div class="sw-track on" id="sw2"><div class="sw-thumb"></div></div>
-        </div>
+
         <div class="tog-row" style="position:relative;overflow:hidden;border-radius:var(--r);">
           <div style="opacity:0.35;pointer-events:none;user-select:none;display:flex;align-items:center;justify-content:space-between;width:100%;">
             <div class="tog-info"><div class="tog-title">Allow community variations</div><div class="tog-desc">Community members can submit variations based on this effect</div></div>
@@ -1894,7 +1891,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[loadEffectData] Fetching effect:', effectId);
         const { data, error } = await supabase
           .from('effects')
-          .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, graph_payload, user_id')
+          .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, graph_payload, user_id, is_public, status, share_password, share_limit, view_count, slug')
           .eq('id', effectId)
           .single();
         
