@@ -1802,7 +1802,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       console.log('[doSave] Verifying save by re-fetching...');
       const { data: verifyData, error: verifyError } = await supabase
         .from('effects')
-        .select('name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code')
+        .select('name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, allow_node_copy')
         .eq('id', effectId)
         .single();
       
@@ -1817,6 +1817,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[doSave] Name match:', nameMatch, 'Expected:', updates.name, 'Got:', verifyData.name);
         console.log('[doSave] Category match:', catMatch, 'Expected:', updates.cat, 'Got:', verifyData.cat);
         console.log('[doSave] Steps match:', stepsMatch, 'Expected:', updates.steps.substring(0, 50) + (updates.steps.length > 50 ? '...' : ''), 'Got:', verifyData.steps ? verifyData.steps.substring(0, 50) + (verifyData.steps.length > 50 ? '...' : '') : 'null/undefined');
+        console.log('[doSave] allow_node_copy match:', verifyData.allow_node_copy === updates.allow_node_copy, 'Expected:', updates.allow_node_copy, 'Got:', verifyData.allow_node_copy);
         
         if (!nameMatch || !catMatch) {
           showToast('Warning: Save may not have persisted');
@@ -1892,7 +1893,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[loadEffectData] Fetching effect:', effectId);
         const { data, error } = await supabase
           .from('effects')
-          .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, graph_payload, user_id, is_public, status, share_password, share_limit, view_count, slug')
+          .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, graph_payload, user_id, is_public, status, share_password, share_limit, view_count, slug, allow_node_copy')
           .eq('id', effectId)
           .single();
         
