@@ -595,12 +595,52 @@
         }
       }
 
-      // 3. The accordion click handler is already gated on canCopy (set at build time above).
-      // Also lock whatever outer collapsible section wraps modal-node-section in the
-      // parent page (e.g. the "NODE TREE CODE" section in effects.html).
-      // Store the current permission so the document-level interceptor (registered once
-      // below) can check it on every click.
-      window._nodeTreeCopyAllowed = canCopy;
+      // 3. Lock the "Node Tree Code" accordion toggle (defined in effects.html,
+      //    wraps #modal-node-code). Walk up from modal-node-code to find the
+      //    toggle header element and attach/detach a named block handler on it only.
+      var _codeEl = document.getElementById('modal-node-code');
+      if (_codeEl) {
+        var _codeWrap = _codeEl.parentElement;
+        var _depth = 0;
+        while (_codeWrap && _codeWrap !== document.body && _depth < 5) {
+          var _toggleHdr = null;
+          var _children = Array.from(_codeWrap.children);
+          for (var _ci = 0; _ci < _children.length; _ci++) {
+            var _ch = _children[_ci];
+            var _chStyle = _ch.getAttribute('style') || '';
+            var _chOnclick = _ch.getAttribute('onclick') || '';
+            var _chClass = _ch.className || '';
+            if (_chOnclick || _chStyle.indexOf('cursor') !== -1 ||
+                _chClass.indexOf('toggle') !== -1 || _chClass.indexOf('header') !== -1 ||
+                _chClass.indexOf('sec-lbl') !== -1) {
+              _toggleHdr = _ch;
+              break;
+            }
+          }
+          if (_toggleHdr) {
+            if (_toggleHdr._nodeCodeBlockHandler) {
+              _toggleHdr.removeEventListener('click', _toggleHdr._nodeCodeBlockHandler, true);
+              _toggleHdr._nodeCodeBlockHandler = null;
+            }
+            if (!canCopy) {
+              var _blockFn = function(e) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+              };
+              _toggleHdr._nodeCodeBlockHandler = _blockFn;
+              _toggleHdr.addEventListener('click', _blockFn, true);
+              _toggleHdr.style.cursor = 'default';
+              _toggleHdr.style.opacity = '0.45';
+            } else {
+              _toggleHdr.style.cursor = '';
+              _toggleHdr.style.opacity = '';
+            }
+            break;
+          }
+          _codeWrap = _codeWrap.parentElement;
+          _depth++;
+        }
+      }
     }
 
   }
@@ -4752,43 +4792,6 @@
     }
   });
 
-  // ── Node tree copy permission guard ──────────────────────────────────────
-  // Intercepts clicks (capture phase) on any element that is an ancestor of
-  // modal-node-code (the "Node Tree Code" raw Lua section defined in effects.html).
-  // The "Nodes" accordion (modal-node-accordion) is intentionally NOT blocked.
-  // Registered once; populateModal updates _nodeTreeCopyAllowed each open.
-  (function() {
-    var _interceptRegistered = false;
-    function _registerNodeSectionGuard() {
-      if (_interceptRegistered) return;
-      _interceptRegistered = true;
-      document.addEventListener('click', function(e) {
-        if (window._nodeTreeCopyAllowed !== false) return;
-        // Target: the "Node Tree Code" section, identified by its content element
-        var codeEl = document.getElementById('modal-node-code');
-        if (!codeEl) return;
-        var t = e.target;
-        // Walk up from modal-node-code to find an ancestor that contains the click
-        // but where the click is NOT inside modal-node-code itself
-        var el = codeEl.parentElement;
-        while (el && el !== document.body) {
-          if (el === t || el.contains(t)) {
-            if (!codeEl.contains(t)) {
-              // Click is on this ancestor but outside the code content —
-              // this is the toggle header. Block it.
-              e.stopImmediatePropagation();
-              e.preventDefault();
-            }
-            break;
-          }
-          el = el.parentElement;
-        }
-      }, true); // capture phase
-    }
-    _registerNodeSectionGuard();
-    if (document.readyState !== 'complete') {
-      window.addEventListener('load', _registerNodeSectionGuard);
-    }
-  })();
+})();
 
 })();
