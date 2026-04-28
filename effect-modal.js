@@ -527,32 +527,64 @@
     }
 
     // ── Allow node tree copying ──────────────────────────────────
-    // Owners always see the button; for others, respect allow_node_copy.
-    // Default to visible (true) when the field is absent (legacy effects).
-    const btnCopyEl = document.getElementById('modal-btn-copy') || document.getElementById('btnCopy');
-    const blockedCopyEl = document.getElementById('modal-node-copy-blocked') || document.getElementById('node-copy-blocked');
+    // Owners always see copy; for others respect allow_node_copy (default true).
     const canCopy = isOwner || !(effect.allow_node_copy === false || effect.allow_node_copy === 'false');
-    if (btnCopyEl) {
-      btnCopyEl.style.display = canCopy ? '' : 'none';
-    }
-    if (blockedCopyEl) {
-      blockedCopyEl.style.display = canCopy ? 'none' : 'flex';
-    }
-    // If no dedicated blocked element exists, inject one adjacent to the copy button
-    if (!canCopy && btnCopyEl && !blockedCopyEl) {
-      var existingBlock = btnCopyEl.parentNode.querySelector('#modal-node-copy-blocked-dyn');
-      if (!existingBlock) {
-        var blockDiv = document.createElement('div');
-        blockDiv.id = 'modal-node-copy-blocked-dyn';
-        blockDiv.style.cssText = 'margin-top:8px;width:100%;box-sizing:border-box;border-radius:var(--radius,8px);border:1px solid rgba(255,255,255,0.07);background:rgba(9,9,14,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:14px 16px;display:flex;align-items:center;gap:10px;pointer-events:none;';
-        blockDiv.innerHTML = '<svg width="13" height="13" fill="none" stroke="rgba(143,143,168,0.5)" stroke-width="1.8" viewBox="0 0 24 24" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
-          '<span style="font-family:var(--font-mono,monospace);font-size:10px;color:rgba(143,143,168,0.5);letter-spacing:0.05em;">node tree copying blocked by owner</span>';
-        btnCopyEl.parentNode.insertBefore(blockDiv, btnCopyEl.nextSibling);
+
+    // 1. Gate the copy function itself — this is the definitive block regardless
+    //    of what button wires up to it.
+    window.copyNodeCode = canCopy
+      ? function() {
+          const code = document.getElementById('modal-node-code')?.textContent || '';
+          navigator.clipboard.writeText(code).then(function() {
+            showToast('Node code copied!');
+          }).catch(function() {
+            try {
+              const ta = document.createElement('textarea');
+              ta.value = code;
+              ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              showToast('Node code copied!');
+            } catch(e) { showToast('Copy failed — select code manually'); }
+          });
+        }
+      : function() {
+          showToast('Node tree copying blocked by owner');
+        };
+
+    // 2. Find the copy button in the node section (any button calling copyNodeCode,
+    //    or any with copy-related text/class) and swap it for a blocked state.
+    var _nodeSection = document.getElementById('modal-node-section');
+    if (_nodeSection) {
+      // Remove any previously injected blocked banner
+      var _prev = _nodeSection.querySelector('#modal-node-copy-blocked-dyn');
+      if (_prev) _prev.remove();
+
+      // Find the copy button — try common IDs first, then a broad attribute search
+      var _copyBtn =
+        document.getElementById('modal-btn-copy') ||
+        document.getElementById('btnCopy') ||
+        _nodeSection.querySelector('button[onclick*="copyNodeCode"]') ||
+        _nodeSection.querySelector('button[onclick*="copyNode"]') ||
+        Array.from(_nodeSection.querySelectorAll('button')).find(function(b) {
+          return /copy/i.test(b.textContent) || /copy/i.test(b.getAttribute('onclick') || '');
+        });
+
+      if (_copyBtn) {
+        _copyBtn.style.display = canCopy ? '' : 'none';
+
+        if (!canCopy) {
+          var _block = document.createElement('div');
+          _block.id = 'modal-node-copy-blocked-dyn';
+          _block.style.cssText = 'margin-top:8px;width:100%;box-sizing:border-box;border-radius:var(--radius,8px);border:1px solid rgba(255,255,255,0.07);background:rgba(9,9,14,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:14px 16px;display:flex;align-items:center;gap:10px;';
+          _block.innerHTML =
+            '<svg width="13" height="13" fill="none" stroke="rgba(143,143,168,0.5)" stroke-width="1.8" viewBox="0 0 24 24" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
+            '<span style="font-family:var(--font-mono,monospace);font-size:10px;color:rgba(143,143,168,0.5);letter-spacing:0.05em;">node tree copying blocked by owner</span>';
+          _copyBtn.parentNode.insertBefore(_block, _copyBtn.nextSibling);
+        }
       }
-    } else if (canCopy) {
-      // Remove injected block if it exists from a prior view
-      var dynBlock = document.getElementById('modal-node-copy-blocked-dyn');
-      if (dynBlock) dynBlock.remove();
     }
 
   }
@@ -1138,25 +1170,10 @@
   /* ═══════════════════════════════════════════════════════════════
      UTILITIES
      ═══════════════════════════════════════════════════════════════ */
-  window.copyNodeCode = function() {
-    const code = document.getElementById('modal-node-code')?.textContent || '';
-    navigator.clipboard.writeText(code).then(function() {
-      showToast('Node code copied!');
-    }).catch(function() {
-      // Fallback for older browsers
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = code;
-        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showToast('Node code copied!');
-      } catch(e) {
-        showToast('Copy failed — select code manually');
-      }
-    });
+  // copyNodeCode is defined inside populateModal, gated by allow_node_copy.
+  // A safe no-op default in case it's called before any effect is opened.
+  window.copyNodeCode = window.copyNodeCode || function() {
+    showToast('No effect loaded');
   };
 
   // Close modal when clicking overlay
