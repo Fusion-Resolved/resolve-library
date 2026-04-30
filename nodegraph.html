@@ -5005,9 +5005,17 @@ buildSavedList();applyVP();buildCatChips();
       //   c) null / empty — no graph data saved yet
       const nodesData = row.nodes;
 
+      console.log('[nodegraph] Path 1 — row.nodes:', nodesData,
+        '| row.node_code length:', (row.node_code||'').length,
+        '| row.graph_payload length:', (typeof row.graph_payload === 'string' ? row.graph_payload : JSON.stringify(row.graph_payload)||'').length);
+
+      // Require nodes to be a non-empty array — an empty [] is truthy but has nothing to render.
+      // Without this guard, effects that have only node_code/graph_payload but an empty nodes
+      // column would silently call _deserializeAndLoad([]) and never reach the fallback.
       if (nodesData && typeof nodesData === 'object' && !Array.isArray(nodesData)
-          && (nodesData.nodes || nodesData.schemaVersion)) {
+          && (nodesData.schemaVersion || (Array.isArray(nodesData.nodes) && nodesData.nodes.length > 0))) {
         // Full graph JSONB — restore everything: coords, params, splines, connections
+        console.log('[nodegraph] Path 1 → branch A: full JSONB, restoring', (nodesData.nodes||[]).length, 'nodes');
         nodesData.name = nodesData.name || row.name;
         // Ensure this effect is in the linked list so Save pushes back to it
         if (!linkedEffects.some(le => le.id === row.id)) {
@@ -5027,6 +5035,7 @@ buildSavedList();applyVP();buildCatChips();
         }, 100);
       } else if (Array.isArray(nodesData) && nodesData.length) {
         // Legacy: array of node name strings — spawn nodes by name
+        console.log('[nodegraph] Path 1 → branch B: legacy array,', nodesData.length, 'names');
         if (svName) svName.placeholder = 'Graph name…';
         setTimeout(function() {
           if (!linkedEffects.some(le => le.id === row.id)) {
@@ -5055,6 +5064,7 @@ buildSavedList();applyVP();buildCatChips();
         }, 100);
       } else {
         // No full graph JSONB — try node_code (raw Lua) then graph_payload (JSON)
+        console.log('[nodegraph] Path 1 → branch C: no usable nodes JSONB, trying fallback');
         const fallbackPayload = row.node_code || row.graph_payload || null;
 
         if (fallbackPayload) {
