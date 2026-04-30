@@ -306,6 +306,16 @@ a{color:inherit;text-decoration:none;}
             <button class="gc-btn" id="modal-graph-zoom-out">&minus;</button>
             <button class="gc-btn gc-fit" id="modal-graph-fit">FIT</button>
           </div>
+          <div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:8px;">
+            <button id="fpOpenEditor" style="background:rgba(6,6,13,0.85);backdrop-filter:blur(8px);border:1px solid rgba(108,123,255,0.3);border-radius:6px;color:#9ca8ff;font-family:var(--fm);font-size:10px;padding:6px 12px;letter-spacing:0.06em;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.13s;">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Open in Editor
+            </button>
+            <button id="fpExpandGraph" style="background:rgba(6,6,13,0.85);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.8);font-family:var(--fm);font-size:10px;padding:6px 12px;letter-spacing:0.06em;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.13s;">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              Expand
+            </button>
+          </div>
           <div class="graph-zoom-lbl" id="modal-graph-zoom">100%</div>
           <div class="graph-hint">ctrl+scroll to zoom &middot; drag to pan</div>
         </div>
@@ -637,6 +647,100 @@ a{color:inherit;text-decoration:none;}
       if(gcIn)  gcIn.addEventListener('click',  function(){ var vr=gpVp.getBoundingClientRect(); gpZoomAt(vr.width/2,vr.height/2,1.25); });
       if(gcOut) gcOut.addEventListener('click', function(){ var vr=gpVp.getBoundingClientRect(); gpZoomAt(vr.width/2,vr.height/2,0.8); });
       if(gcF)   gcF.addEventListener('click',   gpFit);
+
+      // Open in Editor
+      var fpOE = document.getElementById('fpOpenEditor');
+      if (fpOE) fpOE.addEventListener('click', function() {
+        var id = _effect && _effect.id;
+        if (id) window.open('nodegraph.html?id=' + encodeURIComponent(id), '_blank');
+        else showToast('No effect loaded');
+      });
+
+      // Expand — fullscreen overlay of the same graph
+      var fpEx = document.getElementById('fpExpandGraph');
+      if (fpEx) fpEx.addEventListener('click', function() {
+        var existing = document.getElementById('fp-expanded-modal');
+        if (existing) { existing.remove(); fpEx.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> Expand'; return; }
+
+        var overlay = document.createElement('div');
+        overlay.id = 'fp-expanded-modal';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(9,9,14,0.92);z-index:400;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+        var box = document.createElement('div');
+        box.style.cssText = 'width:100%;max-width:98vw;height:94vh;background:#06060d;border-radius:14px;border:1px solid rgba(255,255,255,0.1);position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6);';
+
+        // Header
+        var hdr = document.createElement('div');
+        hdr.style.cssText = 'position:absolute;top:0;left:0;right:0;height:48px;background:rgba(6,6,13,0.9);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:30;';
+        hdr.innerHTML = '<span style="font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.4);">NODE GRAPH &nbsp;·&nbsp; <span style="color:var(--violet-light);">' + ((_effect&&_effect.name)||'Effect') + '</span></span>';
+        var closeBtn = document.createElement('button');
+        closeBtn.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.6);font-family:var(--fm);font-size:10px;padding:5px 12px;cursor:pointer;letter-spacing:0.06em;';
+        closeBtn.textContent = 'Close';
+        closeBtn.addEventListener('click', function() {
+          overlay.remove();
+          fpEx.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> Expand';
+        });
+        hdr.appendChild(closeBtn);
+
+        // Graph viewport — clone the current graph world contents
+        var vpWrap = document.createElement('div');
+        vpWrap.style.cssText = 'position:absolute;inset:0;top:48px;';
+        var newVp = document.createElement('div');
+        newVp.style.cssText = 'position:absolute;inset:0;overflow:hidden;cursor:grab;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;';
+        var clonedWorld = gpWorld.cloneNode(true);
+        clonedWorld.style.transform = 'translate(0,0) scale(1)';
+        newVp.appendChild(clonedWorld);
+
+        // Fit cloned graph
+        var exTx=0,exTy=0,exSc=1;
+        function exApply(){ clonedWorld.style.transform='translate('+exTx+'px,'+exTy+'px) scale('+exSc+')'; clonedWorld.style.transformOrigin='0 0'; }
+        function exZoomAt(cx,cy,f){ var ns=Math.max(0.1,Math.min(3,exSc*f)),wx=(cx-exTx)/exSc,wy=(cy-exTy)/exSc; exSc=ns;exTx=cx-wx*exSc;exTy=cy-wy*exSc;exApply(); }
+        function exFit(){
+          var cards=clonedWorld.querySelectorAll('.gn-card');if(!cards.length)return;
+          var mnX=1e9,mnY=1e9,mxX=-1e9,mxY=-1e9;
+          cards.forEach(function(c){var x=parseFloat(c.style.left)||0,y=parseFloat(c.style.top)||0;mnX=Math.min(mnX,x);mnY=Math.min(mnY,y);mxX=Math.max(mxX,x+NW);mxY=Math.max(mxY,y+NH);});
+          var vr=newVp.getBoundingClientRect(),pad=24,gw=Math.max(mxX-mnX,NW),gh=Math.max(mxY-mnY,NH);
+          var ns=Math.max(0.1,Math.min((vr.width-pad*2)/gw,(vr.height-pad*2)/gh,1.5));
+          exSc=ns;exTx=(vr.width-gw*ns)/2-mnX*ns;exTy=(vr.height-gh*ns)/2-mnY*ns;exApply();
+        }
+
+        // Pan/zoom on expanded viewport
+        var exDrag=false,exDX=0,exDY=0;
+        newVp.addEventListener('mousedown',function(e){if(e.target.closest('.gn-card'))return;exDrag=true;exDX=e.clientX-exTx;exDY=e.clientY-exTy;newVp.style.cursor='grabbing';});
+        document.addEventListener('mousemove',function(e){if(!exDrag)return;exTx=e.clientX-exDX;exTy=e.clientY-exDY;exApply();});
+        document.addEventListener('mouseup',function(){exDrag=false;newVp.style.cursor='grab';});
+        newVp.addEventListener('wheel',function(e){if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();var vr=newVp.getBoundingClientRect();exZoomAt(e.clientX-vr.left,e.clientY-vr.top,e.deltaY<0?1.1:0.9);},{passive:false});
+
+        // Controls
+        var exCtrl = document.createElement('div');
+        exCtrl.style.cssText = 'position:absolute;top:58px;right:10px;z-index:10;display:flex;gap:4px;';
+        ['+','−','FIT'].forEach(function(lbl){
+          var b=document.createElement('button');
+          b.style.cssText='background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--fm);font-size:'+(lbl==='FIT'?'9px':'14px')+';'+(lbl==='FIT'?'padding:0 10px;':'width:28px;')+';height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+          b.textContent=lbl;
+          b.addEventListener('click',function(){
+            var vr=newVp.getBoundingClientRect();
+            if(lbl==='+')exZoomAt(vr.width/2,vr.height/2,1.25);
+            else if(lbl==='−')exZoomAt(vr.width/2,vr.height/2,0.8);
+            else exFit();
+          });
+          exCtrl.appendChild(b);
+        });
+
+        vpWrap.appendChild(newVp);
+        box.appendChild(hdr);
+        box.appendChild(vpWrap);
+        box.appendChild(exCtrl);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        // Close on backdrop
+        overlay.addEventListener('click', function(e){ if(e.target===overlay){ overlay.remove(); fpEx.innerHTML='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> Expand'; } });
+        document.addEventListener('keydown', function esc(e){ if(e.key==='Escape'){ overlay.remove(); fpEx.innerHTML='<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> Expand'; document.removeEventListener('keydown',esc); } });
+
+        setTimeout(exFit, 60);
+        fpEx.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Close';
+      });
 
       document.addEventListener('click', function(e) {
         var pop=document.getElementById('modal-node-popover');
