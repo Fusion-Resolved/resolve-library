@@ -807,7 +807,8 @@ a{color:inherit;text-decoration:none;}
   function populatePage(effect){
     _effect=effect;
     document.title='Noding — '+(effect.name||'Effect');
-    document.getElementById('pbarTitle').textContent=effect.name||'';
+    document.title = 'Noding — ' + (effect.name || 'Effect');
+    var _pbt = document.getElementById('pbarTitle'); if (_pbt) _pbt.textContent = effect.name || '';
     document.getElementById('breadCrumbName').textContent=effect.name||'';
     document.getElementById('effectTitle').textContent=effect.name||'Untitled';
     document.getElementById('effectCat').textContent=CAT_LABELS[effect.cat]||effect.cat||'Effect';
