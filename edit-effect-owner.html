@@ -1383,50 +1383,6 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   var _luaImportOpen = false;
   var _luaParsed = null; // last valid parse result ready to import
 
-  /**
-   * Fusion "sub-nodes" (LUTBezier, BezierSpline, etc.) are internal data
-   * nodes that Fusion embeds inside their parent node — they never appear
-   * as standalone cards in the node graph.  Strip them from the normalised
-   * result so the graph only shows real nodes.
-   *
-   * Edges that referenced a sub-node are also removed; the parent node
-   * already carries the animated-parameter visual context via its params.
-   */
-  var FUSION_SUB_NODE_TYPES = [
-    'LUTBezier',
-    'BezierSpline',
-    'PolyPath',
-    'TextStyleFont'
-  ];
-
-  function filterFusionSubNodes (normalized) {
-    if (!normalized || !normalized.nodes) { return normalized; }
-
-    // Build a set of sub-node IDs
-    var subIds = {};
-    normalized.nodes.forEach(function (n) {
-      if (FUSION_SUB_NODE_TYPES.indexOf(n.type) !== -1) {
-        subIds[n.id] = true;
-      }
-    });
-
-    // Nothing to remove — return as-is
-    if (Object.keys(subIds).length === 0) { return normalized; }
-
-    // Filter nodes and edges
-    var filteredNodes = normalized.nodes.filter(function (n) {
-      return !subIds[n.id];
-    });
-    var filteredEdges = (normalized.edges || []).filter(function (e) {
-      return !subIds[e.from] && !subIds[e.to];
-    });
-
-    return {
-      nodes: filteredNodes,
-      edges: filteredEdges
-    };
-  }
-
   function parseLua (str) {
     if (!str || !str.trim()) { return null; }
     try {
@@ -1481,7 +1437,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       return;
     }
     var result = parseLua(str);
-    var normalized = result ? filterFusionSubNodes(window.NodeSystem.normalize(result)) : null;
+    var normalized = result ? window.NodeSystem.normalize(result) : null;
     if (normalized && normalized.nodes && normalized.nodes.length > 0) {
       _luaParsed = normalized;
       setLuaFeedback('ok', normalized.nodes.length + ' node' + (normalized.nodes.length !== 1 ? 's' : '') + ' \u00b7 ' + normalized.edges.length + ' connection' + (normalized.edges.length !== 1 ? 's' : '') + ' found');
@@ -1776,6 +1732,14 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     var sharePassword = (visState === 'Private' && pwEl && pwEl.value.trim()) ? pwEl.value.trim() : null;
     var shareLimit    = (visState === 'Private' && limitEl && limitEl.value.trim()) ? parseInt(limitEl.value.trim(), 10) : null;
 
+    // Read current media values from the input fields
+    var _gifUrlEl  = document.getElementById('gifUrl');
+    var _vidUrlEl  = document.getElementById('vidUrl');
+    var _gifUrlVal = _gifUrlEl  ? _gifUrlEl.value.trim()  : '';
+    var _vidUrlVal = _vidUrlEl  ? _vidUrlEl.value.trim()  : '';
+    // Only one of gif_url / video_url is active at a time — whichever mode is on
+    var _mt0Active = document.getElementById('mt0') && document.getElementById('mt0').classList.contains('on');
+
     const updates = {
       name: nameEl ? nameEl.value : '',
       desc: descEl ? descEl.value : '',
@@ -1791,7 +1755,10 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       share_password: sharePassword,
       share_limit: shareLimit,
       slug: generateSlug(nameEl ? nameEl.value : ''),
-      allow_node_copy: document.getElementById('sw0') ? document.getElementById('sw0').classList.contains('on') : true
+      allow_node_copy: document.getElementById('sw0') ? document.getElementById('sw0').classList.contains('on') : true,
+      // Media: save whichever type is active; clear the other
+      gif_url:   _mt0Active ? (_gifUrlVal || null) : null,
+      video_url: _mt0Active ? null : (_vidUrlVal || null)
     };
 
     // \u2500\u2500 Node graph \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1937,7 +1904,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[loadEffectData] Fetching effect:', effectId);
         const { data, error } = await supabase
           .from('effects')
-          .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, graph_payload, user_id, is_public, status, share_password, share_limit, view_count, slug, allow_node_copy')
+          .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, graph_payload, user_id, is_public, status, share_password, share_limit, view_count, slug, allow_node_copy, gif_url, video_url')
           .eq('id', effectId)
           .single();
         
@@ -2124,7 +2091,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     } else if (effect.node_code) {
       console.log('[populateForm] node_code length:', effect.node_code.length);
       var parsed = window.NodeSystem.parse(effect.node_code);
-      var normalized = filterFusionSubNodes(window.NodeSystem.normalize(parsed));
+      var normalized = window.NodeSystem.normalize(parsed);
       console.log('[populateForm] Parsed nodes:', normalized.nodes.length, 'edges:', normalized.edges.length);
       if (normalized.nodes.length > 0) {
         _emParsedNodes = normalized.nodes;
@@ -2201,6 +2168,63 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       var allowCopy = (effect.allow_node_copy === false || effect.allow_node_copy === 'false') ? false : true;
       sw0El.classList.toggle('on', allowCopy);
     }
+
+    // ── Media preview ──────────────────────────────────────────────────────
+    // Populate the current-preview area and the URL input fields so the
+    // owner can see what's already saved and replace it if needed.
+    (function populateMediaPreview() {
+      var curMedia       = document.getElementById('curMedia');
+      var curMediaLabel  = document.getElementById('curMediaLabel');
+      var mediaOverlay   = document.getElementById('mediaOverlayBtns');
+      var gifUrlEl       = document.getElementById('gifUrl');
+      var vidUrlEl       = document.getElementById('vidUrl');
+
+      if (effect.gif_url && effect.gif_url.trim()) {
+        // Show the GIF as an <img> in the preview container
+        if (curMediaLabel) curMediaLabel.style.display = 'none';
+        if (mediaOverlay)  mediaOverlay.style.display  = 'flex';
+        // Remove any existing media element
+        var existing = curMedia ? curMedia.querySelector('img, iframe, video') : null;
+        if (existing) existing.remove();
+        var img = document.createElement('img');
+        img.src = effect.gif_url.trim();
+        img.alt = 'Effect preview';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+        if (curMedia) curMedia.appendChild(img);
+        // Pre-fill the input so the owner can see/edit the URL
+        if (gifUrlEl) gifUrlEl.value = effect.gif_url.trim();
+        // Switch UI to GIF mode
+        setMediaMode('gif');
+
+      } else if (effect.video_url && effect.video_url.trim()) {
+        // Show video as an embedded iframe (YouTube / Vimeo)
+        if (curMediaLabel) curMediaLabel.style.display = 'none';
+        if (mediaOverlay)  mediaOverlay.style.display  = 'flex';
+        var existing2 = curMedia ? curMedia.querySelector('img, iframe, video') : null;
+        if (existing2) existing2.remove();
+        var videoUrl = effect.video_url.trim();
+        // Convert watch URLs to embed URLs
+        var embedUrl = videoUrl
+          .replace(/youtube\.com\/watch\?v=([^&]+)/, 'youtube.com/embed/$1')
+          .replace(/youtu\.be\/([^?]+)/, 'youtube.com/embed/$1')
+          .replace(/vimeo\.com\/(\d+)/, 'player.vimeo.com/video/$1');
+        var iframe = document.createElement('iframe');
+        iframe.src = embedUrl;
+        iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;';
+        iframe.allow = 'autoplay; encrypted-media';
+        iframe.allowFullscreen = true;
+        if (curMedia) curMedia.appendChild(iframe);
+        if (vidUrlEl) vidUrlEl.value = videoUrl;
+        setMediaMode('video');
+
+      } else {
+        // No media saved yet — reset to placeholder state
+        if (curMediaLabel) curMediaLabel.style.display = '';
+        if (mediaOverlay)  mediaOverlay.style.display  = 'none';
+        var existing3 = curMedia ? curMedia.querySelector('img, iframe, video') : null;
+        if (existing3) existing3.remove();
+      }
+    }());
 
     console.log('[populateForm] ========== COMPLETE ==========');
     
@@ -2407,7 +2431,59 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       if (mt1) mt1.addEventListener('click', function () { setMediaMode('video'); });
       if (dropZone) dropZone.addEventListener('click', function () { showToast('GIF uploaded'); markDirty(0); });
       if (browseBtn) browseBtn.addEventListener('click', function (e) { e.stopPropagation(); showToast('GIF uploaded'); markDirty(0); });
-      if (btnVidConfirm) btnVidConfirm.addEventListener('click', function () { showToast('Video link updated'); markDirty(0); });
+      if (btnVidConfirm) btnVidConfirm.addEventListener('click', function () {
+        var url = document.getElementById('vidUrl') ? document.getElementById('vidUrl').value.trim() : '';
+        if (url) {
+          var curMedia2 = document.getElementById('curMedia');
+          var curMediaLabel2 = document.getElementById('curMediaLabel');
+          var mediaOverlay2 = document.getElementById('mediaOverlayBtns');
+          if (curMedia2) { var ex2 = curMedia2.querySelector('img,iframe,video'); if (ex2) ex2.remove(); }
+          var embedUrl2 = url
+            .replace(/youtube\.com\/watch\?v=([^&]+)/, 'youtube.com/embed/$1')
+            .replace(/youtu\.be\/([^?]+)/, 'youtube.com/embed/$1')
+            .replace(/vimeo\.com\/(\d+)/, 'player.vimeo.com/video/$1');
+          var ifr = document.createElement('iframe');
+          ifr.src = embedUrl2; ifr.style.cssText = 'width:100%;height:100%;border:none;display:block;';
+          ifr.allow = 'autoplay; encrypted-media'; ifr.allowFullscreen = true;
+          if (curMedia2) curMedia2.appendChild(ifr);
+          if (curMediaLabel2) curMediaLabel2.style.display = 'none';
+          if (mediaOverlay2) mediaOverlay2.style.display = 'flex';
+        }
+        showToast('Video link updated'); markDirty(0);
+      });
+
+      // GIF Apply button — show preview immediately
+      var btnGifConfirm2 = document.getElementById('btnGifConfirm');
+      if (btnGifConfirm2) btnGifConfirm2.addEventListener('click', function () {
+        var url = document.getElementById('gifUrl') ? document.getElementById('gifUrl').value.trim() : '';
+        if (url) {
+          var curMedia3 = document.getElementById('curMedia');
+          var curMediaLabel3 = document.getElementById('curMediaLabel');
+          var mediaOverlay3 = document.getElementById('mediaOverlayBtns');
+          if (curMedia3) { var ex3 = curMedia3.querySelector('img,iframe,video'); if (ex3) ex3.remove(); }
+          var img2 = document.createElement('img');
+          img2.src = url; img2.alt = 'Effect preview';
+          img2.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+          if (curMedia3) curMedia3.appendChild(img2);
+          if (curMediaLabel3) curMediaLabel3.style.display = 'none';
+          if (mediaOverlay3) mediaOverlay3.style.display = 'flex';
+        }
+        showToast('GIF preview updated'); markDirty(0);
+      });
+
+      // Remove media button
+      var btnRemoveMedia2 = document.getElementById('btnRemoveMedia');
+      if (btnRemoveMedia2) btnRemoveMedia2.addEventListener('click', function () {
+        var curMedia4 = document.getElementById('curMedia');
+        var curMediaLabel4 = document.getElementById('curMediaLabel');
+        var mediaOverlay4 = document.getElementById('mediaOverlayBtns');
+        if (curMedia4) { var ex4 = curMedia4.querySelector('img,iframe,video'); if (ex4) ex4.remove(); }
+        if (curMediaLabel4) curMediaLabel4.style.display = '';
+        if (mediaOverlay4) mediaOverlay4.style.display = 'none';
+        var gEl = document.getElementById('gifUrl'); if (gEl) gEl.value = '';
+        var vEl = document.getElementById('vidUrl'); if (vEl) vEl.value = '';
+        showToast('Media removed'); markDirty(0);
+      });
       if (btnReplace) btnReplace.addEventListener('click', function () { showToast('Ready to replace media'); });
       if (btnRemoveMedia) btnRemoveMedia.addEventListener('click', function () { showToast('Media removed'); markDirty(0); });
     } catch (e) { console.error('[init] Error attaching media listeners:', e); }
