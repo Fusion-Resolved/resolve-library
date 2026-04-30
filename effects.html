@@ -3895,58 +3895,6 @@ document.addEventListener('keydown', e => {
 console.log("Effects script initialized");
 window.EDITING_EFFECT_ID = null;
 var _aeNodes = [];
-function toggleAddEffectSheet() {
-  var m = document.getElementById('add-effect-modal');
-  if (!m) return;
-
-  var isOpening = !m.classList.contains('open');
-
-  if (isOpening) {
-    // ── Reset all fields before opening ──────────────────────────────────────
-    ['ae-name','ae-desc','ae-video','ae-gif','ae-explanation','ae-how','ae-steps',
-     'ae-settingFile','ae-nodeCode','ae-tags','ae-collections','ae-version','ae-notes',
-     'ae-share-limit','ae-share-password'].forEach(function(id){
-      var el = document.getElementById(id); if (el) el.value = '';
-    });
-    ['ae-cat','ae-status','ae-difficulty','ae-fusion-env','ae-render-weight'].forEach(function(id){
-      var el = document.getElementById(id); if (el) el.selectedIndex = 0;
-    });
-    _aeNodes = [];
-    document.getElementById('ae-node-inner').querySelectorAll('.af-node-tag').forEach(function(t){t.remove();});
-    ['ae-compat-free','ae-compat-studio','ae-compat-standalone'].forEach(function(id){
-      var b = document.getElementById(id); if(b) b.classList.remove('on');
-    });
-
-    // ── Admin-only: show/hide the Make Public toggle ──────────────────────────
-    var publicToggle = document.getElementById('admin-global-toggle');
-    var publicCheckbox = document.getElementById('ae-is-public');
-    if (publicToggle) {
-      if (window.CURRENT_USER_ROLE === 'admin') {
-        publicToggle.style.setProperty('display', 'block', 'important');
-      } else {
-        publicToggle.style.display = 'none';
-        if (publicCheckbox) publicCheckbox.checked = false;
-      }
-    }
-
-    // ── Fresh add mode — clear any leftover edit state ────────────────────────
-    window.EDITING_EFFECT_ID = null;
-    window.EDITING_ID = null;
-    var hdr = document.querySelector('#add-effect-modal .add-sheet-hd h3');
-    if (hdr) hdr.textContent = 'Log a new effect';
-    var saveBtn = document.getElementById('ae-save-btn');
-    if (saveBtn) saveBtn.textContent = 'Save to library';
-
-    m.classList.add('open');
-    document.body.style.overflow = 'hidden';
-    setTimeout(function(){ var el = document.getElementById('ae-name'); if(el) el.focus(); }, 80);
-
-  } else {
-    // ── Close path — reset state ──────────────────────────────────────────────
-    m.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-}
 function closeAddEffectSheet() {
   var m = document.getElementById('add-effect-modal');
   if (m) m.classList.remove('open');
@@ -7294,11 +7242,6 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-function openAddEffectModal(){
-  document.getElementById('modal-add-effect').classList.add('open');
-  document.body.style.overflow='hidden';
-  setTimeout(function(){var el=document.getElementById('eff-name');if(el)el.focus();},80);
-}
 async function submitAddEffect(){
   var name=(document.getElementById('eff-name').value||'').trim();
   if(!name){
@@ -9458,58 +9401,6 @@ document.addEventListener('keydown', e => {
 console.log("Effects script initialized");
 window.EDITING_EFFECT_ID = null;
 var _aeNodes = [];
-function toggleAddEffectSheet() {
-  var m = document.getElementById('add-effect-modal');
-  if (!m) return;
-
-  var isOpening = !m.classList.contains('open');
-
-  if (isOpening) {
-    // ── Reset all fields before opening ──────────────────────────────────────
-    ['ae-name','ae-desc','ae-video','ae-gif','ae-explanation','ae-how','ae-steps',
-     'ae-settingFile','ae-nodeCode','ae-tags','ae-collections','ae-version','ae-notes',
-     'ae-share-limit','ae-share-password'].forEach(function(id){
-      var el = document.getElementById(id); if (el) el.value = '';
-    });
-    ['ae-cat','ae-status','ae-difficulty','ae-fusion-env','ae-render-weight'].forEach(function(id){
-      var el = document.getElementById(id); if (el) el.selectedIndex = 0;
-    });
-    _aeNodes = [];
-    document.getElementById('ae-node-inner').querySelectorAll('.af-node-tag').forEach(function(t){t.remove();});
-    ['ae-compat-free','ae-compat-studio','ae-compat-standalone'].forEach(function(id){
-      var b = document.getElementById(id); if(b) b.classList.remove('on');
-    });
-
-    // ── Admin-only: show/hide the Make Public toggle ──────────────────────────
-    var publicToggle = document.getElementById('admin-global-toggle');
-    var publicCheckbox = document.getElementById('ae-is-public');
-    if (publicToggle) {
-      if (window.CURRENT_USER_ROLE === 'admin') {
-        publicToggle.style.setProperty('display', 'block', 'important');
-      } else {
-        publicToggle.style.display = 'none';
-        if (publicCheckbox) publicCheckbox.checked = false;
-      }
-    }
-
-    // ── Fresh add mode — clear any leftover edit state ────────────────────────
-    window.EDITING_EFFECT_ID = null;
-    window.EDITING_ID = null;
-    var hdr = document.querySelector('#add-effect-modal .add-sheet-hd h3');
-    if (hdr) hdr.textContent = 'Log a new effect';
-    var saveBtn = document.getElementById('ae-save-btn');
-    if (saveBtn) saveBtn.textContent = 'Save to library';
-
-    m.classList.add('open');
-    document.body.style.overflow = 'hidden';
-    setTimeout(function(){ var el = document.getElementById('ae-name'); if(el) el.focus(); }, 80);
-
-  } else {
-    // ── Close path — reset state ──────────────────────────────────────────────
-    m.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-}
 function closeAddEffectSheet() {
   var m = document.getElementById('add-effect-modal');
   if (m) m.classList.remove('open');
@@ -10213,7 +10104,7 @@ if (typeof window._shToast !== 'function') {
     if (typeof window.shInjectHeader === 'function') {
       window.shInjectHeader({
         actionText: '+ Add Effect',
-        actionFunc: 'toggleAddEffectSheet()',
+        actionFunc: 'openAddEffectIframe()',
         activeId: 'nav-effects'
       });
     }
