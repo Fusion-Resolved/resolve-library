@@ -578,34 +578,38 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           <button class="mob mob-remove" id="btnRemoveMedia">Remove</button>
         </div>
       </div>
-      <div class="sec-lbl">Media type</div>
-      <div class="media-type-row">
-        <button class="mt-btn on" id="mt0">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m8 10 2 2 4-4"/></svg>
-          GIF / Image
-        </button>
-        <button class="mt-btn" id="mt1">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          Video Link
-        </button>
-      </div>
       <div id="gifUpSec">
         <div class="fg">
-          <label class="fl">GIF URL</label>
+          <label class="fl">GIF / Image URL</label>
           <div style="display:flex;gap:8px;">
             <input class="fi" style="flex:1;" type="text" id="gifUrl" placeholder="https://media.giphy.com/media/…/giphy.gif">
             <button class="copy-link-btn" id="btnGifConfirm">Apply</button>
           </div>
-          <div class="fhint">Paste a direct GIF link from Giphy, Tenor, or any public URL ending in .gif</div>
+          <div class="fhint">Paste a direct GIF or image link from Giphy, Tenor, or any public URL</div>
         </div>
       </div>
-      <div id="vidLinkSec" style="display:none;">
+      <div id="vidLinkSec">
         <div class="fg">
           <label class="fl">Video URL</label>
           <div style="display:flex;gap:8px;">
             <input class="fi" style="flex:1;" type="text" id="vidUrl" placeholder="https://youtube.com/watch?v=…">
-            <button class="copy-link-btn" id="btnVidConfirm">Update</button>
+            <button class="copy-link-btn" id="btnVidConfirm">Apply</button>
           </div>
+          <div class="fhint">Paste a YouTube or Vimeo link</div>
+        </div>
+      </div>
+      <!-- Preview toggle — only shown when both a GIF and a video are set -->
+      <div id="mediaPreviewToggle" style="display:none;margin-top:8px;">
+        <div class="sec-lbl">Previewing</div>
+        <div class="media-type-row">
+          <button class="mt-btn on" id="mt0">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m8 10 2 2 4-4"/></svg>
+            GIF / Image
+          </button>
+          <button class="mt-btn" id="mt1">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            Video
+          </button>
         </div>
       </div>
     </div>
@@ -1737,12 +1741,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     var _vidUrlEl  = document.getElementById('vidUrl');
     var _gifUrlVal = _gifUrlEl  ? _gifUrlEl.value.trim()  : '';
     var _vidUrlVal = _vidUrlEl  ? _vidUrlEl.value.trim()  : '';
-    var _mt0Active = document.getElementById('mt0') && document.getElementById('mt0').classList.contains('on');
-    // Media updates kept separate — if these columns don't exist in the DB yet
-    // the main save must not be blocked.
+    // Both gif_url and video_url are saved independently — no mutual exclusivity.
+    // Media updates kept separate so a missing column never blocks the main save.
     var _mediaUpdates = {
-      gif_url:   _mt0Active ? (_gifUrlVal || null) : null,
-      video_url: _mt0Active ? null : (_vidUrlVal || null)
+      gif_url:   _gifUrlVal || null,
+      video_url: _vidUrlVal || null
     };
 
     const updates = {
@@ -2204,9 +2207,13 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 
       var hasGif   = !!(effect.gif_url   && effect.gif_url.trim());
       var hasVideo = !!(effect.video_url && effect.video_url.trim());
+      var previewToggle = document.getElementById('mediaPreviewToggle');
+
+      // Show the preview toggle only when both are set
+      if (previewToggle) previewToggle.style.display = (hasGif && hasVideo) ? '' : 'none';
 
       if (hasGif) {
-        // GIF takes priority for the initial preview
+        // GIF takes priority for the initial preview; toggle lets owner switch to video
         var existing = curMedia ? curMedia.querySelector('img, iframe, video') : null;
         if (existing) existing.remove();
         var img = document.createElement('img');
@@ -2237,7 +2244,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         setMediaMode('video');
 
       } else {
-        // No media saved yet — reset to placeholder state
+        // No media saved yet — show placeholder
         if (curMediaLabel) curMediaLabel.style.display = '';
         if (mediaOverlay)  mediaOverlay.style.display  = 'none';
         var existing3 = curMedia ? curMedia.querySelector('img, iframe, video') : null;
@@ -2432,10 +2439,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     /* media & other buttons - wrapped in try-catch for safety */
     try {
       function setMediaMode (m) {
-        document.getElementById('mt0').classList.toggle('on', m === 'gif');
-        document.getElementById('mt1').classList.toggle('on', m === 'video');
-        document.getElementById('gifUpSec').style.display   = m === 'gif'   ? '' : 'none';
-        document.getElementById('vidLinkSec').style.display = m === 'video' ? '' : 'none';
+        // setMediaMode only controls which source is shown in the preview area.
+        // Both input sections are always visible — they are independent.
+        var mt0el = document.getElementById('mt0');
+        var mt1el = document.getElementById('mt1');
+        if (mt0el) mt0el.classList.toggle('on', m === 'gif');
+        if (mt1el) mt1el.classList.toggle('on', m === 'video');
 
         // Swap the preview to match the selected mode
         var curMedia      = document.getElementById('curMedia');
@@ -2498,6 +2507,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           var curMedia2 = document.getElementById('curMedia');
           var curMediaLabel2 = document.getElementById('curMediaLabel');
           var mediaOverlay2 = document.getElementById('mediaOverlayBtns');
+          var toggle2 = document.getElementById('mediaPreviewToggle');
           if (curMedia2) { var ex2 = curMedia2.querySelector('img,iframe,video'); if (ex2) ex2.remove(); }
           var embedUrl2 = url
             .replace(/youtube\.com\/watch\?v=([^&]+)/, 'youtube.com/embed/$1')
@@ -2509,6 +2519,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           if (curMedia2) curMedia2.appendChild(ifr);
           if (curMediaLabel2) curMediaLabel2.style.display = 'none';
           if (mediaOverlay2) mediaOverlay2.style.display = 'flex';
+          var gifVal2 = document.getElementById('gifUrl') ? document.getElementById('gifUrl').value.trim() : '';
+          if (toggle2) toggle2.style.display = gifVal2 ? '' : 'none';
+          setMediaMode('video');
         }
         showToast('Video link updated'); markDirty(0);
       });
@@ -2521,6 +2534,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           var curMedia3 = document.getElementById('curMedia');
           var curMediaLabel3 = document.getElementById('curMediaLabel');
           var mediaOverlay3 = document.getElementById('mediaOverlayBtns');
+          var toggle3 = document.getElementById('mediaPreviewToggle');
           if (curMedia3) { var ex3 = curMedia3.querySelector('img,iframe,video'); if (ex3) ex3.remove(); }
           var img2 = document.createElement('img');
           img2.src = url; img2.alt = 'Effect preview';
@@ -2528,6 +2542,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           if (curMedia3) curMedia3.appendChild(img2);
           if (curMediaLabel3) curMediaLabel3.style.display = 'none';
           if (mediaOverlay3) mediaOverlay3.style.display = 'flex';
+          var vidVal3 = document.getElementById('vidUrl') ? document.getElementById('vidUrl').value.trim() : '';
+          if (toggle3) toggle3.style.display = vidVal3 ? '' : 'none';
+          setMediaMode('gif');
         }
         showToast('GIF preview updated'); markDirty(0);
       });
@@ -2538,9 +2555,11 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         var curMedia4 = document.getElementById('curMedia');
         var curMediaLabel4 = document.getElementById('curMediaLabel');
         var mediaOverlay4 = document.getElementById('mediaOverlayBtns');
+        var toggle4 = document.getElementById('mediaPreviewToggle');
         if (curMedia4) { var ex4 = curMedia4.querySelector('img,iframe,video'); if (ex4) ex4.remove(); }
         if (curMediaLabel4) curMediaLabel4.style.display = '';
         if (mediaOverlay4) mediaOverlay4.style.display = 'none';
+        if (toggle4) toggle4.style.display = 'none';
         var gEl = document.getElementById('gifUrl'); if (gEl) gEl.value = '';
         var vEl = document.getElementById('vidUrl'); if (vEl) vEl.value = '';
         showToast('Media removed'); markDirty(0);
