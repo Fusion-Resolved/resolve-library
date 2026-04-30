@@ -4959,7 +4959,7 @@ buildSavedList();applyVP();buildCatChips();
 
     try {
       const res = await fetch(
-        _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(effectId) + '&select=id,name,nodes,user_id',
+        _NG_SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(effectId) + '&select=id,name,nodes,node_code,graph_payload,user_id',
         {
           headers: {
             'apikey':        _NG_SB_KEY,
@@ -5054,20 +5054,109 @@ buildSavedList();applyVP();buildCatChips();
           toast('Nodes loaded (legacy format) — save to upgrade');
         }, 100);
       } else {
-        // No graph data yet — blank canvas, but pre-link to this effect
-        if (!linkedEffects.some(le => le.id === row.id)) {
-          linkedEffects.push({ id: row.id, name: row.name });
+        // No full graph JSONB — try node_code (raw Lua) then graph_payload (JSON)
+        const fallbackPayload = row.node_code || row.graph_payload || null;
+
+        if (fallbackPayload) {
+          if (!linkedEffects.some(le => le.id === row.id)) {
+            linkedEffects.push({ id: row.id, name: row.name });
+          }
+          renderEffList();
+          currentEffectId = row.id;
+          currentEffectName = row.name;
+          currentEffectOwnerId = row.user_id;
+          isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
+          updateSaveButtonVisibility();
+          if (svName) svName.value = row.name;
+          if (svName) svName.placeholder = 'Graph name…';
+
+          setTimeout(function() {
+            if (row.node_code) {
+              // Raw Lua — importFromNodeSystem parses, filters sub-nodes, lays out
+              console.log('[nodegraph] Path 1 fallback: importing node_code via NodeSystem');
+              importFromNodeSystem(row.node_code);
+            } else {
+              // graph_payload is {v:1, nodes:[normalized], edges:[]} from edit-effect-owner.
+              // Feed the node list into importFromNodeSystem via a lightweight reconstruct:
+              // build a minimal Lua string so the same pipeline handles it, OR use the
+              // normalized node data directly to populate the canvas.
+              try {
+                var gp = typeof row.graph_payload === 'string'
+                  ? JSON.parse(row.graph_payload)
+                  : row.graph_payload;
+
+                if (gp && Array.isArray(gp.nodes) && gp.nodes.length > 0) {
+                  console.log('[nodegraph] Path 1 fallback: importing graph_payload with', gp.nodes.length, 'nodes');
+                  clearCanvas();
+                  var nodeMap = {};
+                  var canvasWrap = document.getElementById('canvas-wrap');
+                  var cw = canvasWrap ? canvasWrap.clientWidth  : 900;
+                  var ch = canvasWrap ? canvasWrap.clientHeight : 600;
+                  var cx = (cw / 2 - vpX) / vpZ;
+                  var cy = (ch / 2 - vpY) / vpZ;
+                  var hasPos = gp.nodes.some(function(n){ return n.x !== 0 || n.y !== 0; });
+
+                  if (!hasPos && window.NodeSystem && window.NodeSystem.autoLayout) {
+                    window.NodeSystem.autoLayout(gp.nodes, { cols: 4, xGap: 50, yGap: 40 });
+                  }
+
+                  var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                  gp.nodes.forEach(function(n) {
+                    minX = Math.min(minX, n.x||0); minY = Math.min(minY, n.y||0);
+                    maxX = Math.max(maxX, (n.x||0) + 170); maxY = Math.max(maxY, (n.y||0) + 110);
+                  });
+                  var offX = hasPos ? cx - (minX + (maxX - minX) / 2) : 0;
+                  var offY = hasPos ? cy - (minY + (maxY - minY) / 2) : 0;
+
+                  gp.nodes.forEach(function(n) {
+                    var x = (n.x||0) + offX;
+                    var y = (n.y||0) + offY;
+                    var newNode = _addNode(n.name || 'Custom', n.category || 'Custom', x * vpZ + vpX, y * vpZ + vpY);
+                    newNode.label = n.fusionName || n.name;
+                    if (n.params && Object.keys(n.params).length > 0) {
+                      newNode.fusionParams = [{ table: n.name, params: n.params }];
+                    }
+                    nodeMap[n.id] = newNode.id;
+                    nodeMap[n.fusionName] = newNode.id;
+                  });
+
+                  (gp.edges || []).forEach(function(e) {
+                    var fromId = nodeMap[e.from];
+                    var toId   = nodeMap[e.to];
+                    if (fromId && toId && fromId !== toId) {
+                      if (!conns.find(function(c){ return c.fromNode === fromId && c.toNode === toId; })) {
+                        conns.push({ id: 'c'+(cid++), fromNode: fromId, fromPort: 0, toNode: toId, toPort: 0, color: '#ffffff' });
+                      }
+                    }
+                  });
+
+                  updAllPS(); renderAllConns();
+                  toast('Graph loaded from Supabase ✓');
+                } else {
+                  toast('Effect found — no renderable graph data');
+                }
+              } catch(gpErr) {
+                console.warn('[nodegraph] Path 1 fallback: graph_payload parse failed:', gpErr);
+                toast('Failed to parse graph data');
+              }
+            }
+          }, 100);
+
+        } else {
+          // Genuinely no graph data — blank canvas, pre-link effect
+          if (!linkedEffects.some(le => le.id === row.id)) {
+            linkedEffects.push({ id: row.id, name: row.name });
+          }
+          renderEffList();
+          currentEffectId = row.id;
+          currentEffectName = row.name;
+          currentEffectOwnerId = row.user_id;
+          isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
+          updateSaveButtonVisibility();
+          if (svName) svName.value = row.name;
+          if (svName) svName.placeholder = 'Graph name…';
+          toast('No graph data yet — canvas ready, effect linked');
         }
-        renderEffList();
-        // Restore effect info
-        currentEffectId = row.id;
-        currentEffectName = row.name;
-        currentEffectOwnerId = row.user_id;
-        isCurrentUserOwner = window.CURRENT_USER_ID && window.CURRENT_USER_ID === row.user_id;
-        updateSaveButtonVisibility();
-        if (svName) svName.value = row.name;
-        if (svName) svName.placeholder = 'Graph name…';
-        toast('No graph data yet — canvas ready, effect linked');
       }
 
     } catch(err) {
