@@ -59,6 +59,24 @@
     'LinearPath','MoPath','MotionPath','SplinePath','PathFollow'
   ]);
 
+  // Parameter-data node types — Fusion stores certain parameter values as
+  // standalone named blocks in the Lua (e.g. LUTBezier for an extrusion
+  // profile curve). They are referenced by their parent via:
+  //   SourceOp = "<name>", Source = "Value"
+  // meaning they supply a *value*, not a pipeline output. They must never
+  // appear as graph cards — their data belongs inside the parent node's params.
+  const PARAM_DATA_TYPES = new Set([
+    'LUTBezier',               // extrusion profile curves, LUT shapes
+    'TextStyleFont',           // text style / font descriptor blocks
+    'MtlBlinnInputs',          // material parameter blocks
+    'MtlPhongInputs',
+    'MtlCookTorranceInputs',
+    'MtlStdInputs',
+    'PaintStroke',             // paint stroke data
+    'MaskOutline',             // mask outline sub-data
+    'CustomData',              // generic custom parameter data
+  ]);
+
   // Name patterns for motion-path helpers (path1, Path2, spline3 …)
   const PATH_NAME_RE = /^[Pp]ath\d*$|^[Ss]pline\d*$|^[Bb]ezier\d*$|^[Mm]o[Pp]ath\d*$/;
 
@@ -202,6 +220,10 @@
       if (SKIP_NAMES.has(entry.name) || SKIP_TYPES.has(entry.type)) continue;
       // Skip all motion-path / spline helper types (expanded from original two-type check)
       if (PATH_TYPES.has(entry.type)) continue;
+      // Skip parameter-data node types (LUTBezier, TextStyleFont, etc.)
+      // These are value containers, not pipeline nodes — they belong inside
+      // their parent's params, not as standalone graph cards.
+      if (PARAM_DATA_TYPES.has(entry.type)) continue;
       // Also guard by name pattern — catches edge cases where the type differs between
       // Fusion versions (e.g. "Path" vs "PolyPath") but the variable name is still path-like
       if (PATH_NAME_RE.test(entry.name)) continue;
@@ -261,10 +283,14 @@
       instMap[entry.name] = node.id;
     }
 
-    // Build edges from SourceOp references in params
+    // Build edges from SourceOp references in params.
+    // IMPORTANT: only create a pipeline edge when Source = "Output".
+    // Source = "Value" means the target node is a parameter-data container
+    // (e.g. LUTBezier, BezierSpline) — it supplies a value, not a pipeline
+    // output, so no graph edge should be created.
     for (const node of nodes) {
       for (const [key, val] of Object.entries(node.params)) {
-        if (val.sourceOp) {
+        if (val.sourceOp && val.connSource !== 'Value') {
           const targetId = instMap[val.sourceOp];
           if (targetId) {
             edges.push({
@@ -447,9 +473,14 @@
         }
       }
 
-      // Extract SourceOp for connections
+      // Extract SourceOp + Source for connections.
+      // Source = "Output" → pipeline connection (creates a graph edge).
+      // Source = "Value"  → parameter-data connection (no edge; value is
+      //                      supplied by a sub-node such as LUTBezier).
       const sourceOpM = pbody.match(/\bSourceOp\s*=\s*"([^"]+)"/);
-      const sourceOp = sourceOpM ? sourceOpM[1] : null;
+      const sourceOp  = sourceOpM ? sourceOpM[1] : null;
+      const sourceM   = pbody.match(/\bSource\s*=\s*"([^"]+)"/);
+      const connSource = sourceM ? sourceM[1] : null; // "Output" | "Value" | null
 
       // Resolve SourceOp against splineMap — covers PolyPath motion paths and
       // BezierSpline references that come via SourceOp rather than inline Value
@@ -470,6 +501,7 @@
             keyframes: null,
             pathPoints: pts,
             sourceOp: sourceOp,
+            connSource: connSource,
             isPath: true
           };
           continue; // fully resolved — skip generic fallthrough
@@ -483,6 +515,7 @@
             type: 'animated',
             keyframes: splineData.keyframes,
             sourceOp: sourceOp,
+            connSource: connSource,
             isKeyframe: true
           };
           continue;
@@ -503,6 +536,7 @@
         keyframes: keyframes,
         enumValue: enumVal,
         sourceOp: sourceOp,
+        connSource: connSource,  // "Output" | "Value" | null
         isKeyframe: isKeyframe,
         isPath: false
       };

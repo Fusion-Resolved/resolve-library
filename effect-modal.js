@@ -123,15 +123,17 @@
         effect = fetchedEffect;
       }
 
-      // Re-fetch to get fresh data (nodes + permissions)
+      // Re-fetch to get fresh data (nodes, graph_payload, node_code + permissions)
       const { data: freshEffect } = await window._supabase
         .from('effects')
-        .select('id, nodes, allow_node_copy')
+        .select('id, nodes, graph_payload, node_code, allow_node_copy')
         .eq('id', effectId)
         .single();
       
       if (freshEffect) {
-        if (freshEffect.nodes) effect.nodes = freshEffect.nodes;
+        if (freshEffect.nodes)         effect.nodes         = freshEffect.nodes;
+        if (freshEffect.graph_payload) effect.graph_payload = freshEffect.graph_payload;
+        if (freshEffect.node_code)     effect.node_code     = freshEffect.node_code;
         // Always use the freshly fetched permission value — overrides any
         // stale/missing value that came from the local window.effects cache.
         effect.allow_node_copy = freshEffect.allow_node_copy;
@@ -203,33 +205,105 @@
     var accordionEl = document.getElementById('modal-node-accordion');
     var canvasContainer = document.getElementById('modal-node-code');
     
-    // Try to get node data - prefer _graphData (has positions), fall back to node_code
+    /**
+   * Fusion "sub-nodes" are data/parameter containers that Fusion embeds
+   * inside their parent node. They appear as standalone entries in the Lua
+   * but are NOT pipeline nodes — they are parameter values.
+   *
+   * These must never appear as graph cards. The check is against n.name
+   * (the Fusion node TYPE, e.g. "BezierSpline"), NOT n.type or n.category.
+   * n.name is the field NodeSystem.normalize() uses for the Fusion type name.
+   */
+  var FUSION_SUB_NODE_TYPES = [
+    // Animated parameter keyframes
+    'BezierSpline',
+    'CustomData',
+    // Curve / LUT parameters
+    'LUTBezier',
+    // Motion paths
+    'PolyPath',
+    'Path',
+    // Text style blocks
+    'TextStyleFont',
+    // Material / shader parameter blocks
+    'MtlBlinnInputs',
+    'MtlPhongInputs',
+    'MtlCookTorranceInputs',
+    'MtlStdInputs',
+    // Paint strokes (parameter data, not pipeline nodes)
+    'PaintStroke',
+    // Mask outlines stored as sub-data
+    'MaskOutline',
+  ];
+
+  function filterFusionSubNodes(normalized) {
+    if (!normalized || !normalized.nodes) { return normalized; }
+
+    var subIds = {};
+    normalized.nodes.forEach(function(n) {
+      // n.name is the Fusion node TYPE (e.g. "BezierSpline")
+      // n.fusionName is the instance name in the comp (e.g. "uDiskLight1XOffset")
+      var fusionType = n.name || '';
+      if (FUSION_SUB_NODE_TYPES.indexOf(fusionType) !== -1) {
+        subIds[n.id] = true;
+      }
+    });
+
+    if (Object.keys(subIds).length === 0) { return normalized; }
+
+    return {
+      nodes: normalized.nodes.filter(function(n) { return !subIds[n.id]; }),
+      edges: (normalized.edges || []).filter(function(e) {
+        return !subIds[e.from] && !subIds[e.to];
+      })
+    };
+  }
+    // Try to get node data, in priority order:
+    //   1. graph_payload  — JSON {v,nodes,edges} written by the editor on save;
+    //                       has full positions + normalized nodes (highest fidelity)
+    //   2. _graphData     — old JSONB "nodes" column graph object (effects.html cache)
+    //   3. nodes JSONB    — raw JSONB column with schemaVersion / nodes array
+    //   4. node_code      — raw Lua; parse + normalize + filter sub-nodes
     var nodeData = null;
     var hasValidData = false;
     var usedGraphData = false;
-    
-    // Case 1: _graphData already transformed (from effects.html _rowToEffect)
-    if (effect._graphData && window.NodeSystem) {
+
+    // Case 1: graph_payload — JSON string "{v:1, nodes:[...], edges:[...]}"
+    // NOTE: graph_payload is NOT Lua — it must be JSON.parsed, not NodeSystem.parse()'d.
+    if (!hasValidData && effect.graph_payload) {
+      try {
+        var gp = typeof effect.graph_payload === 'string'
+          ? JSON.parse(effect.graph_payload)
+          : effect.graph_payload;
+        if (gp && Array.isArray(gp.nodes) && gp.nodes.length > 0) {
+          // Filter sub-nodes from stale saved data — graph_payload may have been
+          // saved before the filter existed, so apply it here on read too.
+          var gpFiltered = filterFusionSubNodes({ nodes: gp.nodes, edges: gp.edges || [] });
+          console.log('[effect-modal] Using graph_payload with', gpFiltered.nodes.length, 'nodes (has positions)');
+          nodeData = gpFiltered;
+          hasValidData = true;
+          usedGraphData = true;
+        }
+      } catch (e) {
+        console.warn('[effect-modal] Failed to JSON-parse graph_payload:', e);
+      }
+    }
+
+    // Case 2: _graphData already transformed (from effects.html _rowToEffect)
+    if (!hasValidData && effect._graphData && window.NodeSystem) {
       try {
         var graphData = typeof effect._graphData === 'string' ? JSON.parse(effect._graphData) : effect._graphData;
         if (graphData && graphData.nodes && graphData.nodes.length > 0) {
-          console.log('[effect-modal] Using _graphData with', graphData.nodes.length, 'nodes (has positions)');
-          nodeData = {
+          console.log('[effect-modal] Using _graphData with', graphData.nodes.length, 'nodes');
+          var gd2 = filterFusionSubNodes({
             nodes: graphData.nodes.map(function(n) { return {
-              id: n.id,
-              name: n.name,
-              fusionName: n.label || n.name,
-              category: n.cat || 'Custom',
-              catColor: n.catColor || n.col || '#6c7bff',
-              x: n.x || 0,
-              y: n.y || 0,
-              params: n.fusionParams || {}
-            };}),
-            edges: (graphData.conns || []).map(function(c) { return {
-              from: c.fromNode,
-              to: c.toNode
-            };})
-          };
+              id: n.id, name: n.name, fusionName: n.label || n.name,
+              category: n.cat || 'Custom', catColor: n.catColor || n.col || '#6c7bff',
+              x: n.x || 0, y: n.y || 0, params: n.fusionParams || {}
+            }; }),
+            edges: (graphData.conns || []).map(function(c) { return { from: c.fromNode, to: c.toNode }; })
+          });
+          nodeData = gd2;
           hasValidData = true;
           usedGraphData = true;
         }
@@ -237,76 +311,43 @@
         console.warn('[effect-modal] Failed to parse _graphData:', e);
       }
     }
-    
-    // Case 2: effect.nodes is the JSONB column from Supabase (raw graph data)
+
+    // Case 3: effect.nodes is the JSONB column from Supabase (raw graph object)
     if (!hasValidData && effect.nodes && window.NodeSystem) {
       try {
-        var rawNodes = effect.nodes;
-        // If nodes is a string, parse it (Supabase sometimes returns JSONB as string)
-        if (typeof rawNodes === 'string') {
-          try {
-            rawNodes = JSON.parse(rawNodes);
-          } catch (parseErr) {
-            console.warn('[effect-modal] Failed to parse effect.nodes as JSON string:', parseErr);
-          }
-        }
-        // Check if it's a full graph object (has schemaVersion or nodes array)
+        var rawNodes = typeof effect.nodes === 'string' ? JSON.parse(effect.nodes) : effect.nodes;
         if (rawNodes && typeof rawNodes === 'object' && !Array.isArray(rawNodes)
             && (rawNodes.nodes || rawNodes.schemaVersion)) {
-          nodeData = {
-            nodes: rawNodes.nodes.map(function(n) { return {
-              id: n.id,
-              name: n.name,
-              fusionName: n.label || n.name,
-              category: n.cat || 'Custom',
-              catColor: n.catColor || n.col || '#6c7bff',
-              x: n.x || 0,
-              y: n.y || 0,
-              params: n.fusionParams || {}
-            };}),
-            edges: (rawNodes.conns || []).map(function(c) { return {
-              from: c.fromNode,
-              to: c.toNode
-            };})
-          };
-          hasValidData = true;
+          var gd3 = filterFusionSubNodes({
+            nodes: (rawNodes.nodes || []).map(function(n) { return {
+              id: n.id, name: n.name, fusionName: n.label || n.name,
+              category: n.cat || 'Custom', catColor: n.catColor || n.col || '#6c7bff',
+              x: n.x || 0, y: n.y || 0, params: n.fusionParams || {}
+            }; }),
+            edges: (rawNodes.conns || []).map(function(c) { return { from: c.fromNode, to: c.toNode }; })
+          });
+          nodeData = gd3;
+          hasValidData = nodeData.nodes.length > 0;
           usedGraphData = true;
         }
       } catch (e) {
         console.warn('[effect-modal] Failed to parse effect.nodes:', e);
       }
     }
-    
-    // Case 3: Parse graph_payload if available (has highest priority for visual graph)
-    if (!hasValidData && effect.graph_payload && window.NodeSystem) {
-      try {
-        console.log('[effect-modal] Parsing graph_payload...');
-        var parsed = window.NodeSystem.parse(effect.graph_payload);
-        nodeData = window.NodeSystem.normalize(parsed);
-        hasValidData = nodeData.nodes.length > 0;
-        
-        // Auto-layout since graph_payload doesn't have positions
-        if (hasValidData && window.NodeSystem.autoLayout) {
-          console.log('[effect-modal] Auto-layout for graph_payload...');
-          window.NodeSystem.autoLayout(nodeData.nodes, { cols: 3, xGap: 50, yGap: 40 });
-        }
-      } catch (e) {
-        console.warn('[effect-modal] Failed to parse graph_payload:', e);
-      }
-    }
-    
-    // Case 4: Fall back to node_code parsing if no graph data available
+
+    // Case 4: Fall back to node_code (raw Lua) — parse → normalize → filter sub-nodes
     if (!hasValidData && effect.node_code && window.NodeSystem) {
       try {
         console.log('[effect-modal] Falling back to node_code parsing...');
         var parsed = window.NodeSystem.parse(effect.node_code);
-        nodeData = window.NodeSystem.normalize(parsed);
+        nodeData = filterFusionSubNodes(window.NodeSystem.normalize(parsed));
         hasValidData = nodeData.nodes.length > 0;
-        
-        // Auto-layout since we don't have positions
         if (hasValidData && window.NodeSystem.autoLayout) {
-          console.log('[effect-modal] Auto-layout needed, positioning nodes...');
-          window.NodeSystem.autoLayout(nodeData.nodes, { cols: 3, xGap: 50, yGap: 40 });
+          var needsLayout = nodeData.nodes.some(function(n) { return n.x === 0 && n.y === 0; });
+          if (needsLayout) {
+            console.log('[effect-modal] Auto-layout for node_code...');
+            window.NodeSystem.autoLayout(nodeData.nodes, { cols: 3, xGap: 50, yGap: 40 });
+          }
         }
       } catch (e) {
         console.warn('[effect-modal] Failed to parse node_code:', e);
