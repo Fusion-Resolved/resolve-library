@@ -598,51 +598,34 @@
       // 3. Lock/unlock the "Node Tree Code" accordion using its exact IDs from effects.html.
       //    - #node-code-acc-hd  : the clickable header that toggles the body
       //    - #node-code-acc-body: the collapsible body containing the code
-      //    - copy button        : first <button> inside the header
       var _accHd   = document.getElementById('node-code-acc-hd');
       var _accBody = document.getElementById('node-code-acc-body');
 
       if (_accHd) {
+        // Stash the original onclick ONCE — never overwrite it with the blocker
+        if (!_accHd._origOnclick) {
+          _accHd._origOnclick = _accHd.onclick || null;
+        }
+
         if (!canCopy) {
-          // Disable the inline onclick toggle
-          _accHd._savedOnclick = _accHd.onclick;
-          _accHd.onclick = function(e) { e.stopPropagation(); };
-          _accHd.onmouseenter = null;
-          _accHd.onmouseleave = null;
-          _accHd.style.cursor = 'default';
+          _accHd.onclick       = null;
+          _accHd.onmouseenter  = null;
+          _accHd.onmouseleave  = null;
+          _accHd.style.cursor  = 'default';
           _accHd.style.opacity = '0.45';
-
-          // Ensure body stays closed
+          _accHd.style.pointerEvents = 'none';
           if (_accBody) _accBody.style.display = 'none';
-
-          // Hide the copy button inside the header — blocked overlay is already shown
-          var _copyBtn = _accHd.querySelector('button');
-          if (_copyBtn) _copyBtn.style.display = 'none';
+          var _inCopyBtn = _accHd.querySelector('button');
+          if (_inCopyBtn) _inCopyBtn.style.display = 'none';
         } else {
-          // Restore everything
-          if (_accHd._savedOnclick) {
-            _accHd.onclick = _accHd._savedOnclick;
-            _accHd._savedOnclick = null;
-          } else {
-            // Re-attach the original inline handler
-            _accHd.onclick = function(hd) {
-              return function() {
-                var body  = document.getElementById('node-code-acc-body');
-                var arrow = _accHd.querySelector('.ntc-arrow');
-                var isOpen = body.style.display !== 'none';
-                body.style.display = isOpen ? 'none' : 'block';
-                if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
-                _accHd.style.borderRadius = isOpen ? '8px' : '8px 8px 0 0';
-              };
-            }(_accHd);
-          }
+          _accHd.onclick = _accHd._origOnclick;
           _accHd.onmouseenter = function() { _accHd.style.background = 'rgba(255,255,255,0.04)'; };
           _accHd.onmouseleave = function() { _accHd.style.background = 'rgba(255,255,255,0.02)'; };
-          _accHd.style.cursor  = 'pointer';
-          _accHd.style.opacity = '';
-
-          var _copyBtn = _accHd.querySelector('button');
-          if (_copyBtn) _copyBtn.style.display = '';
+          _accHd.style.cursor       = 'pointer';
+          _accHd.style.opacity      = '';
+          _accHd.style.pointerEvents = '';
+          var _inCopyBtn = _accHd.querySelector('button');
+          if (_inCopyBtn) _inCopyBtn.style.display = '';
         }
       }
     }

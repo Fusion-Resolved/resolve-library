@@ -131,7 +131,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 .cc{font-family:var(--fm);font-size:9px;color:var(--tm);}
 .cc.warn{color:var(--signal-amber);}
 
-/* ── Step builder ── */
+/* -- Step builder -- */
 .steps-builder{display:flex;flex-direction:column;gap:6px;}
 @keyframes stepIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
 .step-row{display:flex;align-items:center;gap:0;background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rp);box-shadow:var(--gs);transition:border-color var(--df);animation:stepIn 0.18s var(--ease);overflow:hidden;}
@@ -189,9 +189,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 .embed-copy{position:absolute;top:8px;right:8px;background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rsm);padding:3px 9px;font-family:var(--fm);font-size:10px;color:var(--ts);cursor:pointer;transition:var(--tr);}
 .embed-copy:hover{color:var(--tp);border-color:var(--bc);}
 
-/* ═══════════════════════════════
+/* ===============================
    NODE GRAPH EDITOR (Tab 2)
-   ═══════════════════════════════ */
+   =============================== */
 /* node search bar (replaces side palette) */
 .node-search-wrap{position:relative;display:flex;align-items:center;gap:0;background:var(--gb2);border:1px solid var(--bsb);border-radius:var(--rp);box-shadow:var(--gs);transition:border-color var(--df);}
 .node-search-wrap:focus-within{border-color:rgba(108,123,255,0.45);}
@@ -204,7 +204,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 .nsr-chip:hover{filter:brightness(1.2);}
 .nsr-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 .nsr-cat{font-family:var(--fm);font-size:8.5px;text-transform:uppercase;letter-spacing:0.06em;opacity:0.65;}
-/* ── DOM graph viewport (mirrors effect-modal exactly) ── */
+/* -- DOM graph viewport (mirrors effect-modal exactly) -- */
 .graph-viewport{position:relative;height:280px;border-radius:var(--r);overflow:hidden;border:1px solid var(--bs);user-select:none;-webkit-user-select:none;background:#06060d;background-image:radial-gradient(circle,rgba(108,123,255,0.11) 1px,transparent 1px);background-size:22px 22px;cursor:grab;}
 .graph-viewport.panning{cursor:grabbing;}
 .graph-world{position:absolute;top:0;left:0;transform-origin:0 0;}
@@ -614,26 +614,65 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     <div class="tab-panel" id="tab3">
       <div class="sec-lbl">Visibility</div>
       <div class="vis-row">
-        <div class="vis-card on" data-vis="Public"><div class="vis-icon">🌐</div><div class="vis-name">Public</div><div class="vis-desc">Everyone can see</div></div>
-        <div class="vis-card" data-vis="Unlisted"><div class="vis-icon">🔗</div><div class="vis-name">Unlisted</div><div class="vis-desc">Link only</div></div>
-        <div class="vis-card" data-vis="Draft"><div class="vis-icon">🔒</div><div class="vis-name">Draft</div><div class="vis-desc">Only you</div></div>
+        <div class="vis-card on" data-vis="Public">
+          <div class="vis-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+          <div class="vis-name">Public</div>
+          <div class="vis-desc">Everyone can see</div>
+        </div>
+        <div class="vis-card" data-vis="Sharing">
+          <div class="vis-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+          <div class="vis-name">Sharing</div>
+          <div class="vis-desc">Link only</div>
+        </div>
+        <div class="vis-card" data-vis="Private">
+          <div class="vis-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <div class="vis-name">Private</div>
+          <div class="vis-desc">Only you</div>
+        </div>
       </div>
+
+      <!-- Private sharing fields: password + share limit. Shown only when Private is selected. -->
+      <div id="privateShareFields" style="display:none;flex-direction:column;gap:10px;padding:12px;background:rgba(108,123,255,0.04);border:1px solid rgba(108,123,255,0.15);border-radius:var(--rsm);margin-top:4px;">
+        <div class="frow two">
+          <div class="fg">
+            <div class="fg-hd"><label class="fl">Share password <span></span></label></div>
+            <input class="fi" type="text" id="fSharePassword" placeholder="Set a password…" autocomplete="off">
+            <div class="fhint">Anyone with this link and password can view the effect</div>
+          </div>
+          <div class="fg">
+            <div class="fg-hd"><label class="fl">Max viewers</label></div>
+            <input class="fi" type="number" id="fShareLimit" placeholder="Unlimited" min="1" max="999">
+            <div class="fhint">Leave blank to allow unlimited access</div>
+          </div>
+        </div>
+      </div>
+
       <div class="sec-lbl">Sharing</div>
       <div class="fg">
-        <label class="fl">Public link</label>
+        <label class="fl">Link</label>
         <div class="share-link-row">
-          <input class="share-link-input" type="text" id="shareLinkInput" value="https://noding.io/e/optical-flow-warp" readonly>
+          <input class="share-link-input" type="text" id="shareLinkInput" value="" readonly>
           <button class="copy-link-btn" id="btnCopyLink">
             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             Copy link
           </button>
         </div>
+        <!-- Shown only when Private + at least one person has opened the link -->
+        <div id="shareViewCount" style="display:none;align-items:center;gap:6px;margin-top:4px;">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--violet-light);flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span id="shareViewCountTxt" style="font-family:var(--fm);font-size:10px;color:var(--violet-light);letter-spacing:0.04em;"></span>
+        </div>
       </div>
       <div class="fg">
         <label class="fl">Embed code</label>
-        <div class="embed-box" id="embedBox">
-          &lt;iframe src="https://noding.io/embed/optical-flow-warp" width="640" height="360" frameborder="0" allowfullscreen&gt;&lt;/iframe&gt;
-          <button class="embed-copy" id="btnCopyEmbed">Copy</button>
+        <div style="position:relative;border-radius:var(--rsm);overflow:hidden;">
+          <div class="embed-box" id="embedBox" style="opacity:0.35;pointer-events:none;user-select:none;">
+            &lt;iframe src="" width="640" height="360" frameborder="0" allowfullscreen&gt;&lt;/iframe&gt;
+          </div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(9,9,14,0.55);backdrop-filter:blur(3px);border-radius:var(--rsm);border:1px solid var(--bc);">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--tm);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--ts);">Coming in a future update</span>
+          </div>
         </div>
       </div>
       <div class="sec-lbl">Permissions</div>
@@ -642,17 +681,26 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
           <div class="tog-info"><div class="tog-title">Allow node tree copying</div><div class="tog-desc">Other users can copy the node structure to their own comp</div></div>
           <div class="sw-track on" id="sw0"><div class="sw-thumb"></div></div>
         </div>
-        <div class="tog-row">
-          <div class="tog-info"><div class="tog-title">Allow community variations</div><div class="tog-desc">Community members can submit variations based on this effect</div></div>
-          <div class="sw-track on" id="sw1"><div class="sw-thumb"></div></div>
+
+        <div class="tog-row" style="position:relative;overflow:hidden;border-radius:var(--r);">
+          <div style="opacity:0.35;pointer-events:none;user-select:none;display:flex;align-items:center;justify-content:space-between;width:100%;">
+            <div class="tog-info"><div class="tog-title">Allow community variations</div><div class="tog-desc">Community members can submit variations based on this effect</div></div>
+            <div class="sw-track on" id="sw1"><div class="sw-thumb"></div></div>
+          </div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(9,9,14,0.55);backdrop-filter:blur(3px);border-radius:var(--r);border:1px solid var(--bc);">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--tm);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--ts);">Coming in a future update</span>
+          </div>
         </div>
-        <div class="tog-row">
-          <div class="tog-info"><div class="tog-title">Show in search results</div><div class="tog-desc">Effect appears in browse and search on public pages</div></div>
-          <div class="sw-track on" id="sw2"><div class="sw-thumb"></div></div>
-        </div>
-        <div class="tog-row">
-          <div class="tog-info"><div class="tog-title">Enable comments</div><div class="tog-desc">Signed-in users can leave notes and questions on this effect</div></div>
-          <div class="sw-track" id="sw3"><div class="sw-thumb"></div></div>
+        <div class="tog-row" style="position:relative;overflow:hidden;border-radius:var(--r);">
+          <div style="opacity:0.35;pointer-events:none;user-select:none;display:flex;align-items:center;justify-content:space-between;width:100%;">
+            <div class="tog-info"><div class="tog-title">Enable comments</div><div class="tog-desc">Signed-in users can leave notes and questions on this effect</div></div>
+            <div class="sw-track" id="sw3"><div class="sw-thumb"></div></div>
+          </div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(9,9,14,0.55);backdrop-filter:blur(3px);border-radius:var(--r);border:1px solid var(--bc);">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--tm);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--ts);">Coming in a future update</span>
+          </div>
         </div>
       </div>
     </div>
@@ -813,7 +861,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 (function () {
   console.log('[Edit Effect] Script starting...');
 
-  // ── STEP 1: Inherit the parent window's authenticated Supabase client.
+  // \u2500\u2500 STEP 1: Inherit the parent window's authenticated Supabase client.
   // Running inside an iframe loses the session cookie / localStorage token,
   // so RLS silently blocks every write.  By reusing the parent's already-
   // authenticated client we carry the correct auth.uid() into every query.
@@ -829,9 +877,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   
   console.log('[Edit Effect] URL:', window.location.href);
 
-  /* ══════════════════════════════
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
      NODE TYPE DATA
-     ══════════════════════════════ */
+     \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
   var NT = [
     { name:'MediaIn',            cat:'Source',    col:'#0fa888', bg:'rgba(15,168,136,0.13)'  },
     { name:'Background',         cat:'Source',    col:'#0fa888', bg:'rgba(15,168,136,0.13)'  },
@@ -870,12 +918,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     return { name: name, cat: 'Composite', col:'#94a3b8', bg:'rgba(148,163,184,0.13)' };
   }
 
-  /* ══════════════════════════════
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
      GRAPH STATE
-     ══════════════════════════════ */
-  /* ══════════════════════════════
+     \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
      DOM GRAPH ENGINE (mirrors effect-modal exactly)
-     ══════════════════════════════ */
+     \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
   var _emParsedNodes = null;  // array of node objects (NodeSystem format)
   var _emParsedEdges = null;  // array of {from, to} edge objects
   var _emViewport, _emWorld, _emSvgEl, _emZoomLbl;
@@ -934,7 +982,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 
     var hasNodes = _emParsedNodes && _emParsedNodes.length > 0;
     if (empty) { empty.style.display = hasNodes ? 'none' : ''; }
-    if (countLbl) { countLbl.textContent = hasNodes ? _emParsedNodes.length+' node'+((_emParsedNodes.length!==1)?'s':'')+' · '+(_emParsedEdges||[]).length+' connection'+((_emParsedEdges||[]).length!==1?'s':'') : 'No nodes'; }
+    if (countLbl) { countLbl.textContent = hasNodes ? _emParsedNodes.length+' node'+((_emParsedNodes.length!==1)?'s':'')+' \u00b7 '+(_emParsedEdges||[]).length+' connection'+((_emParsedEdges||[]).length!==1?'s':'') : 'No nodes'; }
 
     if (!hasNodes) { return; }
 
@@ -993,7 +1041,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       if (hasAnim||hasPath) {
         var badge=document.createElement('div');
         badge.style.cssText='position:absolute;top:4px;right:6px;font-size:7px;font-family:var(--fm);color:'+col+';opacity:0.8;';
-        badge.textContent=hasAnim?'◆':'⬡'; card.appendChild(badge);
+        badge.textContent=hasAnim?'\u25c6':'\u2b21'; card.appendChild(badge);
       }
 
       var pi=document.createElement('div'); pi.className='gn-port gn-port-in';
@@ -1071,12 +1119,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
   }
 
-  /* ══════════════════════════════
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
      NODE PARAM PANEL (mirrors effect-modal exactly)
-     ══════════════════════════════ */
+     \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
   function emFmtNum(s) { var n=parseFloat(s); if(isNaN(n)) return s; return String(parseFloat(n.toPrecision(5))); }
   function emGetValueAtFrame(param, frame) {
-    var kfs=param.keyframes; if(!kfs||!kfs.length) return param.v||'—';
+    var kfs=param.keyframes; if(!kfs||!kfs.length) return param.v||'\u2014';
     var exact=null;
     for(var i=0;i<kfs.length;i++){if(kfs[i].frame===frame){exact=kfs[i];break;}}
     if(exact) return emFmtNum(String(exact.value));
@@ -1088,7 +1136,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if(lo&&hi){var t=(frame-lo.frame)/(hi.frame-lo.frame); return emFmtNum(String(lo.value+(hi.value-lo.value)*t));}
     if(lo) return emFmtNum(String(lo.value));
     if(hi) return emFmtNum(String(hi.value));
-    return param.v||'—';
+    return param.v||'\u2014';
   }
   function emDrawSpline(canvas, param, activeFrame) {
     var kfs=(param.keyframes||[]).slice().sort(function(a,b){return a.frame-b.frame;});
@@ -1178,7 +1226,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     var panel=document.getElementById('em-param-panel'); if(panel) panel.style.display='';
     document.getElementById('em-pp-dot').style.background=node.catColor||'#6c7bff';
     document.getElementById('em-pp-title').textContent=node.fusionName||node.name;
-    document.getElementById('em-pp-cat').textContent=node.name+(node.category?' · '+node.category:'');
+    document.getElementById('em-pp-cat').textContent=node.name+(node.category?' \u00b7 '+node.category:'');
     var flatParams=node.params||{};
     var paramKeys=Object.keys(flatParams).filter(function(k){return !k.endsWith('_SourceOp');});
     var allFramesSet={};
@@ -1202,7 +1250,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       var p=flatParams[k];
       var isKf=!!(p.isKeyframe&&p.keyframes&&p.keyframes.length), isSel=(k===_emSelParam);
       var label=k.replace(/([a-z])([A-Z])/g,'$1 $2');
-      var val=isKf&&scrubFrame!=null?emGetValueAtFrame(p,scrubFrame):(p.v||'—');
+      var val=isKf&&scrubFrame!=null?emGetValueAtFrame(p,scrubFrame):(p.v||'\u2014');
       var row=document.createElement('div');
       row.className='em-param-row'+(isSel?' sel':'')+(isKf?' kf':'');
       row.innerHTML='<span class="em-param-name">'+label+'</span><span class="em-param-val">'+val+'</span>';
@@ -1244,7 +1292,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       var kfs=param.keyframes.slice().sort(function(a,b){return a.frame-b.frame;});
       var frames=kfs.map(function(k){return k.frame;}), activeFr=(scrubFrame!=null&&frames.indexOf(scrubFrame)>=0)?scrubFrame:frames[0], curIdx=frames.indexOf(activeFr);
       var hdr=document.createElement('div'); hdr.style.cssText='font-size:10px;font-family:var(--fm);color:var(--tm);display:flex;align-items:baseline;gap:6px;flex-shrink:0;';
-      hdr.innerHTML='<span style="text-transform:uppercase;letter-spacing:.06em;">'+label+'</span> — <span id="em-val-lbl" style="color:var(--violet-light);font-size:13px;">'+emGetValueAtFrame(param,activeFr)+'</span> @ frame <span id="em-frame-lbl" style="color:var(--violet-light);">'+activeFr+'</span>'; right.appendChild(hdr);
+      hdr.innerHTML='<span style="text-transform:uppercase;letter-spacing:.06em;">'+label+'</span> \u2014 <span id="em-val-lbl" style="color:var(--violet-light);font-size:13px;">'+emGetValueAtFrame(param,activeFr)+'</span> @ frame <span id="em-frame-lbl" style="color:var(--violet-light);">'+activeFr+'</span>'; right.appendChild(hdr);
       var chips=document.createElement('div'); chips.className='em-kf-chips';
       frames.forEach(function(fr){
         var chip=document.createElement('button'); chip.className='em-kf-chip'+(fr===activeFr?' act':''); chip.textContent=fr;
@@ -1252,8 +1300,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         chip.addEventListener('click',(function(f){return function(){emScrubToFrame(nodeId,f);};})(fr)); chips.appendChild(chip);
       }); right.appendChild(chips);
       var nav=document.createElement('div'); nav.className='em-kf-nav';
-      var prev=document.createElement('button'); prev.textContent='◂ Prev'; prev.disabled=curIdx<=0; prev.addEventListener('click',function(){emScrubStep(nodeId,-1);});
-      var next=document.createElement('button'); next.textContent='Next ▸'; next.disabled=curIdx>=frames.length-1; next.addEventListener('click',function(){emScrubStep(nodeId,1);});
+      var prev=document.createElement('button'); prev.textContent='\u25c2 Prev'; prev.disabled=curIdx<=0; prev.addEventListener('click',function(){emScrubStep(nodeId,-1);});
+      var next=document.createElement('button'); next.textContent='Next \u25b8'; next.disabled=curIdx>=frames.length-1; next.addEventListener('click',function(){emScrubStep(nodeId,1);});
       nav.appendChild(prev); nav.appendChild(next); right.appendChild(nav);
       var canvasWrap=document.createElement('div'); canvasWrap.style.cssText='flex:1;min-height:0;display:flex;flex-direction:column;';
       var c=document.createElement('canvas'); c.style.cssText='display:block;width:100%;flex:1;border-radius:5px;background:#0d0d10;cursor:crosshair;';
@@ -1266,14 +1314,14 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       if(pts.length){
         var ptList=document.createElement('div'); ptList.className='em-path-pts';
         pts.slice(0,8).forEach(function(pt,i){ var ptRow=document.createElement('div'); ptRow.className='em-path-pt'+(i===0?' first':''); ptRow.textContent='['+i+'] X: '+emFmtNum(String(pt.x))+'  Y: '+emFmtNum(String(pt.y)); ptList.appendChild(ptRow); });
-        if(pts.length>8){ var more=document.createElement('div'); more.style.cssText='font-size:9px;color:var(--tm);margin-top:3px;'; more.textContent='… '+(pts.length-8)+' more points'; ptList.appendChild(more); }
+        if(pts.length>8){ var more=document.createElement('div'); more.style.cssText='font-size:9px;color:var(--tm);margin-top:3px;'; more.textContent='\u2026 '+(pts.length-8)+' more points'; ptList.appendChild(more); }
         right.appendChild(ptList);
       } else { var defDiv=document.createElement('div'); defDiv.className='em-val-big'; defDiv.textContent=param.v||'0.5, 0.5'; right.appendChild(defDiv); }
-      var pathNote=document.createElement('div'); pathNote.style.cssText='font-size:9px;font-family:var(--fm);color:var(--tm);margin-top:6px;'; pathNote.textContent='Motion path — '+pts.length+' point'+(pts.length!==1?'s':''); right.appendChild(pathNote);
+      var pathNote=document.createElement('div'); pathNote.style.cssText='font-size:9px;font-family:var(--fm);color:var(--tm);margin-top:6px;'; pathNote.textContent='Motion path \u2014 '+pts.length+' point'+(pts.length!==1?'s':''); right.appendChild(pathNote);
     } else {
       var stHdr=document.createElement('div'); stHdr.style.cssText='font-size:10px;font-family:var(--fm);color:var(--tm);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;'; stHdr.textContent=label; right.appendChild(stHdr);
-      var stVal=document.createElement('div'); stVal.className='em-val-big'; stVal.textContent=param.v||'—'; right.appendChild(stVal);
-      var stNote=document.createElement('div'); stNote.style.cssText='font-size:9px;font-family:var(--fm);color:var(--tm);margin-top:6px;'; stNote.textContent='Static — no animation data'; right.appendChild(stNote);
+      var stVal=document.createElement('div'); stVal.className='em-val-big'; stVal.textContent=param.v||'\u2014'; right.appendChild(stVal);
+      var stNote=document.createElement('div'); stNote.style.cssText='font-size:9px;font-family:var(--fm);color:var(--tm);margin-top:6px;'; stNote.textContent='Static \u2014 no animation data'; right.appendChild(stNote);
     }
   }
   function emCloseParams(){
@@ -1283,7 +1331,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     _emActiveGnEl=null;
   }
 
-  /* ── ADD NODE (search chip click) ── */
+  /* \u2500\u2500 ADD NODE (search chip click) \u2500\u2500 */
   function addNode (td) {
     if (!_emParsedNodes) { _emParsedNodes=[]; _emParsedEdges=[]; }
     var NW=132, NH=50, COLS=5, XG=NW+50, YG=NH+40;
@@ -1304,18 +1352,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     markDirty(1); _graphEditedCanvas=true;
   }
 
-  /* ── UPDATE COUNTS ── */
+  /* \u2500\u2500 UPDATE COUNTS \u2500\u2500 */
   function updateCounts () {
     var n=(_emParsedNodes||[]).length, e=(_emParsedEdges||[]).length;
     var lbl=document.getElementById('nodeCountLbl');
-    if(lbl) lbl.textContent=n?n+' node'+(n!==1?'s':'')+' · '+e+' connection'+(e!==1?'s':''):'No nodes';
+    if(lbl) lbl.textContent=n?n+' node'+(n!==1?'s':'')+' \u00b7 '+e+' connection'+(e!==1?'s':''):'No nodes';
   }
 
-  /* ── GRAPH CHANGE TRACKING ── */
+  /* \u2500\u2500 GRAPH CHANGE TRACKING \u2500\u2500 */
   var _importedLuaCode    = null;
   var _graphEditedCanvas  = false;
 
-  /* ── GRAPH SERIALIZER (arrow notation for node_code) ── */
+  /* \u2500\u2500 GRAPH SERIALIZER (arrow notation for node_code) \u2500\u2500 */
   function serializeGraph () {
     var nodes = _emParsedNodes, edges = _emParsedEdges;
     if (!nodes || !nodes.length) { return ''; }
@@ -1326,12 +1374,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     for(var k in inCount){ if(inCount[k]===0) queue.push(k); }
     while(queue.length){ var cur=queue.shift(); if(visited[cur]) continue; visited[cur]=true; order.push(cur); (outMap[cur]||[]).forEach(function(id){ inCount[id]--; if(inCount[id]===0) queue.push(id); }); }
     nodes.forEach(function(n){ if(!visited[n.id]) order.push(n.id); });
-    return order.map(function(id){ var n=(nodes||[]).find(function(x){return x.id===id;}); return n?n.name:''; }).filter(Boolean).join(' → ');
+    return order.map(function(id){ var n=(nodes||[]).find(function(x){return x.id===id;}); return n?n.name:''; }).filter(Boolean).join(' \u2192 ');
   }
   function serializeGraphPayload () {
     return JSON.stringify({ v:1, nodes:_emParsedNodes||[], edges:_emParsedEdges||[] });
   }
-     ══════════════════════════════ */
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
   var _luaImportOpen = false;
   var _luaParsed = null; // last valid parse result ready to import
 
@@ -1370,7 +1418,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     el.innerHTML = (icons[state] || icons.idle) + ' ' + (msg || {
       idle: 'Paste Lua comp data or arrow notation to parse',
       ok:   'Ready to import',
-      err:  'Could not parse — check your Lua or arrow notation'
+      err:  'Could not parse \u2014 check your Lua or arrow notation'
     }[state]);
   }
 
@@ -1392,7 +1440,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     var normalized = result ? window.NodeSystem.normalize(result) : null;
     if (normalized && normalized.nodes && normalized.nodes.length > 0) {
       _luaParsed = normalized;
-      setLuaFeedback('ok', normalized.nodes.length + ' node' + (normalized.nodes.length !== 1 ? 's' : '') + ' · ' + normalized.edges.length + ' connection' + (normalized.edges.length !== 1 ? 's' : '') + ' found');
+      setLuaFeedback('ok', normalized.nodes.length + ' node' + (normalized.nodes.length !== 1 ? 's' : '') + ' \u00b7 ' + normalized.edges.length + ' connection' + (normalized.edges.length !== 1 ? 's' : '') + ' found');
       setLuaImportEnabled(true);
     } else {
       _luaParsed = null;
@@ -1415,12 +1463,12 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     showToast('Imported ' + _emParsedNodes.length + ' node' + (_emParsedNodes.length!==1?'s':''));
   }
 
-  /* ── NODE SEARCH (replaces side palette) ── */
+  /* \u2500\u2500 NODE SEARCH (replaces side palette) \u2500\u2500 */
   function buildNodeSearch(f) {
     var list = document.getElementById('palList'); if (!list) { return; }
     list.innerHTML = '';
     var lo = (f || '').toLowerCase();
-    // Only show results when something is typed; show all if input is focused but empty? No — only show when searching
+    // Only show results when something is typed; show all if input is focused but empty? No \u2014 only show when searching
     if (!lo) { return; }
     var count = 0;
     for (var i = 0; i < NT.length; i++) {
@@ -1445,9 +1493,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
   }
 
-  /* ══════════════════════════════
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
      STEP BUILDER
-     ══════════════════════════════ */
+     \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
   function padNum(n) { return n < 10 ? '0' + n : '' + n; }
 
   function syncHiddenSteps() {
@@ -1487,7 +1535,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     inp.type = 'text';
     inp.className = 'step-input';
     inp.value = value || '';
-    inp.placeholder = idx === 1 ? 'Describe the first step…' : 'Next step…';
+    inp.placeholder = idx === 1 ? 'Describe the first step\u2026' : 'Next step\u2026';
     inp.setAttribute('autocomplete', 'off');
 
     var del = document.createElement('button');
@@ -1501,7 +1549,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     row.appendChild(del);
     builder.appendChild(row);
 
-    /* Enter → create next row */
+    /* Enter \u2192 create next row */
     inp.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -1568,7 +1616,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     syncHiddenSteps();
   }
 
-  /* ── DIRTY TRACKING ── */
+  /* \u2500\u2500 DIRTY TRACKING \u2500\u2500 */
   var isDirty = false;
   function markDirty (tabIdx) {
     isDirty = true;
@@ -1591,7 +1639,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     if (ft) { ft.textContent = 'Saved just now'; ft.style.color = ''; }
   }
 
-  /* ── TABS ── */
+  /* \u2500\u2500 TABS \u2500\u2500 */
   var curTab = 0;
   function goTab (n) {
     var panels = document.querySelectorAll('.tab-panel');
@@ -1608,7 +1656,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
   }
 
-  /* ── SAVE ── */
+  /* \u2500\u2500 SAVE \u2500\u2500 */
   async function doSave () {
     const params = new URLSearchParams(window.location.search);
     const effectId = params.get('id');
@@ -1672,6 +1720,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     const renderWeight = weightEl ? weightEl.value : '';
     
     const selfEl = document.getElementById('fSelf');
+
+    // Visibility
+    var visCard = document.querySelector('.vis-card.on');
+    var visState = visCard ? visCard.dataset.vis : 'Public';
+    var isPublic = (visState === 'Public');
+
+    // Share password + limit (only meaningful for Private)
+    var pwEl    = document.getElementById('fSharePassword');
+    var limitEl = document.getElementById('fShareLimit');
+    var sharePassword = (visState === 'Private' && pwEl && pwEl.value.trim()) ? pwEl.value.trim() : null;
+    var shareLimit    = (visState === 'Private' && limitEl && limitEl.value.trim()) ? parseInt(limitEl.value.trim(), 10) : null;
+
     const updates = {
       name: nameEl ? nameEl.value : '',
       desc: descEl ? descEl.value : '',
@@ -1681,26 +1741,35 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       difficulty: difficulty,
       tags: tags,
       render_weight: renderWeight,
-      self_contained: selfEl ? selfEl.value : ''
+      self_contained: selfEl ? selfEl.value : '',
+      is_public: isPublic,
+      status: visState,
+      share_password: sharePassword,
+      share_limit: shareLimit,
+      slug: generateSlug(nameEl ? nameEl.value : ''),
+      allow_node_copy: document.getElementById('sw0') ? document.getElementById('sw0').classList.contains('on') : true
     };
 
-    // ── Node graph ──────────────────────────────────────────────
+    // \u2500\u2500 Node graph \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     // Priority: raw Lua from the last Import > canvas-edited serialization > no change
     if (_importedLuaCode) {
       updates.node_code    = _importedLuaCode;
       updates.graph_payload = serializeGraphPayload();
+      updates.nodes        = null; // clear stale JSONB so effect.nodes doesn't shadow the new Lua
       console.log('[doSave] Saving imported Lua as node_code, length:', _importedLuaCode.length);
     } else if (_graphEditedCanvas && (_emParsedNodes||[]).length > 0) {
       updates.node_code    = serializeGraph();
       updates.graph_payload = serializeGraphPayload();
+      updates.nodes        = null; // clear stale JSONB
       console.log('[doSave] Saving canvas-edited graph as node_code:', updates.node_code.substring(0, 80));
     } else if (_graphEditedCanvas && !(_emParsedNodes||[]).length) {
       // User explicitly cleared the graph
       updates.node_code    = '';
       updates.graph_payload = null;
+      updates.nodes        = null; // clear stale JSONB
       console.log('[doSave] Saving cleared graph');
     } else {
-      console.log('[doSave] No graph changes — node_code unchanged in Supabase');
+      console.log('[doSave] No graph changes \u2014 node_code unchanged in Supabase');
     }
     
     console.log('[doSave] Saving updates:', updates);
@@ -1733,7 +1802,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       console.log('[doSave] Verifying save by re-fetching...');
       const { data: verifyData, error: verifyError } = await supabase
         .from('effects')
-        .select('name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code')
+        .select('name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, allow_node_copy')
         .eq('id', effectId)
         .single();
       
@@ -1748,6 +1817,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[doSave] Name match:', nameMatch, 'Expected:', updates.name, 'Got:', verifyData.name);
         console.log('[doSave] Category match:', catMatch, 'Expected:', updates.cat, 'Got:', verifyData.cat);
         console.log('[doSave] Steps match:', stepsMatch, 'Expected:', updates.steps.substring(0, 50) + (updates.steps.length > 50 ? '...' : ''), 'Got:', verifyData.steps ? verifyData.steps.substring(0, 50) + (verifyData.steps.length > 50 ? '...' : '') : 'null/undefined');
+        console.log('[doSave] allow_node_copy match:', verifyData.allow_node_copy === updates.allow_node_copy, 'Expected:', updates.allow_node_copy, 'Got:', verifyData.allow_node_copy);
         
         if (!nameMatch || !catMatch) {
           showToast('Warning: Save may not have persisted');
@@ -1755,7 +1825,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       }
       
       clearDirty();
-      _importedLuaCode   = null;   // consumed — reset so a re-save doesn't re-send
+      _importedLuaCode   = null;   // consumed \u2014 reset so a re-save doesn't re-send
       _graphEditedCanvas = false;
       console.log('[doSave] Save successful for effect:', effectId, '| updates:', updates);
       showToast('Changes saved');
@@ -1780,7 +1850,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     }
   }
 
-  /* ── LOAD EFFECT DATA ── */
+  /* \u2500\u2500 LOAD EFFECT DATA \u2500\u2500 */
   async function loadEffectData() {
     console.log('[loadEffectData] ========== START ==========');
     
@@ -1823,7 +1893,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         console.log('[loadEffectData] Fetching effect:', effectId);
         const { data, error } = await supabase
           .from('effects')
-          .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, graph_payload, user_id')
+          .select('id, name, cat, desc, steps, version, difficulty, tags, render_weight, self_contained, node_code, graph_payload, user_id, is_public, status, share_password, share_limit, view_count, slug, allow_node_copy')
           .eq('id', effectId)
           .single();
         
@@ -1858,7 +1928,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     console.log('[loadEffectData] ========== END ==========');
   }
   
-  /* ── POPULATE FORM ── */
+  /* \u2500\u2500 POPULATE FORM \u2500\u2500 */
   function populateForm(effect) {
     console.log('[populateForm] ========== START ==========');
     console.log('[populateForm] Populating with effect:', effect);
@@ -1995,7 +2065,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       shMeta.innerHTML = (effect.cat || 'Effect') + ' &nbsp;&middot;&nbsp; Version ' + (effect.version || '1.0') + ' &nbsp;&middot;&nbsp; Last edited ' + dateStr;
     }
     
-    // Load actual nodes — prefer graph_payload (preserves positions) over node_code
+    // Load actual nodes \u2014 prefer graph_payload (preserves positions) over node_code
     console.log('[populateForm] Loading nodes from node_code...');
     var graphPayload = null;
     if (effect.graph_payload) {
@@ -2028,13 +2098,111 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       buildGraph();
     }
     
+    // \u2500\u2500 Access tab: share link \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // Build the pretty URL using the creator's display_name + effect slug.
+    // Falls back to the ?open= ID link while the profile fetch is in flight.
+    var effectId  = effect.id || '';
+    var effectSlug = effect.slug || generateSlug(effect.name || '');
+    var shareLinkEl = document.getElementById('shareLinkInput');
+
+    // Temporary fallback while we fetch the display_name
+    if (shareLinkEl) shareLinkEl.value = 'https://mynodes.app/effects/' + effectSlug;
+
+    // Async: resolve owner display_name then update to the full pretty URL
+    (async function fetchDisplayName() {
+      try {
+        var userId = effect.user_id;
+        if (!userId || !supabase) return;
+        var res = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', userId)
+          .single();
+        var displayName = res.data && res.data.display_name
+          ? res.data.display_name
+          : null;
+        if (displayName && effectSlug && shareLinkEl) {
+          shareLinkEl.value = 'https://mynodes.app/effects/' + encodeURIComponent(displayName) + '/' + effectSlug;
+        }
+      } catch(e) { /* leave fallback URL in place */ }
+    }());
+
+    // \u2500\u2500 Visibility: use status as primary source of truth \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // status ('Public'|'Sharing'|'Private') is always written by doSave.
+    // Fall back to is_public only for effects that pre-date the status column.
+    var _knownStatuses = ['Public', 'Sharing', 'Private'];
+    var visState;
+    if (effect.status && _knownStatuses.indexOf(effect.status) !== -1) {
+      visState = effect.status;
+    } else if (effect.is_public === false || effect.is_public === 'false') {
+      visState = 'Private';
+    } else {
+      visState = 'Public';
+    }
+    document.querySelectorAll('.vis-card').forEach(function (card) {
+      card.classList.toggle('on', card.dataset.vis === visState);
+    });
+    updatePrivateShareFields(visState, effect.view_count || 0);
+
+    // \u2500\u2500 Private sharing fields \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    var pwEl = document.getElementById('fSharePassword');
+    if (pwEl) pwEl.value = effect.share_password || '';
+    var limitEl = document.getElementById('fShareLimit');
+    if (limitEl) limitEl.value = effect.share_limit != null ? effect.share_limit : '';
+
+    // \u2500\u2500 Allow node tree copying toggle (sw0) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // Default to ON (true) when field is absent (legacy effects)
+    var sw0El = document.getElementById('sw0');
+    if (sw0El) {
+      var allowCopy = (effect.allow_node_copy === false || effect.allow_node_copy === 'false') ? false : true;
+      sw0El.classList.toggle('on', allowCopy);
+    }
+
     console.log('[populateForm] ========== COMPLETE ==========');
     
     // Open the sheet after populating
     openSheet();
   }
 
-  /* ── INIT ── */
+  /* \u2500\u2500 SLUG HELPER \u2500\u2500 */
+  function generateSlug(name) {
+    return (name || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')  // strip diacritics
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  /* \u2500\u2500 VISIBILITY HELPER \u2500\u2500 */
+  function updatePrivateShareFields(visState, viewCount) {
+    var fields = document.getElementById('privateShareFields');
+    var viewCountEl = document.getElementById('shareViewCount');
+    var viewCountTxt = document.getElementById('shareViewCountTxt');
+
+    if (fields) {
+      fields.style.display = (visState === 'Private') ? 'flex' : 'none';
+    }
+
+    // Show the "X people have accessed this" indicator only for Private
+    // effects that have actually been opened by at least one person
+    if (viewCountEl && viewCountTxt) {
+      var count = viewCount != null ? parseInt(viewCount, 10) : 0;
+      if (visState === 'Private' && count > 0) {
+        viewCountEl.style.display = 'flex';
+        viewCountTxt.textContent = count === 1
+          ? '1 person has accessed this link'
+          : count + ' people have accessed this link';
+      } else {
+        viewCountEl.style.display = 'none';
+      }
+    }
+  }
+
+  /* \u2500\u2500 INIT \u2500\u2500 */
   console.log('[init] edit-effect-owner.html v1.1 - Steps field added');
   function init () {
     buildNodeSearch('');
@@ -2146,19 +2314,32 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     for (var vc = 0; vc < vcards.length; vc++) {
       vcards[vc].addEventListener('click', function () {
         for (var x = 0; x < vcards.length; x++) { vcards[x].classList.remove('on'); }
-        this.classList.add('on'); markDirty(3);
+        this.classList.add('on');
+        updatePrivateShareFields(this.dataset.vis, null);
+        markDirty(3);
       });
     }
 
     /* copy link */
     document.getElementById('btnCopyLink').addEventListener('click', function () {
       var btn = this;
-      btn.textContent = '✓ Copied';
+      var shareLinkEl = document.getElementById('shareLinkInput');
+      var text = shareLinkEl ? shareLinkEl.value : window.location.href;
+      try { navigator.clipboard.writeText(text); } catch(e) {}
+      btn.textContent = '\u2713 Copied';
       btn.classList.add('copied');
       setTimeout(function () { btn.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy link'; btn.classList.remove('copied'); }, 2000);
       showToast('Link copied');
     });
-    document.getElementById('btnCopyEmbed').addEventListener('click', function () { showToast('Embed code copied'); });
+    var btnCopyEmbed = document.getElementById('btnCopyEmbed');
+    if (btnCopyEmbed) {
+      btnCopyEmbed.addEventListener('click', function () {
+        var embedBoxEl = document.getElementById('embedBox');
+        var code = embedBoxEl ? (embedBoxEl.dataset.embedCode || embedBoxEl.textContent.replace('Copy','').trim()) : '';
+        try { navigator.clipboard.writeText(code); } catch(e) {}
+        showToast('Embed code copied');
+      });
+    }
 
     /* media */
     /* media & other buttons - wrapped in try-catch for safety */
@@ -2172,6 +2353,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       
       var mt0 = document.getElementById('mt0');
       var mt1 = document.getElementById('mt1');
+      var dropZone = document.getElementById('gifDropZone');
+      var browseBtn = document.getElementById('gifBrowse');
       var btnVidConfirm = document.getElementById('btnVidConfirm');
       var btnReplace = document.getElementById('btnReplace');
       var btnRemoveMedia = document.getElementById('btnRemoveMedia');
@@ -2266,9 +2449,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     t._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
   }
 
-  /* ═══════════════════════════════════════════════════════════════
+  /* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
      SPLINE MODAL FUNCTIONS
-     ═══════════════════════════════════════════════════════════════ */
+     \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
   
   var _splineModalCurrentNode = null;
   var _splineModalCurrentParam = null;
@@ -2290,7 +2473,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     document.body.style.overflow = 'hidden';
     
     // Update title
-    document.getElementById('splineModalTitle').textContent = (node.fusionName || node.name) + ' — Animation Curves';
+    document.getElementById('splineModalTitle').textContent = (node.fusionName || node.name) + ' \u2014 Animation Curves';
     
     // Populate parameter list
     populateSplineParamList(node, paramKey);
@@ -2415,14 +2598,14 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     // Update info
     var kfs = param.keyframes;
     document.getElementById('splineKeyframeCount').textContent = kfs.length;
-    document.getElementById('splineFrameRange').textContent = kfs[0].frame + ' → ' + kfs[kfs.length-1].frame;
+    document.getElementById('splineFrameRange').textContent = kfs[0].frame + ' \u2192 ' + kfs[kfs.length-1].frame;
     
     var minV = Infinity, maxV = -Infinity;
     kfs.forEach(function(kf) { 
       minV = Math.min(minV, kf.value || kf.val); 
       maxV = Math.max(maxV, kf.value || kf.val); 
     });
-    document.getElementById('splineValueRange').textContent = minV.toFixed(3) + ' → ' + maxV.toFixed(3);
+    document.getElementById('splineValueRange').textContent = minV.toFixed(3) + ' \u2192 ' + maxV.toFixed(3);
     
     // Render spline
     renderSplineModalCanvas(kfs);
