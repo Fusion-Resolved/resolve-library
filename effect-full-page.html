@@ -490,8 +490,15 @@ a{color:inherit;text-decoration:none;}
     });
     var gw=Math.max(mxX-mnX,NW),gh=Math.max(mxY-mnY,NH);
     var vr=gpVp.getBoundingClientRect(),pad=16;
-    var ns=gpClamp(Math.min((vr.width-pad*2)/gw,(vr.height-pad*2)/gh,1.5));
-    gpSc=ns;gpTx=(vr.width-gw*ns)/2-mnX*ns;gpTy=(vr.height-gh*ns)/2-mnY*ns;
+    // Reserve 55px at the bottom for the Open in Editor / Expand buttons
+    var BUTTON_H = 55;
+    var availW = vr.width  - pad*2;
+    var availH = vr.height - pad*2 - BUTTON_H;
+    var ns=gpClamp(Math.min(availW/gw, availH/gh, 1.5));
+    gpSc=ns;
+    gpTx=(vr.width-gw*ns)/2-mnX*ns;
+    // Centre vertically in the space ABOVE the buttons
+    gpTy=pad+(availH-gh*ns)/2-mnY*ns;
     gpApply();
   }
   window.gpFit=gpFit;
@@ -805,85 +812,161 @@ a{color:inherit;text-decoration:none;}
 
     var html='<div class="analysis-summary">This effect uses <strong>'+nodes.length+' node'+(nodes.length!==1?'s':'')+'</strong>'+(edges.length?' connected by <strong>'+edges.length+' edge'+(edges.length!==1?'s':'')+'</strong>':'')+( animCount?' with <strong>'+animCount+' animated parameter'+(animCount!==1?'s':'')+'</strong>':'')+'.</div>';
     html+='<div class="analysis-stats"><div class="an-stat"><div class="an-stat-val">'+nodes.length+'</div><div class="an-stat-lbl">Nodes</div></div><div class="an-stat"><div class="an-stat-val">'+edges.length+'</div><div class="an-stat-lbl">Connections</div></div><div class="an-stat"><div class="an-stat-val">'+animCount+'</div><div class="an-stat-lbl">Animated</div></div></div>';
+    body.innerHTML=html;
 
-    // ── Topology-aware pipeline diagram ──────────────────────────────────────
-    // Assign each node a topological level (0 = no inputs, increases downstream).
-    // Nodes that feed a merge/composite from the side get their own level column.
-    if (nodes.length > 0) {
-      var nodeMap = {};
-      nodes.forEach(function(n){ nodeMap[n.id] = n; });
+    // ── SVG DAG — shows exact directed connections ─────────────────────────
+    if(!nodes.length){ sec.style.display=''; return; }
 
-      // Build adjacency: outgoing[id] = [target ids], incoming[id] = [source ids]
-      var outgoing = {}, incoming = {};
-      nodes.forEach(function(n){ outgoing[n.id]=[]; incoming[n.id]=[]; });
-      edges.forEach(function(e){
-        if(outgoing[e.from]) outgoing[e.from].push(e.to);
-        if(incoming[e.to])   incoming[e.to].push(e.from);
+    var nodeMap={};
+    nodes.forEach(function(n){ nodeMap[n.id]=n; });
+
+    // Build adjacency maps
+    var outgoing={},incoming={};
+    nodes.forEach(function(n){ outgoing[n.id]=[]; incoming[n.id]=[]; });
+    edges.forEach(function(e){
+      if(outgoing[e.from]) outgoing[e.from].push(e.to);
+      if(incoming[e.to])   incoming[e.to].push(e.from);
+    });
+
+    // ── Topological level (column) via Kahn's algorithm ───────────────────
+    var level={};
+    nodes.forEach(function(n){ level[n.id]=0; });
+    var inDeg={};
+    nodes.forEach(function(n){ inDeg[n.id]=incoming[n.id].length; });
+    var queue=nodes.filter(function(n){ return inDeg[n.id]===0; }).map(function(n){ return n.id; });
+    var topoOrder=[];
+    while(queue.length){
+      var cur=queue.shift(); topoOrder.push(cur);
+      outgoing[cur].forEach(function(nxt){
+        level[nxt]=Math.max(level[nxt],level[cur]+1);
+        inDeg[nxt]--;
+        if(inDeg[nxt]===0) queue.push(nxt);
       });
+    }
+    nodes.forEach(function(n){ if(topoOrder.indexOf(n.id)===-1) topoOrder.push(n.id); });
 
-      // Kahn's topological sort + level assignment
-      var level = {};
-      nodes.forEach(function(n){ level[n.id] = 0; });
-      var queue = nodes.filter(function(n){ return incoming[n.id].length === 0; }).map(function(n){ return n.id; });
-      var visited = {}, order = [];
-      while(queue.length){
-        var cur = queue.shift();
-        if(visited[cur]) continue;
-        visited[cur] = true;
-        order.push(cur);
-        outgoing[cur].forEach(function(nxt){
-          level[nxt] = Math.max(level[nxt], level[cur] + 1);
-          // Only enqueue when all predecessors are visited
-          if(incoming[nxt].every(function(p){ return visited[p]; })){
-            queue.push(nxt);
-          }
-        });
-      }
-      // Any node not yet visited (cycle safety)
-      nodes.forEach(function(n){ if(!visited[n.id]){ order.push(n.id); } });
+    var maxLevel=0;
+    topoOrder.forEach(function(id){ if(level[id]>maxLevel) maxLevel=level[id]; });
 
-      // Group into levels
-      var maxLevel = 0;
-      order.forEach(function(id){ if(level[id]>maxLevel) maxLevel=level[id]; });
-      var cols = [];
-      for(var l=0;l<=maxLevel;l++) cols.push([]);
-      order.forEach(function(id){ cols[level[id]].push(id); });
+    // Group nodes into columns
+    var cols=[];
+    for(var l=0;l<=maxLevel;l++) cols.push([]);
+    topoOrder.forEach(function(id){ cols[level[id]].push(id); });
 
-      // Render as a pipeline diagram with columns
-      // Each column is a vertical stack; arrows between columns
-      html += '<div style="margin-top:14px;overflow-x:auto;">';
-      html += '<div style="display:flex;align-items:center;gap:6px;min-width:max-content;">';
+    // ── Layout: assign x,y positions ──────────────────────────────────────
+    var NODE_W=120, NODE_H=32, COL_GAP=80, ROW_GAP=14;
+    var positions={};
 
-      cols.forEach(function(col, ci){
-        // Vertical stack of nodes in this column
-        html += '<div style="display:flex;flex-direction:column;gap:5px;align-items:center;">';
+    // First pass: place nodes in each column centred vertically
+    cols.forEach(function(col,ci){
+      var colH=col.length*(NODE_H+ROW_GAP)-ROW_GAP;
+      col.forEach(function(id,ri){
+        positions[id]={
+          x: ci*(NODE_W+COL_GAP),
+          y: ri*(NODE_H+ROW_GAP),
+          colH: colH,
+          col: ci
+        };
+      });
+    });
+
+    // Second pass: vertically align each node to the midpoint of its connections
+    // Iterate a few times to settle positions
+    for(var iter=0;iter<3;iter++){
+      cols.forEach(function(col,ci){
+        if(ci===0) return; // Don't move sources
         col.forEach(function(id){
-          var n = nodeMap[id];
-          var label = esc(n.fusionName || n.name);
-          var catColor = n.catColor || '#6c7bff';
-          var inCount  = incoming[id].length;
-          var outCount = outgoing[id].length;
-          // Badge showing in/out count when > 1
-          var badge = '';
-          if(inCount > 1){
-            badge = '<span style="font-size:8px;font-family:var(--fm);color:var(--violet-light);background:rgba(108,123,255,0.15);padding:1px 5px;border-radius:3px;margin-left:4px;">'+inCount+'&#x2192;</span>';
-          }
-          html += '<div style="display:flex;align-items:center;gap:4px;">';
-          html += '<span style="font-family:var(--fm);font-size:10px;padding:4px 9px;border-radius:var(--rxs);border:1px solid '+catColor+'55;color:'+catColor+';background:rgba('+parseInt(catColor.slice(1,3),16||108)+','+parseInt(catColor.slice(3,5),16||123)+','+parseInt(catColor.slice(5,7),16||255)+',0.08);white-space:nowrap;">'+label+badge+'</span>';
-          html += '</div>';
+          var sources=incoming[id];
+          if(!sources.length) return;
+          // Desired y = average y-midpoint of all source nodes
+          var sumY=0;
+          sources.forEach(function(src){ sumY+=(positions[src].y+NODE_H/2); });
+          var targetMid=sumY/sources.length;
+          positions[id].y=targetMid-NODE_H/2;
         });
-        html += '</div>'; // /column
-
-        // Arrow between columns (but not after the last)
-        if(ci < cols.length - 1){
-          html += '<span style="font-size:11px;color:var(--tm);flex-shrink:0;">&#8594;</span>';
+        // Re-space to avoid overlaps within the column
+        col.sort(function(a,b){ return positions[a].y-positions[b].y; });
+        for(var i=1;i<col.length;i++){
+          var prev=positions[col[i-1]], cur2=positions[col[i]];
+          if(cur2.y < prev.y+NODE_H+ROW_GAP){
+            cur2.y = prev.y+NODE_H+ROW_GAP;
+          }
         }
       });
-
-      html += '</div></div>'; // /flex row + wrapper
     }
 
-    body.innerHTML=html;sec.style.display='';
+    // Compute SVG canvas size
+    var svgW=0,svgH=0;
+    nodes.forEach(function(n){
+      var p=positions[n.id];
+      if(!p) return;
+      svgW=Math.max(svgW,p.x+NODE_W+4);
+      svgH=Math.max(svgH,p.y+NODE_H+4);
+    });
+    svgW=Math.max(svgW,200); svgH=Math.max(svgH,60);
+
+    // ── Build SVG ──────────────────────────────────────────────────────────
+    var svgParts=['<svg xmlns="http://www.w3.org/2000/svg" width="'+svgW+'" height="'+svgH+'" style="overflow:visible;display:block;">'];
+
+    // Defs: arrowhead marker
+    svgParts.push('<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="rgba(108,123,255,0.6)"/></marker></defs>');
+
+    // Draw edges first (behind nodes)
+    edges.forEach(function(edge){
+      var fp=positions[edge.from], tp=positions[edge.to];
+      if(!fp||!tp) return;
+      var x1=fp.x+NODE_W, y1=fp.y+NODE_H/2;
+      var x2=tp.x,         y2=tp.y+NODE_H/2;
+      var pull=Math.max(30,Math.abs(x2-x1)*0.4);
+      var d='M'+x1+','+y1+' C'+(x1+pull)+','+y1+' '+(x2-pull)+','+y2+' '+x2+','+y2;
+      // Glow
+      svgParts.push('<path d="'+d+'" fill="none" stroke="rgba(108,123,255,0.12)" stroke-width="3" stroke-linecap="round"/>');
+      // Main line with arrow
+      svgParts.push('<path d="'+d+'" fill="none" stroke="rgba(108,123,255,0.55)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 10" marker-end="url(#arr)"/>');
+    });
+
+    // Draw nodes
+    nodes.forEach(function(n){
+      var p=positions[n.id];
+      if(!p) return;
+      var catColor=n.catColor||'#6c7bff';
+      var r=parseInt(catColor.slice(1,3),16)||108;
+      var g=parseInt(catColor.slice(3,5),16)||123;
+      var b=parseInt(catColor.slice(5,7),16)||255;
+      var label=esc(n.fusionName||n.name);
+      var inCount=incoming[n.id].length;
+      var outCount=outgoing[n.id].length;
+
+      // Node rect
+      svgParts.push('<rect x="'+p.x+'" y="'+p.y+'" width="'+NODE_W+'" height="'+NODE_H+'" rx="5" ry="5" fill="rgba('+r+','+g+','+b+',0.12)" stroke="'+catColor+'88" stroke-width="1"/>');
+
+      // Category label (tiny)
+      svgParts.push('<text x="'+(p.x+8)+'" y="'+(p.y+10)+'" font-family="DM Mono,monospace" font-size="7" fill="rgba('+r+','+g+','+b+',0.7)" text-anchor="start" letter-spacing="0.05em" text-transform="uppercase">'+(n.category||'Custom').toUpperCase()+'</text>');
+
+      // Node name (bold)
+      svgParts.push('<text x="'+(p.x+8)+'" y="'+(p.y+23)+'" font-family="Syne,sans-serif" font-size="10" font-weight="700" fill="rgba(255,255,255,0.88)" text-anchor="start">'+label+'</text>');
+
+      // Multi-input badge
+      if(inCount>1){
+        var bx=p.x+NODE_W-22, by=p.y+4, bw=18, bh=12;
+        svgParts.push('<rect x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" rx="3" fill="rgba(108,123,255,0.2)" stroke="rgba(108,123,255,0.4)" stroke-width="0.8"/>');
+        svgParts.push('<text x="'+(bx+bw/2)+'" y="'+(by+9)+'" font-family="DM Mono,monospace" font-size="7.5" fill="#9ca8ff" text-anchor="middle">'+inCount+'&#x2192;</text>');
+      }
+
+      // Input port dot (left)
+      if(inCount>0) svgParts.push('<circle cx="'+p.x+'" cy="'+(p.y+NODE_H/2)+'" r="3.5" fill="#06060d" stroke="'+catColor+'" stroke-width="1.5"/>');
+      // Output port dot (right)
+      if(outCount>0||n.category==='Source') svgParts.push('<circle cx="'+(p.x+NODE_W)+'" cy="'+(p.y+NODE_H/2)+'" r="3.5" fill="#06060d" stroke="'+catColor+'" stroke-width="1.5"/>');
+    });
+
+    svgParts.push('</svg>');
+
+    // Wrap in scrollable container
+    var wrapper=document.createElement('div');
+    wrapper.style.cssText='margin-top:16px;overflow-x:auto;padding-bottom:4px;';
+    wrapper.innerHTML=svgParts.join('');
+    body.appendChild(wrapper);
+    sec.style.display='';
   }
 
   // ── Load node data (same priority as effect-modal.js) ────────────────────
