@@ -415,7 +415,6 @@ a{color:inherit;text-decoration:none;}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js" onerror="console.warn('[fp] auth.js not loaded')"></script>
-<script src="noding-shared.js" onerror="console.warn('[fp] noding-shared.js not loaded')"></script>
 <script src="nodes-system.js" onerror="console.warn('[fp] nodes-system.js not loaded')"></script>
 <script>
 (function () {
@@ -944,11 +943,22 @@ a{color:inherit;text-decoration:none;}
     var c=document.getElementById('commentCount');if(c){var n=(parseInt(c.textContent)||0)+1;c.textContent=n+' comment'+(n!==1?'s':'');}
   });
 
-  // ── Shared Nav injection ─────────────────────────────────────────────────
+  // ── Minimal nav (no noding-shared.js dependency) ─────────────────────────
   document.addEventListener('DOMContentLoaded', function () {
-    if (typeof window.shInjectHeader === 'function') {
-      window.shInjectHeader({ activeId: 'nav-effects' });
-    }
+    var hdr = document.getElementById('master-header');
+    if (!hdr) return;
+    hdr.innerHTML =
+      '<div style="display:flex;align-items:center;gap:0;padding:0 24px;height:52px;position:sticky;top:0;z-index:100;background:rgba(15,15,22,0.92);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,0.07);box-sizing:border-box;">' +
+        '<a href="index.html" style="font-family:var(--fd);font-size:15px;font-weight:800;color:var(--tp);letter-spacing:-0.03em;text-decoration:none;margin-right:32px;">Noding</a>' +
+        '<nav style="display:flex;align-items:center;gap:4px;flex:1;">' +
+          '<a href="index.html"    style="font-family:var(--fm);font-size:11px;letter-spacing:0.04em;color:var(--ts);padding:5px 12px;border-radius:var(--rsm);text-decoration:none;transition:var(--tr);" onmouseover="this.style.color='var(--tp)'" onmouseout="this.style.color='var(--ts)'">Home</a>' +
+          '<a href="effects.html"  style="font-family:var(--fm);font-size:11px;letter-spacing:0.04em;color:var(--violet-light);background:rgba(108,123,255,0.1);padding:5px 12px;border-radius:var(--rsm);text-decoration:none;">Effects</a>' +
+          '<a href="nodegraph.html" style="font-family:var(--fm);font-size:11px;letter-spacing:0.04em;color:var(--ts);padding:5px 12px;border-radius:var(--rsm);text-decoration:none;transition:var(--tr);" onmouseover="this.style.color='var(--tp)'" onmouseout="this.style.color='var(--ts)'">Node Graph</a>' +
+          '<a href="community.html" style="font-family:var(--fm);font-size:11px;letter-spacing:0.04em;color:var(--ts);padding:5px 12px;border-radius:var(--rsm);text-decoration:none;transition:var(--tr);" onmouseover="this.style.color='var(--tp)'" onmouseout="this.style.color='var(--ts)'">Community</a>' +
+        '</nav>' +
+        '<div id="sidebar-user-email" style="font-family:var(--fm);font-size:10px;color:var(--tm);margin-right:12px;"></div>' +
+        '<div id="sidebar-auth-portal"></div>' +
+      '</div>';
   });
 
   // ── Keyboard ──────────────────────────────────────────────────────────────
@@ -956,34 +966,54 @@ a{color:inherit;text-decoration:none;}
 
   // ── Load effect ───────────────────────────────────────────────────────────
   async function loadEffect(){
-    var params=new URLSearchParams(window.location.search);
-    var effectId=params.get('id');
-    if(!effectId){document.getElementById('effectTitle').textContent='No effect ID';document.getElementById('effectDesc').textContent='Add ?id=EFFECT_ID to the URL.';return;}
-
-    // Wait for Supabase (up to 4s)
-    var att=0;
-    while(!window._supabase&&att<40){await new Promise(function(r){setTimeout(r,100);});att++;}
-
-    var client=window._supabase;
-    if(!client){
-      // Direct REST fallback
-      try{
-        var r=await fetch(SB_URL+'/rest/v1/effects?id=eq.'+encodeURIComponent(effectId)+'&select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
-        var rows=await r.json();var row=Array.isArray(rows)?rows[0]:null;
-        if(row)populatePage(row);else document.getElementById('effectTitle').textContent='Effect not found';
-      }catch(e){document.getElementById('effectDesc').textContent='Failed to load effect.';}
+    var params  = new URLSearchParams(window.location.search);
+    var effectId = params.get('id');
+    if (!effectId) {
+      document.getElementById('effectTitle').textContent = 'No effect ID';
+      document.getElementById('effectDesc').textContent  = 'Add ?id=EFFECT_ID to the URL.';
       return;
     }
-    try{
-      var{data,error}=await client.from('effects').select('*').eq('id',effectId).single();
-      if(error||!data){document.getElementById('effectTitle').textContent='Effect not found';return;}
-      populatePage(data);
-    }catch(e){document.getElementById('effectDesc').textContent='Failed to load effect.';}
+
+    // Always fetch via direct REST — no auth dependency, works immediately
+    try {
+      var res  = await fetch(
+        SB_URL + '/rest/v1/effects?id=eq.' + encodeURIComponent(effectId) + '&select=*',
+        { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var rows = await res.json();
+      var row  = Array.isArray(rows) ? rows[0] : null;
+      if (!row) { document.getElementById('effectTitle').textContent = 'Effect not found'; return; }
+      populatePage(row);
+
+      // After page is populated, also attach the Supabase client for owner checks + related
+      // (non-blocking — if auth.js hasn't finished yet, wait briefly)
+      var sbWait = 0;
+      while (!window._supabase && sbWait < 30) {
+        await new Promise(function(r){ setTimeout(r, 100); });
+        sbWait++;
+      }
+      // Re-check owner flag now that CURRENT_USER_ID may be set
+      if (window.CURRENT_USER_ID && row.user_id === window.CURRENT_USER_ID) {
+        var ownerSec = document.getElementById('ownerActionsSec');
+        if (ownerSec) ownerSec.style.display = '';
+        var btnEd = document.getElementById('btnEditEffect');
+        if (btnEd) btnEd.addEventListener('click', function(){ window.location.href='edit-effect-owner.html?id='+row.id; });
+        var btnOE = document.getElementById('btnOpenEditor');
+        if (btnOE) btnOE.href = 'nodegraph.html?id='+row.id;
+      }
+    } catch(e) {
+      console.error('[fp] loadEffect error:', e);
+      document.getElementById('effectTitle').textContent = 'Failed to load';
+      document.getElementById('effectDesc').textContent  = 'Could not fetch effect data. Check your connection.';
+    }
   }
 
-  var _authReady=false;
-  window.addEventListener('authStateChanged',function(){if(!_authReady){_authReady=true;loadEffect();}});
-  setTimeout(function(){if(!_authReady){_authReady=true;loadEffect();}},1200);
+  // Load immediately on DOMContentLoaded — does not depend on auth.js or noding-shared.js
+  // Uses direct REST fetch so it works even if Supabase client hasn't initialised yet.
+  document.addEventListener('DOMContentLoaded', function () {
+    loadEffect();
+  });
 
 }());
 </script>
