@@ -7678,10 +7678,13 @@ async function openDetail(id) {
     return `<div class="no-video">no showcase media</div>`;
   }
 
+  // Toggle is rendered OUTSIDE the media container so it is never blocked by
+  // an iframe (iframes capture all pointer events in their own context regardless
+  // of z-index). The outer wrapper is position:relative; the toggle is absolute.
   const toggleBtns = (hasGif && embed) ? `
-    <div class="media-toggle">
-      <button class="media-toggle-btn ${initMedia==='video'?'active':''}" onclick="switchMedia('${e.id}','video')" id="mt-video-${e.id}">Video</button>
-      <button class="media-toggle-btn ${initMedia==='gif'?'active':''}" onclick="switchMedia('${e.id}','gif')" id="mt-gif-${e.id}">GIF</button>
+    <div class="media-toggle" id="mt-wrap-${e.id}" style="position:absolute;bottom:10px;right:10px;z-index:20;display:flex;gap:4px;padding:4px 8px;background:rgba(9,9,14,0.72);backdrop-filter:blur(8px);border-radius:999px;pointer-events:auto;">
+      <button class="media-toggle-btn ${initMedia==='video'?'active':''}" onclick="switchMedia('${e.id}','video')" id="mt-video-${e.id}" style="pointer-events:auto;">Video</button>
+      <button class="media-toggle-btn ${initMedia==='gif'?'active':''}" onclick="switchMedia('${e.id}','gif')" id="mt-gif-${e.id}" style="pointer-events:auto;">GIF</button>
     </div>` : '';
     
     // 1. Determine which buttons to show
@@ -7711,8 +7714,10 @@ async function openDetail(id) {
 
   if (detailBody) {
     detailBody.innerHTML = `
-      <div class="det-media-container" id="media-wrap-${e.id}">
-        ${mediaSection(initMedia)}
+      <div style="position:relative;aspect-ratio:16/9;flex-shrink:0;overflow:hidden;">
+        <div class="det-media-container" id="media-wrap-${e.id}" style="position:absolute;inset:0;">
+          ${mediaSection(initMedia)}
+        </div>
         ${toggleBtns}
       </div>
       <div class="det-info">
@@ -8108,9 +8113,11 @@ function switchMedia(effectId, mode) {
     inner = `<img src="${escHtml(e.gifUrl.trim())}" alt="${escHtml(e.name)}" style="width:100%;height:100%;object-fit:cover;display:block">`;
   }
   // Preserve the toggle div
-  const existingToggle = wrap.querySelector('.media-toggle');
+  // Toggle is now a sibling of the wrap (outside the iframe), so search the parent
+  const existingToggle = wrap.parentElement ? wrap.parentElement.querySelector('.media-toggle') : null;
   // Replace all children except toggle
-  [...wrap.children].forEach(c => { if (!c.classList.contains('media-toggle')) c.remove(); });
+  // Clear only the media wrap contents (not the toggle which is now a sibling)
+  [...wrap.children].forEach(c => c.remove());
   wrap.insertAdjacentHTML('afterbegin', inner);
   // Update active state
   const vBtn = document.getElementById('mt-video-' + effectId);
