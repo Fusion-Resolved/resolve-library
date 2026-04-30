@@ -1383,6 +1383,50 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
   var _luaImportOpen = false;
   var _luaParsed = null; // last valid parse result ready to import
 
+  /**
+   * Fusion "sub-nodes" (LUTBezier, BezierSpline, etc.) are internal data
+   * nodes that Fusion embeds inside their parent node — they never appear
+   * as standalone cards in the node graph.  Strip them from the normalised
+   * result so the graph only shows real nodes.
+   *
+   * Edges that referenced a sub-node are also removed; the parent node
+   * already carries the animated-parameter visual context via its params.
+   */
+  var FUSION_SUB_NODE_TYPES = [
+    'LUTBezier',
+    'BezierSpline',
+    'PolyPath',
+    'TextStyleFont'
+  ];
+
+  function filterFusionSubNodes (normalized) {
+    if (!normalized || !normalized.nodes) { return normalized; }
+
+    // Build a set of sub-node IDs
+    var subIds = {};
+    normalized.nodes.forEach(function (n) {
+      if (FUSION_SUB_NODE_TYPES.indexOf(n.type) !== -1) {
+        subIds[n.id] = true;
+      }
+    });
+
+    // Nothing to remove — return as-is
+    if (Object.keys(subIds).length === 0) { return normalized; }
+
+    // Filter nodes and edges
+    var filteredNodes = normalized.nodes.filter(function (n) {
+      return !subIds[n.id];
+    });
+    var filteredEdges = (normalized.edges || []).filter(function (e) {
+      return !subIds[e.from] && !subIds[e.to];
+    });
+
+    return {
+      nodes: filteredNodes,
+      edges: filteredEdges
+    };
+  }
+
   function parseLua (str) {
     if (!str || !str.trim()) { return null; }
     try {
@@ -1437,7 +1481,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       return;
     }
     var result = parseLua(str);
-    var normalized = result ? window.NodeSystem.normalize(result) : null;
+    var normalized = result ? filterFusionSubNodes(window.NodeSystem.normalize(result)) : null;
     if (normalized && normalized.nodes && normalized.nodes.length > 0) {
       _luaParsed = normalized;
       setLuaFeedback('ok', normalized.nodes.length + ' node' + (normalized.nodes.length !== 1 ? 's' : '') + ' \u00b7 ' + normalized.edges.length + ' connection' + (normalized.edges.length !== 1 ? 's' : '') + ' found');
@@ -2080,7 +2124,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     } else if (effect.node_code) {
       console.log('[populateForm] node_code length:', effect.node_code.length);
       var parsed = window.NodeSystem.parse(effect.node_code);
-      var normalized = window.NodeSystem.normalize(parsed);
+      var normalized = filterFusionSubNodes(window.NodeSystem.normalize(parsed));
       console.log('[populateForm] Parsed nodes:', normalized.nodes.length, 'edges:', normalized.edges.length);
       if (normalized.nodes.length > 0) {
         _emParsedNodes = normalized.nodes;
