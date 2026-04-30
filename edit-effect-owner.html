@@ -2415,10 +2415,52 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       function setMediaMode (m) {
         document.getElementById('mt0').classList.toggle('on', m === 'gif');
         document.getElementById('mt1').classList.toggle('on', m === 'video');
-        document.getElementById('gifUpSec').style.display  = m === 'gif'   ? '' : 'none';
+        document.getElementById('gifUpSec').style.display   = m === 'gif'   ? '' : 'none';
         document.getElementById('vidLinkSec').style.display = m === 'video' ? '' : 'none';
+
+        // Swap the preview to match the selected mode
+        var curMedia      = document.getElementById('curMedia');
+        var curMediaLabel = document.getElementById('curMediaLabel');
+        var mediaOverlay  = document.getElementById('mediaOverlayBtns');
+        if (!curMedia) return;
+
+        var gifVal = (document.getElementById('gifUrl')  || {}).value || '';
+        var vidVal = (document.getElementById('vidUrl')  || {}).value || '';
+
+        // Remove whatever is currently rendered
+        var existing = curMedia.querySelector('img, iframe, video');
+        if (existing) existing.remove();
+
+        if (m === 'gif' && gifVal.trim()) {
+          var img = document.createElement('img');
+          img.src = gifVal.trim();
+          img.alt = 'Effect preview';
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+          curMedia.appendChild(img);
+          if (curMediaLabel) curMediaLabel.style.display = 'none';
+          if (mediaOverlay)  mediaOverlay.style.display  = 'flex';
+
+        } else if (m === 'video' && vidVal.trim()) {
+          var embedUrl = vidVal.trim()
+            .replace(/youtube\.com\/watch\?v=([^&]+)/, 'youtube.com/embed/$1')
+            .replace(/youtu\.be\/([^?]+)/,             'youtube.com/embed/$1')
+            .replace(/vimeo\.com\/(\d+)/,               'player.vimeo.com/video/$1');
+          var ifr = document.createElement('iframe');
+          ifr.src = embedUrl;
+          ifr.style.cssText = 'width:100%;height:100%;border:none;display:block;';
+          ifr.allow = 'autoplay; encrypted-media';
+          ifr.allowFullscreen = true;
+          curMedia.appendChild(ifr);
+          if (curMediaLabel) curMediaLabel.style.display = 'none';
+          if (mediaOverlay)  mediaOverlay.style.display  = 'flex';
+
+        } else {
+          // No URL for this mode yet — show placeholder
+          if (curMediaLabel) curMediaLabel.style.display = '';
+          if (mediaOverlay)  mediaOverlay.style.display  = 'none';
+        }
       }
-      
+
       var mt0 = document.getElementById('mt0');
       var mt1 = document.getElementById('mt1');
       var dropZone = document.getElementById('gifDropZone');
@@ -2426,7 +2468,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       var btnVidConfirm = document.getElementById('btnVidConfirm');
       var btnReplace = document.getElementById('btnReplace');
       var btnRemoveMedia = document.getElementById('btnRemoveMedia');
-      
+
       if (mt0) mt0.addEventListener('click', function () { setMediaMode('gif'); });
       if (mt1) mt1.addEventListener('click', function () { setMediaMode('video'); });
       if (dropZone) dropZone.addEventListener('click', function () { showToast('GIF uploaded'); markDirty(0); });

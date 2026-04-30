@@ -1,221 +1,519 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Resolve Lib">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#070708">
-<meta charset="UTF-8">
-<title>Plugins &mdash; Resolve Library</title>
-<link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Noding">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#09090e">
+  <meta name="description" content="Noding Plugins — Third-party fuses, scripts, and tools installed in DaVinci Resolve.">
+  <title>Noding — Plugins</title>
 
-<!-- Noding Shared Resources -->
-<link rel="stylesheet" href="noding-shared.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js"></script>
-<script src="noding-shared.js"></script>
-<script>if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){navigator.serviceWorker.register("./sw.js").catch(function(){});}
-</script>
-<script>(function(){try{var t=JSON.parse(localStorage.getItem('noding-theme')||'{}'),s=document.documentElement.style;if(t.accent)s.setProperty('--accent',t.accent);if(t.bg)s.setProperty('--bg',t.bg);if(t.surface)s.setProperty('--surface',t.surface);if(t.surface2)s.setProperty('--surface2',t.surface2);}catch(e){}try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');if(ui.fontBody)s.setProperty('--font-body',ui.fontBody);if(ui.fontHead)s.setProperty('--font-head',ui.fontHead);}catch(e){}})();
-</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#070708;--surface:#101013;--surface2:#161619;--surface3:#1c1c21;--border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.10);--border3:rgba(255,255,255,0.18);--text:#edeae2;--text2:#7c7874;--muted:#3e3b38;--accent:#c8f060;--accent2:#60b8f0;--danger:#f06060;--radius-xs:5px;--radius-sm:7px;--radius:10px;--radius-lg:13px;--radius-xl:18px;--radius-pill:999px;--font-head:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;--shadow:0 4px 16px rgba(0,0,0,0.5);--shadow-lg:0 8px 32px rgba(0,0,0,0.65);--transition:all 0.18s ease;--safe-b:env(safe-area-inset-bottom,0px);}
-html,body{height:100%;line-height:1.5;}body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-weight:300;min-height:100%;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
-html,body{max-width:100vw;scrollbar-width:none;-ms-overflow-style:none;}*::-webkit-scrollbar{display:none;}a,button{touch-action:manipulation;}input,textarea,select{touch-action:auto;-webkit-user-select:text;user-select:text;font-size:16px!important;-webkit-appearance:none;}
-/* ── HEADER ─────────────────────────────────────────────── */
-header{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;height:64px;padding:0 20px;pointer-events:none;background:transparent;border-bottom:none;}
-.logo{display:flex;align-items:center;gap:9px;pointer-events:all;flex-shrink:0;text-decoration:none;}
-.brand-text{font-family:var(--font-head);font-weight:800;font-size:1.1rem;letter-spacing:-0.03em;color:var(--text);}
-.share-dot{color:var(--accent);font-family:var(--font-head);font-weight:800;font-size:1.1rem;}
-.nav-center{flex:1;display:flex;justify-content:center;pointer-events:all;}
-.nav-pill{display:flex;align-items:center;gap:2px;padding:5px 6px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-surface);border-radius:var(--radius-pill);box-shadow:var(--glass-shadow),var(--glass-shine);}
-.nav-item{font-family:var(--font-body);font-size:0.8125rem;font-weight:500;color:var(--text2);padding:5px 14px;border-radius:var(--radius-pill);transition:all 150ms ease-out;white-space:nowrap;text-decoration:none;}
-.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.06);}
-.nav-item.active{color:var(--white);background:var(--glass-bg-active);}
-.hdr-right{display:flex;align-items:center;gap:6px;flex-shrink:0;pointer-events:all;}
-.sh-btn-plus{height:36px;padding:0 14px;border-radius:var(--radius-sm);border:1px solid var(--border-surface);background:var(--glass-bg);backdrop-filter:var(--glass-blur);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 150ms ease-out;}
-.sh-btn-plus:hover{color:var(--text);background:var(--glass-bg-2);}
-@media(max-width:767px){.nav-center{display:none;}}
-.sh-bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(8,8,9,.97);backdrop-filter:blur(20px);border-top:1px solid var(--border2);z-index:49;padding-bottom:env(safe-area-inset-bottom,0px);}.sh-bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;color:var(--text2);border:none;background:none;cursor:pointer;padding:10px 4px;transition:color .15s;-webkit-tap-highlight-color:transparent;}.sh-bn-item.active,.sh-bn-item:hover{color:var(--accent);}.sh-bn-lbl{font-size:9px;font-family:var(--font-mono);}
-.sh-sidebar-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150;backdrop-filter:blur(4px);}.sh-sidebar-ov.open{display:block;}.sh-sidebar{position:fixed;top:0;right:0;bottom:0;width:min(290px,85vw);background:var(--surface);border-left:1px solid var(--border2);z-index:151;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;}.sh-sidebar.open{transform:translateX(0);}
-.sh-sb-head{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}.sh-sb-title{font-family:var(--font-head);font-size:.9rem;font-weight:700;color:var(--text);}.sh-sb-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:0 4px;line-height:1;}.sh-sb-close:hover{color:var(--text);}
-.sh-sb-sec{padding:.6rem 0;border-bottom:1px solid var(--border);}.sh-sb-sec:last-child{border-bottom:none;padding-bottom:2rem;}.sh-sb-lbl{font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:0 1.25rem;margin-bottom:3px;}
-.sh-sb-item{display:flex;align-items:center;gap:11px;padding:10px 1.25rem;font-size:13.5px;font-family:var(--font-body);color:var(--text);text-decoration:none;cursor:pointer;transition:background .12s;border:none;background:none;width:100%;text-align:left;}.sh-sb-item:hover{background:var(--surface2);}.sh-sb-item svg{flex-shrink:0;opacity:.65;}
-.ambient{position:fixed;inset:0;pointer-events:none;z-index:0;}.amb-blob{position:absolute;border-radius:50%;filter:blur(100px);will-change:transform;}
-.amb-1{width:55vw;height:55vw;top:-15vw;left:-10vw;background:radial-gradient(ellipse,rgba(200,240,96,0.18),transparent 65%);opacity:.45;animation:aD1 25s ease-in-out infinite;}
-.amb-2{width:50vw;height:50vw;top:10vh;right:-15vw;background:radial-gradient(ellipse,rgba(240,160,96,0.18),transparent 65%);opacity:.4;animation:aD2 32s ease-in-out infinite;}
-.amb-3{width:40vw;height:40vw;bottom:-10vw;left:15vw;background:radial-gradient(ellipse,rgba(192,96,240,0.14),transparent 65%);opacity:.35;animation:aD3 38s ease-in-out infinite;}
-@keyframes aD1{0%{transform:translate(0,0)}50%{transform:translate(8vw,20vh)}100%{transform:translate(0,0)}}
-@keyframes aD2{0%{transform:translate(0,0)}50%{transform:translate(-15vw,15vh)}100%{transform:translate(0,0)}}
-@keyframes aD3{0%{transform:translate(0,0)}50%{transform:translate(20vw,-15vh)}100%{transform:translate(0,0)}}
-.container{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 2rem calc(5rem + var(--safe-b));}
-.hero{padding:3rem 0 2.5rem;text-align:center;animation:fadeUp .5s ease both;}.hero-eyebrow{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--text2);background:var(--surface);border:1px solid var(--border2);border-radius:999px;padding:6px 16px;margin-bottom:1.5rem;}.hero-eyebrow span{width:6px;height:6px;border-radius:50%;background:#f0a060;display:inline-block;}
-.hero h1{font-family:var(--font-head);font-size:clamp(2rem,5vw,3rem);font-weight:800;line-height:1.06;letter-spacing:-0.035em;color:var(--text);margin-bottom:.85rem;}.hero h1 em{color:#f0a060;font-style:normal;}.hero p{font-size:15px;color:var(--text2);max-width:440px;margin:0 auto;line-height:1.75;font-weight:300;}
-.lib-tabs{display:flex;gap:3px;border:1px solid var(--border2);background:var(--surface);border-radius:var(--radius-lg);padding:4px;margin-bottom:2rem;width:fit-content;flex-wrap:wrap;animation:fadeUp .5s .05s ease both;}.lib-tab{font-family:var(--font-body);font-size:13px;font-weight:500;padding:8px 16px;border:none;background:transparent;color:var(--text2);cursor:pointer;border-radius:var(--radius);transition:var(--transition);white-space:nowrap;text-decoration:none;}.lib-tab:hover{color:var(--text);}.lib-tab.active{background:var(--surface2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.35);font-weight:600;}
-.controls-bar{display:flex;gap:10px;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;animation:fadeUp .5s .08s ease both;}.search-wrap{flex:1;min-width:200px;position:relative;}.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.25;pointer-events:none;}.search-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-pill);padding:9px 14px 9px 37px;color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color .18s;}.search-input:focus{border-color:var(--border3);}.search-input::placeholder{color:var(--muted);}
-.cat-btns{display:flex;gap:5px;flex-wrap:wrap;}.cat-btn{font-size:11px;padding:5px 13px;border-radius:var(--radius-pill);border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:var(--transition);font-family:var(--font-body);white-space:nowrap;}.cat-btn:hover{border-color:var(--border3);color:var(--text);}.cat-btn.active{background:#f0a060;color:#080809;border-color:transparent;font-weight:600;}
-.page-add-btn{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-family:var(--font-body);padding:8px 18px;border-radius:var(--radius-sm);border:1px solid rgba(240,160,96,.3);background:rgba(240,160,96,0.08);color:#f0a060;cursor:pointer;transition:var(--transition);font-weight:500;margin-bottom:1.5rem;animation:fadeUp .5s .1s ease both;}.page-add-btn:hover{background:rgba(240,160,96,.14);border-color:rgba(240,160,96,.5);}
-.item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;animation:fadeUp .5s .12s ease both;}.item-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;transition:border-color .15s,box-shadow .15s,transform .2s;}.item-card:hover{border-color:var(--border2);box-shadow:var(--shadow);transform:translateY(-2px);}.item-card-strip{height:3px;width:100%;background:#f0a060;}.item-card-inner{padding:.95rem 1.05rem .9rem;}.item-card-top{display:flex;align-items:flex-start;gap:9px;margin-bottom:6px;}.item-card-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(240,160,96,0.12);color:#f0a060;font-size:16px;}.item-card-title{font-family:var(--font-head);font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}.item-card-desc{font-size:11.5px;color:var(--text2);line-height:1.55;}.item-card-footer{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px;}.item-badge{font-size:9px;font-family:var(--font-mono);padding:2px 7px;border-radius:3px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);}.item-badge-accent{font-size:9px;font-family:var(--font-mono);padding:2px 7px;border-radius:3px;border:1px solid rgba(240,160,96,.25);background:rgba(240,160,96,0.08);color:#f0a060;}.item-del-btn{margin-left:auto;font-size:9px;font-family:var(--font-mono);padding:2px 7px;border-radius:3px;border:1px solid rgba(240,96,96,.18);background:transparent;color:rgba(240,96,96,.55);cursor:pointer;transition:var(--transition);}.item-del-btn:hover{color:var(--danger);border-color:rgba(240,96,96,.4);}.item-link-btn{font-size:10px;font-family:var(--font-mono);padding:3px 9px;border-radius:var(--radius-xs);border:1px solid rgba(240,160,96,.3);background:rgba(240,160,96,0.07);color:#f0a060;cursor:pointer;text-decoration:none;transition:var(--transition);display:inline-flex;align-items:center;gap:4px;}.item-link-btn:hover{background:rgba(240,160,96,.15);}.item-empty{padding:3rem;text-align:center;color:var(--muted);font-size:12px;font-family:var(--font-mono);border:1px dashed var(--border2);border-radius:var(--radius-lg);line-height:1.8;grid-column:1/-1;}
-.add-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem;opacity:0;pointer-events:none;transition:opacity .2s ease;backdrop-filter:blur(6px);}.add-modal-overlay.open{opacity:1;pointer-events:all;}.add-modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-xl);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);transform:translateY(12px) scale(.98);transition:transform .22s ease,opacity .22s ease;opacity:0;}.add-modal-overlay.open .add-modal{transform:translateY(0) scale(1);opacity:1;}.add-modal-header{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 1.5rem 1rem;border-bottom:1px solid var(--border);}.add-modal-title{font-family:var(--font-head);font-size:1.1rem;font-weight:700;letter-spacing:-0.02em;}.add-modal-close{background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:18px;line-height:1;padding:4px 6px;border-radius:var(--radius-sm);transition:var(--transition);}.add-modal-close:hover{color:var(--text);background:rgba(255,255,255,.07);}.add-modal-body{padding:1.4rem 1.5rem 1.6rem;display:flex;flex-direction:column;gap:1rem;}.add-modal-footer{padding:.9rem 1.5rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
-.mf{display:flex;flex-direction:column;gap:6px;}.mf label{font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.07em;color:var(--text2);}.mf input,.mf select,.mf textarea{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--font-body);font-size:13px;font-weight:300;outline:none;transition:border-color .18s;-webkit-appearance:none;}.mf input:focus,.mf select:focus,.mf textarea:focus{border-color:#f0a060;}.mf input::placeholder,.mf textarea::placeholder{color:var(--muted);}.mf select option{background:#18181d;}.mf textarea{resize:vertical;line-height:1.6;min-height:70px;}.mf-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.btn-submit{background:var(--accent);color:#080809;border:none;border-radius:var(--radius-sm);font-weight:600;font-size:13px;padding:9px 22px;cursor:pointer;font-family:var(--font-body);}.btn-submit:hover{filter:brightness(1.08);}.btn-cancel{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:13px;padding:7px 16px;cursor:pointer;}.btn-cancel:hover{color:var(--text);border-color:var(--border3);}
-.toast{position:fixed;top:68px;right:2rem;background:var(--surface3);border:1px solid var(--border2);color:var(--text);padding:10px 18px;border-radius:var(--radius-lg);font-size:13px;opacity:0;transform:translateY(-6px);transition:all .22s ease;pointer-events:none;z-index:999;box-shadow:var(--shadow);}.toast.show{opacity:1;transform:translateY(0);}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
-</style>
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='35' cy='35' r='20' fill='%236c7bff'/><circle cx='65' cy='35' r='20' fill='%236c7bff'/><circle cx='50' cy='65' r='20' fill='%239ca8ff'/></svg>">
+  <link rel="manifest" href="manifest.json">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+  <!-- ═══ THE SOLE SOURCE OF TRUTH ═══ -->
+  <link rel="stylesheet" href="noding-shared.css">
+
+  <!-- Service worker (non-visual, keep as-is) -->
+  <script>if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){navigator.serviceWorker.register("./sw.js").catch(function(){});}</script>
+  <!-- Instant theme hydration (non-visual, keep as-is) -->
+  <script>(function(){try{var t=JSON.parse(localStorage.getItem('noding-theme')||'{}'),s=document.documentElement.style;if(t.accent)s.setProperty('--accent',t.accent);if(t.bg)s.setProperty('--bg',t.bg);}catch(e){}})();</script>
 </head>
+
 <body>
-<div class="ambient"><div class="amb-blob amb-1"></div><div class="amb-blob amb-2"></div><div class="amb-blob amb-3"></div></div>
-<script>(function(){{var e=sessionStorage.getItem('rl-blob-epoch');if(!e){{e=Date.now();sessionStorage.setItem('rl-blob-epoch',e);}}var s=(Date.now()-+e)/1000;[25,32,38].forEach(function(d,i){{var b=document.querySelectorAll('.amb-blob')[i];if(b)b.style.animationDelay=-(s%d)+'s';}});}})();</script>
-<div id="toast" class="toast"></div>
-<!-- ── HEADER ─────────────────────────────────────────────── -->
-<header> 
-  <a href="index.html" class="logo">
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect width="26" height="26" rx="7" fill="#6c7bff"/><circle cx="9" cy="13" r="3" fill="#09090e"/><circle cx="18" cy="9" r="2.2" fill="#09090e"/><circle cx="18" cy="17" r="2.2" fill="#09090e"/><line x1="12" y1="11.3" x2="16" y2="9.8" stroke="#09090e" stroke-width="1.4"/><line x1="12" y1="14.7" x2="16" y2="16.2" stroke="#09090e" stroke-width="1.4"/></svg>
-    <span class="brand-text">noding<span class="share-dot">.</span></span>
-  </a>
-  <nav class="nav-center">
-    <div class="nav-pill">
-      <a class="nav-item" href="index.html">Home</a>
-      <a class="nav-item" href="effects.html">Effects</a>
-      <a class="nav-item" href="nodegraph.html">Node Graph</a>
-      <a class="nav-item active" href="library.html">Library</a>
-      <a class="nav-item" href="community.html">Community</a>
-    </div>
-  </nav>
-  <div class="hdr-right">
-    <button class="sh-btn-plus" aria-label="Menu" onclick="shOpenSidebar()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    </button>
-  </div>
-</header>
-<nav class="sh-bottom-nav">
-<a class="sh-bn-item" href="index.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="sh-bn-lbl">Home</span></a>
-<a class="sh-bn-item" href="effects.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><span class="sh-bn-lbl">Effects</span></a>
-<a class="sh-bn-item" href="videos.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 5 3-5 3V8z" fill="currentColor" stroke="none"/></svg><span class="sh-bn-lbl">Videos</span></a>
-<a class="sh-bn-item active" href="library.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 12h4m3-7h-4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg><span class="sh-bn-lbl">Library</span></a>
-<a class="sh-bn-item" href="nodes.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M8 5.5h8M5.5 8v8M19 8v3a2 2 0 0 1-2 2h-3"/></svg><span class="sh-bn-lbl">Nodes</span></a>
-</nav>
-<div class="sh-sidebar-ov" id="sh-sb-ov" onclick="shCloseSidebar()"></div>
-<div class="sh-sidebar" id="sh-sb">
-  <div class="sh-sb-head"><span class="sh-sb-title">Resolve Library</span><button class="sh-sb-close" onclick="shCloseSidebar()">&#x2715;</button></div>
-  <div class="sh-sb-sec"><div class="sh-sb-lbl">Navigate</div>
-    <a class="sh-sb-item" href="index.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Home</a>
-    <a class="sh-sb-item" href="effects.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> Effects</a>
-    <a class="sh-sb-item" href="library.html"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 12h4m3-7h-4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/></svg> Library</a>
-  </div>
-  <div class="sh-sb-sec"><div class="sh-sb-lbl">Tools</div>
-    <button class="sh-sb-item" onclick="shCloseSidebar();shOpenNote()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> Quick Note</button>
-    <a class="sh-sb-item" href="settings.html"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Settings</a>
-  </div>
-  <div class="sh-sb-sec">
-    <div class="sh-sb-lbl">Account</div>
-    <div id="sidebar-auth-portal"></div>
-  </div>
-</div>
-<div id="sh-note-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem;">
-  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:18px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden;">
-    <div style="padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><h3 style="font-family:var(--font-head);font-size:1rem;font-weight:700;color:var(--text);margin:0;">Quick Note</h3><button style="background:var(--surface2);border:1px solid var(--border2);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;color:var(--text2);" onclick="shCloseNote()">&#x2715;</button></div>
-    <div style="padding:1rem 1.25rem;"><input style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-family:var(--font-body);font-size:14px;outline:none;margin-bottom:8px;display:block;" id="sh-note-title" placeholder="Title&hellip;"><textarea style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;resize:none;min-height:90px;display:block;" id="sh-note-body" placeholder="Notes, ideas, links&hellip;"></textarea></div>
-    <div style="padding:.9rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;"><button style="background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:7px;font-family:var(--font-body);font-size:13px;padding:7px 16px;cursor:pointer;" onclick="shCloseNote()">Cancel</button><button style="background:var(--accent);color:#080809;border:none;border-radius:7px;padding:8px 18px;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;" onclick="shSaveNote()">Save</button></div>
-  </div>
-</div>
-<div class="container">
-<div class="hero"><div class="hero-eyebrow"><span></span>Resolve Library</div><h1>Your <em>Plugins</em></h1><p>Third-party fuses, scripts and tools installed in DaVinci Resolve.</p></div>
-<div class="lib-tabs"><a class="lib-tab" href="library.html">Library</a><a class="lib-tab" href="nodes.html">Node Reference</a><a class="lib-tab" href="reference.html">Reference Material</a><a class="lib-tab  active" href="plugins.html">Plugins</a><a class="lib-tab" href="inspiration.html">Inspiration</a><a class="lib-tab" href="expressions.html">Expressions</a><a class="lib-tab" href="modifiers.html">Modifiers</a></div>
-<div class="controls-bar"><div class="search-wrap"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="white" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg><input class="search-input" type="text" id="page-search" placeholder="Search plugins&hellip;" oninput="filterItems()"></div><div class="cat-btns" id="cat-btns"></div></div>
-<button class="page-add-btn" onclick="shOpenAddModal('modal-add-plugin')"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> + Plugin</button>
-<div class="item-grid" id="item-grid"><div class="item-empty">No plugins yet. Click the button above to add your first one.</div></div>
-</div>
-<div class="add-modal-overlay" id="modal-add-plugin" onclick="if(event.target===this)shCloseModal('modal-add-plugin')">
-  <div class="add-modal">
-    <div class="add-modal-header"><span class="add-modal-title">Add Plugin</span><button class="add-modal-close" onclick="closeAddModal()">&#x2715;</button></div>
-    <div class="add-modal-body" id="add-modal-body"></div>
-    <div class="add-modal-footer"><button class="btn-cancel" onclick="closeAddModal()">Cancel</button><button class="btn-submit" onclick="submitItem()">Save</button></div>
-  </div>
-</div>
-<script>
 
-function renderCard(it){ var sc={"installed":"#60f0b0","trial":"#f0c060","disabled":"#f06060"}[it.status]||"var(--border2)"; return "<div class=\"item-card\"><div class=\"item-card-strip\" style=\"background:"+sc+"\"></div><div class=\"item-card-inner\"><div class=\"item-card-top\"><div class=\"item-card-icon\"><svg width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" viewBox=\"0 0 24 24\"><path d=\"M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z\"/><line x1=\"16\" y1=\"8\" x2=\"2\" y2=\"22\"/><line x1=\"17.5\" y1=\"15\" x2=\"9\" y2=\"15\"/></svg></div><div style=\"flex:1;min-width:0\"><div class=\"item-card-title\">"+escH(it.title)+"</div>"+(it.desc?"<div class=\"item-card-desc\">"+escH(it.desc)+"</div>":"")+"</div></div><div class=\"item-card-footer\">"+(it.cat?"<span class=\"item-badge\">"+escH(it.cat)+"</span>":"")+(it.status?"<span class=\"item-badge-accent\">"+escH(it.status)+"</span>":"")+(it.url?"<a class=\"item-link-btn\" href=\""+escH(it.url)+"\" target=\"_blank\" rel=\"noopener\">link</a>":"")+"<button class=\"item-del-btn\" onclick=\"deleteItem("+JSON.stringify(it.id)+")\">Delete</button></div></div></div>"; }
-function buildModalFields(){ var opts=CATS.map(function(c){return"<option>"+c+"</option>";}).join(""); document.getElementById("add-modal-body").innerHTML="<div class=\"mf\"><label>Name <span style=\"color:var(--danger)\">*</span></label><input id=\"m-title\" placeholder=\"e.g. Reactor Fuse Pack\"/></div><div class=\"mf\"><label>URL <span style=\"font-size:9px;opacity:.5\">(optional)</span></label><input id=\"m-url\" type=\"url\" placeholder=\"https://...\"/></div><div class=\"mf-row\"><div class=\"mf\"><label>Category</label><select id=\"m-cat\"><option value=\"\">Choose...</option>"+opts+"</select></div><div class=\"mf\"><label>Status</label><select id=\"m-status\"><option value=\"\">Choose...</option><option>installed</option><option>trial</option><option>disabled</option></select></div></div><div class=\"mf\"><label>Notes <span style=\"font-size:9px;opacity:.5\">(optional)</span></label><textarea id=\"m-desc\" placeholder=\"What does this plugin do?\"></textarea></div>"; }
-function submitItem(){ var title=(document.getElementById("m-title").value||"").trim(); if(!title){var el=document.getElementById("m-title");el.style.borderColor="#f06060";el.focus();setTimeout(function(){el.style.borderColor="";},2000);return;} var item={id:Date.now().toString(36),title:title,url:(document.getElementById("m-url").value||"").trim(),cat:document.getElementById("m-cat").value,status:document.getElementById("m-status").value,desc:(document.getElementById("m-desc").value||"").trim(),createdAt:new Date().toISOString()}; var ex=loadItems();ex.unshift(item);saveItems(ex);closeAddModal();_shToast("Saved \u2713");init(); }
-var STORAGE_KEY="resolve-plugins";
-var CATS=["Fuse", "Script", "Effect Template", "LUT", "Macro", "Other"];
-var _activeCat="All";
-function loadItems(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");}catch(e){return[];}}
-function saveItems(a){localStorage.setItem(STORAGE_KEY,JSON.stringify(a));}
-function buildCatBtns(){
-  var items=loadItems();
-  var c={"All":items.length};
-  items.forEach(function(it){var k=it.cat||"Other";c[k]=(c[k]||0)+1;});
-  var all=["All"].concat(CATS.filter(function(k){return c[k]>0;}));
-  document.getElementById("cat-btns").innerHTML=all.map(function(k){
-    return "<button class=\"cat-btn"+(k===_activeCat?" active":"")+"\" onclick=\"setCat(\u0027"+escH(k)+"\u0027)\">"+escH(k)+"</button>";
-  }).join("");
-}
-function setCat(c){_activeCat=c;buildCatBtns();filterItems();}
-function filterItems(){
-  var q=(document.getElementById("page-search").value||"").toLowerCase();
-  var items=loadItems();
-  var f=items.filter(function(it){
-    return(_activeCat==="All"||(it.cat||"Other")===_activeCat)&&(!q||JSON.stringify(it).toLowerCase().includes(q));
-  });
-  var g=document.getElementById("item-grid");
-  if(!f.length){g.innerHTML="<div class=\"item-empty\">"+(items.length?"No items match.":"No items yet. Click the button above to add your first one.")+"</div>";return;}
-  g.innerHTML=f.map(renderCard).join("");
-}
-function deleteItem(id){if(!confirm("Delete?"))return;saveItems(loadItems().filter(function(it){return it.id!==id;}));buildCatBtns();filterItems();_shToast("Deleted");}
-function openAddModal(){shOpenAddModal('modal-add-plugin');buildModalFields();setTimeout(function(){var el=document.querySelector("#add-modal-body input");if(el)el.focus();},80);}
-function closeAddModal(){shCloseModal('modal-add-plugin');}
-function shOpenSidebar(){document.getElementById("sh-sb").classList.add("open");document.getElementById("sh-sb-ov").classList.add("open");document.body.style.overflow="hidden";}
-function shCloseSidebar(){document.getElementById("sh-sb").classList.remove("open");document.getElementById("sh-sb-ov").classList.remove("open");document.body.style.overflow="";}
-function shOpenNote(){var ov=document.getElementById("sh-note-ov");ov.style.display="flex";document.body.style.overflow="hidden";setTimeout(function(){var el=document.getElementById("sh-note-title");if(el)el.focus();},80);}
-function shCloseNote(){document.getElementById("sh-note-ov").style.display="none";document.body.style.overflow="";}
-function shSaveNote(){
-  var t=((document.getElementById("sh-note-title")||{}).value||"").trim();
-  var b=((document.getElementById("sh-note-body")||{}).value||"").trim();
-  if(!t&&!b){_shToast("Nothing to save");return;}
-  var notes=JSON.parse(localStorage.getItem("rl-quick-notes")||"[]");
-  notes.push({id:Date.now().toString(36),title:t,note:b,at:new Date().toISOString()});
-  localStorage.setItem("rl-quick-notes",JSON.stringify(notes));
-  ["sh-note-title","sh-note-body"].forEach(function(id){var el=document.getElementById(id);if(el)el.value="";});
-  shCloseNote();_shToast("Note saved ✓");
-}
-function _shToast(msg){var el=document.getElementById("toast");if(!el)return;el.textContent=msg;el.classList.add("show");setTimeout(function(){el.classList.remove("show");},2200);}
-function escH(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-document.addEventListener("keydown",function(e){if(e.key==="Escape"){shCloseSidebar();shCloseNote();closeAddModal();}});
-function init(){buildCatBtns();filterItems();}
-init();
-</script>
+  <!-- ══════════════════════════════════════════════════════════════
+       PHASE 1 — THE SHELL: Parking spots for the shared injectors
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="master-header"></div>
+  <div id="sh-sb-ov" class="sh-sidebar-ov" onclick="window.shCloseSidebar()"></div>
+  <div id="sh-sb" class="sh-sidebar"></div>
 
-<!-- FOOTER -->
-<footer style="border-top:1px solid var(--border);padding:40px 24px;margin-top:60px;position:relative;z-index:1;background:var(--surface);">
-  <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:24px;height:24px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.2" fill="#070708"/><rect x="8" y="1" width="5" height="5" rx="1.2" fill="#070708" opacity=".6"/><rect x="1" y="8" width="5" height="5" rx="1.2" fill="#070708" opacity=".6"/><rect x="8" y="8" width="5" height="5" rx="1.2" fill="#070708" opacity=".35"/></svg>
+  <!-- Ambient background system -->
+  <div class="ambient" aria-hidden="true">
+    <div class="amb-blob amb-1"></div>
+    <div class="amb-blob amb-2"></div>
+    <div class="amb-blob amb-3"></div>
+    <div class="amb-blob amb-4"></div>
+  </div>
+
+  <main class="page-wrap">
+
+    <!-- ══════════════════════════════════════════════════════════
+         HERO & SUB-NAV
+         ══════════════════════════════════════════════════════════ -->
+    <section class="bento-section" style="padding-bottom: 0;">
+
+      <div class="hero-eyebrow">Resolve Library &nbsp;·&nbsp; Extensions &amp; Tools</div>
+
+      <h1 class="hero-title" style="font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.04em; color: var(--text-primary); line-height: 1.06; margin-bottom: 14px;">
+        Your <span style="color: var(--node-teal);">Plugins</span>
+      </h1>
+      <p style="font-family: var(--font-body); font-size: 15px; color: var(--text-secondary); max-width: 480px; line-height: 1.75; font-weight: 300; margin-bottom: 32px;">
+        Third-party fuses, scripts, and tools installed in DaVinci Resolve — tracked in one place.
+      </p>
+
+      <!-- Library sub-navigation -->
+      <nav class="lib-subnav">
+        <a class="nlink" href="library.html">Library</a>
+        <a class="nlink" href="nodes.html">Node Reference</a>
+        <a class="nlink" href="reference.html">Reference Material</a>
+        <a class="nlink active" href="plugins.html">Plugins</a>
+        <a class="nlink" href="inspiration.html">Inspiration</a>
+        <a class="nlink" href="expressions.html">Expressions</a>
+        <a class="nlink" href="modifiers.html">Modifiers</a>
+      </nav>
+
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════════════
+         PHASE 2 & 3 — CATEGORY OVERVIEW BENTO GRID
+         Static landmark cards, one per plugin type.
+         ══════════════════════════════════════════════════════════ -->
+    <section class="bento-section" style="padding-top: 40px; padding-bottom: 0;">
+
+      <div class="section-eyebrow">Plugin categories</div>
+
+      <div class="bento-grid">
+
+        <!-- ── 1. Fuse Effects — span-4 — node-teal (workflow) ── -->
+        <div class="bento-card hover-glow span-4 revealed" style="--accent: var(--node-teal);" onclick="setCat('Fuse')">
+          <div class="card-blob"></div>
+          <div class="card-header">
+            <div class="card-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+                <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+                <line x1="16" y1="8" x2="2" y2="22"/>
+                <line x1="17.5" y1="15" x2="9" y2="15"/>
+              </svg>
+            </div>
+            <div class="card-arrow">→</div>
+          </div>
+          <div class="card-body">
+            <span class="card-tag">Plugin</span>
+            <h3 class="card-title">Fuse Effects</h3>
+            <p class="card-desc">Custom OpenFX fuses that extend Fusion's node graph with GPU-accelerated effects — particles, stylisers, generative art, and beyond.</p>
+            <div class="card-stat">
+              <span class="stat-pip"></span>
+              OpenFX &nbsp;·&nbsp; GPU-Accelerated
+            </div>
+          </div>
         </div>
-        <span style="font-family:var(--font-head);font-weight:800;font-size:0.9rem;letter-spacing:-0.03em;color:var(--text);">Noding</span><span style="color:var(--accent);font-family:var(--font-head);font-weight:800;font-size:0.9rem;">.</span>
+
+        <!-- ── 2. LUT Packs — span-2 — signal-amber (utility) ── -->
+        <div class="bento-card hover-glow span-2 revealed" style="--accent: var(--signal-amber);" onclick="setCat('LUT')">
+          <div class="card-blob"></div>
+          <div class="card-header">
+            <div class="card-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+            </div>
+            <div class="card-arrow">→</div>
+          </div>
+          <div class="card-body">
+            <span class="card-tag">Plugin</span>
+            <h3 class="card-title">LUT Packs</h3>
+            <p class="card-desc">Colour lookup tables for precision grading and cross-platform colour matching.</p>
+          </div>
+        </div>
+
+        <!-- ── 3. Scripts — span-2 — node-teal (workflow) ── -->
+        <div class="bento-card hover-glow span-2 revealed" style="--accent: var(--node-teal);" onclick="setCat('Script')">
+          <div class="card-blob"></div>
+          <div class="card-header">
+            <div class="card-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+            </div>
+            <div class="card-arrow">→</div>
+          </div>
+          <div class="card-body">
+            <span class="card-tag">Plugin</span>
+            <h3 class="card-title">Scripts</h3>
+            <p class="card-desc">Python and Lua automation scripts that hook into the DaVinci Resolve scripting API.</p>
+          </div>
+        </div>
+
+        <!-- ── 4. Effect Templates — span-2 — violet (general) ── -->
+        <div class="bento-card hover-glow span-2 revealed" style="--accent: var(--violet);" onclick="setCat('Effect Template')">
+          <div class="card-blob"></div>
+          <div class="card-header">
+            <div class="card-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </div>
+            <div class="card-arrow">→</div>
+          </div>
+          <div class="card-body">
+            <span class="card-tag">Plugin</span>
+            <h3 class="card-title">Effect Templates</h3>
+            <p class="card-desc">Pre-built Fusion composition templates ready to drag straight into your timeline.</p>
+          </div>
+        </div>
+
+        <!-- ── 5. Macros — span-2 — violet (general) ── -->
+        <div class="bento-card hover-glow span-2 revealed" style="--accent: var(--violet);" onclick="setCat('Macro')">
+          <div class="card-blob"></div>
+          <div class="card-header">
+            <div class="card-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+            </div>
+            <div class="card-arrow">→</div>
+          </div>
+          <div class="card-body">
+            <span class="card-tag">Plugin</span>
+            <h3 class="card-title">Macros</h3>
+            <p class="card-desc">Reusable node group macros that encapsulate complex workflows into a single clean node.</p>
+          </div>
+        </div>
+
+      </div><!-- /.bento-grid -->
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════════════
+         PERSONAL TRACKER — Search, Filter, Dynamic Bento Grid
+         ══════════════════════════════════════════════════════════ -->
+    <section class="bento-section" id="tracker" style="padding-top: 48px;">
+
+      <div class="section-eyebrow">Your installed plugins</div>
+
+      <!-- Controls bar: search + add button -->
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+        <input
+          class="sh-note-inp"
+          type="text"
+          id="page-search"
+          placeholder="Search plugins…"
+          oninput="filterItems()"
+          style="flex: 1; min-width: 200px; margin-bottom: 0;"
+        >
+        <button class="sh-add-btn" onclick="openAddModal()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" style="margin-right: 5px;"><path d="M7 2v10M2 7h10" stroke-linecap="round"/></svg>
+          Add Plugin
+        </button>
       </div>
-      <span style="font-family:var(--font-mono);font-size:0.6875rem;color:var(--muted);letter-spacing:0.06em;">© 2025 Noding · All rights reserved</span>
-    </div>
-    <div style="display:flex;gap:24px;">
-      <a href="terms-privacy.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Terms</a>
-      <a href="terms-privacy.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Privacy</a>
-      <a href="community.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Community</a>
-      <a href="settings.html" style="font-family:var(--font-body);font-size:0.8125rem;color:var(--text2);transition:color 0.15s ease;text-decoration:none;">Settings</a>
+
+      <!-- Category filter tabs -->
+      <div class="nav-pill" id="cat-btns" style="margin-bottom: 24px; flex-wrap: wrap; width: fit-content;"></div>
+
+      <!-- Dynamic bento card grid -->
+      <div class="bento-grid" id="item-grid"></div>
+
+    </section>
+
+  </main><!-- /.page-wrap -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       QUICK NOTE MODAL — wired to shInjectHeader pencil button
+       ══════════════════════════════════════════════════════════ -->
+  <div class="sh-modal-ov" id="sh-note-ov" onclick="if(event.target===this) window.shCloseNote()">
+    <div class="sh-modal">
+      <div class="sh-modal-hd">
+        <h3>Quick Note</h3>
+        <button class="sh-modal-x" onclick="window.shCloseNote()">&#x2715;</button>
+      </div>
+      <div class="sh-modal-bd">
+        <input  class="sh-note-inp" id="sh-note-title" placeholder="Title…">
+        <textarea class="sh-note-ta"  id="sh-note-body"  placeholder="Notes, ideas, links…"></textarea>
+      </div>
+      <div class="sh-modal-ft">
+        <button class="sh-btn-sec"     onclick="window.shCloseNote()">Cancel</button>
+        <button class="sh-btn-primary" onclick="window.shSaveNote()">Save Note</button>
+      </div>
     </div>
   </div>
-</footer>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       ADD PLUGIN MODAL
+       ══════════════════════════════════════════════════════════ -->
+  <div class="sh-modal-ov" id="modal-add-plugin" onclick="if(event.target===this) window.shCloseModal('modal-add-plugin')">
+    <div class="sh-modal">
+      <div class="sh-modal-hd">
+        <h3>Add Plugin</h3>
+        <button class="sh-modal-x" onclick="window.shCloseModal('modal-add-plugin')">&#x2715;</button>
+      </div>
+      <div class="sh-modal-bd" id="add-modal-body">
+        <!-- fields injected by buildModalFields() -->
+      </div>
+      <div class="sh-modal-ft">
+        <button class="sh-btn-sec"     onclick="window.shCloseModal('modal-add-plugin')">Cancel</button>
+        <button class="sh-btn-primary" onclick="submitItem()">Save Plugin</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       TOAST — shared window.toast() system
+       ══════════════════════════════════════════════════════════ -->
+  <div class="toast-wrap">
+    <div class="toast" id="toast">
+      <span class="toast-dot v" id="toastDot"></span>
+      <span id="toastMsg"></span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       SCRIPTS
+       ══════════════════════════════════════════════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth.js"></script>
+  <script src="noding-shared.js"></script>
+
+  <script>
+    /* ──────────────────────────────────────────────────────────
+       PLUGIN TRACKER — localStorage CRUD
+       ────────────────────────────────────────────────────────── */
+    var STORAGE_KEY = 'resolve-plugins';
+    var CATS = ['Fuse', 'Script', 'Effect Template', 'LUT', 'Macro', 'Other'];
+    var _activeCat = 'All';
+
+    var ACCENT_MAP = {
+      'Fuse'            : 'var(--node-teal)',
+      'Script'          : 'var(--node-teal)',
+      'Macro'           : 'var(--node-teal)',
+      'LUT'             : 'var(--signal-amber)',
+      'Other'           : 'var(--signal-amber)',
+      'Effect Template' : 'var(--violet)'
+    };
+    var STATUS_COLORS = {
+      'installed' : 'var(--node-teal)',
+      'trial'     : 'var(--signal-amber)',
+      'disabled'  : 'var(--danger)'
+    };
+
+    function loadItems() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { return []; }
+    }
+    function saveItems(arr) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    }
+    function escH(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ── PHASE 3: renderCard — outputs the canonical bento blueprint ── */
+    function renderCard(it) {
+      var accent   = ACCENT_MAP[it.cat]    || 'var(--violet)';
+      var sColor   = STATUS_COLORS[it.status] || '';
+
+      var statusBadge = it.status
+        ? '<span class="card-stat" style="color:' + (sColor || 'var(--text-muted)') + '"><span class="stat-pip" style="background:' + (sColor || 'var(--text-muted)') + '"></span>' + escH(it.status) + '</span>'
+        : '';
+
+      var linkBtn = it.url
+        ? '<a href="' + escH(it.url) + '" target="_blank" rel="noopener" class="card-stat" style="margin-top:4px; text-decoration:underline; text-underline-offset:3px;" onclick="event.stopPropagation()">↗ open link</a>'
+        : '';
+
+      return (
+        '<div class="bento-card hover-glow span-2 revealed" style="--accent: ' + accent + ';">' +
+
+          '<div class="card-blob"></div>' +
+
+          '<div class="card-header">' +
+            '<div class="card-icon">' +
+              '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">' +
+                '<path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>' +
+                '<line x1="16" y1="8" x2="2" y2="22"/>' +
+                '<line x1="17.5" y1="15" x2="9" y2="15"/>' +
+              '</svg>' +
+            '</div>' +
+            '<button class="card-arrow" onclick="deleteItem(\'' + escH(it.id) + '\', event)" title="Delete plugin" style="cursor:pointer; font-size:11px;">✕</button>' +
+          '</div>' +
+
+          '<div class="card-body">' +
+            '<span class="card-tag">' + escH(it.cat || 'Plugin') + '</span>' +
+            '<h3 class="card-title">' + escH(it.title) + '</h3>' +
+            (it.desc ? '<p class="card-desc">' + escH(it.desc) + '</p>' : '') +
+            statusBadge +
+            linkBtn +
+          '</div>' +
+
+        '</div>'
+      );
+    }
+
+    /* ── Category filter buttons, reusing the shared nav-pill pattern ── */
+    function buildCatBtns() {
+      var items = loadItems();
+      var counts = { 'All': items.length };
+      items.forEach(function(it) {
+        var k = it.cat || 'Other';
+        counts[k] = (counts[k] || 0) + 1;
+      });
+      var visible = ['All'].concat(CATS.filter(function(k) { return counts[k] > 0; }));
+      document.getElementById('cat-btns').innerHTML = visible.map(function(k) {
+        var isActive = k === _activeCat;
+        return '<button class="nav-item' + (isActive ? ' active' : '') + '" onclick="setCat(\'' + escH(k) + '\')">' + escH(k) + (counts[k] ? ' <span style="font-size:9px;opacity:0.6;">(' + counts[k] + ')</span>' : '') + '</button>';
+      }).join('');
+    }
+
+    function setCat(c) {
+      _activeCat = c;
+      buildCatBtns();
+      filterItems();
+    }
+
+    function filterItems() {
+      var q     = (document.getElementById('page-search').value || '').toLowerCase();
+      var items = loadItems();
+      var filtered = items.filter(function(it) {
+        var matchCat  = (_activeCat === 'All') || (it.cat || 'Other') === _activeCat;
+        var matchText = !q || JSON.stringify(it).toLowerCase().includes(q);
+        return matchCat && matchText;
+      });
+
+      var grid = document.getElementById('item-grid');
+      if (!filtered.length) {
+        grid.innerHTML =
+          '<div class="bento-card span-6" style="--accent: var(--violet); justify-content:center; align-items:center; text-align:center; min-height:160px; opacity:1;">' +
+            '<div class="card-blob"></div>' +
+            '<p class="card-desc">' + (items.length ? 'No plugins match your search.' : 'No plugins yet. Click <strong>Add Plugin</strong> above to track your first one.') + '</p>' +
+          '</div>';
+        return;
+      }
+      grid.innerHTML = filtered.map(renderCard).join('');
+      // Re-attach mouse tracking for freshly injected bento cards
+      grid.querySelectorAll('.bento-card').forEach(function(card) {
+        card.addEventListener('mousemove', function(e) {
+          var rect = card.getBoundingClientRect();
+          card.style.setProperty('--mouse-x', ((e.clientX - rect.left) / rect.width * 100).toFixed(2) + '%');
+          card.style.setProperty('--mouse-y', ((e.clientY - rect.top)  / rect.height * 100).toFixed(2) + '%');
+        });
+      });
+    }
+
+    function deleteItem(id, evt) {
+      if (evt) evt.stopPropagation();
+      if (!confirm('Remove this plugin from your tracker?')) return;
+      saveItems(loadItems().filter(function(it) { return it.id !== id; }));
+      buildCatBtns();
+      filterItems();
+      window.toast('Plugin removed', 'e');
+    }
+
+    /* ── Add Plugin modal ── */
+    function openAddModal() {
+      buildModalFields();
+      window.shOpenAddModal('modal-add-plugin');
+      setTimeout(function() {
+        var first = document.querySelector('#add-modal-body input');
+        if (first) first.focus();
+      }, 80);
+    }
+
+    function buildModalFields() {
+      var opts = CATS.map(function(c) { return '<option>' + c + '</option>'; }).join('');
+      document.getElementById('add-modal-body').innerHTML =
+        '<div class="sh-modal-field">' +
+          '<label>Name <span style="color:var(--danger);">*</span></label>' +
+          '<input id="m-title" placeholder="e.g. Reactor Fuse Pack">' +
+        '</div>' +
+        '<div class="sh-modal-field">' +
+          '<label>URL <span style="font-size:9px; opacity:0.5;">(optional)</span></label>' +
+          '<input id="m-url" type="url" placeholder="https://…">' +
+        '</div>' +
+        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">' +
+          '<div class="sh-modal-field">' +
+            '<label>Category</label>' +
+            '<select id="m-cat"><option value="">Choose…</option>' + opts + '</select>' +
+          '</div>' +
+          '<div class="sh-modal-field">' +
+            '<label>Status</label>' +
+            '<select id="m-status"><option value="">Choose…</option><option>installed</option><option>trial</option><option>disabled</option></select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sh-modal-field">' +
+          '<label>Notes <span style="font-size:9px; opacity:0.5;">(optional)</span></label>' +
+          '<textarea id="m-desc" placeholder="What does this plugin do?"></textarea>' +
+        '</div>';
+    }
+
+    function submitItem() {
+      var title = (document.getElementById('m-title').value || '').trim();
+      if (!title) {
+        var el = document.getElementById('m-title');
+        el.style.borderColor = 'var(--danger)';
+        el.focus();
+        setTimeout(function() { el.style.borderColor = ''; }, 2000);
+        return;
+      }
+      var item = {
+        id       : Date.now().toString(36),
+        title    : title,
+        url      : (document.getElementById('m-url').value    || '').trim(),
+        cat      : document.getElementById('m-cat').value,
+        status   : document.getElementById('m-status').value,
+        desc     : (document.getElementById('m-desc').value   || '').trim(),
+        createdAt: new Date().toISOString()
+      };
+      var existing = loadItems();
+      existing.unshift(item);
+      saveItems(existing);
+      window.shCloseModal('modal-add-plugin');
+      window.toast('Plugin saved ✓', 'v');
+      init();
+    }
+
+    /* ── Keyboard shortcuts ── */
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        window.shCloseSidebar();
+        window.shCloseNote();
+        window.shCloseModal('modal-add-plugin');
+      }
+    });
+
+    function init() {
+      // Ensure every static bento card is visible — shared CSS sets opacity:0 by default,
+      // cards only appear when .revealed is added to trigger the cardReveal animation.
+      document.querySelectorAll('.bento-card').forEach(function(card) {
+        card.classList.add('revealed');
+        card.addEventListener('mousemove', function(e) {
+          var r = card.getBoundingClientRect();
+          card.style.setProperty('--mouse-x', ((e.clientX - r.left) / r.width  * 100).toFixed(2) + '%');
+          card.style.setProperty('--mouse-y', ((e.clientY - r.top)  / r.height * 100).toFixed(2) + '%');
+        });
+      });
+      buildCatBtns();
+      filterItems();
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       PHASE 4 — INITIALIZATION
+       Scripts are at the bottom of <body> so the DOM is already
+       parsed — call directly, no DOMContentLoaded wrapper needed.
+       ══════════════════════════════════════════════════════════ */
+    window.shInjectHeader({
+      activeId   : 'nav-library',
+      actionText : '+ Add Plugin',
+      actionFunc : 'openAddModal()'
+    });
+    init();
+  </script>
 
 </body>
 </html>
