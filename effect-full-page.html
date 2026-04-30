@@ -698,14 +698,87 @@ a{color:inherit;text-decoration:none;}
     if(!sec||!body||!nd||!nd.nodes.length)return;
     var nodes=nd.nodes,edges=nd.edges||[];
     var animCount=nodes.filter(function(n){return n.params&&Object.values(n.params).some(function(p){return p.isKeyframe;});}).length;
-    var sorted=nodes.slice().sort(function(a,b){return(a.x||0)-(b.x||0);});
+
     var html='<div class="analysis-summary">This effect uses <strong>'+nodes.length+' node'+(nodes.length!==1?'s':'')+'</strong>'+(edges.length?' connected by <strong>'+edges.length+' edge'+(edges.length!==1?'s':'')+'</strong>':'')+( animCount?' with <strong>'+animCount+' animated parameter'+(animCount!==1?'s':'')+'</strong>':'')+'.</div>';
     html+='<div class="analysis-stats"><div class="an-stat"><div class="an-stat-val">'+nodes.length+'</div><div class="an-stat-lbl">Nodes</div></div><div class="an-stat"><div class="an-stat-val">'+edges.length+'</div><div class="an-stat-lbl">Connections</div></div><div class="an-stat"><div class="an-stat-val">'+animCount+'</div><div class="an-stat-lbl">Animated</div></div></div>';
-    if(sorted.length){
-      html+='<div class="pipeline-row">';
-      sorted.forEach(function(n,i){html+='<span class="pipe-node">'+esc(n.fusionName||n.name)+'</span>'+(i<sorted.length-1?'<span class="pipe-arrow">&#8594;</span>':'');});
-      html+='</div>';
+
+    // ── Topology-aware pipeline diagram ──────────────────────────────────────
+    // Assign each node a topological level (0 = no inputs, increases downstream).
+    // Nodes that feed a merge/composite from the side get their own level column.
+    if (nodes.length > 0) {
+      var nodeMap = {};
+      nodes.forEach(function(n){ nodeMap[n.id] = n; });
+
+      // Build adjacency: outgoing[id] = [target ids], incoming[id] = [source ids]
+      var outgoing = {}, incoming = {};
+      nodes.forEach(function(n){ outgoing[n.id]=[]; incoming[n.id]=[]; });
+      edges.forEach(function(e){
+        if(outgoing[e.from]) outgoing[e.from].push(e.to);
+        if(incoming[e.to])   incoming[e.to].push(e.from);
+      });
+
+      // Kahn's topological sort + level assignment
+      var level = {};
+      nodes.forEach(function(n){ level[n.id] = 0; });
+      var queue = nodes.filter(function(n){ return incoming[n.id].length === 0; }).map(function(n){ return n.id; });
+      var visited = {}, order = [];
+      while(queue.length){
+        var cur = queue.shift();
+        if(visited[cur]) continue;
+        visited[cur] = true;
+        order.push(cur);
+        outgoing[cur].forEach(function(nxt){
+          level[nxt] = Math.max(level[nxt], level[cur] + 1);
+          // Only enqueue when all predecessors are visited
+          if(incoming[nxt].every(function(p){ return visited[p]; })){
+            queue.push(nxt);
+          }
+        });
+      }
+      // Any node not yet visited (cycle safety)
+      nodes.forEach(function(n){ if(!visited[n.id]){ order.push(n.id); } });
+
+      // Group into levels
+      var maxLevel = 0;
+      order.forEach(function(id){ if(level[id]>maxLevel) maxLevel=level[id]; });
+      var cols = [];
+      for(var l=0;l<=maxLevel;l++) cols.push([]);
+      order.forEach(function(id){ cols[level[id]].push(id); });
+
+      // Render as a pipeline diagram with columns
+      // Each column is a vertical stack; arrows between columns
+      html += '<div style="margin-top:14px;overflow-x:auto;">';
+      html += '<div style="display:flex;align-items:center;gap:6px;min-width:max-content;">';
+
+      cols.forEach(function(col, ci){
+        // Vertical stack of nodes in this column
+        html += '<div style="display:flex;flex-direction:column;gap:5px;align-items:center;">';
+        col.forEach(function(id){
+          var n = nodeMap[id];
+          var label = esc(n.fusionName || n.name);
+          var catColor = n.catColor || '#6c7bff';
+          var inCount  = incoming[id].length;
+          var outCount = outgoing[id].length;
+          // Badge showing in/out count when > 1
+          var badge = '';
+          if(inCount > 1){
+            badge = '<span style="font-size:8px;font-family:var(--fm);color:var(--violet-light);background:rgba(108,123,255,0.15);padding:1px 5px;border-radius:3px;margin-left:4px;">'+inCount+'&#x2192;</span>';
+          }
+          html += '<div style="display:flex;align-items:center;gap:4px;">';
+          html += '<span style="font-family:var(--fm);font-size:10px;padding:4px 9px;border-radius:var(--rxs);border:1px solid '+catColor+'55;color:'+catColor+';background:rgba('+parseInt(catColor.slice(1,3),16||108)+','+parseInt(catColor.slice(3,5),16||123)+','+parseInt(catColor.slice(5,7),16||255)+',0.08);white-space:nowrap;">'+label+badge+'</span>';
+          html += '</div>';
+        });
+        html += '</div>'; // /column
+
+        // Arrow between columns (but not after the last)
+        if(ci < cols.length - 1){
+          html += '<span style="font-size:11px;color:var(--tm);flex-shrink:0;">&#8594;</span>';
+        }
+      });
+
+      html += '</div></div>'; // /flex row + wrapper
     }
+
     body.innerHTML=html;sec.style.display='';
   }
 
