@@ -2197,11 +2197,16 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       var gifUrlEl       = document.getElementById('gifUrl');
       var vidUrlEl       = document.getElementById('vidUrl');
 
-      if (effect.gif_url && effect.gif_url.trim()) {
-        // Show the GIF as an <img> in the preview container
-        if (curMediaLabel) curMediaLabel.style.display = 'none';
-        if (mediaOverlay)  mediaOverlay.style.display  = 'flex';
-        // Remove any existing media element
+      // Always populate BOTH inputs — setMediaMode reads whichever is active,
+      // so both must be filled before any mode switch happens.
+      if (gifUrlEl) gifUrlEl.value = (effect.gif_url   || '').trim();
+      if (vidUrlEl) vidUrlEl.value = (effect.video_url || '').trim();
+
+      var hasGif   = !!(effect.gif_url   && effect.gif_url.trim());
+      var hasVideo = !!(effect.video_url && effect.video_url.trim());
+
+      if (hasGif) {
+        // GIF takes priority for the initial preview
         var existing = curMedia ? curMedia.querySelector('img, iframe, video') : null;
         if (existing) existing.remove();
         var img = document.createElement('img');
@@ -2209,19 +2214,14 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         img.alt = 'Effect preview';
         img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
         if (curMedia) curMedia.appendChild(img);
-        // Pre-fill the input so the owner can see/edit the URL
-        if (gifUrlEl) gifUrlEl.value = effect.gif_url.trim();
-        // Switch UI to GIF mode
-        setMediaMode('gif');
-
-      } else if (effect.video_url && effect.video_url.trim()) {
-        // Show video as an embedded iframe (YouTube / Vimeo)
         if (curMediaLabel) curMediaLabel.style.display = 'none';
         if (mediaOverlay)  mediaOverlay.style.display  = 'flex';
+        setMediaMode('gif');
+
+      } else if (hasVideo) {
         var existing2 = curMedia ? curMedia.querySelector('img, iframe, video') : null;
         if (existing2) existing2.remove();
         var videoUrl = effect.video_url.trim();
-        // Convert watch URLs to embed URLs
         var embedUrl = videoUrl
           .replace(/youtube\.com\/watch\?v=([^&]+)/, 'youtube.com/embed/$1')
           .replace(/youtu\.be\/([^?]+)/, 'youtube.com/embed/$1')
@@ -2232,7 +2232,8 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         iframe.allow = 'autoplay; encrypted-media';
         iframe.allowFullscreen = true;
         if (curMedia) curMedia.appendChild(iframe);
-        if (vidUrlEl) vidUrlEl.value = videoUrl;
+        if (curMediaLabel) curMediaLabel.style.display = 'none';
+        if (mediaOverlay)  mediaOverlay.style.display  = 'flex';
         setMediaMode('video');
 
       } else {
