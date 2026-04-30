@@ -1737,8 +1737,13 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
     var _vidUrlEl  = document.getElementById('vidUrl');
     var _gifUrlVal = _gifUrlEl  ? _gifUrlEl.value.trim()  : '';
     var _vidUrlVal = _vidUrlEl  ? _vidUrlEl.value.trim()  : '';
-    // Only one of gif_url / video_url is active at a time — whichever mode is on
     var _mt0Active = document.getElementById('mt0') && document.getElementById('mt0').classList.contains('on');
+    // Media updates kept separate — if these columns don't exist in the DB yet
+    // the main save must not be blocked.
+    var _mediaUpdates = {
+      gif_url:   _mt0Active ? (_gifUrlVal || null) : null,
+      video_url: _mt0Active ? null : (_vidUrlVal || null)
+    };
 
     const updates = {
       name: nameEl ? nameEl.value : '',
@@ -1755,10 +1760,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       share_password: sharePassword,
       share_limit: shareLimit,
       slug: generateSlug(nameEl ? nameEl.value : ''),
-      allow_node_copy: document.getElementById('sw0') ? document.getElementById('sw0').classList.contains('on') : true,
-      // Media: save whichever type is active; clear the other
-      gif_url:   _mt0Active ? (_gifUrlVal || null) : null,
-      video_url: _mt0Active ? null : (_vidUrlVal || null)
+      allow_node_copy: document.getElementById('sw0') ? document.getElementById('sw0').classList.contains('on') : true
     };
 
     // \u2500\u2500 Node graph \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1836,9 +1838,25 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       }
       
       clearDirty();
-      _importedLuaCode   = null;   // consumed \u2014 reset so a re-save doesn't re-send
+      _importedLuaCode   = null;   // consumed — reset so a re-save doesn't re-send
       _graphEditedCanvas = false;
       console.log('[doSave] Save successful for effect:', effectId, '| updates:', updates);
+
+      // ── Media save (separate so missing columns never block the main save) ──
+      try {
+        const { error: mediaErr } = await supabase
+          .from('effects')
+          .update(_mediaUpdates)
+          .eq('id', effectId);
+        if (mediaErr) {
+          console.warn('[doSave] Media fields save failed (columns may not exist yet):', mediaErr.message);
+        } else {
+          console.log('[doSave] Media fields saved:', _mediaUpdates);
+        }
+      } catch (mediaEx) {
+        console.warn('[doSave] Media save exception (columns may not exist yet):', mediaEx);
+      }
+
       showToast('Changes saved');
       
       // Update version display in header
