@@ -138,9 +138,9 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 .gn-type{font-family:var(--font-mono);font-size:7.5px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.38);line-height:1;margin-bottom:3px;}
 .gn-name{font-family:var(--font-display);font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1;}
 /* ports */
-.gn-port{position:absolute;width:9px;height:9px;border-radius:50%;border:1.5px solid;background:#06060d;}
-.gn-port-in{left:-5px;}
-.gn-port-out{right:-5px;}
+.gn-port{position:absolute;font-size:9px;line-height:1;background:none;border:none;padding:0;pointer-events:none;}
+.gn-port-in{left:-11px;top:50%;transform:translateY(-50%);}
+.gn-port-out{right:-11px;top:50%;transform:translateY(-50%);color:#888888;}
 
 /* graph controls */
 .graph-controls{position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;}
@@ -1661,7 +1661,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
       var path = document.createElementNS('http://www.w3.org/2000/svg','path');
       path.setAttribute('d', d);
       path.setAttribute('fill','none');
-      path.setAttribute('stroke','rgba(108,123,255,0.38)');
+      path.setAttribute('stroke','rgba(255,255,255,0.28)');
       path.setAttribute('stroke-width','1.5');
       path.setAttribute('stroke-linecap','round');
       svgEl.appendChild(path);
@@ -1669,6 +1669,20 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
 
     // Draw nodes
     nodes.forEach(function(n) {
+      // Map catColor (hex) back to a Fusion-accurate input port color
+      // Fusion input port color is driven by what data type the primary input carries.
+      // Most 2D nodes carry Image (yellow #F0C040). 3D nodes carry DataType3D (blue).
+      var catRaw = (n.category || '').toLowerCase();
+      var portTriColor;
+      if (catRaw.startsWith('3d') || catRaw.startsWith('usd')) {
+        portTriColor = '#40A0E0';  // 3D scene — blue
+      } else if (catRaw === 'mask' || catRaw === 'matte') {
+        portTriColor = '#9060FF';  // mask output — purple
+      } else if (catRaw === 'particles' || catRaw.startsWith('particle')) {
+        portTriColor = '#F0C040';  // particles — yellow (like image)
+      } else {
+        portTriColor = '#F0C040';  // default — Image yellow
+      }
       var col = n.catColor || '#6c7bff';
       var hasParams = n.params && Object.keys(n.params).length > 0;
       var hasAnim = hasParams && Object.values(n.params).some(function(p){ return p.isKeyframe && p.keyframes && p.keyframes.length; });
@@ -1705,16 +1719,16 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
       }
 
       // Ports
-      var portIn = document.createElement('div');
+      // Ports — ▶ input triangle (Fusion data type color), ■ output square (grey)
+      var portIn = document.createElement('span');
       portIn.className = 'gn-port gn-port-in';
-      portIn.style.top = (NH/2 - 4.5) + 'px';
-      portIn.style.borderColor = col;
+      portIn.textContent = '▶';
+      portIn.style.color = portTriColor;
       card.appendChild(portIn);
 
-      var portOut = document.createElement('div');
+      var portOut = document.createElement('span');
       portOut.className = 'gn-port gn-port-out';
-      portOut.style.top = (NH/2 - 4.5) + 'px';
-      portOut.style.borderColor = col;
+      portOut.textContent = '■';
       card.appendChild(portOut);
 
       // Click to open param panel
@@ -1754,7 +1768,7 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
       var d = 'M '+fp.x+' '+fp.y+' C '+(fp.x+pull)+' '+fp.y+' '+(tp.x-pull)+' '+tp.y+' '+tp.x+' '+tp.y;
       var path = document.createElementNS('http://www.w3.org/2000/svg','path');
       path.setAttribute('d',d); path.setAttribute('fill','none');
-      path.setAttribute('stroke','rgba(108,123,255,0.38)'); path.setAttribute('stroke-width','1.5');
+      path.setAttribute('stroke','rgba(255,255,255,0.28)'); path.setAttribute('stroke-width','1.5');
       path.setAttribute('stroke-linecap','round');
       svgEl.appendChild(path);
     }
@@ -1773,10 +1787,10 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
       var tl2 = document.createElement('div'); tl2.className = 'gn-type'; tl2.textContent = n.type;
       var nl2 = document.createElement('div'); nl2.className = 'gn-name'; nl2.textContent = n.name;
       lw2.appendChild(tl2); lw2.appendChild(nl2); card2.appendChild(lw2);
-      var pi2 = document.createElement('div'); pi2.className = 'gn-port gn-port-in';
-      pi2.style.top = (NH/2-4.5)+'px'; pi2.style.borderColor = col2.border; card2.appendChild(pi2);
-      var po2 = document.createElement('div'); po2.className = 'gn-port gn-port-out';
-      po2.style.top = (NH/2-4.5)+'px'; po2.style.borderColor = col2.border; card2.appendChild(po2);
+      var pi2 = document.createElement('span'); pi2.className = 'gn-port gn-port-in';
+      pi2.textContent = '▶'; pi2.style.color = '#F0C040'; card2.appendChild(pi2);
+      var po2 = document.createElement('span'); po2.className = 'gn-port gn-port-out';
+      po2.textContent = '■'; card2.appendChild(po2);
       (function(node, el){ el.addEventListener('click', function(ev){ ev.stopPropagation(); openPop(node, el); }); }(n, card2));
       world.appendChild(card2);
     }

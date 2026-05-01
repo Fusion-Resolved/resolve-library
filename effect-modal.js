@@ -925,23 +925,31 @@
       `;
       card.appendChild(lw);
 
-      // Ports
+      // Ports — ▶ input triangle (colored), ■ output square (grey)
       for (let i = 0; i < node.ins; i++) {
-        const port = document.createElement('div');
+        const port = document.createElement('span');
         port.className = 'gn-port gn-port-in';
+        port.textContent = '▶';
         port.style.cssText = `
-          top: ${(NH / (node.ins + 1)) * (i + 1) - 4.5}px;
-          border-color: ${col.primary};
+          position:absolute;font-size:9px;line-height:1;background:none;border:none;padding:0;
+          left:-11px;
+          top: ${(NH / (node.ins + 1)) * (i + 1) - 5}px;
+          color: ${col.primary};
+          pointer-events:none;
         `;
         card.appendChild(port);
       }
       
       if (node.outs > 0) {
-        const op = document.createElement('div');
+        const op = document.createElement('span');
         op.className = 'gn-port gn-port-out';
+        op.textContent = '■';
         op.style.cssText = `
-          top: ${NH / 2 - 4.5}px;
-          border-color: ${col.primary};
+          position:absolute;font-size:8px;line-height:1;background:none;border:none;padding:0;
+          right:-10px;
+          top: ${NH / 2 - 5}px;
+          color:#888888;
+          pointer-events:none;
         `;
         card.appendChild(op);
       }
@@ -2256,7 +2264,7 @@
       var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', d);
       path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', 'rgba(108,123,255,0.38)');
+      path.setAttribute('stroke', 'rgba(255,255,255,0.28)');
       path.setAttribute('stroke-width', '1.5');
       path.setAttribute('stroke-linecap', 'round');
       svgEl.appendChild(path);
@@ -3060,7 +3068,7 @@
       var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', d);
       path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', 'rgba(108,123,255,0.38)');
+      path.setAttribute('stroke', 'rgba(255,255,255,0.28)');
       path.setAttribute('stroke-width', '1.5');
       path.setAttribute('stroke-linecap', 'round');
       svg.appendChild(path);
@@ -3092,6 +3100,23 @@
       
       card.appendChild(dot);
       card.appendChild(labels);
+
+      // Input port — ▶ triangle, colored by data type (not category accent)
+      var catRawExp = ((n.category || n.cat || '')).toLowerCase();
+      var expTriColor = (catRawExp.startsWith('3d') || catRawExp.startsWith('usd'))
+        ? '#40A0E0'
+        : (catRawExp === 'mask' || catRawExp === 'matte') ? '#9060FF'
+        : '#F0C040';
+      var expPortIn = document.createElement('span');
+      expPortIn.textContent = '▶';
+      expPortIn.style.cssText = 'position:absolute;font-size:9px;line-height:1;color:' + expTriColor + ';left:-11px;top:50%;transform:translateY(-50%);pointer-events:none;';
+      card.appendChild(expPortIn);
+
+      // Output port — ■ grey square
+      var expPortOut = document.createElement('span');
+      expPortOut.textContent = '■';
+      expPortOut.style.cssText = 'position:absolute;font-size:8px;line-height:1;color:#888888;right:-10px;top:50%;transform:translateY(-50%);pointer-events:none;';
+      card.appendChild(expPortOut);
       
       // Click handler to show node details in side panel
       card.addEventListener('click', function(ev) {

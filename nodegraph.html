@@ -2560,7 +2560,7 @@ function renderNode(node){
 
   // Build right (output) ports — grey square ■, always grey (wire carries the color)
   let rightH = '';
-  (node.outputs||[]).forEach((lbl,i)=>{\
+  (node.outputs||[]).forEach((lbl,i)=>{
     rightH+=`<div class="nd-port-wrap port-right" data-node="${node.id}" data-port="${i}" data-side="out" data-lbl="${lbl||''}" onmousedown="portMD(event,this)">
       <span class="ps-sq" style="color:#888888;font-size:9px;">■</span>
       <span class="nd-port-lbl">${lbl||''}</span>
