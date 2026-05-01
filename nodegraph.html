@@ -2440,45 +2440,48 @@ function _addNode(name,cat,screenX,screenY){
     portColours = {'SceneInput':'#F0C040'};
   }
 
-  // ── CRITICAL FIX: Filter out any inputs that look like parameters, not pipeline ports ──
-  // Valid pipeline inputs typically have names like: Input, Output, SceneInput, MaterialInput, etc.
-  // Parameters typically have names like: Size, Color, Blend, Angle, etc.
-  const VALID_INPUT_PATTERNS = [
-    /input/i, /output/i, /scene/i, /material/i, /mask/i, /image/i, 
-    /colorimage/i, /beveltexture/i, /projectiveimage/i, /environmentmap/i,
-    /diffuse/i, /specular/i, /bumpmap/i, /target/i, /fogtexture/i,
-    /meshinput/i, /stereo/i, /effectmask/i, /garbage/i, /matte/i,
-    /foreground/i, /background/i, /overlay/i, /fg/i, /bg/i, /lut/i,
-    /maininput/i, /primary/i, /secondary/i
-  ];
-  
-  // Common parameter names that should NEVER be inputs
-  const PARAMETER_BLACKLIST = [
-    'size', 'center', 'blend', 'angle', 'rotation', 'scale', 'translate', 'offset',
-    'color', 'colour', 'red', 'green', 'blue', 'alpha', 'opacity', 'gain', 'gamma',
-    'lift', 'brightness', 'contrast', 'saturation', 'hue', 'temperature', 'tint',
-    'width', 'height', 'depth', 'radius', 'length', 'distance', 'position',
-    'x', 'y', 'z', 'value', 'amount', 'intensity', 'strength', 'level',
-    'softness', 'threshold', 'tolerance', 'quality', 'seed', 'rate', 'speed',
-    'start', 'end', 'range', 'min', 'max', 'low', 'high', 'near', 'far',
-    'show', 'hide', 'enable', 'disable', 'on', 'off', 'true', 'false',
-    'solid', 'gradient', 'type', 'mode', 'method', 'order', 'axis', 'channel',
-    'format', 'filename', 'file', 'name', 'label', 'id', 'index', 'count'
-  ];
-  
-  const filteredInputs = nodeInputs.filter(function(inp) {
-    const inpLower = inp.toLowerCase();
-    // Check against blacklist first
-    if (PARAMETER_BLACKLIST.some(function(p) { return inpLower === p || inpLower.includes(p); })) {
-      return false;
+  // ── CRITICAL FIX: Only apply pattern filtering to NODE_DETAIL inputs (not registry) ──
+  // Registry inputs are already correctly filtered by data_type (Image/Mask/USD)
+  // Only NODE_DETAIL inputs need pattern-based filtering to catch edge cases
+  if (detail && detail.inputs && !(_registryByName && _registryByName[name])) {
+    // Valid pipeline inputs typically have names like: Input, Output, SceneInput, MaterialInput, etc.
+    const VALID_INPUT_PATTERNS = [
+      /input/i, /output/i, /scene/i, /material/i, /mask/i, /image/i, 
+      /colorimage/i, /beveltexture/i, /projectiveimage/i, /environmentmap/i,
+      /diffuse/i, /specular/i, /bumpmap/i, /target/i, /fogtexture/i,
+      /meshinput/i, /stereo/i, /effectmask/i, /garbage/i, /matte/i,
+      /foreground/i, /background/i, /overlay/i, /fg/i, /bg/i, /lut/i,
+      /maininput/i, /primary/i, /secondary/i
+    ];
+    
+    // Common parameter names that should NEVER be inputs
+    const PARAMETER_BLACKLIST = [
+      'size', 'center', 'blend', 'angle', 'rotation', 'scale', 'translate', 'offset',
+      'color', 'colour', 'red', 'green', 'blue', 'alpha', 'opacity', 'gain', 'gamma',
+      'lift', 'brightness', 'contrast', 'saturation', 'hue', 'temperature', 'tint',
+      'width', 'height', 'depth', 'radius', 'length', 'distance', 'position',
+      'x', 'y', 'z', 'value', 'amount', 'intensity', 'strength', 'level',
+      'softness', 'threshold', 'tolerance', 'quality', 'seed', 'rate', 'speed',
+      'start', 'end', 'range', 'min', 'max', 'low', 'high', 'near', 'far',
+      'show', 'hide', 'enable', 'disable', 'on', 'off', 'true', 'false',
+      'solid', 'gradient', 'type', 'mode', 'method', 'order', 'axis', 'channel',
+      'format', 'filename', 'file', 'name', 'label', 'id', 'index', 'count'
+    ];
+    
+    const filteredInputs = nodeInputs.filter(function(inp) {
+      const inpLower = inp.toLowerCase();
+      // Check against blacklist first
+      if (PARAMETER_BLACKLIST.some(function(p) { return inpLower === p || inpLower.includes(p); })) {
+        return false;
+      }
+      // Check against valid patterns
+      return VALID_INPUT_PATTERNS.some(function(pat) { return pat.test(inp); });
+    });
+    
+    // Only use filtered inputs if we didn't filter everything out
+    if (filteredInputs.length > 0) {
+      nodeInputs = filteredInputs;
     }
-    // Check against valid patterns
-    return VALID_INPUT_PATTERNS.some(function(pat) { return pat.test(inp); });
-  });
-  
-  // Only use filtered inputs if we didn't filter everything out
-  if (filteredInputs.length > 0) {
-    nodeInputs = filteredInputs;
   }
   
   // ── DEDUPLICATION: Remove duplicate input names ──
