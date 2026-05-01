@@ -2525,7 +2525,15 @@ function renderNode(node){
   
   let el=document.getElementById('nd-'+node.id);
   const fresh=!el;
-  if(fresh){el=document.createElement('div');el.id='nd-'+node.id;el.className='ng-node';document.getElementById('node-layer').appendChild(el);}
+  if(fresh){
+    el=document.createElement('div');
+    el.id='nd-'+node.id;
+    el.className='ng-node';
+    document.getElementById('node-layer').appendChild(el);
+  } else {
+    // Clear existing content to prevent any duplication issues
+    el.innerHTML = '';
+  }
   el.style.left=node.x+'px';el.style.top=node.y+'px';
   if(node.instanceOf) el.classList.add('instanced'); else el.classList.remove('instanced');
   if(node.folded) el.classList.add('folded'); else el.classList.remove('folded');
@@ -2639,11 +2647,11 @@ function renderNode(node){
       const maskColor = hex || '#40C0D8';
       topH+=`<div class="nd-port-wrap port-top" data-node="${node.id}" data-port="${i}" data-side="in" data-face="top" data-lbl="${lbl||''}"${dynAttr} onmousedown="portMD(event,this)">
         <span class="nd-port-lbl">${lbl||''}</span>
-        <span class="ps-tri" style="color:${maskColor};font-size:10px;line-height:1;">▲</span>
+        <span class="ps-tri" style="color:${maskColor};font-size:10px;line-height:1;"></span>
       </div>`;
     } else {
       leftH+=`<div class="nd-port-wrap port-left${portTypeClass}" data-node="${node.id}" data-port="${i}" data-side="in" data-lbl="${lbl||''}"${dynAttr} onmousedown="portMD(event,this)">
-        <span class="ps-tri" ${triStyle}>▶</span>
+        <span class="ps-tri" ${triStyle}></span>
         <span class="nd-port-lbl">${lbl||''}</span>
       </div>`;
     }
@@ -2653,7 +2661,7 @@ function renderNode(node){
   let rightH = '';
   (node.outputs||[]).forEach((lbl,i)=>{
     rightH+=`<div class="nd-port-wrap port-right" data-node="${node.id}" data-port="${i}" data-side="out" data-lbl="${lbl||''}" onmousedown="portMD(event,this)">
-      <span class="ps-sq" style="color:#888888;font-size:9px;">■</span>
+      <span class="ps-sq" style="color:#888888;font-size:9px;"></span>
       <span class="nd-port-lbl">${lbl||''}</span>
     </div>`;
   });
