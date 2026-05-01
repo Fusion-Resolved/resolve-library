@@ -1049,9 +1049,18 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       }
 
       var pi=document.createElement('div'); pi.className='gn-port gn-port-in';
-      pi.style.top=(NH/2-4.5)+'px'; pi.style.borderColor=col; card.appendChild(pi);
+      // Use Fusion-accurate wire colour for the input port dot
+      var portCol = (function(cat){
+        if (!cat) return '#FF8000';
+        var c = cat.toLowerCase();
+        if (c.indexOf('material') !== -1) return '#FF8080';
+        if (c.indexOf('3d') !== -1)       return '#80FFFF';
+        if (c.indexOf('mask') !== -1)     return '#8040FF';
+        return '#FF8000';
+      })(n.category);
+      pi.style.top=(NH/2-4.5)+'px'; pi.style.borderColor=portCol; card.appendChild(pi);
       var po=document.createElement('div'); po.className='gn-port gn-port-out';
-      po.style.top=(NH/2-4.5)+'px'; po.style.borderColor=col; card.appendChild(po);
+      po.style.top=(NH/2-4.5)+'px'; po.style.borderColor='#888888'; card.appendChild(po);
 
       if (hasParams) {
         (function(node, el){

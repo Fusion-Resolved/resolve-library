@@ -33,6 +33,23 @@
     return catColors[cat] || catColors['Colour'];
   }
 
+  /**
+   * Returns the Fusion-accurate input port wire colour for a given node category.
+   * Matches DaVinci Resolve Fusion's canonical wire colours:
+   *   Image (2D comp)  → orange  #FF8000
+   *   3D scene         → cyan    #80FFFF
+   *   3D Material      → pink    #FF8080
+   *   Mask             → violet  #8040FF
+   */
+  function getFusionPortColor(nodeCategory) {
+    if (!nodeCategory) return '#FF8000';
+    var c = nodeCategory.toLowerCase();
+    if (c.indexOf('material') !== -1) return '#FF8080'; // 3D Material
+    if (c.indexOf('3d') !== -1)       return '#80FFFF'; // 3D scene
+    if (c.indexOf('mask') !== -1)     return '#8040FF'; // Mask
+    return '#FF8000'; // Image (default for all 2D comp nodes)
+  }
+
   // Escape HTML to prevent XSS
   function escapeHtml(text) {
     if (!text) return '';
@@ -925,7 +942,8 @@
       `;
       card.appendChild(lw);
 
-      // Ports — ▶ input triangle (colored), ■ output square (grey)
+      // Ports — ▶ input triangle (Fusion wire colour), ■ output square (grey)
+      const portColor = getFusionPortColor(node.type);
       for (let i = 0; i < node.ins; i++) {
         const port = document.createElement('span');
         port.className = 'gn-port gn-port-in';
@@ -934,7 +952,8 @@
           position:absolute;font-size:9px;line-height:1;background:none;border:none;padding:0;
           left:-11px;
           top: ${(NH / (node.ins + 1)) * (i + 1) - 5}px;
-          color: ${col.primary};
+          color: ${portColor};
+          opacity:0.9;
           pointer-events:none;
         `;
         card.appendChild(port);

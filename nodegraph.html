@@ -555,15 +555,16 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
   /* ── Fusion-accurate port colours ── */
   /* Input triangles: point INTO the node body */
   /* Left ports: ▶ (rotate ▲ by +90°)  Top ports: ▼  Bottom ports: ▲ */
-  .ps-tri { font-size: 11px; line-height: 1; color: #F0C040; pointer-events: none;
+  /* Default = Fusion Image wire colour: orange #FF8000 */
+  .ps-tri { font-size: 11px; line-height: 1; color: #FF8000; pointer-events: none;
     transition: filter 0.12s, color 0.12s; opacity: 0.85; user-select: none; -webkit-user-select: none; }
   .ps-tri::before { content: "▶"; display: block; }
   /* port-top triangle points DOWN (into the top of the node) */
   .nd-port-wrap.port-top .ps-tri::before { content: "▼"; }
-  /* Foreground (secondary image) ports: lime green */
-  .nd-port-wrap.port-fg .ps-tri { color: #60D040; }
-  /* Background (primary image) ports: golden yellow */
-  .nd-port-wrap.port-bg .ps-tri { color: #F0C040; }
+  /* Foreground (secondary image) ports: green (Fusion FG wire) */
+  .nd-port-wrap.port-fg .ps-tri { color: #00C040; }
+  /* Background (primary image) ports: orange (Fusion Image wire) */
+  .nd-port-wrap.port-bg .ps-tri { color: #FF8000; }
   .ps-sq { font-size: 9px; line-height: 1; color: #888888; pointer-events: none;
     transition: filter 0.12s, color 0.12s; user-select: none; -webkit-user-select: none; }
   .ps-sq::before { content: "■"; display: block; }
@@ -1044,18 +1045,19 @@ body{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
  */
 
 // ─── Port colour map ─────────────────────────────────────────────────────────
+// Maps Markdown colour names used in NODE_DETAIL to canonical Fusion hex values.
 var PORT_COLOUR_HEX = {
-  'Orange':       '#f07828',
-  'Green':        '#5ec45e',
-  'Yellow':       '#d4c040',
-  'Pink':         '#e060b8',
-  'Pink/Magenta': '#e060b8',
-  'Magenta':      '#e060b8',
+  'Orange':       '#FF8000',  // Image (primary/BG) — Fusion canonical orange
+  'Green':        '#00FF80',  // Point / foreground image
+  'Yellow':       '#FFFF00',  // Text
+  'Pink':         '#FF8080',  // 3D Material
+  'Pink/Magenta': '#FF8080',  // 3D Material
+  'Magenta':      '#FF40FF',  // Gradient
   'White':        '#d8d8d8',
-  'Blue':         '#6088e0',
+  'Blue':         '#8040FF',  // Mask — Fusion canonical purple-blue
   'Multiple':     '#888888',
-  'Purple':       '#a060d0',
-  'Red':          '#e04040',
+  'Purple':       '#8040FF',  // same as Mask
+  'Red':          '#FF4040',  // Mesh — Fusion canonical red
 };
 
 // ─── NODE_DETAIL ─────────────────────────────────────────────────────────────
@@ -1753,27 +1755,28 @@ const _UN = FUSION_NODES_UNIQUE; // alias used by search dropdown
 // Falls back to {} if not loaded, ensuring no breakage.
 // (nodes-data.js is loaded via <script src="nodes-data.js"> in the page head — see below)
 /* ── Category colour system ── */
-/* ── Fusion-accurate port colour map (from DaVinci Resolve UI) ── */
+/* ── Fusion-accurate port colour map (DaVinci Resolve Fusion wire colours) ── */
+/* Source of truth: _HEX_TO_LABEL reverse map in this file */
 const FUSION_PORT_COLORS = {
-  'Image':       '#F0C040',  // golden yellow  — primary image / background
-  'Image_FG':    '#60D040',  // lime green     — foreground / secondary image
-  'DataType3D':  '#40A0E0',  // medium blue    — 3D scene
-  'MtlGraph3D':  '#E060B0',  // pink/magenta   — 3D material
-  'Mask':        '#40C0D8',  // cyan           — effect mask
-  'Number':      '#0090D0',  // blue           — number / value
-  'Text':        '#E8E050',  // yellow         — text
-  'Gradient':    '#E050E8',  // magenta        — gradient
-  'Point':       '#40D880',  // green          — point
-  'ShapeTree':   '#60D040',  // green          — shape tree
+  'Image':       '#FF8000',  // orange         — primary image / background (Fusion canonical)
+  'Image_FG':    '#00C040',  // green          — foreground / secondary image
+  'DataType3D':  '#80FFFF',  // light cyan     — 3D scene (Fusion canonical)
+  'MtlGraph3D':  '#FF8080',  // pink/salmon    — 3D material (Fusion canonical)
+  'Mask':        '#8040FF',  // blue-purple    — effect mask (Fusion canonical)
+  'Number':      '#00A0FF',  // blue           — number / value (Fusion canonical)
+  'Text':        '#FFFF00',  // yellow         — text (Fusion canonical)
+  'Gradient':    '#FF40FF',  // magenta        — gradient (Fusion canonical)
+  'Point':       '#00FF80',  // green          — point (Fusion canonical)
+  'ShapeTree':   '#80FF40',  // lime           — shape tree
   'BSplinePolyline': '#A0A0A0',
   'Polyline':    '#A0A0A0',
   'FuID':        '#A0A0A0',
   'Audio':       '#A0A0A0',
   'LookUpTable': '#A0A0A0',
-  'Particles':   '#A0A0A0',
+  'Particles':   '#FF8000',  // orange         — particle pipe is image-type in Fusion
   'ScriptVal':   '#A0A0A0',
   'USD':         '#C0A060',  // warm tan       — USD
-  'Mesh':        '#E04040',  // red            — mesh
+  'Mesh':        '#FF4040',  // red            — mesh (Fusion canonical)
   'default':     '#888888',  // grey
 };
 
@@ -3259,6 +3262,7 @@ const _HEX_TO_LABEL = {
   '#FF40FF': 'Gradient', '#ff40ff': 'Gradient',
   '#00FF80': 'Point',    '#00ff80': 'Point',
   '#FF4040': 'Mesh',     '#ff4040': 'Mesh',
+  '#00C040': 'Image',    '#00c040': 'Image',   // FG green → Image type
   '#AAAAAA': 'default',  '#aaaaaa': 'default',
 };
 function _getWireLabelFromHex(hex) {

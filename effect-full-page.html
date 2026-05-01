@@ -513,22 +513,21 @@ a{color:inherit;text-decoration:none;}
   // Maps every Fusion node type to its exact named inputs & outputs with
   // correct side (left/right), vertical position (0..1), and wire colour.
   //
-  // Wire colours match DaVinci Resolve Fusion UI (from screenshot reference):
-  //   #F0C040  Yellow  — Image primary (background)
-  //   #60D040  Green   — Image foreground/secondary
-  //   #40C0D8  Cyan    — Effect Mask
-  //   #40A0E0  Blue    — 3D Scene (DataType3D)
-  //   #E060B0  Pink    — Material (MtlGraph3D)
+  // Wire colours match DaVinci Resolve Fusion canonical values:
+  //   #FF8000  Orange  — Image primary (background) [Fusion canonical]
+  //   #00C040  Green   — Image foreground/secondary
+  //   #8040FF  Purple  — Effect Mask [Fusion canonical]
+  //   #80FFFF  Cyan    — 3D Scene (DataType3D) [Fusion canonical]
+  //   #FF8080  Pink    — Material (MtlGraph3D) [Fusion canonical]
   //   #888888  Grey    — Output square
-  //   #9060FF  Purple  — Mask output
   //
   // yPos is 0 (top) → 1 (bottom), as fraction of node height.
   // Nodes with a single input use yPos:0.5 (vertically centred).
   // ═══════════════════════════════════════════════════════════════════════════
   var FP_PORTS = (function(){
-    var IMG = '#F0C040', FG = '#60D040',  MSK = '#40C0D8',
-        SCN = '#40A0E0', MTL = '#E060B0', GRY = '#888888',
-        OUT = '#888888', VIO = '#9060FF';
+    var IMG = '#FF8000', FG = '#00C040',  MSK = '#8040FF',
+        SCN = '#80FFFF', MTL = '#FF8080', GRY = '#888888',
+        OUT = '#888888', VIO = '#8040FF';
 
     // Shorthand builders
     function inp(name, y, col){ return {name:name, side:'left',  yPos:y, color:col||IMG}; }
@@ -745,7 +744,10 @@ a{color:inherit;text-decoration:none;}
     var hasIn  = inEdges.length  > 0 || (cat !== 'Source');
     var hasOut = outEdges.length > 0 || (cat !== 'Output');
     var isSCN  = cat === '3D' || /3D|uMerge|uCamera|uRenderer|uLight|uDisk/.test(fusionType);
-    var portColor = isSCN ? '#40A0E0' : catColor;
+    var isMTL  = /material|Material/.test(cat);
+    var isMSK  = /[Mm]ask/.test(cat);
+    // Use canonical Fusion wire colours for fallback ports
+    var portColor = isSCN ? '#80FFFF' : isMTL ? '#FF8080' : isMSK ? '#8040FF' : '#FF8000';
 
     var inputs=[], outputs=[];
     var inCount = Math.max(inEdges.length, hasIn ? 1 : 0);
@@ -1236,10 +1238,18 @@ a{color:inherit;text-decoration:none;}
         svgParts.push('<text x="'+(bx+bw/2)+'" y="'+(by+9)+'" font-family="DM Mono,monospace" font-size="7.5" fill="#9ca8ff" text-anchor="middle">'+inCount+'&#x2192;</text>');
       }
 
-      // Input port dot (left)
-      if(inCount>0) svgParts.push('<circle cx="'+p.x+'" cy="'+(p.y+NODE_H/2)+'" r="3.5" fill="#06060d" stroke="'+catColor+'" stroke-width="1.5"/>');
-      // Output port dot (right)
-      if(outCount>0||n.category==='Source') svgParts.push('<circle cx="'+(p.x+NODE_W)+'" cy="'+(p.y+NODE_H/2)+'" r="3.5" fill="#06060d" stroke="'+catColor+'" stroke-width="1.5"/>');
+      // Input port dot (left) — Fusion Image orange (or 3D cyan / mask purple)
+      var svgPortCol = (function(cat){
+        if (!cat) return '#FF8000';
+        var c = cat.toLowerCase();
+        if (c.indexOf('material') !== -1) return '#FF8080';
+        if (c.indexOf('3d') !== -1)       return '#80FFFF';
+        if (c.indexOf('mask') !== -1)     return '#8040FF';
+        return '#FF8000';
+      })(n.category);
+      if(inCount>0) svgParts.push('<circle cx="'+p.x+'" cy="'+(p.y+NODE_H/2)+'" r="3.5" fill="#06060d" stroke="'+svgPortCol+'" stroke-width="1.5"/>');
+      // Output port dot (right) — grey square output
+      if(outCount>0||n.category==='Source') svgParts.push('<circle cx="'+(p.x+NODE_W)+'" cy="'+(p.y+NODE_H/2)+'" r="3.5" fill="#06060d" stroke="#888888" stroke-width="1.5"/>');
     });
 
     svgParts.push('</svg>');
