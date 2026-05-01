@@ -2419,6 +2419,35 @@ function _addNode(name,cat,screenX,screenY){
     portColours = {'SceneInput':'#F0C040'};
   }
 
+  // ── CRITICAL FIX: Filter out any inputs that look like parameters, not pipeline ports ──
+  // Valid pipeline inputs typically have names like: Input, Output, SceneInput, MaterialInput, etc.
+  // Parameters typically have names like: Size, Color, Blend, Angle, etc.
+  const VALID_INPUT_PATTERNS = [
+    /input/i, /output/i, /scene/i, /material/i, /mask/i, /image/i, 
+    /colorimage/i, /beveltexture/i, /projectiveimage/i, /environmentmap/i,
+    /diffuse/i, /specular/i, /bumpmap/i, /target/i, /fogtexture/i,
+    /meshinput/i, /stereo/i, /effectmask/i, /garbage/i, /matte/i,
+    /foreground/i, /background/i, /overlay/i, /fg/i, /bg/i, /lut/i
+  ];
+  
+  const filteredInputs = nodeInputs.filter(function(inp) {
+    // Keep inputs that match valid pipeline patterns
+    const isValid = VALID_INPUT_PATTERNS.some(function(pat) { return pat.test(inp); });
+    if (!isValid) {
+      console.warn('[NodeGraph] Filtering out invalid input "' + inp + '" for node "' + name + '" — treating as parameter instead of pipeline input');
+    }
+    return isValid;
+  });
+  
+  // Only use filtered inputs if we didn't filter everything out
+  if (filteredInputs.length > 0) {
+    nodeInputs = filteredInputs;
+  } else if (nodeInputs.length > 0) {
+    console.warn('[NodeGraph] All inputs filtered for "' + name + '", keeping original defaults');
+    // Keep original if filtering removed everything (safety net)
+  }
+  // ── END CRITICAL FIX ──
+
   // topInputPorts: ports that go on TOP (diamond) rather than LEFT (triangle)
   const topInputPorts = new Set(
     (detail && detail.topInputs) ? detail.topInputs : []
