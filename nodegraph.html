@@ -2410,11 +2410,12 @@ function _addNode(name,cat,screenX,screenY){
     // not external parameters (Number/FuID data types with is_external=true)
     const reg = _registryByName[name];
     const pipelineInputs = reg.inputs.filter(function(i){
-      // Pipeline inputs have Image/Mask data types OR Image/Mask wire colours
-      const isImageOrMask = i.data_type === 'Image' || i.data_type === 'Mask';
+      // Pipeline inputs have Image/Mask/USD data types OR matching wire colours
+      const isImageOrMask = i.data_type === 'Image' || i.data_type === 'Mask' || i.data_type === 'USD';
       const wireLabel = i.wire_colour?.label;
       const hasImageOrMaskColour = wireLabel === 'Image' || 
                                    wireLabel === 'Mask' ||
+                                   wireLabel === 'USD' ||
                                    wireLabel === 'Orange' ||  // Image colour
                                    wireLabel === 'Blue';      // Mask colour
       return isImageOrMask || hasImageOrMaskColour;
@@ -2427,6 +2428,12 @@ function _addNode(name,cat,screenX,screenY){
       }
     });
     nodeOutputs = reg.outputs.map(function(o){ return o.name; });
+    
+    // SAFETY: If registry had no pipeline inputs, fall back to defaults
+    if (nodeInputs.length === 0) {
+      nodeInputs = ['SceneInput'];
+      portColours = {'SceneInput':'#F0C040'};
+    }
   } else {
     // No detail — use category-based defaults
     nodeInputs  = ['SceneInput'];
