@@ -513,23 +513,22 @@ a{color:inherit;text-decoration:none;}
   // Maps every Fusion node type to its exact named inputs & outputs with
   // correct side (left/right), vertical position (0..1), and wire colour.
   //
-  // Wire colours match Fusion conventions:
-  //   #f59e0b  Orange  — Image (2D raster)
-  //   #0fa888  Teal    — Scene (3D / USD)
-  //   #3b82f6  Blue    — Effect mask
-  //   #a855f7  Purple  — Particles
-  //   #94a3b8  Gray    — Auxiliary / generic
-  //   #4ade80  Green   — Output-only nodes
-  //   #ec4899  Pink    — Polygon / spline
-  //   #f472b6  Fuchsia — AudioIn, special
+  // Wire colours match DaVinci Resolve Fusion UI (from screenshot reference):
+  //   #F0C040  Yellow  — Image primary (background)
+  //   #60D040  Green   — Image foreground/secondary
+  //   #40C0D8  Cyan    — Effect Mask
+  //   #40A0E0  Blue    — 3D Scene (DataType3D)
+  //   #E060B0  Pink    — Material (MtlGraph3D)
+  //   #888888  Grey    — Output square
+  //   #9060FF  Purple  — Mask output
   //
   // yPos is 0 (top) → 1 (bottom), as fraction of node height.
   // Nodes with a single input use yPos:0.5 (vertically centred).
   // ═══════════════════════════════════════════════════════════════════════════
   var FP_PORTS = (function(){
-    var IMG = '#f59e0b', SCN = '#0fa888', MSK = '#3b82f6',
-        PAR = '#a855f7', GRY = '#94a3b8', OUT = '#4ade80',
-        PLY = '#ec4899', VIO = '#6c7bff';
+    var IMG = '#F0C040', FG = '#60D040',  MSK = '#40C0D8',
+        SCN = '#40A0E0', MTL = '#E060B0', GRY = '#888888',
+        OUT = '#888888', VIO = '#9060FF';
 
     // Shorthand builders
     function inp(name, y, col){ return {name:name, side:'left',  yPos:y, color:col||IMG}; }
@@ -711,18 +710,18 @@ a{color:inherit;text-decoration:none;}
       'CustomTool':    imgIOmask(),
 
       // ── Particle ─────────────────────────────────────────────────────────
-      'pEmitter':      { inputs:[inp('RegionInput',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pRender':       { inputs:[inp('Input',0.35,PAR),inp('EffectMask',0.65,MSK)], outputs:[out('Output',0.5)] },
-      'pMerge':        { inputs:[inp('Input1',0.35,PAR),inp('Input2',0.65,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pKill':         { inputs:[inp('Input',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pBounce':       { inputs:[inp('Input',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pDirectionalForce':{ inputs:[inp('Input',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pTurbulence':   { inputs:[inp('Input',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pVortex':       { inputs:[inp('Input',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pAvoid':        { inputs:[inp('Input',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pFlock':        { inputs:[inp('Input',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pSpawn':        { inputs:[inp('Input',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
-      'pChangeStyle':  { inputs:[inp('Input',0.5,PAR)], outputs:[out('Output',0.5,PAR)] },
+      'pEmitter':      { inputs:[inp('RegionInput',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pRender':       { inputs:[inp('Input',0.35,GRY),inp('EffectMask',0.65,MSK)], outputs:[out('Output',0.5)] },
+      'pMerge':        { inputs:[inp('Input1',0.35,GRY),inp('Input2',0.65,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pKill':         { inputs:[inp('Input',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pBounce':       { inputs:[inp('Input',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pDirectionalForce':{ inputs:[inp('Input',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pTurbulence':   { inputs:[inp('Input',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pVortex':       { inputs:[inp('Input',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pAvoid':        { inputs:[inp('Input',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pFlock':        { inputs:[inp('Input',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pSpawn':        { inputs:[inp('Input',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
+      'pChangeStyle':  { inputs:[inp('Input',0.5,GRY)], outputs:[out('Output',0.5,GRY)] },
     };
   }());
 
@@ -746,7 +745,7 @@ a{color:inherit;text-decoration:none;}
     var hasIn  = inEdges.length  > 0 || (cat !== 'Source');
     var hasOut = outEdges.length > 0 || (cat !== 'Output');
     var isSCN  = cat === '3D' || /3D|uMerge|uCamera|uRenderer|uLight|uDisk/.test(fusionType);
-    var portColor = isSCN ? '#0fa888' : catColor;
+    var portColor = isSCN ? '#40A0E0' : catColor;
 
     var inputs=[], outputs=[];
     var inCount = Math.max(inEdges.length, hasIn ? 1 : 0);
@@ -819,7 +818,8 @@ a{color:inherit;text-decoration:none;}
         inPort = dstPorts.inputs[Math.max(0, Math.min(idx, dstPorts.inputs.length - 1))];
       }
       var dstY = inPort ? inPort.yPos : 0.5;
-      var wireColor = inPort ? inPort.color : (outPort ? outPort.color : 'rgba(108,123,255,0.55)');
+      // Wire: white by default; show input port color as a subtle tint
+      var wireColor = inPort ? inPort.color : '#ffffff';
 
       var x1 = (fn.x || 0) + NW,  y1 = (fn.y || 0) + srcY * NH;
       var x2 = (tn.x || 0),        y2 = (tn.y || 0) + dstY * NH;

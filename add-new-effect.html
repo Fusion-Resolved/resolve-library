@@ -216,8 +216,9 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
 .gn-labels{min-width:0;flex:1;}
 .gn-type{font-family:var(--fm);font-size:7.5px;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.38);line-height:1;margin-bottom:3px;}
 .gn-name{font-family:var(--fd);font-size:11px;font-weight:700;color:rgba(255,255,255,0.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1;}
-.gn-port{position:absolute;width:9px;height:9px;border-radius:50%;border:1.5px solid;background:#06060d;}
-.gn-port-in{left:-5px;}.gn-port-out{right:-5px;}
+.gn-port{position:absolute;font-size:9px;line-height:1;background:none;border:none;padding:0;}
+.gn-port-in{left:-11px;color:#F0C040;top:50%;transform:translateY(-50%);}
+.gn-port-out{right:-11px;color:#888888;top:50%;transform:translateY(-50%);}
 .gc-btn{background:rgba(6,6,13,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.55);font-family:var(--fm);font-size:14px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .13s;line-height:1;padding:0;}
 .gc-btn:hover{background:rgba(108,123,255,0.22);border-color:rgba(108,123,255,0.45);color:#fff;}
 .gc-fit{font-size:9px;width:auto;padding:0 10px;letter-spacing:0.06em;}
@@ -814,24 +815,24 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
      NODE TYPE DATA
      \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
   var NT = [
-    { name:'MediaIn',            cat:'Source',    col:'#0fa888', bg:'rgba(15,168,136,0.13)'  },
-    { name:'Background',         cat:'Source',    col:'#0fa888', bg:'rgba(15,168,136,0.13)'  },
+    { name:'MediaIn',            cat:'Source',    col:'#F0C040', bg:'rgba(240,192,64,0.13)'  },
+    { name:'Background',         cat:'Generator', col:'#60E060', bg:'rgba(96,224,96,0.13)'   },
     { name:'OpticalFlow',        cat:'Analysis',  col:'#6c7bff', bg:'rgba(108,123,255,0.13)' },
-    { name:'Tracker',            cat:'Analysis',  col:'#6c7bff', bg:'rgba(108,123,255,0.13)' },
-    { name:'DisplaceDistort',    cat:'Distort',   col:'#a855f7', bg:'rgba(168,85,247,0.13)'  },
-    { name:'LensDistort',        cat:'Distort',   col:'#a855f7', bg:'rgba(168,85,247,0.13)'  },
-    { name:'TimeSpeed',          cat:'Time',      col:'#f59e0b', bg:'rgba(245,158,11,0.13)'  },
-    { name:'ColorCorrector',     cat:'Color',     col:'#eab308', bg:'rgba(234,179,8,0.13)'   },
-    { name:'BrightnessContrast', cat:'Color',     col:'#eab308', bg:'rgba(234,179,8,0.13)'   },
-    { name:'Blur',               cat:'Filter',    col:'#ef4444', bg:'rgba(239,68,68,0.13)'   },
-    { name:'Glow',               cat:'Filter',    col:'#ef4444', bg:'rgba(239,68,68,0.13)'   },
-    { name:'Merge',              cat:'Composite', col:'#94a3b8', bg:'rgba(148,163,184,0.13)' },
-    { name:'AlphaMatte',         cat:'Composite', col:'#94a3b8', bg:'rgba(148,163,184,0.13)' },
-    { name:'Transform',          cat:'Transform', col:'#22d3ee', bg:'rgba(34,211,238,0.13)'  },
-    { name:'PolyMask',           cat:'Mask',      col:'#fb923c', bg:'rgba(251,146,60,0.13)'  },
-    { name:'FastNoise',          cat:'Generator', col:'#c084fc', bg:'rgba(192,132,252,0.13)' },
-    { name:'Text+',              cat:'Text',      col:'#f472b6', bg:'rgba(244,114,182,0.13)' },
-    { name:'MediaOut',           cat:'Output',    col:'#4ade80', bg:'rgba(74,222,128,0.13)'  },
+    { name:'Tracker',            cat:'Tracking',  col:'#68E088', bg:'rgba(104,224,136,0.13)' },
+    { name:'DisplaceDistort',    cat:'Warp',      col:'#E068C0', bg:'rgba(224,104,192,0.13)' },
+    { name:'LensDistort',        cat:'Warp',      col:'#E068C0', bg:'rgba(224,104,192,0.13)' },
+    { name:'TimeSpeed',          cat:'Time',      col:'#F0A868', bg:'rgba(240,168,104,0.13)' },
+    { name:'ColorCorrector',     cat:'Color',     col:'#F0A040', bg:'rgba(240,160,64,0.13)'  },
+    { name:'BrightnessContrast', cat:'Color',     col:'#F0A040', bg:'rgba(240,160,64,0.13)'  },
+    { name:'Blur',               cat:'Blur',      col:'#60A0FF', bg:'rgba(96,160,255,0.13)'  },
+    { name:'Glow',               cat:'Filter',    col:'#6080FF', bg:'rgba(96,128,255,0.13)'  },
+    { name:'Merge',              cat:'Composite', col:'#C0E060', bg:'rgba(192,224,96,0.13)'  },
+    { name:'AlphaMatte',         cat:'Matte',     col:'#A868E0', bg:'rgba(168,104,224,0.13)' },
+    { name:'Transform',          cat:'Transform', col:'#60C8FF', bg:'rgba(96,200,255,0.13)'  },
+    { name:'PolyMask',           cat:'Mask',      col:'#9060FF', bg:'rgba(144,96,255,0.13)'  },
+    { name:'FastNoise',          cat:'Generator', col:'#60E060', bg:'rgba(96,224,96,0.13)'   },
+    { name:'Text+',              cat:'Generator', col:'#60E060', bg:'rgba(96,224,96,0.13)'   },
+    { name:'MediaOut',           cat:'I/O',       col:'#808898', bg:'rgba(128,136,152,0.13)' },
   ];
   function getNT (name) {
     var lo = name.toLowerCase();
@@ -944,7 +945,7 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
       var pull=Math.max(55,Math.abs(x2-x1)*0.42);
       var path=document.createElementNS('http://www.w3.org/2000/svg','path');
       path.setAttribute('d','M'+x1+' '+y1+' C'+(x1+pull)+' '+y1+' '+(x2-pull)+' '+y2+' '+x2+' '+y2);
-      path.setAttribute('fill','none'); path.setAttribute('stroke','rgba(108,123,255,0.38)');
+      path.setAttribute('fill','none'); path.setAttribute('stroke','rgba(255,255,255,0.28)');
       path.setAttribute('stroke-width','1.5'); path.setAttribute('stroke-linecap','round');
       _emSvgEl.appendChild(path);
     });
@@ -977,10 +978,10 @@ body.in-iframe .sheet{border:none;border-radius:20px 20px 0 0;box-shadow:none;he
         badge.textContent=hasAnim?'\u25c6':'\u2b21'; card.appendChild(badge);
       }
 
-      var pi=document.createElement('div'); pi.className='gn-port gn-port-in';
-      pi.style.top=(NH/2-4.5)+'px'; pi.style.borderColor=col; card.appendChild(pi);
-      var po=document.createElement('div'); po.className='gn-port gn-port-out';
-      po.style.top=(NH/2-4.5)+'px'; po.style.borderColor=col; card.appendChild(po);
+      var pi=document.createElement('span'); pi.className='gn-port gn-port-in';
+      pi.textContent='▶'; pi.style.color=col; card.appendChild(pi);
+      var po=document.createElement('span'); po.className='gn-port gn-port-out';
+      po.textContent='■'; po.style.color='#888888'; card.appendChild(po);
 
       if (hasParams) {
         (function(node, el){

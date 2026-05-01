@@ -890,7 +890,7 @@
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', d);
       path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', 'rgba(108,123,255,0.38)');
+      path.setAttribute('stroke', 'rgba(255,255,255,0.30)');
       path.setAttribute('stroke-width', '1.5');
       path.setAttribute('stroke-linecap', 'round');
       svgEl.appendChild(path);
@@ -1651,7 +1651,7 @@
   function fiLbl(k){if(FI_LBLS[k])return FI_LBLS[k];return k.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g,'$1 $2').trim();}
 
   // ── Nodegraph-exact colour table for tool categories ─────────────────────
-  var FI_CAT_COLORS={Source:{primary:'#0fa888',bg:'rgba(15,168,136,0.13)'},Output:{primary:'#4ade80',bg:'rgba(74,222,128,0.13)'},Color:{primary:'#eab308',bg:'rgba(234,179,8,0.13)'},Blur:{primary:'#ef4444',bg:'rgba(239,68,68,0.13)'},Composite:{primary:'#94a3b8',bg:'rgba(148,163,184,0.13)'},Transform:{primary:'#22d3ee',bg:'rgba(34,211,238,0.13)'},Effect:{primary:'#a855f7',bg:'rgba(168,85,247,0.13)'},Mask:{primary:'#fb923c',bg:'rgba(251,146,60,0.13)'},Generator:{primary:'#22d3ee',bg:'rgba(34,211,238,0.13)'},Utility:{primary:'#6c7bff',bg:'rgba(108,123,255,0.13)'}};
+  var FI_CAT_COLORS={Source:{primary:'#F0C040',bg:'rgba(240,192,64,0.13)'},Output:{primary:'#60D040',bg:'rgba(96,208,64,0.13)'},Color:{primary:'#F0A040',bg:'rgba(240,160,64,0.13)'},Blur:{primary:'#60A0FF',bg:'rgba(96,160,255,0.13)'},Composite:{primary:'#C0E060',bg:'rgba(192,224,96,0.13)'},Transform:{primary:'#60C8FF',bg:'rgba(96,200,255,0.13)'},Effect:{primary:'#C0E060',bg:'rgba(192,224,96,0.13)'},Mask:{primary:'#9060FF',bg:'rgba(144,96,255,0.13)'},Matte:{primary:'#A868E0',bg:'rgba(168,104,224,0.13)'},Generator:{primary:'#60E060',bg:'rgba(96,224,96,0.13)'},Warp:{primary:'#E068C0',bg:'rgba(224,104,192,0.13)'},Filter:{primary:'#6080FF',bg:'rgba(96,128,255,0.13)'},'3D':{primary:'#80FFFF',bg:'rgba(128,255,255,0.13)'},Particles:{primary:'#F0C040',bg:'rgba(240,192,64,0.13)'},Tracking:{primary:'#68E088',bg:'rgba(104,224,136,0.13)'},Utility:{primary:'#909090',bg:'rgba(144,144,144,0.13)'}};
   function fiCatColor(cat){return FI_CAT_COLORS[cat]||{primary:'#6c7bff',bg:'rgba(108,123,255,0.13)'};}
 
   /* ══════════════════════════════════════════════════════════════════════════
@@ -2329,20 +2329,23 @@
       // Input port indicator (left side) - count based on incoming edges
       var inputCount = edges.filter(function(e) { return e.to === n.id; }).length;
       if (inputCount === 0 && n.category !== 'Source' && n.category !== 'Output') {
-        inputCount = 1; // Default to 1 input for most nodes
+        inputCount = 1;
       }
       for (var pi = 0; pi < inputCount; pi++) {
-        var inPort = document.createElement('div');
+        var inPort = document.createElement('span');
         var portY = inputCount === 1 ? NH / 2 : (NH / (inputCount + 1)) * (pi + 1);
-        inPort.style.cssText = 'position:absolute;width:9px;height:9px;border-radius:50%;border:1.5px solid ' + (n.catColor || '#6c7bff') + ';background:#06060d;left:-5px;top:' + (portY - 4.5) + 'px;';
+        var portCol = n.catColor || '#F0C040';
+        inPort.textContent = '▶';
+        inPort.style.cssText = 'position:absolute;font-size:9px;line-height:1;color:' + portCol + ';left:-9px;top:' + (portY - 5) + 'px;';
         card.appendChild(inPort);
       }
-      
-      // Output port indicator (right side)
+
+      // Output port indicator — grey square (right side)
       var outputCount = edges.filter(function(e) { return e.from === n.id; }).length;
       if (outputCount > 0 || n.category === 'Source' || n.category !== 'Output') {
-        var outPort = document.createElement('div');
-        outPort.style.cssText = 'position:absolute;width:9px;height:9px;border-radius:50%;border:1.5px solid ' + (n.catColor || '#6c7bff') + ';background:#06060d;right:-5px;top:' + (NH / 2 - 4.5) + 'px;';
+        var outPort = document.createElement('span');
+        outPort.textContent = '■';
+        outPort.style.cssText = 'position:absolute;font-size:8px;line-height:1;color:#888888;right:-8px;top:' + (NH / 2 - 5) + 'px;';
         card.appendChild(outPort);
       }
       

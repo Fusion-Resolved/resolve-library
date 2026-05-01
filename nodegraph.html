@@ -552,27 +552,35 @@ try{var ui=JSON.parse(localStorage.getItem('rl-ui')||'{}');
   .nd-port-wrap:hover::after { opacity: 1; }
 
   /* Port shapes */
-  .ps-tri { font-size: 11px; line-height: 1; color: #a0a0a0; pointer-events: none;
+  /* ── Fusion-accurate port colours ── */
+  /* Input triangles: point INTO the node body */
+  /* Left ports: ▶ (rotate ▲ by +90°)  Top ports: ▼  Bottom ports: ▲ */
+  .ps-tri { font-size: 11px; line-height: 1; color: #F0C040; pointer-events: none;
     transition: filter 0.12s, color 0.12s; opacity: 0.85; user-select: none; -webkit-user-select: none; }
-  .ps-tri::before { content: "▲"; display: block; transform: rotate(-90deg); }
-  .nd-port-wrap.port-fg .ps-tri { color: #4fce80; }
-  .nd-port-wrap.port-bg .ps-tri { color: #f0d060; }
-  .ps-sq { font-size: 11px; line-height: 1; color: var(--node-teal); pointer-events: none;
+  .ps-tri::before { content: "▶"; display: block; }
+  /* port-top triangle points DOWN (into the top of the node) */
+  .nd-port-wrap.port-top .ps-tri::before { content: "▼"; }
+  /* Foreground (secondary image) ports: lime green */
+  .nd-port-wrap.port-fg .ps-tri { color: #60D040; }
+  /* Background (primary image) ports: golden yellow */
+  .nd-port-wrap.port-bg .ps-tri { color: #F0C040; }
+  .ps-sq { font-size: 9px; line-height: 1; color: #888888; pointer-events: none;
     transition: filter 0.12s, color 0.12s; user-select: none; -webkit-user-select: none; }
   .ps-sq::before { content: "■"; display: block; }
-  .ps-dia { width: 9px; height: 9px; background: var(--bg); border: 1.5px solid var(--violet-light);
+  .ps-dia { width: 9px; height: 9px; background: var(--bg); border: 1.5px solid rgba(255,255,255,0.35);
     transform: rotate(45deg); pointer-events: none; flex-shrink: 0; transition: filter 0.12s; }
   .nd-port-wrap:hover .ps-tri { filter: drop-shadow(0 0 4px currentColor); opacity: 1; }
-  .nd-port-wrap:hover .ps-sq  { filter: drop-shadow(0 0 4px var(--node-teal)); }
-  .nd-port-wrap:hover .ps-dia { filter: brightness(1.8) drop-shadow(0 0 5px var(--violet-light)); background: rgba(108,123,255,0.18); }
+  .nd-port-wrap:hover .ps-sq  { filter: drop-shadow(0 0 4px #aaaaaa); color: #cccccc; }
+  .nd-port-wrap:hover .ps-dia { filter: brightness(1.8) drop-shadow(0 0 5px rgba(255,255,255,0.5)); background: rgba(255,255,255,0.12); }
   .nd-port-wrap.conn .ps-tri  { opacity: 0.4; }
-  .nd-port-wrap.conn .ps-sq   { color: var(--node-teal); }
-  .nd-port-wrap.conn .ps-dia  { background: rgba(108,123,255,0.3); border-color: var(--violet-light); }
+  .nd-port-wrap.conn .ps-sq   { color: #aaaaaa; }
+  .nd-port-wrap.conn .ps-dia  { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.5); }
   .nd-port-wrap.port-left.conn { position: relative; }
   .nd-port-wrap.port-top.conn .ps-dia { opacity: 0.4; }
-  .nd-port-wrap.hi .ps-tri { filter: brightness(2) drop-shadow(0 0 5px var(--violet)); color: var(--violet); opacity: 1; }
-  .nd-port-wrap.hi .ps-sq  { filter: brightness(2) drop-shadow(0 0 5px var(--violet)); color: var(--violet); }
-  .nd-port-wrap.hi .ps-dia { filter: brightness(2) drop-shadow(0 0 5px var(--violet)); border-color: var(--violet); background: rgba(108,123,255,0.2); }
+  /* Wire-highlighted ports: when parent node is selected, show port color brightly */
+  .nd-port-wrap.hi .ps-tri { filter: brightness(1.6) drop-shadow(0 0 6px currentColor); opacity: 1; }
+  .nd-port-wrap.hi .ps-sq  { filter: brightness(1.6) drop-shadow(0 0 6px #cccccc); color: #eeeeee; }
+  .nd-port-wrap.hi .ps-dia { filter: brightness(1.8) drop-shadow(0 0 6px rgba(255,255,255,0.6)); border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.2); }
   /* Category accent stripe — 3px top border */
   .ng-node[data-cat-stripe] > .nd-header { border-top-width: 3px; border-top-style: solid; border-top-color: inherit; }
 
@@ -1745,13 +1753,137 @@ const _UN = FUSION_NODES_UNIQUE; // alias used by search dropdown
 // Falls back to {} if not loaded, ensuring no breakage.
 // (nodes-data.js is loaded via <script src="nodes-data.js"> in the page head — see below)
 /* ── Category colour system ── */
+/* ── Fusion-accurate port colour map (from DaVinci Resolve UI) ── */
+const FUSION_PORT_COLORS = {
+  'Image':       '#F0C040',  // golden yellow  — primary image / background
+  'Image_FG':    '#60D040',  // lime green     — foreground / secondary image
+  'DataType3D':  '#40A0E0',  // medium blue    — 3D scene
+  'MtlGraph3D':  '#E060B0',  // pink/magenta   — 3D material
+  'Mask':        '#40C0D8',  // cyan           — effect mask
+  'Number':      '#0090D0',  // blue           — number / value
+  'Text':        '#E8E050',  // yellow         — text
+  'Gradient':    '#E050E8',  // magenta        — gradient
+  'Point':       '#40D880',  // green          — point
+  'ShapeTree':   '#60D040',  // green          — shape tree
+  'BSplinePolyline': '#A0A0A0',
+  'Polyline':    '#A0A0A0',
+  'FuID':        '#A0A0A0',
+  'Audio':       '#A0A0A0',
+  'LookUpTable': '#A0A0A0',
+  'Particles':   '#A0A0A0',
+  'ScriptVal':   '#A0A0A0',
+  'USD':         '#C0A060',  // warm tan       — USD
+  'Mesh':        '#E04040',  // red            — mesh
+  'default':     '#888888',  // grey
+};
+
+/* Map wire_colour.label → port colour, with FG/BG name logic */
+function fusionPortColor(wireLabel, portName) {
+  if (!wireLabel) return FUSION_PORT_COLORS['default'];
+  if (wireLabel === 'Image') {
+    const lower = (portName || '').toLowerCase();
+    if (lower.includes('foreground') || lower === 'fg' || lower.includes('front') || lower === 'overlay' || lower.includes('fg'))
+      return FUSION_PORT_COLORS['Image_FG'];
+    return FUSION_PORT_COLORS['Image'];
+  }
+  return FUSION_PORT_COLORS[wireLabel] || FUSION_PORT_COLORS['default'];
+}
+
+/* ── Category colour system ── */
 const DEFAULT_CAT_COLORS = {
-  '3D':'#60b8f0','3D Light':'#f0e060','3D Material':'#c8a868','3D Texture':'#a868f0',
-  'Blur':'#60d8f0','Color':'#f0a060','Composite':'#c8f060','Creator':'#f060a0',
-  'Custom':'#909090','Effect':'#b0f060','Filter':'#60f0b0','Flow':'#f09060',
-  'I/O':'#808898','Keyer':'#40e060','Macro':'#9570f0','Mask':'#f06060','Matte':'#f08868',
-  'Merge':'#c8f060','Misc':'#888888','Particle':'#f0c040','Stereo':'#80c8f0',
-  'Tracking':'#68f088','Transform':'#a8c8f8','Warp':'#d068f0',
+  /* Core 3D */
+  '3D':                      '#80FFFF',
+  '3D\\Light':               '#FFE060',
+  '3D\\Material':            '#FF8080',
+  '3D\\Texture':             '#C080FF',
+  'USD':                     '#C0A060',
+  'USD\\Light':              '#FFE060',
+  'USD\\Material':           '#FF8080',
+  'CoordTransform 3D':       '#80D0FF',
+  /* Blur / Filter */
+  'Blur':                    '#60A0FF',
+  'Filter':                  '#6080FF',
+  /* Color */
+  'Color':                   '#F0A040',
+  'Color\\ColorFX':          '#F08030',
+  'Color\\Revival':          '#F07060',
+  /* Composite / Mask / Matte */
+  'Composite':               '#C0E060',
+  'Layer':                   '#A0C840',
+  'Mask':                    '#9060FF',
+  'Matte':                   '#A868E0',
+  'Deep Image':              '#7060C0',
+  'Deep Pixel':              '#7060C0',
+  /* Transform / Warp */
+  'Transform':               '#60C8FF',
+  'Warp':                    '#E068C0',
+  'VR':                      '#60E0D0',
+  'Stereo':                  '#80C8FF',
+  'Optical Flow':            '#40D0C0',
+  /* Generator / Creator */
+  'Generator':               '#60E060',
+  'Gradient Color':          '#80E068',
+  'Effect':                  '#A8E040',
+  /* Particles */
+  'Particles':               '#F0C040',
+  /* I/O */
+  'I/O':                     '#808898',
+  'Metadata':                '#708088',
+  /* Tracking */
+  'Tracking':                '#68E088',
+  'Track':                   '#68E088',
+  /* Time */
+  'Time':                    '#F0A868',
+  'Anim Curves':             '#F09858',
+  'Keyframe Stretcher':      '#F09858',
+  /* Shapes / Paths */
+  'Shape':                   '#C8E040',
+  'Path':                    '#B8D840',
+  'B-Spline':                '#A8C840',
+  'BSpline Path':            '#A8C840',
+  'Cubic Spline':            '#A8C840',
+  'Natural Cubic Spline':    '#A8C840',
+  'Custom Poly':             '#A8C840',
+  'XY Path':                 '#A8C840',
+  'Offset':                  '#B0D060',
+  'Position':                '#B0D060',
+  'Perturb':                 '#C0D080',
+  'Shake':                   '#D0C080',
+  'Vector':                  '#C0D8A0',
+  /* Calculations / Misc */
+  'Calculation':             '#8090A8',
+  'Miscellaneous':           '#888888',
+  'Uncategorized':           '#707070',
+  'Probe':                   '#80A0C0',
+  'Publish':                 '#80A0C0',
+  'Resolve Parameter':       '#A090C0',
+  'Switch':                  '#90A0C0',
+  'Follower':                '#90C0A0',
+  'Sound':                   '#A0C8B0',
+  'MIDI Extractor':          '#A0C8B0',
+  'From Image':              '#C0A060',
+  'Film':                    '#907060',
+  /* Resolve FX */
+  'Resolve FX Blur':         '#5090F0',
+  'Resolve FX Color':        '#F09030',
+  'Resolve FX Film Emulation':'#A08070',
+  'Resolve FX Generate':     '#50D050',
+  'Resolve FX Key':          '#E050A0',
+  'Resolve FX Light':        '#F0D040',
+  'Resolve FX Refine':       '#70B0E0',
+  'Resolve FX Revival':      '#F07060',
+  'Resolve FX Sharpen':      '#90C0F0',
+  'Resolve FX Stylize':      '#C060F0',
+  'Resolve FX Temporal':     '#F0A068',
+  'Resolve FX Texture':      '#A870F0',
+  'Resolve FX Transform':    '#60C0FF',
+  'Resolve FX Warp':         '#D060C0',
+  /* LUT */
+  'LUT':                     '#80A090',
+  /* Character / Styling */
+  'Character Level Styling': '#F080C0',
+  /* Custom / fallback */
+  'Custom':                  '#909090',
 };
 function getCatColor(cat) {
   try {
@@ -2250,28 +2382,41 @@ function _addNode(name,cat,screenX,screenY){
   const detail = _ND[name] || null;
   let nodeInputs  = ['SceneInput'];
   let nodeOutputs = ['Output'];
-  let portColours = {'SceneInput':'#f07828','Input':'#f07828'};
+  let portColours = {'SceneInput':'#40A0E0','Input':'#F0C040'};
 
   // Special: Merge3D uses dynamic multi-input — start with just one orange port
   const isMerge3D = (name === 'Merge3D' || name === 'Merge3');
   if (isMerge3D) {
     nodeInputs  = ['SceneInput[1]'];
     nodeOutputs = ['Output'];
-    portColours = {'SceneInput[1]':'#f07828'};
+    portColours = {'SceneInput[1]':'#40A0E0'};
   } else if (detail) {
     if (detail.inputs && detail.inputs.length) {
       nodeInputs = detail.inputs.map(function(inp){ return inp.name; });
       detail.inputs.forEach(function(inp){
-        portColours[inp.name] = inp.colourHex || '#888888';
+        // Use the Fusion port color mapping (screenshot-accurate)
+        portColours[inp.name] = fusionPortColor(
+          _getWireLabelFromHex(inp.colourHex),
+          inp.name
+        ) || inp.colourHex || '#888888';
       });
     }
     if (detail.outputs && detail.outputs.length) {
       nodeOutputs = detail.outputs.map(function(o){ return (typeof o==='string')?o:o.name; });
     }
+  } else if (_registryByName && _registryByName[name]) {
+    // Use registry data directly for any node found there
+    const reg = _registryByName[name];
+    const extInputs = reg.inputs.filter(function(i){ return i.is_external; });
+    nodeInputs = extInputs.map(function(i){ return i.name; });
+    extInputs.forEach(function(i){
+      portColours[i.name] = fusionPortColor(i.wire_colour.label, i.name);
+    });
+    nodeOutputs = reg.outputs.map(function(o){ return o.name; });
   } else {
-    // No NODE_DETAIL — use category-based defaults
+    // No detail — use category-based defaults
     nodeInputs  = ['SceneInput'];
-    portColours = {'SceneInput':'#f07828'};
+    portColours = {'SceneInput':'#F0C040'};
   }
 
   // topInputPorts: ports that go on TOP (diamond) rather than LEFT (triangle)
@@ -2399,30 +2544,25 @@ function renderNode(node){
     const dynAttr  = isDynamic ? ' data-dynamic="1"' : '';
 
     if (isMask) {
+      // Bottom/mask port — upward triangle (▲) pointing INTO the node from below
+      const maskColor = hex || '#40C0D8';
       topH+=`<div class="nd-port-wrap port-top" data-node="${node.id}" data-port="${i}" data-side="in" data-face="top" data-lbl="${lbl||''}"${dynAttr} onmousedown="portMD(event,this)">
         <span class="nd-port-lbl">${lbl||''}</span>
-        <div class="ps-dia" ${diaStyle}></div>
+        <span class="ps-tri" style="color:${maskColor};font-size:10px;line-height:1;">▲</span>
       </div>`;
     } else {
       leftH+=`<div class="nd-port-wrap port-left${portTypeClass}" data-node="${node.id}" data-port="${i}" data-side="in" data-lbl="${lbl||''}"${dynAttr} onmousedown="portMD(event,this)">
-        <div class="ps-tri" ${triStyle}></div>
+        <span class="ps-tri" ${triStyle}>▶</span>
         <span class="nd-port-lbl">${lbl||''}</span>
       </div>`;
     }
   });
 
-  // Build right (output) ports — solid square ■ shape, sends connections
+  // Build right (output) ports — grey square ■, always grey (wire carries the color)
   let rightH = '';
-  (node.outputs||[]).forEach((lbl,i)=>{
-    // Resolve colour from visual_ports (normalised) if available
-    let outHex = null;
-    if (visualPorts && visualPorts.outputs) {
-      const vpOut = visualPorts.outputs.find(function(p){ return (typeof p === 'string' ? p : p.name) === lbl; });
-      if (vpOut && typeof vpOut === 'object' && vpOut.color) outHex = _resolvePortColor(vpOut.color);
-    }
-    const sqStyle = outHex ? `style="color:${outHex}"` : '';
+  (node.outputs||[]).forEach((lbl,i)=>{\
     rightH+=`<div class="nd-port-wrap port-right" data-node="${node.id}" data-port="${i}" data-side="out" data-lbl="${lbl||''}" onmousedown="portMD(event,this)">
-      <div class="ps-sq" ${sqStyle}></div>
+      <span class="ps-sq" style="color:#888888;font-size:9px;">■</span>
       <span class="nd-port-lbl">${lbl||''}</span>
     </div>`;
   });
@@ -2518,6 +2658,7 @@ function startRename(node, nameEl) {
 function selectNode(id){
   document.querySelectorAll('.ng-node').forEach(n=>n.classList.remove('selected'));
   selNode=id;
+  renderAllConns(); // Re-render wires: highlight to port color when node selected
   if(id){
     document.getElementById('nd-'+id)?.classList.add('selected');
     const node=nodes.find(n=>n.id===id);
@@ -2583,10 +2724,8 @@ function getPS(nodeId,pIdx,side){
     const y=r.bottom-wr.top;
     return{x,y};
   }
-  // Input (left) ports: anchor at the tip of the triangle.
-  // The .ps-tri element is the first child of a port-left wrap; after rotate(-90deg)
-  // the visual tip is at the leftmost edge of the ps-tri bounding box.
-  // Output (right) ports: anchor at the outer edge of the square (right of ps-sq).
+  // Input (left) ports: anchor at the tip of the ▶ triangle (leftmost edge).
+  // Output (right) ports: anchor at the right edge of the ■ square.
   let x;
   if(side==='in'){
     const tri=el.querySelector('.ps-tri');
@@ -2710,12 +2849,31 @@ function renderAllConns(){
     const dx=Math.abs(to.x-from.x)*0.45;
     const d=`M${from.x},${from.y} C${from.x+dx},${from.y} ${to.x-dx},${to.y} ${to.x},${to.y}`;
     const isSel=selConn===c.id;
+    // Determine wire color: if the destination node is the selected node,
+    // color the wire to match the input port color (Fusion behavior).
+    let wireColor = '#ffffff';
+    let wireOpacity = isSel ? '0.85' : '0.28';
+    let wireWidth = isSel ? '2.2' : '1.5';
+    if (selNode && c.toNode === selNode) {
+      const tn = nodes.find(n => n.id === selNode);
+      if (tn) {
+        const portName = (tn.inputs || [])[c.toPort] || '';
+        const portHex  = (tn.portColours || {})[portName] || null;
+        if (portHex) {
+          wireColor   = portHex;
+          wireOpacity = '0.90';
+          wireWidth   = '1.8';
+        }
+      }
+    }
     const path=document.createElementNS('http://www.w3.org/2000/svg','path');
     path.setAttribute('d',d);path.setAttribute('fill','none');
-    path.setAttribute('stroke','#6c7bff'); /* Noding --violet */
-    path.setAttribute('stroke-width',isSel?'2.2':'1.4');
-    path.setAttribute('stroke-opacity',isSel?'0.9':'0.22');
-    if(isSel)path.setAttribute('filter','drop-shadow(0 0 6px rgba(108,123,255,0.75))');
+    path.setAttribute('stroke', wireColor);
+    path.setAttribute('stroke-width', wireWidth);
+    path.setAttribute('stroke-opacity', wireOpacity);
+    if(isSel)path.setAttribute('filter',`drop-shadow(0 0 6px ${wireColor})`);
+    else if(selNode && c.toNode === selNode && wireColor !== '#ffffff')
+      path.setAttribute('filter',`drop-shadow(0 0 5px ${wireColor}88)`);
     path.classList.add('conn');path.dataset.id=c.id;path.style.cursor='pointer';path.style.pointerEvents='stroke';
     path.addEventListener('click',ev=>{ev.stopPropagation();selConnFn(c.id);});
     svg.appendChild(path);
@@ -2974,7 +3132,67 @@ function nadKey(e){
 }
 
 /* CATEGORY FILTER */
-const ALL_CATS = ['3D','3D Light','3D Material','3D Texture','Blur','Color','Composite','Creator','Custom','Effect','Filter','Flow','I/O','Keyer','Mask','Matte','Merge','Misc','Particle','Stereo','Tracking','Transform','Warp'];
+/* ── Fusion Registry: loaded async, powers 420-node search ── */
+let _registryByName = null;   // reg_id → tool object
+let _registryByDisplay = null; // display name → tool object
+
+/* Helper: map a wire_colour.hex back to its label (for legacy NODE_DETAIL data) */
+const _HEX_TO_LABEL = {
+  '#FF8000': 'Image',    '#ff8000': 'Image',
+  '#80FFFF': 'DataType3D','#80ffff': 'DataType3D',
+  '#FF8080': 'MtlGraph3D','#ff8080': 'MtlGraph3D',
+  '#8040FF': 'Mask',     '#8040ff': 'Mask',
+  '#00A0FF': 'Number',   '#00a0ff': 'Number',
+  '#FFFF00': 'Text',     '#ffff00': 'Text',
+  '#FF40FF': 'Gradient', '#ff40ff': 'Gradient',
+  '#00FF80': 'Point',    '#00ff80': 'Point',
+  '#FF4040': 'Mesh',     '#ff4040': 'Mesh',
+  '#AAAAAA': 'default',  '#aaaaaa': 'default',
+};
+function _getWireLabelFromHex(hex) {
+  if (!hex) return 'default';
+  return _HEX_TO_LABEL[hex] || _HEX_TO_LABEL[hex.toLowerCase()] || 'default';
+}
+
+async function _loadFusionRegistry() {
+  try {
+    const resp = await fetch('fusion_registry.json');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const tools = data.tools || [];
+
+    _registryByName    = {};
+    _registryByDisplay = {};
+
+    // Build lookup maps
+    tools.forEach(function(t) {
+      _registryByName[t.reg_id] = t;
+      _registryByName[t.name]   = t;
+      _registryByDisplay[t.name] = t;
+    });
+
+    // Extend _UN (FUSION_NODES_UNIQUE) with all registry nodes not already present
+    const existingNames = new Set(_UN.map(function(n){ return n.n.toLowerCase(); }));
+    tools.forEach(function(t) {
+      if (!existingNames.has(t.name.toLowerCase()) && !existingNames.has(t.reg_id.toLowerCase())) {
+        // Use the raw category from the registry (e.g. "3D", "Blur", "Color")
+        _UN.push({ n: t.name, c: t.category, regId: t.reg_id });
+      }
+    });
+
+    // Rebuild ALL_CATS from actual registry categories (deduplicated, sorted)
+    const catSet = new Set(_UN.map(function(n){ return n.c; }));
+    ALL_CATS.length = 0;
+    Array.from(catSet).sort().forEach(function(c){ ALL_CATS.push(c); });
+    buildCatChips();
+
+    console.log('[Fusion Registry] Loaded ' + tools.length + ' tools. Search list now has ' + _UN.length + ' entries.');
+  } catch(e) {
+    console.warn('[Fusion Registry] Could not load fusion_registry.json:', e);
+  }
+}
+
+const ALL_CATS = ['3D','Blur','Color','Composite','Generator','I/O','Mask','Matte','Particles','Transform','Warp','Custom'];
 let activeCats = new Set(); // empty = show all
 
 function buildCatChips() {
@@ -4914,6 +5132,7 @@ function copyGraphToFusion(mode) {
 
 /* INIT */
 buildSavedList();applyVP();buildCatChips();
+_loadFusionRegistry(); // async: extends search with all 420 Fusion nodes
 
 // Auto-parse when Fusion data is pasted into the params textarea
 (function setupParamsAutoParse() {

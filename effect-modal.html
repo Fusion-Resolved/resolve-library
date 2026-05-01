@@ -589,21 +589,25 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
      ════════════════════════════════ */
   // Pipeline node colour mapping (always dark, graph is always dark)
   var PIPELINE_COLORS = {
-    'source':    { border:'rgba(15,168,136,0.45)',  bg:'rgba(15,168,136,0.10)',  text:'#0fa888' },
-    'output':    { border:'rgba(74,222,128,0.45)',  bg:'rgba(74,222,128,0.10)',  text:'#4ade80' },
-    'color':     { border:'rgba(234,179,8,0.45)',   bg:'rgba(234,179,8,0.10)',   text:'#eab308' },
-    'blur':      { border:'rgba(239,68,68,0.45)',   bg:'rgba(239,68,68,0.10)',   text:'#ef4444' },
-    'composite': { border:'rgba(148,163,184,0.40)', bg:'rgba(148,163,184,0.08)', text:'#94a3b8' },
-    'transform': { border:'rgba(34,211,238,0.45)',  bg:'rgba(34,211,238,0.10)',  text:'#22d3ee' },
-    'distort':   { border:'rgba(168,85,247,0.45)',  bg:'rgba(168,85,247,0.10)',  text:'#a855f7' },
-    'mask':      { border:'rgba(251,146,60,0.45)',  bg:'rgba(251,146,60,0.10)',  text:'#fb923c' },
-    'keyer':     { border:'rgba(236,72,153,0.45)',  bg:'rgba(236,72,153,0.10)',  text:'#ec4899' },
-    'tracker':   { border:'rgba(245,158,11,0.45)',  bg:'rgba(245,158,11,0.10)',  text:'#f59e0b' },
-    '3d':        { border:'rgba(15,168,136,0.45)',  bg:'rgba(15,168,136,0.10)',  text:'#0fa888' },
-    'time':      { border:'rgba(245,158,11,0.45)',  bg:'rgba(245,158,11,0.10)',  text:'#f59e0b' },
+    'source':    { border:'rgba(240,192,64,0.55)',  bg:'rgba(240,192,64,0.10)',  text:'#F0C040' },
+    'output':    { border:'rgba(64,192,64,0.55)',   bg:'rgba(64,192,64,0.10)',   text:'#60D040' },
+    'color':     { border:'rgba(240,160,64,0.55)',  bg:'rgba(240,160,64,0.10)',  text:'#F0A040' },
+    'blur':      { border:'rgba(96,160,255,0.55)',  bg:'rgba(96,160,255,0.10)',  text:'#60A0FF' },
+    'composite': { border:'rgba(192,224,96,0.45)',  bg:'rgba(192,224,96,0.08)',  text:'#C0E060' },
+    'transform': { border:'rgba(96,200,255,0.55)',  bg:'rgba(96,200,255,0.10)',  text:'#60C8FF' },
+    'distort':   { border:'rgba(224,104,192,0.55)', bg:'rgba(224,104,192,0.10)', text:'#E068C0' },
+    'mask':      { border:'rgba(144,96,255,0.55)',  bg:'rgba(144,96,255,0.10)',  text:'#9060FF' },
+    'keyer':     { border:'rgba(224,80,160,0.55)',  bg:'rgba(224,80,160,0.10)',  text:'#E050A0' },
+    'tracker':   { border:'rgba(104,224,136,0.55)', bg:'rgba(104,224,136,0.10)', text:'#68E088' },
+    '3d':        { border:'rgba(128,255,255,0.55)', bg:'rgba(128,255,255,0.10)', text:'#80FFFF' },
+    'time':      { border:'rgba(240,168,104,0.55)', bg:'rgba(240,168,104,0.10)', text:'#F0A868' },
     'analysis':  { border:'rgba(108,123,255,0.45)', bg:'rgba(108,123,255,0.10)', text:'#6c7bff' },
-    'particle':  { border:'rgba(168,85,247,0.45)',  bg:'rgba(168,85,247,0.10)',  text:'#a855f7' },
-    'custom':    { border:'rgba(108,123,255,0.30)', bg:'rgba(108,123,255,0.07)', text:'#9ca8ff' }
+    'particle':  { border:'rgba(240,192,64,0.55)',  bg:'rgba(240,192,64,0.10)',  text:'#F0C040' },
+    'generator': { border:'rgba(96,224,96,0.55)',   bg:'rgba(96,224,96,0.10)',   text:'#60E060' },
+    'filter':    { border:'rgba(96,128,255,0.55)',  bg:'rgba(96,128,255,0.10)',  text:'#6080FF' },
+    'warp':      { border:'rgba(224,104,192,0.55)', bg:'rgba(224,104,192,0.10)', text:'#E068C0' },
+    'resolve fx':{ border:'rgba(80,144,240,0.55)',  bg:'rgba(80,144,240,0.10)',  text:'#5090F0' },
+    'custom':    { border:'rgba(144,144,144,0.35)', bg:'rgba(144,144,144,0.07)', text:'#909090' }
   };
 
   function plColor(cat) {
@@ -901,16 +905,25 @@ body{background:var(--bg-page);color:var(--text-primary);font-family:var(--font-
      NODE TYPE COLOURS (always dark — graph is always dark)
      ════════════════════════════════ */
   var TC = {
-    'Source':    { border:'#0fa888', bg:'rgba(15,168,136,0.13)',  dot:'#0fa888' },
+    'Source':    { border:'#F0C040', bg:'rgba(240,192,64,0.13)',  dot:'#F0C040' },
     'Analysis':  { border:'#6c7bff', bg:'rgba(108,123,255,0.13)', dot:'#6c7bff' },
-    'Distort':   { border:'#a855f7', bg:'rgba(168,85,247,0.13)',  dot:'#a855f7' },
-    'Time':      { border:'#f59e0b', bg:'rgba(245,158,11,0.13)',  dot:'#f59e0b' },
-    'Color':     { border:'#eab308', bg:'rgba(234,179,8,0.13)',   dot:'#eab308' },
-    'Filter':    { border:'#ef4444', bg:'rgba(239,68,68,0.13)',   dot:'#ef4444' },
-    'Composite': { border:'#94a3b8', bg:'rgba(148,163,184,0.13)', dot:'#94a3b8' },
-    'Mask':      { border:'#fb923c', bg:'rgba(251,146,60,0.13)',  dot:'#fb923c' },
-    'Transform': { border:'#22d3ee', bg:'rgba(34,211,238,0.13)',  dot:'#22d3ee' },
-    'Output':    { border:'#4ade80', bg:'rgba(74,222,128,0.13)',  dot:'#4ade80' }
+    'Distort':   { border:'#E068C0', bg:'rgba(224,104,192,0.13)', dot:'#E068C0' },
+    'Time':      { border:'#F0A868', bg:'rgba(240,168,104,0.13)', dot:'#F0A868' },
+    'Color':     { border:'#F0A040', bg:'rgba(240,160,64,0.13)',  dot:'#F0A040' },
+    'Filter':    { border:'#6080FF', bg:'rgba(96,128,255,0.13)',  dot:'#6080FF' },
+    'Blur':      { border:'#60A0FF', bg:'rgba(96,160,255,0.13)',  dot:'#60A0FF' },
+    'Composite': { border:'#C0E060', bg:'rgba(192,224,96,0.13)',  dot:'#C0E060' },
+    'Mask':      { border:'#9060FF', bg:'rgba(144,96,255,0.13)',  dot:'#9060FF' },
+    'Matte':     { border:'#A868E0', bg:'rgba(168,104,224,0.13)', dot:'#A868E0' },
+    'Transform': { border:'#60C8FF', bg:'rgba(96,200,255,0.13)',  dot:'#60C8FF' },
+    'Generator': { border:'#60E060', bg:'rgba(96,224,96,0.13)',   dot:'#60E060' },
+    'Warp':      { border:'#E068C0', bg:'rgba(224,104,192,0.13)', dot:'#E068C0' },
+    '3D':        { border:'#80FFFF', bg:'rgba(128,255,255,0.13)', dot:'#80FFFF' },
+    'Particles': { border:'#F0C040', bg:'rgba(240,192,64,0.13)',  dot:'#F0C040' },
+    'Tracking':  { border:'#68E088', bg:'rgba(104,224,136,0.13)', dot:'#68E088' },
+    'Output':    { border:'#60D040', bg:'rgba(96,208,64,0.13)',   dot:'#60D040' },
+    'I/O':       { border:'#808898', bg:'rgba(128,136,152,0.13)', dot:'#808898' },
+    'Resolve FX':{ border:'#5090F0', bg:'rgba(80,144,240,0.13)',  dot:'#5090F0' },
   };
   function tc(type) { return TC[type] || TC['Composite']; }
 
