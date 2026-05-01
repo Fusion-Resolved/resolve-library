@@ -2406,13 +2406,23 @@ function _addNode(name,cat,screenX,screenY){
     }
   } else if (_registryByName && _registryByName[name]) {
     // Use registry data directly for any node found there
+    // CRITICAL: Only use inputs that are actual PIPELINE inputs (Image/Mask data types),
+    // not external parameters (Number/FuID data types with is_external=true)
     const reg = _registryByName[name];
-    const extInputs = reg.inputs.filter(function(i){ return i.is_external; });
-    nodeInputs = extInputs.map(function(i){ return i.name; });
-    extInputs.forEach(function(i){
+    const pipelineInputs = reg.inputs.filter(function(i){
+      // Pipeline inputs have Image/Mask data types
+      const isPipeline = i.data_type === 'Image' || 
+                         i.data_type === 'Mask' || 
+                         i.wire_colour?.label === 'Image' ||
+                         i.wire_colour?.label === 'Mask';
+      return isPipeline;
+    });
+    nodeInputs = pipelineInputs.map(function(i){ return i.name; });
+    pipelineInputs.forEach(function(i){
       portColours[i.name] = fusionPortColor(i.wire_colour.label, i.name);
     });
     nodeOutputs = reg.outputs.map(function(o){ return o.name; });
+    console.log('[NodeGraph] Using registry inputs for "' + name + '":', nodeInputs);
   } else {
     // No detail — use category-based defaults
     nodeInputs  = ['SceneInput'];
@@ -2467,6 +2477,20 @@ function _addNode(name,cat,screenX,screenY){
     console.warn('[NodeGraph] All inputs filtered for "' + name + '", keeping original defaults');
     // Keep original if filtering removed everything (safety net)
   }
+  
+  // ── DEDUPLICATION: Remove duplicate input names ──
+  const uniqueInputs = [];
+  const seenInputs = new Set();
+  for (const inp of nodeInputs) {
+    if (!seenInputs.has(inp)) {
+      seenInputs.add(inp);
+      uniqueInputs.push(inp);
+    } else {
+      console.warn('[NodeGraph] DUPLICATE REMOVED: "' + inp + '" for node "' + name + '"');
+    }
+  }
+  nodeInputs = uniqueInputs;
+  // ── END DEDUPLICATION ──
   
   // HARD LIMIT: Never show more than 8 inputs - this is a safety net against runaway inputs
   if (nodeInputs.length > 8) {
@@ -4197,8 +4221,15 @@ function importFromFusion(str) {
         }
 
         // Overwrite port label arrays (renderNode iterates these as plain strings).
-        if (vpIns.length)  newNode.inputs  = vpIns.map(function(pt) { return pt.name; });
-        if (vpOuts.length) newNode.outputs = vpOuts.map(function(pt) { return pt.name; });
+        // SAFETY: Only set if not already populated to prevent duplication
+        if (vpIns.length && (!newNode.inputs || newNode.inputs.length === 0)) {
+          newNode.inputs = vpIns.map(function(pt) { return pt.name; });
+        } else if (vpIns.length && newNode.inputs && newNode.inputs.length > 0) {
+          console.warn('[importFromFusion] Skipping input overwrite for "' + p.nodeType + '" - inputs already set:', newNode.inputs);
+        }
+        if (vpOuts.length && (!newNode.outputs || newNode.outputs.length === 0)) {
+          newNode.outputs = vpOuts.map(function(pt) { return pt.name; });
+        }
 
         // Bake resolved INPUT colours into portColours.
         // renderNode: `let hex = portColours[lbl] || null` — this is the first
