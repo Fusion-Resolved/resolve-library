@@ -2410,19 +2410,33 @@ function _addNode(name,cat,screenX,screenY){
     // not external parameters (Number/FuID data types with is_external=true)
     const reg = _registryByName[name];
     const pipelineInputs = reg.inputs.filter(function(i){
-      // Pipeline inputs have Image/Mask data types
-      const isPipeline = i.data_type === 'Image' || 
-                         i.data_type === 'Mask' || 
-                         i.wire_colour?.label === 'Image' ||
-                         i.wire_colour?.label === 'Mask';
+      // Pipeline inputs have Image/Mask data types OR Image/Mask wire colours
+      const isImageOrMask = i.data_type === 'Image' || i.data_type === 'Mask';
+      const wireLabel = i.wire_colour?.label;
+      const hasImageOrMaskColour = wireLabel === 'Image' || 
+                                   wireLabel === 'Mask' ||
+                                   wireLabel === 'Orange' ||  // Image colour
+                                   wireLabel === 'Blue';      // Mask colour
+      const isPipeline = isImageOrMask || hasImageOrMaskColour;
+      if (isPipeline) {
+        console.log('[NodeGraph] Found pipeline input "' + i.name + '" for "' + name + '" (type: ' + i.data_type + ', wire: ' + wireLabel + ')');
+      }
       return isPipeline;
     });
-    nodeInputs = pipelineInputs.map(function(i){ return i.name; });
+    nodeInputs = pipelineInputs.map(function(i){ return i.name || 'Input'; });
     pipelineInputs.forEach(function(i){
-      portColours[i.name] = fusionPortColor(i.wire_colour.label, i.name);
+      const wireColour = i.wire_colour;
+      if (wireColour) {
+        // Use hex directly from registry if available, otherwise fall back to fusionPortColor
+        const color = wireColour.hex || fusionPortColor(wireColour.label, i.name);
+        portColours[i.name || 'Input'] = color;
+        console.log('[NodeGraph] Set color for "' + i.name + '" to ' + color + ' (wire: ' + wireColour.label + ', hex: ' + wireColour.hex + ')');
+      }
     });
     nodeOutputs = reg.outputs.map(function(o){ return o.name; });
-    console.log('[NodeGraph] Using registry inputs for "' + name + '":', nodeInputs);
+    if (nodeInputs.length > 0) {
+      console.log('[NodeGraph] Final inputs for "' + name + '":', nodeInputs, 'colors:', portColours);
+    }
   } else {
     // No detail — use category-based defaults
     nodeInputs  = ['SceneInput'];
@@ -2516,6 +2530,24 @@ function renderNode(node){
   if (node.inputs && node.inputs.length > 10) {
     console.error('[renderNode] Node "' + node.name + '" has ' + node.inputs.length + ' inputs, truncating to 10');
     node.inputs = node.inputs.slice(0, 10);
+  }
+  
+  // FINAL DEDUPLICATION: Remove any duplicate inputs at render time
+  if (node.inputs && node.inputs.length > 0) {
+    const unique = [];
+    const seen = new Set();
+    for (const inp of node.inputs) {
+      if (!seen.has(inp)) {
+        seen.add(inp);
+        unique.push(inp);
+      } else {
+        console.warn('[renderNode] Removing duplicate input "' + inp + '" from node "' + node.name + '"');
+      }
+    }
+    if (unique.length !== node.inputs.length) {
+      console.log('[renderNode] Deduplicated inputs for "' + node.name + '": ' + node.inputs.length + ' -> ' + unique.length);
+      node.inputs = unique;
+    }
   }
   
   let el=document.getElementById('nd-'+node.id);
@@ -2618,6 +2650,12 @@ function renderNode(node){
     // Resolve colour: visual_ports (normalised) > portColours map > default
     let hex = portColours[lbl] || null;
     let isDynamic = false;
+    
+    // DEBUG: Log color resolution
+    if (!hex) {
+      console.log('[renderNode] No color in portColours for "' + lbl + '" on node "' + node.name + '", portColours keys:', Object.keys(portColours));
+    }
+    
     if (visualPorts && visualPorts.inputs) {
       const vpIn = visualPorts.inputs.find(function(p){ return p.name === lbl || p.name === lbl.replace(/\[\d+\]$/,''); });
       if (vpIn) {
@@ -4222,34 +4260,42 @@ function importFromFusion(str) {
 
         // Overwrite port label arrays (renderNode iterates these as plain strings).
         // SAFETY: Only set if not already populated to prevent duplication
-        if (vpIns.length && (!newNode.inputs || newNode.inputs.length === 0)) {
+        const inputsWereEmpty = !newNode.inputs || newNode.inputs.length === 0;
+        const outputsWereEmpty = !newNode.outputs || newNode.outputs.length === 0;
+        
+        if (vpIns.length && inputsWereEmpty) {
           newNode.inputs = vpIns.map(function(pt) { return pt.name; });
-        } else if (vpIns.length && newNode.inputs && newNode.inputs.length > 0) {
+        } else if (vpIns.length && !inputsWereEmpty) {
           console.warn('[importFromFusion] Skipping input overwrite for "' + p.nodeType + '" - inputs already set:', newNode.inputs);
         }
-        if (vpOuts.length && (!newNode.outputs || newNode.outputs.length === 0)) {
+        
+        if (vpOuts.length && outputsWereEmpty) {
           newNode.outputs = vpOuts.map(function(pt) { return pt.name; });
         }
 
-        // Bake resolved INPUT colours into portColours.
-        // renderNode: `let hex = portColours[lbl] || null` — this is the first
-        // lookup, so it fires even when visualPorts / vpDetail is null.
-        if (!newNode.portColours) newNode.portColours = {};
-        vpIns.forEach(function(pt) {
-          if (pt.color) newNode.portColours[pt.name] = pt.color;
-        });
+        // Only apply visual port data if we actually used it for inputs
+        // This prevents _vpDetail from getting out of sync with node.inputs
+        if (inputsWereEmpty && vpIns.length) {
+          // Bake resolved INPUT colours into portColours.
+          // renderNode: `let hex = portColours[lbl] || null` — this is the first
+          // lookup, so it fires even when visualPorts / vpDetail is null.
+          if (!newNode.portColours) newNode.portColours = {};
+          vpIns.forEach(function(pt) {
+            if (pt.color) newNode.portColours[pt.name] = pt.color;
+          });
 
-        // Stash the full normalised port descriptor on the node itself.
-        // renderNode's vpDetail line now reads:
-        //   `_ND_vp[node.name] || node._vpDetail || null`
-        // so OUTPUT colours and the dynamic flag are always available
-        // even after the name has been suffixed.
-        newNode._vpDetail = {
-          visual_ports: {
-            inputs:  vpIns,   // [{name, color, dynamic}]
-            outputs: vpOuts   // [{name, color}]
-          }
-        };
+          // Stash the full normalised port descriptor on the node itself.
+          // renderNode's vpDetail line now reads:
+          //   `_ND_vp[node.name] || node._vpDetail || null`
+          // so OUTPUT colours and the dynamic flag are always available
+          // even after the name has been suffixed.
+          newNode._vpDetail = {
+            visual_ports: {
+              inputs:  vpIns,   // [{name, color, dynamic}]
+              outputs: vpOuts   // [{name, color}]
+            }
+          };
+        }
       }
 
       // ── 2c. Force a DOM re-render ──────────────────────────────────────────
