@@ -2427,14 +2427,35 @@ function _addNode(name,cat,screenX,screenY){
     /colorimage/i, /beveltexture/i, /projectiveimage/i, /environmentmap/i,
     /diffuse/i, /specular/i, /bumpmap/i, /target/i, /fogtexture/i,
     /meshinput/i, /stereo/i, /effectmask/i, /garbage/i, /matte/i,
-    /foreground/i, /background/i, /overlay/i, /fg/i, /bg/i, /lut/i
+    /foreground/i, /background/i, /overlay/i, /fg/i, /bg/i, /lut/i,
+    /maininput/i, /primary/i, /secondary/i
+  ];
+  
+  // Common parameter names that should NEVER be inputs
+  const PARAMETER_BLACKLIST = [
+    'size', 'center', 'blend', 'angle', 'rotation', 'scale', 'translate', 'offset',
+    'color', 'colour', 'red', 'green', 'blue', 'alpha', 'opacity', 'gain', 'gamma',
+    'lift', 'brightness', 'contrast', 'saturation', 'hue', 'temperature', 'tint',
+    'width', 'height', 'depth', 'radius', 'length', 'distance', 'position',
+    'x', 'y', 'z', 'value', 'amount', 'intensity', 'strength', 'level',
+    'softness', 'threshold', 'tolerance', 'quality', 'seed', 'rate', 'speed',
+    'start', 'end', 'range', 'min', 'max', 'low', 'high', 'near', 'far',
+    'show', 'hide', 'enable', 'disable', 'on', 'off', 'true', 'false',
+    'solid', 'gradient', 'type', 'mode', 'method', 'order', 'axis', 'channel',
+    'format', 'filename', 'file', 'name', 'label', 'id', 'index', 'count'
   ];
   
   const filteredInputs = nodeInputs.filter(function(inp) {
-    // Keep inputs that match valid pipeline patterns
+    const inpLower = inp.toLowerCase();
+    // Check against blacklist first
+    if (PARAMETER_BLACKLIST.some(function(p) { return inpLower === p || inpLower.includes(p); })) {
+      console.warn('[NodeGraph] BLACKLIST FILTER: "' + inp + '" for node "' + name + '" is a parameter, not an input');
+      return false;
+    }
+    // Check against valid patterns
     const isValid = VALID_INPUT_PATTERNS.some(function(pat) { return pat.test(inp); });
     if (!isValid) {
-      console.warn('[NodeGraph] Filtering out invalid input "' + inp + '" for node "' + name + '" — treating as parameter instead of pipeline input');
+      console.warn('[NodeGraph] PATTERN FILTER: "' + inp + '" for node "' + name + '" doesn\'t match valid input patterns');
     }
     return isValid;
   });
@@ -2445,6 +2466,12 @@ function _addNode(name,cat,screenX,screenY){
   } else if (nodeInputs.length > 0) {
     console.warn('[NodeGraph] All inputs filtered for "' + name + '", keeping original defaults');
     // Keep original if filtering removed everything (safety net)
+  }
+  
+  // HARD LIMIT: Never show more than 8 inputs - this is a safety net against runaway inputs
+  if (nodeInputs.length > 8) {
+    console.error('[NodeGraph] HARD LIMIT HIT: "' + name + '" has ' + nodeInputs.length + ' inputs, truncating to first 8');
+    nodeInputs = nodeInputs.slice(0, 8);
   }
   // ── END CRITICAL FIX ──
 
@@ -2461,6 +2488,12 @@ function _addNode(name,cat,screenX,screenY){
   snapshotForUndo();nodes.push(node);renderNode(node);return node;
 }
 function renderNode(node){
+  // SAFETY: Ensure we never render more than 10 inputs - prevents parameter pollution
+  if (node.inputs && node.inputs.length > 10) {
+    console.error('[renderNode] Node "' + node.name + '" has ' + node.inputs.length + ' inputs, truncating to 10');
+    node.inputs = node.inputs.slice(0, 10);
+  }
+  
   let el=document.getElementById('nd-'+node.id);
   const fresh=!el;
   if(fresh){el=document.createElement('div');el.id='nd-'+node.id;el.className='ng-node';document.getElementById('node-layer').appendChild(el);}
