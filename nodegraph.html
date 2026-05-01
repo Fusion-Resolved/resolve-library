@@ -2422,9 +2422,12 @@ function _addNode(name,cat,screenX,screenY){
     });
     nodeInputs = pipelineInputs.map(function(i){ return i.name || 'Input'; });
     pipelineInputs.forEach(function(i){
-      const wireLabel = i.wire_colour?.label;
-      if (wireLabel) {
-        portColours[i.name || 'Input'] = fusionPortColor(wireLabel, i.name);
+      // Use the actual hex color from the registry if available
+      if (i.wire_colour?.hex) {
+        portColours[i.name || 'Input'] = i.wire_colour.hex;
+      } else if (i.wire_colour?.label) {
+        // Fall back to fusionPortColor mapping if no hex available
+        portColours[i.name || 'Input'] = fusionPortColor(i.wire_colour.label, i.name);
       }
     });
     nodeOutputs = reg.outputs.map(function(o){ return o.name; });
